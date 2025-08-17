@@ -25,7 +25,6 @@ export default function Questionnaire() {
 			setLocalPlan(allocation);
 			setPlan(allocation);
 			setShowSummary(true);
-			// router.push("/PortfolioManagement/Onboarding/Summary"); // optional route navigation
 		} else {
 			setStep(s => Math.min(questions.length - 1, s + 1));
 		}
@@ -33,8 +32,8 @@ export default function Questionnaire() {
 	const prevStep = () => setStep(s => Math.max(0, s - 1));
 
 	return (
-		<div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-green-100 p-4">
-			<div className="w-full max-w-lg bg-white rounded-xl shadow-lg p-8 flex flex-col items-center">
+		<div className="flex items-center justify-center">
+			<div className="w-full max-w-2xl">
 				<ProgressBar current={showSummary ? questions.length : step + 1} total={questions.length} />
 				{showSummary && localPlan ? (
 					<Summary plan={localPlan} />
@@ -56,7 +55,7 @@ export default function Questionnaire() {
 								Back
 							</button>
 							<button
-								className="px-4 py-2 rounded bg-blue-500 text-white disabled:opacity-50"
+								className="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-50"
 								onClick={nextStep}
 								disabled={questions[step].key === "preferredAssets"
 									? !questionnaire["preferredAssets"] || (Array.isArray(questionnaire["preferredAssets"]) && questionnaire["preferredAssets"].length === 0)
