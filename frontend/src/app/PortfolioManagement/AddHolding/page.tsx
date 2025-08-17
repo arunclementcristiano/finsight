@@ -210,6 +210,9 @@ export default function AddHoldingPage() {
 						</CardFooter>
 					</Card>
 				) : null}
+
+				{/* Holdings list */}
+				<HoldingsList />
 			</div>
 
 			<div className="space-y-6">
@@ -275,4 +278,99 @@ function DetailItem({ label, value }: { label: string; value: string }) {
 
 function TrendingUpIcon() {
 	return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-indigo-100 text-indigo-700"> <BarChart3 className="h-4 w-4" /> </span>;
+}
+
+function HoldingsList() {
+	const { holdings, deleteHolding, profile } = useApp();
+	const currency = profile.currency || "INR";
+	if (holdings.length === 0) return (
+		<Card>
+			<CardHeader>
+				<CardTitle>Your Holdings</CardTitle>
+				<CardDescription>Saved positions will appear here.</CardDescription>
+			</CardHeader>
+			<CardContent>
+				<div className="text-slate-500">No holdings yet. Add your first holding using the form above.</div>
+			</CardContent>
+		</Card>
+	);
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle>Your Holdings</CardTitle>
+				<CardDescription>Overview of positions you have added</CardDescription>
+			</CardHeader>
+			<CardContent>
+				<div className="hidden md:block">
+					<table className="w-full text-left border rounded-xl overflow-hidden">
+						<thead className="bg-gray-50">
+							<tr>
+								<th className="px-4 py-3 border-b">Class</th>
+								<th className="px-4 py-3 border-b">Name</th>
+								<th className="px-4 py-3 border-b">Symbol</th>
+								<th className="px-4 py-3 border-b">Units</th>
+								<th className="px-4 py-3 border-b">Price</th>
+								<th className="px-4 py-3 border-b">Invested</th>
+								<th className="px-4 py-3 border-b">Current</th>
+								<th className="px-4 py-3 border-b">P/L</th>
+								<th className="px-4 py-3 border-b">Actions</th>
+							</tr>
+						</thead>
+						<tbody>
+							{holdings.map(h => {
+								const invested = h.investedAmount ?? (h.units && h.price ? h.units * h.price : 0);
+								const current = h.currentValue ?? invested;
+								const pnl = current - invested;
+								const pnlPct = invested > 0 ? (pnl / invested) * 100 : 0;
+								return (
+									<tr key={h.id} className="border-b">
+										<td className="px-4 py-3">{h.instrumentClass}</td>
+										<td className="px-4 py-3">{h.name}</td>
+										<td className="px-4 py-3">{h.symbol || "—"}</td>
+										<td className="px-4 py-3">{typeof h.units === "number" ? formatNumber(h.units, 4) : "—"}</td>
+										<td className="px-4 py-3">{typeof h.price === "number" ? formatCurrency(h.price, currency) : "—"}</td>
+										<td className="px-4 py-3">{formatCurrency(invested, currency)}</td>
+										<td className="px-4 py-3">{formatCurrency(current, currency)}</td>
+										<td className={"px-4 py-3 " + (pnl >= 0 ? "text-green-700" : "text-red-700")}>{formatCurrency(pnl, currency)} ({formatNumber(pnlPct, 2)}%)</td>
+										<td className="px-4 py-3">
+											<button className="text-sm text-red-600 hover:underline" onClick={() => deleteHolding(h.id)}>Delete</button>
+										</td>
+									</tr>
+								);
+							})}
+						</tbody>
+					</table>
+				</div>
+				<div className="md:hidden grid grid-cols-1 gap-3">
+					{holdings.map(h => {
+						const invested = h.investedAmount ?? (h.units && h.price ? h.units * h.price : 0);
+						const current = h.currentValue ?? invested;
+						const pnl = current - invested;
+						const pnlPct = invested > 0 ? (pnl / invested) * 100 : 0;
+						return (
+							<Card key={h.id}>
+								<CardContent>
+									<div className="flex items-center justify-between">
+										<div>
+											<div className="text-sm text-slate-500">{h.instrumentClass}</div>
+											<div className="text-base font-semibold">{h.name} {h.symbol ? <span className="text-slate-500">({h.symbol})</span> : null}</div>
+										</div>
+										<div className={pnl >= 0 ? "text-green-700" : "text-red-700"}>{formatCurrency(pnl, currency)} ({formatNumber(pnlPct, 2)}%)</div>
+									</div>
+									<div className="mt-2 grid grid-cols-3 text-sm">
+										<div><div className="text-slate-500">Invested</div><div className="font-medium">{formatCurrency(invested, currency)}</div></div>
+										<div><div className="text-slate-500">Current</div><div className="font-medium">{formatCurrency(current, currency)}</div></div>
+										<div><div className="text-slate-500">Units</div><div className="font-medium">{typeof h.units === "number" ? formatNumber(h.units, 2) : "—"}</div></div>
+									</div>
+									<div className="mt-3 flex justify-end">
+										<button className="text-sm text-red-600 hover:underline" onClick={() => deleteHolding(h.id)}>Delete</button>
+									</div>
+								</CardContent>
+							</Card>
+						);
+					})}
+				</div>
+			</CardContent>
+		</Card>
+	);
 }
