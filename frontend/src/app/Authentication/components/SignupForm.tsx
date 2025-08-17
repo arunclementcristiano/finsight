@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import "./floating-label.css";
 
 interface SignupFormProps {
@@ -14,10 +15,11 @@ interface SignupFormProps {
 }
 
 export default function SignupForm({ name, email, password, onNameChange, onEmailChange, onPasswordChange, onSubmit, error, success }: SignupFormProps) {
+  const [showPassword, setShowPassword] = useState(false);
   return (
     <form className="flex flex-col gap-6 text-gray-900" autoComplete="off" onSubmit={onSubmit}>
       {/* Name Field */}
-      <div className="relative overflow-hidden">
+  <div className="relative">
         <input
           type="text"
           id="signup-name"
@@ -63,7 +65,7 @@ export default function SignupForm({ name, email, password, onNameChange, onEmai
       {/* Password Field */}
       <div className="relative overflow-hidden">
         <input
-          type="password"
+          type={showPassword ? "text" : "password"}
           id="signup-password"
           name="password"
           required
@@ -81,6 +83,19 @@ export default function SignupForm({ name, email, password, onNameChange, onEmai
         >
           Password
         </label>
+        <button
+          type="button"
+          className="absolute right-2 top-3 flex items-center justify-center w-8 h-8 text-gray-400 hover:text-blue-500 focus:outline-none"
+          tabIndex={-1}
+          onClick={() => setShowPassword(v => !v)}
+          aria-label={showPassword ? "Hide password" : "Show password"}
+        >
+          {showPassword ? (
+            <EyeIcon className="w-6 h-6 mx-auto my-auto" />
+          ) : (
+            <EyeSlashIcon className="w-6 h-6 mx-auto my-auto" />
+          )}
+        </button>
       </div>
       {/* Error/Success */}
       {error && <div className="text-red-500 text-sm mb-2">{error}</div>}

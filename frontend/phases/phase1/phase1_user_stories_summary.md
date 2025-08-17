@@ -3,19 +3,20 @@
 
 | User Story | Related Implementation Tasks |
 |------------|-----------------------------|
-| US-01: Risk Profile Questionnaire (Hybrid) | P-01, P-03, P-04 |
-| US-02: Suggested Asset Allocation          | P-04, P-05        |
-| US-03: Portfolio Tracking (Manual Add/Update) | P-01, P-06, P-07 |
-| US-04: Import Statement (Stub)            | P-01, P-07        |
-| US-05: Dashboard (Current vs Target)      | P-01, P-07        |
-| US-06: Rebalancing & Insights             | P-07, P-08        |
-| US-07: Settings & Persistence             | P-09, P-02        |
+| US-01: Risk Profile Questionnaire (Hybrid) | P-01 (Completed), P-03 (Completed), P-04 (Completed) | Completed |
+| US-02: Suggested Asset Allocation          | P-04 (Completed), P-05 (In Progress)        | In Progress |
+| US-03: Portfolio Tracking (Manual Add/Update) | P-01 (Completed), P-06 (Yet to Start), P-07 (Yet to Start) | Yet to Start |
+| US-04: Import Statement (Stub)            | P-01 (Completed), P-07 (Yet to Start)        | Yet to Start |
+| US-05: Dashboard (Current vs Target)      | P-01 (Completed), P-07 (Yet to Start)        | Yet to Start |
+| US-06: Rebalancing & Insights             | P-07 (Yet to Start), P-08 (Yet to Start)        | Yet to Start |
+| US-07: Settings & Persistence             | P-09 (Yet to Start), P-02 (Yet to Start)        | Yet to Start |
 #
 # Phase 1 Implementation Tasks
 
 ---
 
 **P-01: Create Project Scaffolding**
+Status: Completed
 Create folders/files per this structure: 
 - app/router.tsx
 - app/store.ts
@@ -29,31 +30,61 @@ Create folders/files per this structure:
 Use TypeScript and Tailwind. Add zustand and react-router.
 
 **P-02: Implement Store**
+Status: Yet to Start
 Implement a zustand store useApp with user profile, setters for questionnaire, plan, portfolio CRUD, driftTolerancePct, emergencyMonths. Persist to localStorage key finsight-v1.
 
 **P-03: Questionnaire Page**
+Status: Completed
 Build Questionnaire.tsx as a 9-step wizard with card buttons and progress indicator. On submit, call buildPlan(q) and navigate to /onboarding/summary. Preserve answers between sessions.
 
 **P-04: Allocation Engine**
+Status: Completed
 Implement buildPlan(q) that: (1) maps riskScore→RiskLevel; (2) starts from a base mix per risk; (3) prunes to user’s selected interests; (4) applies liquid cash overlay (+3% if dips≥some, min 5% overall); (5) normalizes to exactly 100.00; (6) returns rationale and per-class ranges.
 
 **P-05: Summary Page**
+Status: In Progress
+Donut chart and allocation table done; "Save Plan" and navigation buttons pending.
 Render donut of plan buckets and grid of cards with class, pct, range. Buttons: ‘Save Plan’, ‘Add Holdings’, ‘Go to Dashboard’.
 
 **P-06: Add Holding Page**
+Status: Yet to Start
 Build form with InstrumentClass select + fields. Validate: either (units & price) or (invested/currentValue) required. Show inline errors and prevent submit until valid.
 
 **P-07: Dashboard**
+Status: Yet to Start
 Render (A) donut target plan; (B) grouped bars: current vs target by class; (C) rebalancing list from computeRebalance. Add CTA to add/import holdings.
 
 **P-08: Insights**
+Status: Yet to Start
 Show top drift items with Increase/Reduce and ₹ amount. If all OK, show success card.
 
 **P-09: Settings**
+Status: Yet to Start
 Add dark mode toggle (persist), drift tolerance slider (3–10%), emergency months (3–12).
 
-**P-10: Auth Guard**
-Create a route guard hook using Cognito (existing). Redirect unauthenticated users to login before /portfolio/* and /insights.
+
+---
+
+## Current Status (as of 17 August 2025)
+
+- US-01: Risk Profile Questionnaire (Hybrid): Completed
+- US-02: Suggested Asset Allocation: In Progress (donut chart, allocation table done; "Save Plan" and navigation buttons pending)
+- US-03: Portfolio Tracking (Manual Add/Update): Yet to Start
+- US-04: Import Statement (Stub): Yet to Start
+- US-05: Dashboard (Current vs Target): Yet to Start
+- US-06: Rebalancing & Insights: Yet to Start
+- US-07: Settings & Persistence: Yet to Start
+
+- P-01: Create Project Scaffolding: Completed
+- P-02: Implement Store: Yet to Start
+- P-03: Questionnaire Page: Completed
+- P-04: Allocation Engine: Completed
+- P-05: Summary Page: In Progress (donut chart, table done; "Save Plan" and navigation buttons pending)
+- P-06: Add Holding Page: Yet to Start
+- P-07: Dashboard: Yet to Start
+- P-08: Insights: Yet to Start
+- P-09: Settings: Yet to Start
+- P-10: Auth Guard: Yet to Start
 
 # Phase 1 User Stories — Prioritized & Refined
 

@@ -96,6 +96,18 @@ export default function Summary({ plan }: SummaryProps) {
             </tbody>
           </table>
         </div>
+        {/* Action Buttons */}
+        <div className="w-full flex flex-col sm:flex-row gap-4 mt-8 justify-center">
+          <button className="px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold shadow hover:bg-blue-700 transition" onClick={() => alert('Plan saved! (placeholder)')}>
+            Save Plan
+          </button>
+          <button className="px-6 py-3 rounded-lg bg-green-500 text-white font-semibold shadow hover:bg-green-600 transition" onClick={() => alert('Navigate to Add Holdings (placeholder)')}>
+            Add Holdings
+          </button>
+          <button className="px-6 py-3 rounded-lg bg-gray-200 text-gray-700 font-semibold shadow hover:bg-gray-300 transition" onClick={() => alert('Navigate to Dashboard (placeholder)')}>
+            Go to Dashboard
+          </button>
+        </div>
       </div>
     </div>
   );

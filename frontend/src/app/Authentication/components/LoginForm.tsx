@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import "./floating-label.css";
 
 interface LoginFormProps {
@@ -12,6 +13,7 @@ interface LoginFormProps {
 }
 
 export default function LoginForm({ email, password, onEmailChange, onPasswordChange, onSubmit, error, success }: LoginFormProps) {
+  const [showPassword, setShowPassword] = useState(false);
   return (
     <form className="flex flex-col gap-6 text-gray-900" autoComplete="off" onSubmit={onSubmit}>
       {/* Email Field */}
@@ -39,7 +41,7 @@ export default function LoginForm({ email, password, onEmailChange, onPasswordCh
       {/* Password Field */}
       <div className="relative overflow-hidden">
         <input
-          type="password"
+          type={showPassword ? "text" : "password"}
           id="login-password"
           name="password"
           required
@@ -57,6 +59,18 @@ export default function LoginForm({ email, password, onEmailChange, onPasswordCh
         >
           Password
         </label>
+        <button
+          type="button"
+          className="absolute right-2 top-3 flex items-center justify-center w-8 h-8 text-gray-400 hover:text-blue-500 focus:outline-none"
+          tabIndex={-1}
+          onClick={() => setShowPassword(v => !v)}
+        >
+          {showPassword ? (
+            <EyeIcon className="w-6 h-6 mx-auto my-auto" />
+          ) : (
+            <EyeSlashIcon className="w-6 h-6 mx-auto my-auto" />
+          )}
+        </button>
       </div>
       {/* Error/Success */}
       {error && <div className="text-red-500 text-sm mb-2">{error}</div>}
