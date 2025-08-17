@@ -294,7 +294,7 @@ function HoldingsTableWithPagination({ onImport }: { onImport?: () => void }) {
 					<div className="text-muted-foreground">No holdings yet. Add your first holding using the form.</div>
 				) : (
 					<table className="w-full text-left border rounded-xl overflow-hidden border-border text-sm">
-						<thead className="sticky top-0 z-10">
+						<thead className="bg-slate-50 dark:bg-slate-900/50 sticky top-0 z-10">
 							<tr>
 								<th className="px-3 py-2 border-b">Class</th>
 								<th className="px-3 py-2 border-b">Name / Symbol</th>
@@ -311,7 +311,7 @@ function HoldingsTableWithPagination({ onImport }: { onImport?: () => void }) {
 								const pnl = current - invested;
 								const pnlPct = invested > 0 ? (pnl / invested) * 100 : 0;
 								return (
-									<tr key={h.id} className="border-b align-top hover:bg-indigo-50 dark:hover:bg-slate-800/40">
+									<tr key={h.id} className="border-b align-top">
 										<td className="px-3 py-2 whitespace-nowrap"><span className="inline-flex items-center rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-200 px-2 py-0.5 text-xs font-medium">{h.instrumentClass}</span></td>
 										<td className="px-3 py-2">
 											<div className="font-medium leading-tight">{h.name}</div>
