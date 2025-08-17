@@ -1,0 +1,67 @@
+// Copilot: Build a complete "Risk Profile & Suggested Asset Allocation" flow in React with TailwindCSS
+// Requirements:
+//
+// Project Structure
+//  - src/pages/RiskProfileIntro.jsx      → Introduction + Start button
+//  - src/pages/RiskProfileQuestions.jsx  → Multi-step questionnaire
+//  - src/pages/RiskProfileResult.jsx     → Allocation result (chart + table + save button)
+//  - src/components/QuestionCard.jsx     → Reusable component for displaying a single question with choices
+//  - src/utils/allocationLogic.js        → Helper function generateAllocation(answers)
+//  - src/api/userApi.js                  → Stubbed saveRiskProfile API (mock POST)
+//
+// 1. RiskProfileIntro.jsx
+// - Simple page explaining the purpose of risk profiling
+// - Clean Tailwind design with centered content
+// - "Start Questionnaire" button → navigates to /risk-questions
+//
+// 2. RiskProfileQuestions.jsx
+// - Step-by-step multi-question flow (7 questions as defined below)
+// - Show progress indicator (Step X of 7)
+// - Use <QuestionCard /> for each question
+// - Navigation: "Back" + "Next"
+// - Save answers in state { q1, q2, q3, ... }
+// - On final step → call generateAllocation(answers) and redirect to /risk-result
+//
+// Questions:
+//   a) Investment Time Horizon (Short <3 yrs, Medium 3–7 yrs, Long >7 yrs)
+//   b) Risk Appetite (Low, Moderate, High)
+//   c) Income vs Expenses (Surplus, Break-even, Deficit)
+//   d) Investment Knowledge (Beginner, Intermediate, Advanced)
+//   e) Comfort with Market Volatility (Low, Medium, High)
+//   f) Preferred Assets (Stocks, Mutual Funds, Gold, Real Estate, Debt)
+//   g) Liquidity Preference (High, Medium, Low)
+//
+// 3. RiskProfileResult.jsx
+// - Displays results after allocation
+// - Show Donut Chart (react-chartjs-2 or recharts)
+// - Show summary table/cards with allocation percentages
+// - Button: "Save My Profile"
+// - On click → calls saveRiskProfile(userId, answers, allocation)
+//
+// 4. QuestionCard.jsx
+// - Props: { questionText, options, selected, onChange }
+// - Renders question with Tailwind cards as multiple choice
+//
+// 5. allocationLogic.js
+// - export function generateAllocation(answers) {}
+// - Implements allocation logic:
+//   - Conservative → Debt + Gold heavy, low equity
+//   - Moderate → Balanced mix
+//   - Aggressive → Equity heavy
+//   - Always sum to 100%
+//   - If asset not selected → assign 0%
+// - Example output: { equityMF: 40, stocks: 20, debt: 25, gold: 10, realEstate: 0, liquid: 5 }
+//
+// 6. userApi.js
+// - export async function saveRiskProfile(userId, answers, allocation) {}
+// - Stub POST request (mock URL for now)
+// - Assume userId from Cognito, but for now use "test-user"
+//
+// UX Notes
+// - Use Tailwind for responsive, mobile-first clean UI
+// - Smooth transitions between steps
+// - Keep questionnaire minimal and user-friendly
+//
+// Deliverables
+// - All pages + components + utils + API stub as listed above
+// - Full navigation flow: Intro → Questions → Result
