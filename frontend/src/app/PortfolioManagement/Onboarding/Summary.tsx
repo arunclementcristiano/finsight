@@ -91,6 +91,34 @@ export default function Summary({ plan }: SummaryProps) {
 							</tbody>
 						</table>
 					</div>
+
+					<details className="mt-4">
+						<summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">Show classic table with badges</summary>
+						<div className="mt-3 w-full overflow-x-auto">
+							<table className="min-w-[800px] w-full text-left border border-border rounded-xl">
+								<thead className="sticky top-0 z-10">
+									<tr>
+										<th className="py-2.5 px-4 border-b">Asset Class</th>
+										<th className="py-2.5 px-4 border-b">Target</th>
+										<th className="py-2.5 px-4 border-b">Range</th>
+										<th className="py-2.5 px-4 border-b">Risk</th>
+										<th className="py-2.5 px-4 border-b">Notes</th>
+									</tr>
+								</thead>
+								<tbody>
+									{plan.buckets.map((b: any, idx: number) => (
+										<tr key={b.class} className={"border-b hover:bg-muted/40 " + (idx % 2 === 0 ? "bg-white dark:bg-slate-900/50" : "bg-slate-50 dark:bg-slate-900/30") }>
+											<td className="py-2.5 px-4">{b.class}</td>
+											<td className="py-2.5 px-4 font-semibold"><span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5">{b.pct}%</span></td>
+											<td className="py-2.5 px-4"><span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5">{b.range[0]}% – {b.range[1]}%</span></td>
+											<td className="py-2.5 px-4"><span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5">{b.riskCategory}</span></td>
+											<td className="py-2.5 px-4 italic text-muted-foreground">{b.notes}</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					</details>
 				</CardContent>
 			</Card>
 

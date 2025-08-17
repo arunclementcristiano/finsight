@@ -29,7 +29,8 @@ export default function AddHoldingPage() {
 	const [mode, setMode] = useState<EntryMode>("units");
 	const [form, setForm] = useState<HoldingFormState>({ instrumentClass: "", name: "", symbol: "", units: "", price: "", investedAmount: "", currentValue: "" });
 	const [submitted, setSubmitted] = useState(false);
-	const [tab, setTab] = useState<"holdings" | "add" | "import">("holdings");
+	const [tab, setTab] = useState<"holdings" | "add">("holdings");
+	const [showImport, setShowImport] = useState(false);
 
 	function onChange<K extends keyof HoldingFormState>(key: K) {
 		return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -100,11 +101,10 @@ export default function AddHoldingPage() {
 			<div className="flex items-center gap-2 border-b border-border">
 				<button onClick={() => setTab("holdings")} className={`px-4 py-2 text-sm rounded-t-md transition-colors ${tab === "holdings" ? "text-indigo-600 border-b-2 border-indigo-600 -mb-px" : "text-foreground hover:bg-muted"}`}>Holdings</button>
 				<button onClick={() => setTab("add")} className={`px-4 py-2 text-sm rounded-t-md transition-colors ${tab === "add" ? "text-indigo-600 border-b-2 border-indigo-600 -mb-px" : "text-foreground hover:bg-muted"}`}>Add Holding</button>
-				<button onClick={() => setTab("import")} className={`px-4 py-2 text-sm rounded-t-md transition-colors ${tab === "import" ? "text-indigo-600 border-b-2 border-indigo-600 -mb-px" : "text-foreground hover:bg-muted"}`}>Import</button>
 			</div>
 
 			{tab === "holdings" && (
-				<HoldingsTableWithPagination onImport={() => setTab("import")} />
+				<HoldingsTableWithPagination onImport={() => setShowImport(true)} />
 			)}
 
 			{tab === "add" && (
@@ -215,16 +215,24 @@ export default function AddHoldingPage() {
 				</div>
 			)}
 
-			{tab === "import" && (
-				<Card>
-					<CardHeader>
-						<CardTitle>Import Holdings</CardTitle>
-						<CardDescription>Upload a CSV/XLSX (stub)</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<p className="text-muted-foreground text-sm">Import wizard coming soon.</p>
-					</CardContent>
-				</Card>
+			{/* Import modal */}
+			{showImport && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+					<div className="w-full max-w-md rounded-xl border border-border bg-card p-5 text-foreground">
+						<div className="flex items-center justify-between mb-3">
+							<h3 className="text-lg font-semibold">Import Holdings</h3>
+							<button className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-muted" onClick={() => setShowImport(false)}>✕</button>
+						</div>
+						<div className="space-y-3">
+							<input type="file" className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground" />
+							<p className="text-sm text-muted-foreground">CSV/XLSX supported. This is a UI stub.</p>
+							<div className="flex justify-end gap-2 pt-2">
+								<Button variant="outline" onClick={() => setShowImport(false)}>Cancel</Button>
+								<Button onClick={() => setShowImport(false)}>Continue</Button>
+							</div>
+						</div>
+					</div>
+				</div>
 			)}
 		</div>
 	);
@@ -286,7 +294,7 @@ function HoldingsTableWithPagination({ onImport }: { onImport?: () => void }) {
 					<div className="text-muted-foreground">No holdings yet. Add your first holding using the form.</div>
 				) : (
 					<table className="w-full text-left border rounded-xl overflow-hidden border-border text-sm">
-						<thead className="bg-slate-50 dark:bg-slate-900/50 sticky top-0 z-10">
+						<thead className="sticky top-0 z-10">
 							<tr>
 								<th className="px-3 py-2 border-b">Class</th>
 								<th className="px-3 py-2 border-b">Name / Symbol</th>
@@ -303,8 +311,8 @@ function HoldingsTableWithPagination({ onImport }: { onImport?: () => void }) {
 								const pnl = current - invested;
 								const pnlPct = invested > 0 ? (pnl / invested) * 100 : 0;
 								return (
-									<tr key={h.id} className="border-b hover:bg-muted/60 align-top">
-										<td className="px-3 py-2 whitespace-nowrap"><span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium">{h.instrumentClass}</span></td>
+									<tr key={h.id} className="border-b align-top hover:bg-indigo-50 dark:hover:bg-slate-800/40">
+										<td className="px-3 py-2 whitespace-nowrap"><span className="inline-flex items-center rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-200 px-2 py-0.5 text-xs font-medium">{h.instrumentClass}</span></td>
 										<td className="px-3 py-2">
 											<div className="font-medium leading-tight">{h.name}</div>
 											<div className="text-muted-foreground text-xs leading-tight">{h.symbol || "—"}</div>
