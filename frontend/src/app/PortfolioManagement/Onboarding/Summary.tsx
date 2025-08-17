@@ -29,14 +29,14 @@ export default function Summary({ plan }: SummaryProps) {
 		datasets: [
 			{
 				data: plan.buckets.map(b => b.pct),
-				backgroundColor: ["#3b82f6", "#10b981", "#f59e42", "#fbbf24", "#6366f1", "#ef4444", "#a3e635"],
+				backgroundColor: ["#6366f1", "#10b981", "#f59e42", "#fbbf24", "#3b82f6", "#ef4444", "#a3e635"],
 				borderWidth: 2,
 				borderColor: "#fff",
 			},
 		],
 	};
 	const chartOptions = {
-		plugins: { legend: { display: true, position: "bottom" as const, labels: { font: { size: 14 } } }, tooltip: { callbacks: { label: function(context: any) { return `${context.label}: ${context.parsed}%`; } } } },
+		plugins: { legend: { display: true, position: "bottom" as const, labels: { font: { size: 13 } } }, tooltip: { callbacks: { label: function(context: any) { return `${context.label}: ${context.parsed}%`; } } } },
 		cutout: "70%",
 		responsive: true,
 		maintainAspectRatio: false,
@@ -46,7 +46,7 @@ export default function Summary({ plan }: SummaryProps) {
 			<Card>
 				<CardHeader className="text-center">
 					<CardTitle className="text-2xl">Portfolio Summary</CardTitle>
-					<div className="mt-2 inline-block rounded-full bg-blue-50 px-4 py-2 text-blue-700 font-semibold">Risk Level: <span className="text-blue-800">{plan.riskLevel}</span></div>
+					<div className="mt-2 inline-block rounded-full bg-indigo-50 px-4 py-2 text-indigo-700 font-semibold dark:bg-indigo-900/40 dark:text-indigo-200">Risk Level: <span className="font-bold">{plan.riskLevel}</span></div>
 				</CardHeader>
 				<CardContent>
 					<div className="w-full flex flex-col items-center">
@@ -63,24 +63,24 @@ export default function Summary({ plan }: SummaryProps) {
 				</CardHeader>
 				<CardContent>
 					<div className="w-full overflow-x-auto">
-						<table className="min-w-[600px] w-full text-left border border-gray-200 rounded-xl shadow-sm">
-							<thead className="bg-gray-50">
+						<table className="min-w-[640px] w-full text-left border border-slate-200 dark:border-slate-800 rounded-xl">
+							<thead className="bg-slate-50 dark:bg-slate-900/50">
 								<tr>
-									<th className="py-3 px-4 border-b font-semibold text-gray-700">Asset Class</th>
-									<th className="py-3 px-4 border-b font-semibold text-gray-700">% Allocation</th>
-									<th className="py-3 px-4 border-b font-semibold text-gray-700">Range</th>
-									<th className="py-3 px-4 border-b font-semibold text-gray-700">Risk Category</th>
-									<th className="py-3 px-4 border-b font-semibold text-gray-700">Notes</th>
+									<th className="py-3 px-4 border-b">Asset Class</th>
+									<th className="py-3 px-4 border-b">% Allocation</th>
+									<th className="py-3 px-4 border-b">Range</th>
+									<th className="py-3 px-4 border-b">Risk Category</th>
+									<th className="py-3 px-4 border-b">Notes</th>
 								</tr>
 							</thead>
 							<tbody>
 								{plan.buckets.map((b: any, idx: number) => (
-									<tr key={b.class} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-										<td className="py-3 px-4 border-b text-gray-900 font-medium">{b.class}</td>
-										<td className="py-3 px-4 border-b text-blue-700 font-semibold">{b.pct}%</td>
-										<td className="py-3 px-4 border-b text-gray-700">{b.range[0]}% – {b.range[1]}%</td>
-										<td className="py-3 px-4 border-b text-green-700 font-semibold">{b.riskCategory}</td>
-										<td className="py-3 px-4 border-b text-gray-600 italic">{b.notes}</td>
+									<tr key={b.class} className={idx % 2 === 0 ? "bg-white dark:bg-slate-900/50" : "bg-slate-50 dark:bg-slate-900/30"}>
+										<td className="py-3 px-4 border-b">{b.class}</td>
+										<td className="py-3 px-4 border-b font-semibold text-indigo-700 dark:text-indigo-300">{b.pct}%</td>
+										<td className="py-3 px-4 border-b">{b.range[0]}% – {b.range[1]}%</td>
+										<td className="py-3 px-4 border-b font-semibold text-emerald-700 dark:text-emerald-300">{b.riskCategory}</td>
+										<td className="py-3 px-4 border-b italic text-slate-600 dark:text-slate-400">{b.notes}</td>
 									</tr>
 								))}
 							</tbody>

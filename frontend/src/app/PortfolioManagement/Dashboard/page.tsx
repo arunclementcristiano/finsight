@@ -29,7 +29,7 @@ export default function DashboardPage() {
 			labels: plan.buckets.map(b => b.class),
 			datasets: [{
 				data: plan.buckets.map(b => b.pct),
-				backgroundColor: ["#3b82f6", "#10b981", "#f59e42", "#fbbf24", "#6366f1", "#ef4444", "#a3e635"],
+				backgroundColor: ["#6366f1", "#10b981", "#f59e42", "#fbbf24", "#3b82f6", "#ef4444", "#a3e635"],
 				borderWidth: 2,
 				borderColor: "#fff",
 			}],
@@ -38,7 +38,6 @@ export default function DashboardPage() {
 
 	const { barLabels, barTarget, barActual } = useMemo(() => {
 		if (!plan) return { barLabels: [], barTarget: [], barActual: [] };
-		// Aggregate actual by class
 		const classToValue = new Map<string, number>();
 		for (const h of holdings) {
 			const val = h.currentValue || (h.units && h.price ? h.units * h.price : 0);
@@ -54,12 +53,12 @@ export default function DashboardPage() {
 	const barData = {
 		labels: barLabels,
 		datasets: [
-			{ label: "Target %", data: barTarget, backgroundColor: "rgba(59,130,246,0.5)" },
+			{ label: "Target %", data: barTarget, backgroundColor: "rgba(99,102,241,0.5)" },
 			{ label: "Actual %", data: barActual, backgroundColor: "rgba(16,185,129,0.5)" },
 		],
 	};
 	const barOptions = {
-		plugins: { legend: { position: "bottom" as const } },
+		plugins: { legend: { position: "bottom" as const, labels: { font: { size: 12 } } } },
 		responsive: true,
 		maintainAspectRatio: false,
 		scales: { y: { beginAtZero: true, max: 100 } },
@@ -71,8 +70,8 @@ export default function DashboardPage() {
 		<div className="space-y-6">
 			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 				<KPI title="Current Value" value={formatCurrency(totalCurrent, currency)} icon={<PieChart className="h-5 w-5 text-indigo-600" />} />
-				<KPI title="Invested" value={formatCurrency(totalInvested, currency)} icon={<Target className="h-5 w-5 text-green-600" />} />
-				<KPI title="P/L" value={`${formatCurrency(pnl, currency)} (${formatNumber(pnlPct, 2)}%)`} icon={pnl >= 0 ? <ArrowUpRight className="h-5 w-5 text-green-600" /> : <ArrowDownRight className="h-5 w-5 text-red-600" />} valueClassName={pnl >= 0 ? "text-green-700" : "text-red-700"} />
+				<KPI title="Invested" value={formatCurrency(totalInvested, currency)} icon={<Target className="h-5 w-5 text-emerald-600" />} />
+				<KPI title="P/L" value={`${formatCurrency(pnl, currency)} (${formatNumber(pnlPct, 2)}%)`} icon={pnl >= 0 ? <ArrowUpRight className="h-5 w-5 text-emerald-600" /> : <ArrowDownRight className="h-5 w-5 text-rose-600" />} valueClassName={pnl >= 0 ? "text-emerald-700" : "text-rose-700"} />
 				<div className="flex gap-2">
 					<Button className="w-full" leftIcon={<PlusCircle className="h-4 w-4" />} onClick={() => window.location.assign("/PortfolioManagement/AddHolding")}>Add Holding</Button>
 					<Button variant="outline" className="w-full" leftIcon={<Upload className="h-4 w-4" />}>Import</Button>
@@ -87,7 +86,7 @@ export default function DashboardPage() {
 					</CardHeader>
 					<CardContent>
 						{plan && donutData ? (
-							<div className="mx-auto h-72 max-w-sm"><Doughnut data={donutData} options={{ plugins: { legend: { position: "bottom" as const } }, cutout: "70%" }} /></div>
+							<div className="mx-auto h-72 max-w-sm"><Doughnut data={donutData} options={{ plugins: { legend: { position: "bottom" as const, labels: { font: { size: 12 } } } }, cutout: "70%" }} /></div>
 						) : (
 							<div className="text-slate-500">No plan yet. Go to Onboarding to create one.</div>
 						)}
@@ -134,7 +133,7 @@ export default function DashboardPage() {
 							))}
 						</div>
 					) : (
-						<div className="text-slate-500">All good! No rebalancing needed.</div>
+						<div className="text-slate-500">{holdings.length === 0 ? "Add holdings to see suggestions." : "All good! No rebalancing needed."}</div>
 					)}
 				</CardContent>
 			</Card>

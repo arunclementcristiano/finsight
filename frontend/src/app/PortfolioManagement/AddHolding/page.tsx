@@ -302,8 +302,8 @@ function HoldingsList() {
 			</CardHeader>
 			<CardContent>
 				<div className="hidden md:block">
-					<table className="w-full text-left border rounded-xl overflow-hidden">
-						<thead className="bg-gray-50">
+					<table className="w-full text-left border rounded-xl overflow-hidden border-slate-200 dark:border-slate-800">
+						<thead className="bg-slate-50 dark:bg-slate-900/50">
 							<tr>
 								<th className="px-4 py-3 border-b">Class</th>
 								<th className="px-4 py-3 border-b">Name</th>
@@ -331,9 +331,9 @@ function HoldingsList() {
 										<td className="px-4 py-3">{typeof h.price === "number" ? formatCurrency(h.price, currency) : "—"}</td>
 										<td className="px-4 py-3">{formatCurrency(invested, currency)}</td>
 										<td className="px-4 py-3">{formatCurrency(current, currency)}</td>
-										<td className={"px-4 py-3 " + (pnl >= 0 ? "text-green-700" : "text-red-700")}>{formatCurrency(pnl, currency)} ({formatNumber(pnlPct, 2)}%)</td>
+										<td className={"px-4 py-3 " + (pnl >= 0 ? "text-emerald-700" : "text-rose-700")}>{formatCurrency(pnl, currency)} ({formatNumber(pnlPct, 2)}%)</td>
 										<td className="px-4 py-3">
-											<button className="text-sm text-red-600 hover:underline" onClick={() => deleteHolding(h.id)}>Delete</button>
+											<button className="text-sm text-rose-600 hover:underline" onClick={() => deleteHolding(h.id)}>Delete</button>
 										</td>
 									</tr>
 								);
@@ -355,7 +355,7 @@ function HoldingsList() {
 											<div className="text-sm text-slate-500">{h.instrumentClass}</div>
 											<div className="text-base font-semibold">{h.name} {h.symbol ? <span className="text-slate-500">({h.symbol})</span> : null}</div>
 										</div>
-										<div className={pnl >= 0 ? "text-green-700" : "text-red-700"}>{formatCurrency(pnl, currency)} ({formatNumber(pnlPct, 2)}%)</div>
+										<div className={pnl >= 0 ? "text-emerald-700" : "text-rose-700"}>{formatCurrency(pnl, currency)} ({formatNumber(pnlPct, 2)}%)</div>
 									</div>
 									<div className="mt-2 grid grid-cols-3 text-sm">
 										<div><div className="text-slate-500">Invested</div><div className="font-medium">{formatCurrency(invested, currency)}</div></div>
@@ -363,7 +363,7 @@ function HoldingsList() {
 										<div><div className="text-slate-500">Units</div><div className="font-medium">{typeof h.units === "number" ? formatNumber(h.units, 2) : "—"}</div></div>
 									</div>
 									<div className="mt-3 flex justify-end">
-										<button className="text-sm text-red-600 hover:underline" onClick={() => deleteHolding(h.id)}>Delete</button>
+										<button className="text-sm text-rose-600 hover:underline" onClick={() => deleteHolding(h.id)}>Delete</button>
 									</div>
 								</CardContent>
 							</Card>
