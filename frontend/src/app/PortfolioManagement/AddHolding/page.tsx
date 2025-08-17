@@ -223,9 +223,9 @@ export default function AddHoldingPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-							<SummaryStat label="Invested" value={formatCurrency(computed.invested, currency)} icon={<Banknote className="h-4 w-4 text-slate-500" />} />
-							<SummaryStat label="Current" value={formatCurrency(computed.current, currency)} icon={<IndianRupee className="h-4 w-4 text-slate-500" />} />
-							<SummaryStat label="P/L" value={Number.isNaN(computed.pnl) ? "—" : `${formatCurrency(computed.pnl, currency)} (${Number.isNaN(computed.pnlPct) ? "—" : formatNumber(computed.pnlPct, 2)}%)`} icon={<Percent className="h-4 w-4 text-slate-500" />} valueClassName={computed.pnl > 0 ? "text-green-600" : computed.pnl < 0 ? "text-red-600" : ""} />
+							<SummaryStat label="Invested" value={formatCurrency(computed.invested, currency)} icon={<Banknote className="h-4 w-4" />} />
+							<SummaryStat label="Current" value={formatCurrency(computed.current, currency)} icon={<IndianRupee className="h-4 w-4" />} />
+							<SummaryStat label="P/L" value={Number.isNaN(computed.pnl) ? "—" : `${formatCurrency(computed.pnl, currency)} (${Number.isNaN(computed.pnlPct) ? "—" : formatNumber(computed.pnlPct, 2)}%)`} icon={<Percent className="h-4 w-4" />} valueClassName={computed.pnl > 0 ? "text-emerald-600" : computed.pnl < 0 ? "text-rose-600" : ""} />
 						</div>
 					</CardContent>
 				</Card>
@@ -260,9 +260,12 @@ export default function AddHoldingPage() {
 
 function SummaryStat({ label, value, icon, valueClassName = "" }: { label: string; value: string; icon?: React.ReactNode; valueClassName?: string }) {
 	return (
-		<div className="rounded-xl border p-4 bg-white dark:bg-slate-900 dark:border-slate-800">
-			<div className="text-sm text-slate-500 flex items-center gap-2 mb-1">{icon}{label}</div>
-			<div className={`text-lg font-semibold ${valueClassName}`}>{value}</div>
+		<div className="rounded-xl border border-border p-4 bg-card transition-colors">
+			<div className="flex items-center gap-2 mb-1 text-muted-foreground">
+				<span className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-muted text-foreground/80">{icon}</span>
+				<span className="text-sm">{label}</span>
+			</div>
+			<div className={`text-xl font-semibold ${valueClassName}`}>{value}</div>
 		</div>
 	);
 }

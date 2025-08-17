@@ -7,6 +7,7 @@ import { buildPlan } from "../domain/allocationEngine";
 import { useRouter } from "next/navigation";
 import Summary from "./Summary";
 import { useApp } from "../../store";
+import { Button } from "../../components/Button";
 
 export default function Questionnaire() {
 	const router = useRouter();
@@ -45,23 +46,13 @@ export default function Questionnaire() {
 						onChange={(value) => handleAnswer(questions[step].key, value)}
 						multiSelect={questions[step].key === "preferredAssets"}
 					/>
-					<div className="flex justify-between w-full mt-8">
-						<button
-							className="px-4 py-2 rounded-lg bg-slate-200 text-slate-800 hover:bg-slate-300 disabled:opacity-50"
-							onClick={prevStep}
-							disabled={step === 0}
-						>
-							Back
-						</button>
-						<button
-							className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
-							onClick={nextStep}
-							disabled={questions[step].key === "preferredAssets"
-								? !questionnaire["preferredAssets"] || (Array.isArray(questionnaire["preferredAssets"]) && questionnaire["preferredAssets"].length === 0)
-								: !questionnaire[questions[step].key]}
-						>
+					<div className="flex justify-between w-full mt-8 gap-3">
+						<Button variant="secondary" onClick={prevStep} disabled={step === 0}>Back</Button>
+						<Button onClick={nextStep} disabled={questions[step].key === "preferredAssets"
+							? !questionnaire["preferredAssets"] || (Array.isArray(questionnaire["preferredAssets"]) && questionnaire["preferredAssets"].length === 0)
+							: !questionnaire[questions[step].key]}>
 							{step === questions.length - 1 ? "Submit" : "Next"}
-						</button>
+						</Button>
 					</div>
 				</>
 			)}

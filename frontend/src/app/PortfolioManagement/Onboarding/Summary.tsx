@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useApp } from "../../store";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/Card";
 import { Button } from "../../components/Button";
+import { useChartThemeColors } from "../../components/useChartTheme";
 Chart.register(ArcElement, Tooltip, Legend);
 
 interface SummaryProps {
@@ -24,6 +25,7 @@ interface SummaryProps {
 export default function Summary({ plan }: SummaryProps) {
 	const router = useRouter();
 	const { setPlan } = useApp();
+	const theme = useChartThemeColors();
 	const chartData = {
 		labels: plan.buckets.map(b => b.class),
 		datasets: [
@@ -36,7 +38,7 @@ export default function Summary({ plan }: SummaryProps) {
 		],
 	};
 	const chartOptions = {
-		plugins: { legend: { display: true, position: "bottom" as const, labels: { font: { size: 13 } } }, tooltip: { callbacks: { label: function(context: any) { return `${context.label}: ${context.parsed}%`; } } } },
+		plugins: { legend: { display: true, position: "bottom" as const, labels: { font: { size: 13 }, color: theme.text } }, tooltip: { callbacks: { label: function(context: any) { return `${context.label}: ${context.parsed}%`; } } } },
 		cutout: "70%",
 		responsive: true,
 		maintainAspectRatio: false,
