@@ -259,18 +259,15 @@ function HoldingsTableWithPagination() {
 				{holdings.length === 0 ? (
 					<div className="text-muted-foreground">No holdings yet. Add your first holding using the form.</div>
 				) : (
-					<table className="w-full text-left border rounded-xl overflow-hidden border-border">
+					<table className="w-full text-left border rounded-xl overflow-hidden border-border text-sm">
 						<thead className="bg-slate-50 dark:bg-slate-900/50 sticky top-0 z-10">
 							<tr>
-								<th className="px-4 py-3 border-b">Class</th>
-								<th className="px-4 py-3 border-b">Name</th>
-								<th className="px-4 py-3 border-b">Symbol</th>
-								<th className="px-4 py-3 border-b">Units</th>
-								<th className="px-4 py-3 border-b">Price</th>
-								<th className="px-4 py-3 border-b">Invested</th>
-								<th className="px-4 py-3 border-b">Current</th>
-								<th className="px-4 py-3 border-b">P/L</th>
-								<th className="px-4 py-3 border-b">Actions</th>
+								<th className="px-3 py-2 border-b">Class</th>
+								<th className="px-3 py-2 border-b">Name / Symbol</th>
+								<th className="px-3 py-2 border-b">Units / Price</th>
+								<th className="px-3 py-2 border-b">Invested / Current</th>
+								<th className="px-3 py-2 border-b">P/L</th>
+								<th className="px-3 py-2 border-b">Actions</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -280,18 +277,22 @@ function HoldingsTableWithPagination() {
 								const pnl = current - invested;
 								const pnlPct = invested > 0 ? (pnl / invested) * 100 : 0;
 								return (
-									<tr key={h.id} className="border-b hover:bg-muted/60">
-										<td className="px-4 py-3">{h.instrumentClass}</td>
-										<td className="px-4 py-3">{h.name}</td>
-										<td className="px-4 py-3">{h.symbol || "—"}</td>
-										<td className="px-4 py-3">{typeof h.units === "number" ? formatNumber(h.units, 4) : "—"}</td>
-										<td className="px-4 py-3">{typeof h.price === "number" ? formatCurrency(h.price, currency) : "—"}</td>
-										<td className="px-4 py-3">{formatCurrency(invested, currency)}</td>
-										<td className="px-4 py-3">{formatCurrency(current, currency)}</td>
-										<td className={"px-4 py-3 " + (pnl >= 0 ? "text-emerald-700" : "text-rose-700")}>{formatCurrency(pnl, currency)} ({formatNumber(pnlPct, 2)}%)</td>
-										<td className="px-4 py-3">
-											<button className="text-sm text-rose-600 hover:underline" onClick={() => deleteHolding(h.id)}>Delete</button>
+									<tr key={h.id} className="border-b hover:bg-muted/60 align-top">
+										<td className="px-3 py-2 whitespace-nowrap">{h.instrumentClass}</td>
+										<td className="px-3 py-2">
+											<div className="font-medium leading-tight">{h.name}</div>
+											<div className="text-muted-foreground text-xs leading-tight">{h.symbol || "—"}</div>
 										</td>
+										<td className="px-3 py-2">
+											<div className="leading-tight">{typeof h.units === "number" ? formatNumber(h.units, 2) : "—"}</div>
+											<div className="text-muted-foreground text-xs leading-tight">{typeof h.price === "number" ? formatCurrency(h.price, currency) : "—"}</div>
+										</td>
+										<td className="px-3 py-2">
+											<div className="leading-tight">{formatCurrency(invested, currency)}</div>
+											<div className="text-muted-foreground text-xs leading-tight">{formatCurrency(current, currency)}</div>
+										</td>
+										<td className={"px-3 py-2 " + (pnl >= 0 ? "text-emerald-700" : "text-rose-700")}>{formatCurrency(pnl, currency)} <span className="text-muted-foreground">({formatNumber(pnlPct, 2)}%)</span></td>
+										<td className="px-3 py-2"><button className="text-xs text-rose-600 hover:underline" onClick={() => deleteHolding(h.id)}>Delete</button></td>
 									</tr>
 								);
 							})}

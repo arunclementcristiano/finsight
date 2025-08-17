@@ -77,11 +77,11 @@ export default function Summary({ plan }: SummaryProps) {
 							</thead>
 							<tbody>
 								{plan.buckets.map((b: any, idx: number) => (
-									<tr key={b.class} className={"border-b hover:bg-muted/50 " + (idx % 2 === 0 ? "bg-white dark:bg-slate-900/50" : "bg-slate-50 dark:bg-slate-900/30") }>
+									<tr key={b.class} className={"border-b hover:bg-muted/40 " + (idx % 2 === 0 ? "bg-white dark:bg-slate-900/50" : "bg-slate-50 dark:bg-slate-900/30") }>
 										<td className="py-2.5 px-4">{b.class}</td>
-										<td className="py-2.5 px-4 font-semibold"><span className="inline-flex items-center rounded-md bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200 px-2 py-0.5">{b.pct}%</span></td>
+										<td className="py-2.5 px-4 font-semibold"><span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5">{b.pct}%</span></td>
 										<td className="py-2.5 px-4"><span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5">{b.range[0]}% – {b.range[1]}%</span></td>
-										<td className="py-2.5 px-4"><span className="inline-flex items-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200 px-2.5 py-0.5">{b.riskCategory}</span></td>
+										<td className="py-2.5 px-4"><span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5">{b.riskCategory}</span></td>
 										<td className="py-2.5 px-4 italic text-muted-foreground">{b.notes}</td>
 									</tr>
 								))}
