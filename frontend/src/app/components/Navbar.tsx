@@ -1,21 +1,16 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { cn } from "./utils";
+import { useTheme } from "next-themes";
 
 export default function Navbar() {
-	const [dark, setDark] = useState(false);
-
-	useEffect(() => {
-		const saved = localStorage.getItem("theme-dark") === "1";
-		setDark(saved);
-		document.documentElement.classList.toggle("dark", saved);
-	}, []);
+	const { resolvedTheme, setTheme } = useTheme();
+	const [mounted, setMounted] = useState(false);
+	useEffect(() => setMounted(true), []);
 
 	function toggleTheme() {
-		const next = !dark;
-		setDark(next);
-		localStorage.setItem("theme-dark", next ? "1" : "0");
-		document.documentElement.classList.toggle("dark", next);
+		if (!mounted) return;
+		setTheme(resolvedTheme === "dark" ? "light" : "dark");
 	}
 
 	return (
@@ -26,8 +21,9 @@ export default function Navbar() {
 					<button
 						className="inline-flex h-9 items-center rounded-md border px-3 text-sm shadow-sm hover:bg-gray-50 dark:hover:bg-slate-800 dark:border-slate-700"
 						onClick={toggleTheme}
+						disabled={!mounted}
 					>
-						{dark ? "Light" : "Dark"}
+						{mounted ? (resolvedTheme === "dark" ? "Light" : "Dark") : "Theme"}
 					</button>
 				</div>
 			</div>
