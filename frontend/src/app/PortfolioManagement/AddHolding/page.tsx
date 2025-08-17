@@ -6,7 +6,7 @@ import { useApp } from "../../store";
 import type { AssetClass } from "../../PortfolioManagement/domain/allocationEngine";
 import { v4 as uuidv4 } from "uuid";
 import { formatCurrency, formatNumber } from "../../utils/format";
-import { Banknote, BarChart3, IndianRupee, Percent, Layers, BadgeCheck } from "lucide-react";
+import { Banknote, BarChart3, IndianRupee, Percent, Layers, BadgeCheck, ChevronLeft, ChevronRight } from "lucide-react";
 
 type EntryMode = "units" | "amount";
 
@@ -14,7 +14,7 @@ interface HoldingFormState {
 	instrumentClass: AssetClass | "";
 	name: string;
 	symbol: string;
-	units: string; // keep as string for input control
+	units: string;
 	price: string;
 	investedAmount: string;
 	currentValue: string;
@@ -26,15 +26,7 @@ export default function AddHoldingPage() {
 	const { addHolding, profile } = useApp();
 	const currency = profile.currency || "INR";
 	const [mode, setMode] = useState<EntryMode>("units");
-	const [form, setForm] = useState<HoldingFormState>({
-		instrumentClass: "",
-		name: "",
-		symbol: "",
-		units: "",
-		price: "",
-		investedAmount: "",
-		currentValue: "",
-	});
+	const [form, setForm] = useState<HoldingFormState>({ instrumentClass: "", name: "", symbol: "", units: "", price: "", investedAmount: "", currentValue: "" });
 	const [submitted, setSubmitted] = useState(false);
 
 	function onChange<K extends keyof HoldingFormState>(key: K) {
@@ -44,12 +36,7 @@ export default function AddHoldingPage() {
 	}
 
 	const numeric = useMemo(() => {
-		const n = {
-			units: parseFloat(form.units),
-			price: parseFloat(form.price),
-			investedAmount: parseFloat(form.investedAmount),
-			currentValue: parseFloat(form.currentValue),
-		};
+		const n = { units: parseFloat(form.units), price: parseFloat(form.price), investedAmount: parseFloat(form.investedAmount), currentValue: parseFloat(form.currentValue) };
 		return {
 			units: Number.isFinite(n.units) ? n.units : NaN,
 			price: Number.isFinite(n.price) ? n.price : NaN,
@@ -59,18 +46,12 @@ export default function AddHoldingPage() {
 	}, [form]);
 
 	const computed = useMemo(() => {
-		const totalByUnits = !Number.isNaN(numeric.units) && !Number.isNaN(numeric.price)
-			? numeric.units * numeric.price
-			: NaN;
+		const totalByUnits = !Number.isNaN(numeric.units) && !Number.isNaN(numeric.price) ? numeric.units * numeric.price : NaN;
 		const totalByAmount = !Number.isNaN(numeric.currentValue) ? numeric.currentValue : NaN;
-		const invested = mode === "units"
-			? (!Number.isNaN(totalByUnits) ? totalByUnits : NaN)
-			: (!Number.isNaN(numeric.investedAmount) ? numeric.investedAmount : NaN);
+		const invested = mode === "units" ? (!Number.isNaN(totalByUnits) ? totalByUnits : NaN) : (!Number.isNaN(numeric.investedAmount) ? numeric.investedAmount : NaN);
 		const current = mode === "units" ? totalByUnits : totalByAmount;
 		const pnl = !Number.isNaN(invested) && !Number.isNaN(current) ? current - invested : NaN;
-		const pnlPct = !Number.isNaN(invested) && invested > 0 && !Number.isNaN(current)
-			? ((current - invested) / invested) * 100
-			: NaN;
+		const pnlPct = !Number.isNaN(invested) && invested > 0 && !Number.isNaN(current) ? ((current - invested) / invested) * 100 : NaN;
 		return { invested, current, pnl, pnlPct };
 	}, [numeric, mode]);
 
@@ -113,8 +94,9 @@ export default function AddHoldingPage() {
 	}
 
 	return (
-		<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-			<div className="space-y-6">
+		<div className="grid grid-cols-1 xl:grid-cols-2 gap-6 h-[calc(100vh-8rem)] min-h-[640px] overflow-hidden">
+			{/* Left: form + live summary (scroll inside) */}
+			<div className="flex flex-col gap-6 overflow-auto min-h-0 pr-1">
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2"><Layers className="h-5 w-5 text-indigo-600" /> Add Holding</CardTitle>
@@ -131,9 +113,7 @@ export default function AddHoldingPage() {
 								<label className="block text-sm font-medium text-muted-foreground mb-1">Instrument Class</label>
 								<select value={form.instrumentClass} onChange={onChange("instrumentClass")} className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors">
 									<option value="">Select</option>
-									{instrumentOptions.map(opt => (
-										<option key={opt} value={opt}>{opt}</option>
-									))}
+									{instrumentOptions.map(opt => (<option key={opt} value={opt}>{opt}</option>))}
 								</select>
 								{errors.instrumentClass ? <p className="mt-1 text-sm text-rose-600">{errors.instrumentClass}</p> : null}
 							</div>
@@ -199,23 +179,15 @@ export default function AddHoldingPage() {
 				</Card>
 
 				{submitted ? (
-					<Card className="border-green-200">
+					<Card className="border-emerald-200">
 						<CardHeader>
-							<CardTitle className="flex items-center gap-2 text-green-700"><BadgeCheck className="h-5 w-5" /> Holding saved</CardTitle>
-							<CardDescription>Your holding was added to the portfolio. You can add another or go to dashboard.</CardDescription>
+							<CardTitle className="flex items-center gap-2 text-emerald-700"><BadgeCheck className="h-5 w-5" /> Holding saved</CardTitle>
+							<CardDescription>Your holding was added to the portfolio.</CardDescription>
 						</CardHeader>
-						<CardFooter className="pt-0 flex gap-3">
-							<Button onClick={resetForm}>Add Another</Button>
-							<Button variant="outline" onClick={() => window.location.assign("/PortfolioManagement/Dashboard")}>Go to Dashboard</Button>
-						</CardFooter>
 					</Card>
 				) : null}
 
-				{/* Holdings list */}
-				<HoldingsList />
-			</div>
-
-			<div className="space-y-6">
+				{/* Live Summary under form */}
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2"><TrendingUpIcon /> Live Summary</CardTitle>
@@ -229,30 +201,11 @@ export default function AddHoldingPage() {
 						</div>
 					</CardContent>
 				</Card>
+			</div>
 
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2"><Layers className="h-5 w-5 text-indigo-600" /> Details</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-							<DetailItem label="Class" value={form.instrumentClass || "—"} />
-							<DetailItem label="Name" value={form.name || "—"} />
-							<DetailItem label="Symbol" value={form.symbol || "—"} />
-							{mode === "units" ? (
-								<>
-									<DetailItem label="Units" value={!Number.isNaN(numeric.units) ? formatNumber(numeric.units, 4) : "—"} />
-									<DetailItem label="Price" value={!Number.isNaN(numeric.price) ? formatCurrency(numeric.price, currency) : "—"} />
-								</>
-							) : (
-								<>
-									<DetailItem label="Invested" value={!Number.isNaN(numeric.investedAmount) ? formatCurrency(numeric.investedAmount, currency) : "—"} />
-									<DetailItem label="Current" value={!Number.isNaN(numeric.currentValue) ? formatCurrency(numeric.currentValue, currency) : "—"} />
-								</>
-							)}
-						</dl>
-					</CardContent>
-				</Card>
+			{/* Right: holdings table with pagination (scroll inside) */}
+			<div className="flex flex-col gap-6 overflow-auto min-h-0 pl-1">
+				<HoldingsTableWithPagination />
 			</div>
 		</div>
 	);
@@ -273,8 +226,8 @@ function SummaryStat({ label, value, icon, valueClassName = "" }: { label: strin
 function DetailItem({ label, value }: { label: string; value: string }) {
 	return (
 		<div>
-			<div className="text-xs text-slate-500">{label}</div>
-			<div className="text-sm font-medium text-slate-800 dark:text-slate-200">{value}</div>
+			<div className="text-xs text-muted-foreground">{label}</div>
+			<div className="text-sm font-medium">{value}</div>
 		</div>
 	);
 }
@@ -283,30 +236,31 @@ function TrendingUpIcon() {
 	return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-indigo-100 text-indigo-700"> <BarChart3 className="h-4 w-4" /> </span>;
 }
 
-function HoldingsList() {
+function HoldingsTableWithPagination() {
 	const { holdings, deleteHolding, profile } = useApp();
 	const currency = profile.currency || "INR";
-	if (holdings.length === 0) return (
-		<Card>
-			<CardHeader>
-				<CardTitle>Your Holdings</CardTitle>
-				<CardDescription>Saved positions will appear here.</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<div className="text-slate-500">No holdings yet. Add your first holding using the form above.</div>
-			</CardContent>
-		</Card>
-	);
+	const [page, setPage] = useState(1);
+	const [pageSize, setPageSize] = useState(8);
+
+	const totalPages = Math.max(1, Math.ceil(holdings.length / pageSize));
+	const startIdx = (page - 1) * pageSize;
+	const pageRows = holdings.slice(startIdx, startIdx + pageSize);
+
+	function prev() { setPage(p => Math.max(1, p - 1)); }
+	function next() { setPage(p => Math.min(totalPages, p + 1)); }
+
 	return (
-		<Card>
-			<CardHeader>
+		<Card className="flex flex-col min-h-0">
+			<CardHeader className="flex-shrink-0">
 				<CardTitle>Your Holdings</CardTitle>
 				<CardDescription>Overview of positions you have added</CardDescription>
 			</CardHeader>
-			<CardContent>
-				<div className="hidden md:block">
-					<table className="w-full text-left border rounded-xl overflow-hidden border-slate-200 dark:border-slate-800">
-						<thead className="bg-slate-50 dark:bg-slate-900/50">
+			<CardContent className="min-h-0 overflow-auto">
+				{holdings.length === 0 ? (
+					<div className="text-muted-foreground">No holdings yet. Add your first holding using the form.</div>
+				) : (
+					<table className="w-full text-left border rounded-xl overflow-hidden border-border">
+						<thead className="bg-slate-50 dark:bg-slate-900/50 sticky top-0 z-10">
 							<tr>
 								<th className="px-4 py-3 border-b">Class</th>
 								<th className="px-4 py-3 border-b">Name</th>
@@ -320,13 +274,13 @@ function HoldingsList() {
 							</tr>
 						</thead>
 						<tbody>
-							{holdings.map(h => {
+							{pageRows.map(h => {
 								const invested = h.investedAmount ?? (h.units && h.price ? h.units * h.price : 0);
 								const current = h.currentValue ?? invested;
 								const pnl = current - invested;
 								const pnlPct = invested > 0 ? (pnl / invested) * 100 : 0;
 								return (
-									<tr key={h.id} className="border-b">
+									<tr key={h.id} className="border-b hover:bg-muted/60">
 										<td className="px-4 py-3">{h.instrumentClass}</td>
 										<td className="px-4 py-3">{h.name}</td>
 										<td className="px-4 py-3">{h.symbol || "—"}</td>
@@ -343,37 +297,15 @@ function HoldingsList() {
 							})}
 						</tbody>
 					</table>
-				</div>
-				<div className="md:hidden grid grid-cols-1 gap-3">
-					{holdings.map(h => {
-						const invested = h.investedAmount ?? (h.units && h.price ? h.units * h.price : 0);
-						const current = h.currentValue ?? invested;
-						const pnl = current - invested;
-						const pnlPct = invested > 0 ? (pnl / invested) * 100 : 0;
-						return (
-							<Card key={h.id}>
-								<CardContent>
-									<div className="flex items-center justify-between">
-										<div>
-											<div className="text-sm text-slate-500">{h.instrumentClass}</div>
-											<div className="text-base font-semibold">{h.name} {h.symbol ? <span className="text-slate-500">({h.symbol})</span> : null}</div>
-										</div>
-										<div className={pnl >= 0 ? "text-emerald-700" : "text-rose-700"}>{formatCurrency(pnl, currency)} ({formatNumber(pnlPct, 2)}%)</div>
-									</div>
-									<div className="mt-2 grid grid-cols-3 text-sm">
-										<div><div className="text-slate-500">Invested</div><div className="font-medium">{formatCurrency(invested, currency)}</div></div>
-										<div><div className="text-slate-500">Current</div><div className="font-medium">{formatCurrency(current, currency)}</div></div>
-										<div><div className="text-slate-500">Units</div><div className="font-medium">{typeof h.units === "number" ? formatNumber(h.units, 2) : "—"}</div></div>
-									</div>
-									<div className="mt-3 flex justify-end">
-										<button className="text-sm text-rose-600 hover:underline" onClick={() => deleteHolding(h.id)}>Delete</button>
-									</div>
-								</CardContent>
-							</Card>
-						);
-					})}
-				</div>
+				)}
 			</CardContent>
+			<CardFooter className="flex items-center justify-between gap-3 flex-shrink-0">
+				<div className="text-sm text-muted-foreground">Page {page} of {totalPages}</div>
+				<div className="flex items-center gap-2">
+					<Button variant="outline" size="sm" onClick={prev} disabled={page === 1} leftIcon={<ChevronLeft className="h-4 w-4" />}>Prev</Button>
+					<Button variant="outline" size="sm" onClick={next} disabled={page === totalPages}><ChevronRight className="h-4 w-4 mr-2" />Next</Button>
+				</div>
+			</CardFooter>
 		</Card>
 	);
 }
