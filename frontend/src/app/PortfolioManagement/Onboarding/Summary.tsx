@@ -65,24 +65,24 @@ export default function Summary({ plan }: SummaryProps) {
 				</CardHeader>
 				<CardContent>
 					<div className="w-full overflow-x-auto">
-						<table className="min-w-[800px] w-full text-left border border-border rounded-xl">
-							<thead className="bg-slate-50 dark:bg-slate-900/50 sticky top-0 z-10">
+						<table className="min-w-[760px] w-full text-left border border-border rounded-xl">
+							<thead className="sticky top-0 z-10">
 								<tr>
-									<th className="py-2.5 px-4 border-b">Asset Class</th>
-									<th className="py-2.5 px-4 border-b">Target</th>
-									<th className="py-2.5 px-4 border-b">Range</th>
-									<th className="py-2.5 px-4 border-b">Risk</th>
-									<th className="py-2.5 px-4 border-b">Notes</th>
+									<th className="py-3 px-4 border-b text-sm text-muted-foreground">Asset Class</th>
+									<th className="py-3 px-4 border-b text-sm text-muted-foreground">Target</th>
+									<th className="py-3 px-4 border-b text-sm text-muted-foreground">Range</th>
+									<th className="py-3 px-4 border-b text-sm text-muted-foreground">Risk</th>
+									<th className="py-3 px-4 border-b text-sm text-muted-foreground">Notes</th>
 								</tr>
 							</thead>
 							<tbody>
-								{plan.buckets.map((b: any, idx: number) => (
-									<tr key={b.class} className={"border-b hover:bg-muted/40 " + (idx % 2 === 0 ? "bg-white dark:bg-slate-900/50" : "bg-slate-50 dark:bg-slate-900/30") }>
-										<td className="py-2.5 px-4">{b.class}</td>
-										<td className="py-2.5 px-4 font-semibold"><span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5">{b.pct}%</span></td>
-										<td className="py-2.5 px-4"><span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5">{b.range[0]}% – {b.range[1]}%</span></td>
-										<td className="py-2.5 px-4"><span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5">{b.riskCategory}</span></td>
-										<td className="py-2.5 px-4 italic text-muted-foreground">{b.notes}</td>
+								{plan.buckets.map((b: any) => (
+									<tr key={b.class} className="border-b hover:bg-muted/20">
+										<td className="py-3 px-4 font-medium">{b.class}</td>
+										<td className="py-3 px-4 font-semibold text-indigo-600 dark:text-indigo-300">{b.pct}%</td>
+										<td className="py-3 px-4">{b.range[0]}% – {b.range[1]}%</td>
+										<td className="py-3 px-4 font-medium text-emerald-600 dark:text-emerald-300">{b.riskCategory}</td>
+										<td className="py-3 px-4 italic text-muted-foreground">{b.notes}</td>
 									</tr>
 								))}
 							</tbody>

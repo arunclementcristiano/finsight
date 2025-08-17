@@ -94,119 +94,119 @@ export default function AddHoldingPage() {
 	}
 
 	return (
-		<div className="grid grid-cols-1 xl:grid-cols-2 gap-6 h-[calc(100vh-8rem)] min-h-[640px] overflow-hidden">
-			{/* Left: form + live summary (scroll inside) */}
-			<div className="flex flex-col gap-6 overflow-auto min-h-0 pr-1">
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2"><Layers className="h-5 w-5 text-indigo-600" /> Add Holding</CardTitle>
-						<CardDescription>Record a new asset in your portfolio. Choose how you'd like to enter values.</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<div className="mb-4 inline-flex rounded-xl border border-border bg-card p-1 transition-colors">
-							<button type="button" className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === "units" ? "bg-gradient-to-r from-emerald-500 to-indigo-600 text-white" : "text-foreground hover:bg-muted"}`} onClick={() => setMode("units")}>By Units</button>
-							<button type="button" className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === "amount" ? "bg-gradient-to-r from-emerald-500 to-indigo-600 text-white" : "text-foreground hover:bg-muted"}`} onClick={() => setMode("amount")}>By Amount</button>
-						</div>
-
-						<form onSubmit={handleSubmit} className="space-y-5">
-							<div>
-								<label className="block text-sm font-medium text-muted-foreground mb-1">Instrument Class</label>
-								<select value={form.instrumentClass} onChange={onChange("instrumentClass")} className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors">
-									<option value="">Select</option>
-									{instrumentOptions.map(opt => (<option key={opt} value={opt}>{opt}</option>))}
-								</select>
-								{errors.instrumentClass ? <p className="mt-1 text-sm text-rose-600">{errors.instrumentClass}</p> : null}
-							</div>
-
-							<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-								<div>
-									<label className="block text-sm font-medium text-muted-foreground mb-1">Name</label>
-									<input value={form.name} onChange={onChange("name")} className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="e.g., Reliance Industries" />
-									{errors.name ? <p className="mt-1 text-sm text-rose-600">{errors.name}</p> : null}
-								</div>
-								<div>
-									<label className="block text-sm font-medium text-muted-foreground mb-1">Symbol (optional)</label>
-									<input value={form.symbol} onChange={onChange("symbol")} className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="e.g., RELIANCE" />
-								</div>
-							</div>
-
-							{mode === "units" ? (
-								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-									<div>
-										<label className="block text-sm font-medium text-muted-foreground mb-1">Units</label>
-										<div className="relative">
-											<input inputMode="decimal" type="number" step="0.0001" value={form.units} onChange={onChange("units")} className="w-full h-11 rounded-xl border border-border pl-3 pr-10 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
-											<BarChart3 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-										</div>
-										{errors.units ? <p className="mt-1 text-sm text-rose-600">{errors.units}</p> : null}
-									</div>
-									<div>
-										<label className="block text-sm font-medium text-muted-foreground mb-1">Price</label>
-										<div className="relative">
-											<input inputMode="decimal" type="number" step="0.01" value={form.price} onChange={onChange("price")} className="w-full h-11 rounded-xl border border-border pl-9 pr-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
-											<IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-										</div>
-										{errors.price ? <p className="mt-1 text-sm text-rose-600">{errors.price}</p> : null}
-									</div>
-								</div>
-							) : (
-								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-									<div>
-										<label className="block text-sm font-medium text-muted-foreground mb-1">Invested Amount</label>
-										<div className="relative">
-											<input inputMode="decimal" type="number" step="0.01" value={form.investedAmount} onChange={onChange("investedAmount")} className="w-full h-11 rounded-xl border border-border pl-9 pr-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
-											<Banknote className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-										</div>
-										{errors.investedAmount ? <p className="mt-1 text-sm text-rose-600">{errors.investedAmount}</p> : null}
-									</div>
-									<div>
-										<label className="block text-sm font-medium text-muted-foreground mb-1">Current Value</label>
-										<div className="relative">
-											<input inputMode="decimal" type="number" step="0.01" value={form.currentValue} onChange={onChange("currentValue")} className="w-full h-11 rounded-xl border border-border pl-9 pr-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
-											<IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-										</div>
-										{errors.currentValue ? <p className="mt-1 text-sm text-rose-600">{errors.currentValue}</p> : null}
-									</div>
-								</div>
-							)}
-
-							<CardFooter className="pt-2 flex items-center gap-3">
-								<Button type="submit" disabled={!isValid} className="min-w-[160px]">Save Holding</Button>
-								<Button type="button" variant="outline" onClick={resetForm}>Reset</Button>
-							</CardFooter>
-						</form>
-					</CardContent>
-				</Card>
-
-				{submitted ? (
-					<Card className="border-emerald-200">
+		<div className="grid grid-cols-1 gap-6">
+			{/* Form + live summary */}
+			<div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+				<div className="flex flex-col gap-6">
+					<Card>
 						<CardHeader>
-							<CardTitle className="flex items-center gap-2 text-emerald-700"><BadgeCheck className="h-5 w-5" /> Holding saved</CardTitle>
-							<CardDescription>Your holding was added to the portfolio.</CardDescription>
+							<CardTitle className="flex items-center gap-2"><Layers className="h-5 w-5 text-indigo-600" /> Add Holding</CardTitle>
+							<CardDescription>Record a new asset in your portfolio. Choose how you'd like to enter values.</CardDescription>
 						</CardHeader>
+						<CardContent>
+							<div className="mb-4 inline-flex rounded-xl border border-border bg-card p-1 transition-colors">
+								<button type="button" className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === "units" ? "bg-gradient-to-r from-emerald-500 to-indigo-600 text-white" : "text-foreground hover:bg-muted"}`} onClick={() => setMode("units")}>By Units</button>
+								<button type="button" className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === "amount" ? "bg-gradient-to-r from-emerald-500 to-indigo-600 text-white" : "text-foreground hover:bg-muted"}`} onClick={() => setMode("amount")}>By Amount</button>
+							</div>
+
+							<form onSubmit={handleSubmit} className="space-y-5">
+								<div>
+									<label className="block text-sm font-medium text-muted-foreground mb-1">Instrument Class</label>
+									<select value={form.instrumentClass} onChange={onChange("instrumentClass")} className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors">
+										<option value="">Select</option>
+										{instrumentOptions.map(opt => (<option key={opt} value={opt}>{opt}</option>))}
+									</select>
+									{errors.instrumentClass ? <p className="mt-1 text-sm text-rose-600">{errors.instrumentClass}</p> : null}
+								</div>
+
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+									<div>
+										<label className="block text-sm font-medium text-muted-foreground mb-1">Name</label>
+										<input value={form.name} onChange={onChange("name")} className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="e.g., Reliance Industries" />
+										{errors.name ? <p className="mt-1 text-sm text-rose-600">{errors.name}</p> : null}
+									</div>
+									<div>
+										<label className="block text-sm font-medium text-muted-foreground mb-1">Symbol (optional)</label>
+										<input value={form.symbol} onChange={onChange("symbol")} className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="e.g., RELIANCE" />
+									</div>
+								</div>
+
+								{mode === "units" ? (
+									<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+										<div>
+											<label className="block text-sm font-medium text-muted-foreground mb-1">Units</label>
+											<div className="relative">
+												<input inputMode="decimal" type="number" step="0.0001" value={form.units} onChange={onChange("units")} className="w-full h-11 rounded-xl border border-border pl-3 pr-10 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
+												<BarChart3 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+											</div>
+											{errors.units ? <p className="mt-1 text-sm text-rose-600">{errors.units}</p> : null}
+										</div>
+										<div>
+											<label className="block text-sm font-medium text-muted-foreground mb-1">Price</label>
+											<div className="relative">
+												<input inputMode="decimal" type="number" step="0.01" value={form.price} onChange={onChange("price")} className="w-full h-11 rounded-xl border border-border pl-9 pr-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
+												<IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+											</div>
+											{errors.price ? <p className="mt-1 text-sm text-rose-600">{errors.price}</p> : null}
+										</div>
+									</div>
+								) : (
+									<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+										<div>
+											<label className="block text-sm font-medium text-muted-foreground mb-1">Invested Amount</label>
+											<div className="relative">
+												<input inputMode="decimal" type="number" step="0.01" value={form.investedAmount} onChange={onChange("investedAmount")} className="w-full h-11 rounded-xl border border-border pl-9 pr-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
+												<Banknote className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+											</div>
+											{errors.investedAmount ? <p className="mt-1 text-sm text-rose-600">{errors.investedAmount}</p> : null}
+										</div>
+										<div>
+											<label className="block text-sm font-medium text-muted-foreground mb-1">Current Value</label>
+											<div className="relative">
+												<input inputMode="decimal" type="number" step="0.01" value={form.currentValue} onChange={onChange("currentValue")} className="w-full h-11 rounded-xl border border-border pl-9 pr-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
+												<IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+											</div>
+											{errors.currentValue ? <p className="mt-1 text-sm text-rose-600">{errors.currentValue}</p> : null}
+										</div>
+									</div>
+								)}
+
+								<CardFooter className="pt-2 flex items-center gap-3">
+									<Button type="submit" disabled={!isValid} className="min-w-[160px]">Save Holding</Button>
+									<Button type="button" variant="outline" onClick={resetForm}>Reset</Button>
+								</CardFooter>
+							</form>
+						</CardContent>
 					</Card>
-				) : null}
 
-				{/* Live Summary under form */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2"><TrendingUpIcon /> Live Summary</CardTitle>
-						<CardDescription>Real-time preview updates as you type.</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-							<SummaryStat label="Invested" value={formatCurrency(computed.invested, currency)} icon={<Banknote className="h-4 w-4" />} />
-							<SummaryStat label="Current" value={formatCurrency(computed.current, currency)} icon={<IndianRupee className="h-4 w-4" />} />
-							<SummaryStat label="P/L" value={Number.isNaN(computed.pnl) ? "—" : `${formatCurrency(computed.pnl, currency)} (${Number.isNaN(computed.pnlPct) ? "—" : formatNumber(computed.pnlPct, 2)}%)`} icon={<Percent className="h-4 w-4" />} valueClassName={computed.pnl > 0 ? "text-emerald-600" : computed.pnl < 0 ? "text-rose-600" : ""} />
-						</div>
-					</CardContent>
-				</Card>
+					{submitted ? (
+						<Card className="border-emerald-200">
+							<CardHeader>
+								<CardTitle className="flex items-center gap-2 text-emerald-700"><BadgeCheck className="h-5 w-5" /> Holding saved</CardTitle>
+								<CardDescription>Your holding was added to the portfolio.</CardDescription>
+							</CardHeader>
+						</Card>
+					) : null}
+
+					{/* Live Summary under form */}
+					<Card>
+						<CardHeader>
+							<CardTitle className="flex items-center gap-2"><TrendingUpIcon /> Live Summary</CardTitle>
+							<CardDescription>Real-time preview updates as you type.</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+								<SummaryStat label="Invested" value={formatCurrency(computed.invested, currency)} icon={<Banknote className="h-4 w-4" />} />
+								<SummaryStat label="Current" value={formatCurrency(computed.current, currency)} icon={<IndianRupee className="h-4 w-4" />} />
+								<SummaryStat label="P/L" value={Number.isNaN(computed.pnl) ? "—" : `${formatCurrency(computed.pnl, currency)} (${Number.isNaN(computed.pnlPct) ? "—" : formatNumber(computed.pnlPct, 2)}%)`} icon={<Percent className="h-4 w-4" />} valueClassName={computed.pnl > 0 ? "text-emerald-600" : computed.pnl < 0 ? "text-rose-600" : ""} />
+							</div>
+						</CardContent>
+					</Card>
+				</div>
 			</div>
 
-			{/* Right: holdings table with pagination (scroll inside) */}
-			<div className="flex flex-col gap-6 overflow-auto min-h-0 pl-1">
-				<HoldingsTableWithPagination />
-			</div>
+			{/* Table at bottom with pagination */}
+			<HoldingsTableWithPagination />
 		</div>
 	);
 }
