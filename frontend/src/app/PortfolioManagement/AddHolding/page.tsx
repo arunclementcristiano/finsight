@@ -174,23 +174,16 @@ export default function AddHoldingPage() {
 								<CardFooter className="pt-2 flex items-center gap-3">
 									<Button type="submit" disabled={!isValid} className="min-w-[160px]">Save Holding</Button>
 									<Button type="button" variant="outline" onClick={resetForm}>Reset</Button>
+									{submitted && (
+										<span className="text-sm text-emerald-600">Saved!</span>
+									)}
 								</CardFooter>
 							</form>
 						</CardContent>
 					</Card>
-
-					{submitted ? (
-						<Card className="border-emerald-200">
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2 text-emerald-700"><BadgeCheck className="h-5 w-5" /> Holding saved</CardTitle>
-								<CardDescription>Your holding was added to the portfolio.</CardDescription>
-							</CardHeader>
-						</Card>
-					) : null}
 				</div>
 				<div className="flex flex-col gap-6 order-none xl:order-1">
-					{/* Live Summary under form */}
-					<Card>
+					<Card className="xl:sticky xl:top-20">
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2"><TrendingUpIcon /> Live Summary</CardTitle>
 							<CardDescription>Real-time preview updates as you type.</CardDescription>
