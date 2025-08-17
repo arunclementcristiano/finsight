@@ -21,15 +21,15 @@ export function Button({
 }: ButtonProps) {
   const variantClasses: Record<ButtonVariant, string> = {
     primary:
-      "bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-blue-500",
+      "bg-indigo-600 text-white hover:bg-indigo-700 focus-visible:ring-indigo-500",
     secondary:
-      "bg-green-600 text-white hover:bg-green-700 focus-visible:ring-green-500",
+      "bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-500",
     outline:
-      "border border-gray-300 text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800",
+      "border border-slate-300 text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800",
     ghost:
-      "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800",
+      "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
     danger:
-      "bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500",
+      "bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-rose-500",
   };
 
   const sizeClasses: Record<ButtonSize, string> = {
