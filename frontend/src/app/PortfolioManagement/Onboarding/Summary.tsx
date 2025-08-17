@@ -48,7 +48,10 @@ export default function Summary({ plan }: SummaryProps) {
 			<Card>
 				<CardHeader className="text-center">
 					<CardTitle className="text-2xl">Portfolio Summary</CardTitle>
-					<div className="mt-2 inline-block rounded-full bg-indigo-50 px-4 py-2 text-indigo-700 font-semibold dark:bg-indigo-900/40 dark:text-indigo-200">Risk Level: <span className="font-bold">{plan.riskLevel}</span></div>
+					<div className="mt-2 inline-flex items-center gap-2">
+						<span className="text-sm text-muted-foreground">Risk Level:</span>
+						<span className="inline-flex items-center rounded-full border border-border px-3 py-1 text-sm font-medium">{plan.riskLevel}</span>
+					</div>
 				</CardHeader>
 				<CardContent>
 					<div className="w-full flex flex-col items-center">

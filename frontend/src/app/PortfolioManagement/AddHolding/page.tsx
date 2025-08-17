@@ -97,7 +97,7 @@ export default function AddHoldingPage() {
 		<div className="grid grid-cols-1 gap-6">
 			{/* Form + live summary */}
 			<div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-				<div className="flex flex-col gap-6">
+				<div className="flex flex-col gap-6 order-1 xl:order-none">
 					<Card>
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2"><Layers className="h-5 w-5 text-indigo-600" /> Add Holding</CardTitle>
@@ -187,7 +187,8 @@ export default function AddHoldingPage() {
 							</CardHeader>
 						</Card>
 					) : null}
-
+				</div>
+				<div className="flex flex-col gap-6 order-none xl:order-1">
 					{/* Live Summary under form */}
 					<Card>
 						<CardHeader>
