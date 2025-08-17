@@ -27,12 +27,12 @@ export default function QuestionCard({ questionText, options, selected, onChange
 	return (
 		<Card className="w-full">
 			<CardContent>
-				<div className="mb-4 text-lg font-semibold text-gray-800">{questionText}</div>
+				<div className="mb-4 text-lg font-semibold">{questionText}</div>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					{options.map(option => (
 						<button
 							key={option}
-							className={`rounded-xl p-4 border-2 transition-all font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 ${isSelected(option) ? "border-blue-600 bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-800" : "border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:shadow"}`}
+							className={`rounded-xl p-4 border transition-colors font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] ${isSelected(option) ? "border-indigo-600 bg-indigo-50 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200" : "border-border bg-card text-foreground hover:bg-muted"}`}
 							onClick={() => handleClick(option)}
 						>
 							{option}

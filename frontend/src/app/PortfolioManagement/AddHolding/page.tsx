@@ -121,71 +121,71 @@ export default function AddHoldingPage() {
 						<CardDescription>Record a new asset in your portfolio. Choose how you'd like to enter values.</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<div className="mb-4 inline-flex rounded-lg border bg-white dark:bg-slate-900 dark:border-slate-800 p-1">
-							<button type="button" className={`px-4 py-2 rounded-md text-sm font-medium ${mode === "units" ? "bg-indigo-600 text-white" : "text-slate-700 dark:text-slate-200"}`} onClick={() => setMode("units")}>By Units</button>
-							<button type="button" className={`px-4 py-2 rounded-md text-sm font-medium ${mode === "amount" ? "bg-indigo-600 text-white" : "text-slate-700 dark:text-slate-200"}`} onClick={() => setMode("amount")}>By Amount</button>
+						<div className="mb-4 inline-flex rounded-xl border border-border bg-card p-1 transition-colors">
+							<button type="button" className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === "units" ? "bg-gradient-to-r from-emerald-500 to-indigo-600 text-white" : "text-foreground hover:bg-muted"}`} onClick={() => setMode("units")}>By Units</button>
+							<button type="button" className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === "amount" ? "bg-gradient-to-r from-emerald-500 to-indigo-600 text-white" : "text-foreground hover:bg-muted"}`} onClick={() => setMode("amount")}>By Amount</button>
 						</div>
 
 						<form onSubmit={handleSubmit} className="space-y-5">
 							<div>
-								<label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Instrument Class</label>
-								<select value={form.instrumentClass} onChange={onChange("instrumentClass")} className="w-full h-11 rounded-lg border px-3 bg-white dark:bg-slate-900 dark:border-slate-800">
+								<label className="block text-sm font-medium text-muted-foreground mb-1">Instrument Class</label>
+								<select value={form.instrumentClass} onChange={onChange("instrumentClass")} className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors">
 									<option value="">Select</option>
 									{instrumentOptions.map(opt => (
 										<option key={opt} value={opt}>{opt}</option>
 									))}
 								</select>
-								{errors.instrumentClass ? <p className="mt-1 text-sm text-red-600">{errors.instrumentClass}</p> : null}
+								{errors.instrumentClass ? <p className="mt-1 text-sm text-rose-600">{errors.instrumentClass}</p> : null}
 							</div>
 
 							<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 								<div>
-									<label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Name</label>
-									<input value={form.name} onChange={onChange("name")} className="w-full h-11 rounded-lg border px-3 bg-white dark:bg-slate-900 dark:border-slate-800" placeholder="e.g., Reliance Industries" />
-									{errors.name ? <p className="mt-1 text-sm text-red-600">{errors.name}</p> : null}
+									<label className="block text-sm font-medium text-muted-foreground mb-1">Name</label>
+									<input value={form.name} onChange={onChange("name")} className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="e.g., Reliance Industries" />
+									{errors.name ? <p className="mt-1 text-sm text-rose-600">{errors.name}</p> : null}
 								</div>
 								<div>
-									<label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Symbol (optional)</label>
-									<input value={form.symbol} onChange={onChange("symbol")} className="w-full h-11 rounded-lg border px-3 bg-white dark:bg-slate-900 dark:border-slate-800" placeholder="e.g., RELIANCE" />
+									<label className="block text-sm font-medium text-muted-foreground mb-1">Symbol (optional)</label>
+									<input value={form.symbol} onChange={onChange("symbol")} className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="e.g., RELIANCE" />
 								</div>
 							</div>
 
 							{mode === "units" ? (
 								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 									<div>
-										<label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Units</label>
+										<label className="block text-sm font-medium text-muted-foreground mb-1">Units</label>
 										<div className="relative">
-											<input inputMode="decimal" type="number" step="0.0001" value={form.units} onChange={onChange("units")} className="w-full h-11 rounded-lg border pl-3 pr-10 bg-white dark:bg-slate-900 dark:border-slate-800" placeholder="0.00" />
-											<BarChart3 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+											<input inputMode="decimal" type="number" step="0.0001" value={form.units} onChange={onChange("units")} className="w-full h-11 rounded-xl border border-border pl-3 pr-10 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
+											<BarChart3 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 										</div>
-										{errors.units ? <p className="mt-1 text-sm text-red-600">{errors.units}</p> : null}
+										{errors.units ? <p className="mt-1 text-sm text-rose-600">{errors.units}</p> : null}
 									</div>
 									<div>
-										<label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Price</label>
+										<label className="block text-sm font-medium text-muted-foreground mb-1">Price</label>
 										<div className="relative">
-											<input inputMode="decimal" type="number" step="0.01" value={form.price} onChange={onChange("price")} className="w-full h-11 rounded-lg border pl-9 pr-3 bg-white dark:bg-slate-900 dark:border-slate-800" placeholder="0.00" />
-											<IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+											<input inputMode="decimal" type="number" step="0.01" value={form.price} onChange={onChange("price")} className="w-full h-11 rounded-xl border border-border pl-9 pr-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
+											<IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 										</div>
-										{errors.price ? <p className="mt-1 text-sm text-red-600">{errors.price}</p> : null}
+										{errors.price ? <p className="mt-1 text-sm text-rose-600">{errors.price}</p> : null}
 									</div>
 								</div>
 							) : (
 								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 									<div>
-										<label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Invested Amount</label>
+										<label className="block text-sm font-medium text-muted-foreground mb-1">Invested Amount</label>
 										<div className="relative">
-											<input inputMode="decimal" type="number" step="0.01" value={form.investedAmount} onChange={onChange("investedAmount")} className="w-full h-11 rounded-lg border pl-9 pr-3 bg-white dark:bg-slate-900 dark:border-slate-800" placeholder="0.00" />
-											<Banknote className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+											<input inputMode="decimal" type="number" step="0.01" value={form.investedAmount} onChange={onChange("investedAmount")} className="w-full h-11 rounded-xl border border-border pl-9 pr-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
+											<Banknote className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 										</div>
-										{errors.investedAmount ? <p className="mt-1 text-sm text-red-600">{errors.investedAmount}</p> : null}
+										{errors.investedAmount ? <p className="mt-1 text-sm text-rose-600">{errors.investedAmount}</p> : null}
 									</div>
 									<div>
-										<label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Current Value</label>
+										<label className="block text-sm font-medium text-muted-foreground mb-1">Current Value</label>
 										<div className="relative">
-											<input inputMode="decimal" type="number" step="0.01" value={form.currentValue} onChange={onChange("currentValue")} className="w-full h-11 rounded-lg border pl-9 pr-3 bg-white dark:bg-slate-900 dark:border-slate-800" placeholder="0.00" />
-											<IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+											<input inputMode="decimal" type="number" step="0.01" value={form.currentValue} onChange={onChange("currentValue")} className="w-full h-11 rounded-xl border border-border pl-9 pr-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
+											<IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 										</div>
-										{errors.currentValue ? <p className="mt-1 text-sm text-red-600">{errors.currentValue}</p> : null}
+										{errors.currentValue ? <p className="mt-1 text-sm text-rose-600">{errors.currentValue}</p> : null}
 									</div>
 								</div>
 							)}
