@@ -15,8 +15,7 @@ interface LoginFormProps {
 export default function LoginForm({ email, password, onEmailChange, onPasswordChange, onSubmit, error, success }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   return (
-    <form className="flex flex-col gap-6 text-gray-900" autoComplete="off" onSubmit={onSubmit}>
-      {/* Email Field */}
+    <form className="flex flex-col gap-6 text-foreground" autoComplete="off" onSubmit={onSubmit}>
       <div className="relative overflow-hidden">
         <input
           type="email"
@@ -25,20 +24,19 @@ export default function LoginForm({ email, password, onEmailChange, onPasswordCh
           required
           value={email}
           onChange={e => onEmailChange(e.target.value)}
-          className={`peer h-12 w-full border-b-2 border-gray-200 focus:border-blue-500 outline-none bg-transparent transition-all text-gray-900 text-base px-0 ${email ? 'not-empty' : ''}`}
+          className={`peer h-12 w-full border-b-2 border-border focus:border-[var(--color-ring)] outline-none bg-transparent transition-all text-foreground text-base px-0 ${email ? 'not-empty' : ''}`}
           placeholder=" "
         />
         <label
           htmlFor="login-email"
-          className={`absolute left-0 top-3 text-gray-400 text-base transition-all pointer-events-none
+          className={`absolute left-0 top-3 text-muted-foreground text-base transition-all pointer-events-none
             peer-placeholder-shown:top-3 peer-placeholder-shown:text-base
-            peer-focus:-top-4 peer-focus:text-sm peer-focus:text-blue-500
+            peer-focus:-top-4 peer-focus:text-sm peer-focus:text-[color:var(--color-ring)]
             ${email ? 'not-empty-label' : ''}`}
         >
           Email address
         </label>
       </div>
-      {/* Password Field */}
       <div className="relative overflow-hidden">
         <input
           type={showPassword ? "text" : "password"}
@@ -47,21 +45,21 @@ export default function LoginForm({ email, password, onEmailChange, onPasswordCh
           required
           value={password}
           onChange={e => onPasswordChange(e.target.value)}
-          className={`peer h-12 w-full border-b-2 border-gray-200 focus:border-blue-500 outline-none bg-transparent transition-all text-gray-900 text-base px-0 ${password ? 'not-empty' : ''}`}
+          className={`peer h-12 w-full border-b-2 border-border focus:border-[var(--color-ring)] outline-none bg-transparent transition-all text-foreground text-base px-0 ${password ? 'not-empty' : ''}`}
           placeholder=" "
         />
         <label
           htmlFor="login-password"
-          className={`absolute left-0 top-3 text-gray-400 text-base transition-all pointer-events-none
+          className={`absolute left-0 top-3 text-muted-foreground text-base transition-all pointer-events-none
             peer-placeholder-shown:top-3 peer-placeholder-shown:text-base
-            peer-focus:-top-4 peer-focus:text-sm peer-focus:text-blue-500
+            peer-focus:-top-4 peer-focus:text-sm peer-focus:text-[color:var(--color-ring)]
             ${password ? 'not-empty-label' : ''}`}
         >
           Password
         </label>
         <button
           type="button"
-          className="absolute right-2 top-3 flex items-center justify-center w-8 h-8 text-gray-400 hover:text-blue-500 focus:outline-none"
+          className="absolute right-2 top-3 flex items-center justify-center w-8 h-8 text-muted-foreground hover:text-foreground focus:outline-none"
           tabIndex={-1}
           onClick={() => setShowPassword(v => !v)}
         >
@@ -72,13 +70,11 @@ export default function LoginForm({ email, password, onEmailChange, onPasswordCh
           )}
         </button>
       </div>
-      {/* Error/Success */}
-      {error && <div className="text-red-500 text-sm mb-2">{error}</div>}
-      {success && <div className="text-green-600 text-sm mb-2">{success}</div>}
-      {/* Login Button */}
+      {error && <div className="text-rose-500 text-sm mb-2">{error}</div>}
+      {success && <div className="text-emerald-600 text-sm mb-2">{success}</div>}
       <button
         type="submit"
-        className="mt-2 h-12 rounded-xl text-white font-semibold text-lg bg-gradient-to-r from-green-400 to-blue-500 shadow-md hover:from-green-500 hover:to-blue-600 transition-all focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2"
+        className="mt-2 h-12 rounded-xl text-white font-semibold text-lg bg-gradient-to-r from-emerald-500 to-indigo-600 shadow-md hover:from-emerald-600 hover:to-indigo-700 transition-all focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:ring-offset-2"
       >
         Login
       </button>
