@@ -91,6 +91,7 @@ export default function Summary({ plan }: SummaryProps) {
 							</tbody>
 						</table>
 					</div>
+
 				</CardContent>
 			</Card>
 
