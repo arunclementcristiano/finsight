@@ -183,7 +183,7 @@ def handler(event, context):
             # Fixed categories (predefined rules)
             synonyms = {
                 # Food
-                "groceries": "Food", "grocery": "Food", "restaurant": "Food", "dining": "Food", "lunch": "Food", "dinner": "Food",
+                "groceries": "Food", "grocery": "Food", "restaurant": "Food", "dining": "Food", "lunch": "Food", "dinner": "Food", "pizza": "Food",
                 "breakfast": "Food", "snacks": "Food", "coffee": "Food", "swiggy": "Food", "zomato": "Food", "ubereats": "Food",
                 # Travel
                 "travel": "Travel", "transport": "Travel", "taxi": "Travel", "uber": "Travel", "ola": "Travel", "bus": "Travel",
@@ -267,13 +267,13 @@ def handler(event, context):
                     low_conf = True
 
                 if low_conf:
-                    # Provide options for user to pick
+                    # Provide options, but keep suggested category preselected
                     msg = (
                         f"Could not parse amount; low-confidence AI suggestion {mapped_ai}. Pick a category."
                         if amount is None
                         else f"Parsed amount {amount}; low-confidence AI suggestion {mapped_ai}. Pick a category."
                     )
-                    return _response(200, {"amount": amount, "category": "Uncategorized", "AIConfidence": ai_conf, "options": ALLOWED_CATEGORIES, "message": msg})
+                    return _response(200, {"amount": amount, "category": mapped_ai, "AIConfidence": ai_conf, "options": ALLOWED_CATEGORIES, "message": msg})
                 else:
                     final_category = mapped_ai
 

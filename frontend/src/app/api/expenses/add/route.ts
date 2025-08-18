@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
     // 2) Predefined rules
     const predefined: Record<string, string> = {
-      groceries: "Food", grocery: "Food", restaurant: "Food", dining: "Food", lunch: "Food", dinner: "Food", breakfast: "Food", snacks: "Food", coffee: "Food", swiggy: "Food", zomato: "Food", ubereats: "Food",
+      groceries: "Food", grocery: "Food", restaurant: "Food", dining: "Food", lunch: "Food", dinner: "Food", pizza: "Food", breakfast: "Food", snacks: "Food", coffee: "Food", swiggy: "Food", zomato: "Food", ubereats: "Food",
       travel: "Travel", transport: "Travel", taxi: "Travel", uber: "Travel", ola: "Travel", bus: "Travel", train: "Travel", flight: "Travel", airline: "Travel", fuel: "Travel", petrol: "Travel", gas: "Travel",
       entertainment: "Entertainment", cinema: "Entertainment", netflix: "Entertainment", movie: "Entertainment", movies: "Entertainment", tv: "Entertainment", hotstar: "Entertainment", sunnxt: "Entertainment", spotify: "Entertainment", prime: "Entertainment", disney: "Entertainment", playstation: "Entertainment", xbox: "Entertainment",
       shopping: "Shopping", amazon: "Shopping", flipkart: "Shopping", myntra: "Shopping", apparel: "Shopping", clothing: "Shopping", mall: "Shopping", electronics: "Shopping", gadget: "Shopping",
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
       mapped = mapped || "Other";
       if (AIConfidence === undefined || Number(AIConfidence) < 0.8) {
         options = [...ALLOWED_CATEGORIES];
-        category = "Uncategorized";
+        category = mapped;
       } else {
         category = mapped;
       }
