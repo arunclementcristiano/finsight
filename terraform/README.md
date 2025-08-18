@@ -24,10 +24,10 @@ terraform plan -var="aws_region=us-east-1" \
 terraform apply
 ```
 
-Outputs include the DynamoDB table names and the IAM Role ARN.
+Outputs include the DynamoDB table names, IAM Role ARN, and the API endpoint.
 
 ## Notes
 - For production-grade queries (e.g., list/filter by user and date), add a GSI:
   - PK: userId, SK: date
   - Then update the app to use Query instead of Scan.
-- Attach the created IAM role to your compute (Lambda, ECS, EC2) or create an IAM user and attach the policy if needed for local dev.
+- The Lambda runtime is Python 3.12; the handler is `index.handler` in `backend/lambda/expenses-api-py/`.

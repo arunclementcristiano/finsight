@@ -13,7 +13,7 @@ variable "groq_api_key" {
 
 data "archive_file" "lambda_zip" {
   type        = "zip"
-  source_dir  = "${path.root}/../backend/lambda/expenses-api"
+  source_dir  = "${path.root}/../backend/lambda/expenses-api-py"
   output_path = "${path.module}/build/expenses-api.zip"
 }
 
@@ -56,7 +56,7 @@ resource "aws_lambda_function" "expenses" {
   function_name = var.lambda_name
   role          = aws_iam_role.lambda_exec.arn
   handler       = "index.handler"
-  runtime       = "nodejs20.x"
+  runtime       = "python3.12"
   filename      = data.archive_file.lambda_zip.output_path
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
