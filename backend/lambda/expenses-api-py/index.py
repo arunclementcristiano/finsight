@@ -60,6 +60,39 @@ def _parse_amount(raw_text: str):
     return float(m.group(1)) if m else None
 
 
+def _extract_term(raw_text: str) -> str:
+    # Pick a probable merchant/term after common prepositions; fallback to last alpha token
+    m = re.search(r"\b(?:on|for|at|to)\s+([A-Za-z][A-Za-z\s]{1,30})", raw_text, flags=re.IGNORECASE)
+    if m:
+        cand = m.group(1).strip()
+        cand = re.split(r"\b(yesterday|today|tomorrow|\d{4}-\d{2}-\d{2})\b", cand, flags=re.IGNORECASE)[0].strip()
+        cand = re.sub(r"[^A-Za-z\s]", "", cand).strip()
+        if cand:
+            return cand.lower()
+    tokens = re.findall(r"[A-Za-z]+", raw_text)
+    if tokens:
+        return tokens[-1].lower()
+    return ""
+
+
+def _match_memory_terms(user_id: str, lower_text: str) -> str:
+    try:
+        resp = category_memory_table.query(KeyConditionExpression=Key("userId").eq(user_id))
+        for item in resp.get("Items", []):
+            cat = item.get("category")
+            terms = item.get("terms") or []
+            # terms may be SS (set) or list
+            for t in list(terms):
+                try:
+                    if t and t.lower() in lower_text:
+                        return cat
+                except Exception:
+                    continue
+    except Exception:
+        pass
+    return ""
+
+
 def handler(event, context):
     try:
         method = (event.get("requestContext", {}).get("http", {}) or {}).get("method") or event.get("httpMethod")
@@ -83,7 +116,7 @@ def handler(event, context):
                 return _response(400, {"error": "Missing userId or rawText"})
             amount = _parse_amount(raw_text)
 
-            # Fixed categories: Food, Travel, Entertainment, Shopping, Utilities, Healthcare, Other
+            # Fixed categories
             synonyms = {
                 # Food
                 "groceries": "Food", "grocery": "Food", "restaurant": "Food", "dining": "Food", "lunch": "Food", "dinner": "Food",
@@ -91,7 +124,7 @@ def handler(event, context):
                 # Travel
                 "travel": "Travel", "transport": "Travel", "taxi": "Travel", "uber": "Travel", "ola": "Travel", "bus": "Travel",
                 "train": "Travel", "flight": "Travel", "airline": "Travel", "fuel": "Travel", "petrol": "Travel", "gas": "Travel",
-                # Entertainment (intentionally exclude plain 'movie' to route via Groq)
+                # Entertainment (avoid plain 'movie' here to force Groq when needed)
                 "entertainment": "Entertainment", "cinema": "Entertainment", "netflix": "Entertainment",
                 "hotstar": "Entertainment", "sunnxt": "Entertainment", "spotify": "Entertainment", "prime": "Entertainment",
                 "disney": "Entertainment", "playstation": "Entertainment", "xbox": "Entertainment",
@@ -106,12 +139,20 @@ def handler(event, context):
                 "pharmacy": "Healthcare", "apollo": "Healthcare", "pharmeasy": "Healthcare", "practo": "Healthcare",
             }
             lower = raw_text.lower()
+
+            # 1) Rule-based
             matched = next((synonyms[k] for k in synonyms.keys() if k in lower), None)
             final_category = matched if matched else ""
             ai_conf = None
 
+            # 2) CategoryMemory terms
             if not final_category:
-                # Groq fallback if no rule matches; map to allowed and apply confidence gate
+                mem_cat = _match_memory_terms(user_id, lower)
+                if mem_cat:
+                    final_category = mem_cat
+
+            # 3) Groq fallback
+            if not final_category:
                 print("GROQ_CALL_START")
                 ai = _get_category_from_ai(raw_text)
                 print("GROQ_CALL_END", ai)
@@ -167,6 +208,24 @@ def handler(event, context):
                     "createdAt": datetime.utcnow().isoformat(),
                 }
             )
+            # Update memory: increment usage and add term for future matching (skip Uncategorized)
+            try:
+                if category != "Uncategorized":
+                    term = _extract_term(raw_text)
+                    if term:
+                        category_memory_table.update_item(
+                            Key={"userId": user_id, "category": category},
+                            UpdateExpression="ADD usageCount :one, terms :t",
+                            ExpressionAttributeValues={":one": Decimal("1"), ":t": set([term])},
+                        )
+                    else:
+                        category_memory_table.update_item(
+                            Key={"userId": user_id, "category": category},
+                            UpdateExpression="ADD usageCount :one",
+                            ExpressionAttributeValues={":one": Decimal("1")},
+                        )
+            except Exception:
+                pass
             return _response(200, {"ok": True, "expenseId": expense_id})
 
         if route_key == "POST /list":
