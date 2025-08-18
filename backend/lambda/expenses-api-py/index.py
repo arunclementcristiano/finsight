@@ -40,18 +40,50 @@ def _to_json(o):
 
 def _get_category_from_ai(raw_text: str):
     if not GROQ_API_KEY:
+        print("GROQ_API_KEY missing")
         return {"category": "", "confidence": 0.0}
     try:
+        system_prompt = (
+            "You are a financial expense categorizer. Allowed categories: Food, Travel, Entertainment, Shopping, Utilities, Healthcare, Other. "
+            "Given a user input, respond ONLY as JSON: {\"category\": one of the allowed, \"confidence\": number 0..1}."
+        )
+        payload = {
+            "model": "llama-3.1-70b-versatile",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": raw_text},
+            ],
+            "temperature": 0,
+        }
         req = urlrequest.Request(
-            "https://api.groq.com/v1/classify",
-            data=json.dumps({"text": raw_text}).encode("utf-8"),
+            "https://api.groq.com/openai/v1/chat/completions",
+            data=json.dumps(payload).encode("utf-8"),
             headers={"Content-Type": "application/json", "Authorization": f"Bearer {GROQ_API_KEY}"},
             method="POST",
         )
-        with urlrequest.urlopen(req, timeout=5) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-        return {"category": data.get("category", ""), "confidence": data.get("confidence", 0.7)}
-    except Exception:
+        with urlrequest.urlopen(req, timeout=10) as resp:
+            content = resp.read().decode("utf-8")
+            data = json.loads(content)
+        txt = (
+            (data.get("choices") or [{}])[0].get("message", {}).get("content", "")
+            if isinstance(data, dict)
+            else ""
+        )
+        try:
+            parsed = json.loads(txt)
+            cat = parsed.get("category", "")
+            conf = parsed.get("confidence", 0.7)
+        except Exception:
+            # Best-effort extraction
+            mcat = re.search(r"category\W+([A-Za-z]+)", txt, re.I)
+            mconf = re.search(r"confidence\W+(\d+(?:\.\d+)?)", txt, re.I)
+            cat = (mcat.group(1) if mcat else "")
+            conf = float(mconf.group(1)) if mconf else 0.7
+            if conf > 1:
+                conf = conf / 100.0
+        return {"category": cat, "confidence": conf}
+    except Exception as e:
+        print("GROQ_ERROR", str(e))
         return {"category": "", "confidence": 0.0}
 
 
@@ -124,8 +156,8 @@ def handler(event, context):
                 # Travel
                 "travel": "Travel", "transport": "Travel", "taxi": "Travel", "uber": "Travel", "ola": "Travel", "bus": "Travel",
                 "train": "Travel", "flight": "Travel", "airline": "Travel", "fuel": "Travel", "petrol": "Travel", "gas": "Travel",
-                # Entertainment (avoid plain 'movie' here to force Groq when needed)
-                "entertainment": "Entertainment", "cinema": "Entertainment", "netflix": "Entertainment",
+                # Entertainment
+                "entertainment": "Entertainment", "cinema": "Entertainment", "netflix": "Entertainment", "movie": "Entertainment", "movies": "Entertainment",
                 "hotstar": "Entertainment", "sunnxt": "Entertainment", "spotify": "Entertainment", "prime": "Entertainment",
                 "disney": "Entertainment", "playstation": "Entertainment", "xbox": "Entertainment",
                 # Shopping
