@@ -21,6 +21,7 @@ interface SuggestionResponse {
   category: string;
   AIConfidence?: number;
   message: string;
+  options?: string[];
 }
 
 interface Message {
@@ -266,13 +267,25 @@ export default function ExpenseTrackerPage() {
               </div>
               <div>
                 <div className="text-muted-foreground">Category</div>
-                <input
-                  type="text"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2"
-                  placeholder="e.g. Groceries"
-                />
+                {msg.suggestion?.options && msg.suggestion.options.length ? (
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2"
+                  >
+                    {msg.suggestion.options.map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2"
+                    placeholder="e.g. Groceries"
+                  />
+                )}
               </div>
               <div className="flex items-end justify-end gap-2">
                 <Button

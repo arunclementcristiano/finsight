@@ -40,6 +40,17 @@ def _to_json(o):
     return o
 
 
+ALLOWED_CATEGORIES = [
+    "Food",
+    "Travel",
+    "Entertainment",
+    "Shopping",
+    "Utilities",
+    "Healthcare",
+    "Other",
+]
+
+
 def _get_category_from_ai(raw_text: str):
     if not GROQ_API_KEY:
         print("GROQ_API_KEY missing")
@@ -150,7 +161,7 @@ def handler(event, context):
                 return _response(400, {"error": "Missing userId or rawText"})
             amount = _parse_amount(raw_text)
 
-            # Fixed categories
+            # Fixed categories (predefined rules)
             synonyms = {
                 # Food
                 "groceries": "Food", "grocery": "Food", "restaurant": "Food", "dining": "Food", "lunch": "Food", "dinner": "Food",
@@ -159,7 +170,7 @@ def handler(event, context):
                 "travel": "Travel", "transport": "Travel", "taxi": "Travel", "uber": "Travel", "ola": "Travel", "bus": "Travel",
                 "train": "Travel", "flight": "Travel", "airline": "Travel", "fuel": "Travel", "petrol": "Travel", "gas": "Travel",
                 # Entertainment
-                "entertainment": "Entertainment", "cinema": "Entertainment", "netflix": "Entertainment", "movie": "Entertainment", "movies": "Entertainment",
+                "entertainment": "Entertainment", "cinema": "Entertainment", "netflix": "Entertainment", "movie": "Entertainment", "movies": "Entertainment", "tv": "Entertainment",
                 "hotstar": "Entertainment", "sunnxt": "Entertainment", "spotify": "Entertainment", "prime": "Entertainment",
                 "disney": "Entertainment", "playstation": "Entertainment", "xbox": "Entertainment",
                 # Shopping
@@ -173,16 +184,26 @@ def handler(event, context):
                 "pharmacy": "Healthcare", "apollo": "Healthcare", "pharmeasy": "Healthcare", "practo": "Healthcare",
             }
             lower = raw_text.lower()
+            extracted_term = _extract_term(raw_text)
 
             # 1) Rule-based (predefined)
-            matched = next((synonyms[k] for k in synonyms.keys() if k in lower), None)
+            matched_key = next((k for k in synonyms.keys() if k in lower), None)
+            matched = synonyms.get(matched_key) if matched_key else None
             final_category = matched if matched else ""
             ai_conf = None
+
+            # If matched by predefined, also upsert into CategoryRules for future
+            if final_category:
+                try:
+                    if extracted_term:
+                        category_rules_table.put_item(Item={"rule": extracted_term, "category": final_category})
+                except Exception:
+                    pass
 
             # 2) CategoryRules table (global rules configured by you)
             if not final_category:
                 try:
-                    r = category_rules_table.get_item(Key={"rule": _extract_term(raw_text)})
+                    r = category_rules_table.get_item(Key={"rule": extracted_term})
                     rule_cat = (r.get("Item", {}) or {}).get("category")
                     if rule_cat:
                         final_category = rule_cat
@@ -211,20 +232,31 @@ def handler(event, context):
                     "health": "Healthcare", "healthcare": "Healthcare", "medical": "Healthcare", "medicine": "Healthcare",
                     "other": "Other"
                 }
-                if ai_cat in mapping:
-                    final_category = mapping[ai_cat]
-                else:
+                mapped_ai = mapping.get(ai_cat)
+                if not mapped_ai:
                     for k, v in mapping.items():
                         if k in ai_cat or ai_cat in k:
-                            final_category = v
+                            mapped_ai = v
                             break
-                    if not final_category:
-                        final_category = "Other"
+                if not mapped_ai:
+                    mapped_ai = "Other"
+
+                low_conf = False
                 try:
-                    if ai_conf is not None and float(ai_conf) < 0.8:
-                        final_category = "Uncategorized"
+                    low_conf = (ai_conf is None) or (float(ai_conf) < 0.8)
                 except Exception:
-                    pass
+                    low_conf = True
+
+                if low_conf:
+                    # Provide options for user to pick
+                    msg = (
+                        f"Could not parse amount; low-confidence AI suggestion {mapped_ai}. Pick a category."
+                        if amount is None
+                        else f"Parsed amount {amount}; low-confidence AI suggestion {mapped_ai}. Pick a category."
+                    )
+                    return _response(200, {"amount": amount, "category": "Uncategorized", "AIConfidence": ai_conf, "options": ALLOWED_CATEGORIES, "message": msg})
+                else:
+                    final_category = mapped_ai
 
             msg = (
                 f"Parsed amount {amount} and category {final_category}" if amount is not None
@@ -262,6 +294,11 @@ def handler(event, context):
                             UpdateExpression="ADD usageCount :one, terms :t",
                             ExpressionAttributeValues={":one": Decimal("1"), ":t": set([term])},
                         )
+                        # Also persist rule->category mapping for future global use
+                        try:
+                            category_rules_table.put_item(Item={"rule": term, "category": category})
+                        except Exception:
+                            pass
                     else:
                         category_memory_table.update_item(
                             Key={"userId": user_id, "category": category},
