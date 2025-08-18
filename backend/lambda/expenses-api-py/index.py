@@ -12,11 +12,13 @@ from decimal import Decimal
 AWS_REGION = os.environ.get("AWS_REGION") or os.environ.get("REGION") or "us-east-1"
 EXPENSES_TABLE = os.environ.get("EXPENSES_TABLE", "Expenses")
 CATEGORY_MEMORY_TABLE = os.environ.get("CATEGORY_MEMORY_TABLE", "CategoryMemory")
+CATEGORY_RULES_TABLE = os.environ.get("CATEGORY_RULES_TABLE", "CategoryRules")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
 expenses_table = dynamodb.Table(EXPENSES_TABLE)
 category_memory_table = dynamodb.Table(CATEGORY_MEMORY_TABLE)
+category_rules_table = dynamodb.Table(CATEGORY_RULES_TABLE)
 
 
 def _cors_headers():
@@ -172,18 +174,28 @@ def handler(event, context):
             }
             lower = raw_text.lower()
 
-            # 1) Rule-based
+            # 1) Rule-based (predefined)
             matched = next((synonyms[k] for k in synonyms.keys() if k in lower), None)
             final_category = matched if matched else ""
             ai_conf = None
 
-            # 2) CategoryMemory terms
+            # 2) CategoryRules table (global rules configured by you)
+            if not final_category:
+                try:
+                    r = category_rules_table.get_item(Key={"rule": _extract_term(raw_text)})
+                    rule_cat = (r.get("Item", {}) or {}).get("category")
+                    if rule_cat:
+                        final_category = rule_cat
+                except Exception:
+                    pass
+
+            # 3) CategoryMemory terms (user-specific)
             if not final_category:
                 mem_cat = _match_memory_terms(user_id, lower)
                 if mem_cat:
                     final_category = mem_cat
 
-            # 3) Groq fallback
+            # 4) Groq fallback
             if not final_category:
                 print("GROQ_CALL_START")
                 ai = _get_category_from_ai(raw_text)

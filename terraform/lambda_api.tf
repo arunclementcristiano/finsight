@@ -66,6 +66,7 @@ resource "aws_lambda_function" "expenses" {
       EXPENSES_TABLE           = aws_dynamodb_table.expenses.name
       CATEGORY_MEMORY_TABLE    = aws_dynamodb_table.category_memory.name
       GROQ_API_KEY             = var.groq_api_key
+      CATEGORY_RULES_TABLE     = aws_dynamodb_table.category_rules.name
     }
   }
 }
@@ -119,4 +120,3 @@ resource "aws_apigatewayv2_stage" "default" {
 output "api_endpoint" {
   value = aws_apigatewayv2_api.http.api_endpoint
 }
-
