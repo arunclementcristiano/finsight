@@ -24,14 +24,25 @@ export default function RootLayout({
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
+	const navItems = [
+		{ name: "Dashboard", href: "/PortfolioManagement/Dashboard" },
+		{ name: "Portfolio", href: "/PortfolioManagement/AddHolding" },
+		{ name: "Expense Tracker", href: "/expenses" },
+		{ name: "Planning", href: "/planning" },
+		{ name: "Research", href: "/research" },
+	];
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
 				<ThemeProvider>
+<<<<<<< HEAD
 					<Navbar items={[
 						{ name: "Home", href: "/" },
 						{ name: "Expense Tracker", href: "/ExpenseTracker" },
 					]} />
+=======
+					<Navbar items={navItems} helpHref="/help" userInitials="FS" />
+>>>>>>> origin/main
 					<div className="min-h-screen bg-[radial-gradient(40%_60%_at_10%_10%,rgba(99,102,241,0.08),transparent),radial-gradient(30%_40%_at_90%_20%,rgba(16,185,129,0.08),transparent)] dark:bg-[radial-gradient(40%_60%_at_10%_10%,rgba(99,102,241,0.12),transparent),radial-gradient(30%_40%_at_90%_20%,rgba(16,185,129,0.12),transparent)]">
 						<main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
 					</div>
