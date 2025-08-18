@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.AWS_REGION || "us-east-1" }));
 const EXPENSES_TABLE = process.env.EXPENSES_TABLE || "Expenses";
@@ -14,8 +14,8 @@ export async function POST(req: NextRequest) {
     const now = new Date();
     const ym = month ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-    // Placeholder table design: fetch all user expenses then filter by month
-    const res = await ddb.send(new QueryCommand({ TableName: EXPENSES_TABLE } as any));
+    // Placeholder: scan then filter
+    const res = await ddb.send(new ScanCommand({ TableName: EXPENSES_TABLE }));
     const items = (res.Items || []).filter((it: any) => it.userId === userId && String(it.date).startsWith(ym));
 
     const totals: Record<string, number> = {};
