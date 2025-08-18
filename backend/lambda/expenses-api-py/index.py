@@ -40,7 +40,7 @@ def _to_json(o):
 
 def _get_category_from_ai(raw_text: str):
     if not GROQ_API_KEY:
-        return {"category": "Misc", "confidence": 0.5}
+        return {"category": "", "confidence": 0.0}
     try:
         req = urlrequest.Request(
             "https://api.groq.com/v1/classify",
@@ -60,54 +60,12 @@ def _parse_amount(raw_text: str):
     return float(m.group(1)) if m else None
 
 
-_STOPWORDS = {"spent", "rs", "inr", "on", "for", "at", "to", "the", "a", "an", "and", "of", "in"}
-
-
-def _extract_freeform_category(raw_text: str) -> str:
-    # Try phrases after common prepositions
-    m = re.search(r"\b(?:on|for|at|to)\s+([A-Za-z][A-Za-z\s]{1,30})", raw_text, flags=re.IGNORECASE)
-    if m:
-        cand = m.group(1).strip()
-        cand = re.split(r"\b(yesterday|today|tomorrow|\d{4}-\d{2}-\d{2})\b", cand, flags=re.IGNORECASE)[0].strip()
-        cand = re.sub(r"[^A-Za-z\s]", "", cand).strip()
-        if cand:
-            return cand.title()
-    # Fallback: last alpha token not a stopword
-    tokens = [t for t in re.findall(r"[A-Za-z]+", raw_text) if t.lower() not in _STOPWORDS]
-    if tokens:
-        return tokens[-1].title()
-    return ""
-
-
-def _match_category_memory(user_id: str, candidate: str) -> str:
-    if not candidate:
-        return ""
-    try:
-        resp = category_memory_table.query(KeyConditionExpression=Key("userId").eq(user_id))
-        cats = [it.get("category", "") for it in resp.get("Items", [])]
-        cand_l = candidate.lower()
-        # Prefer exact, then startswith, else contains
-        for c in cats:
-            if c.lower() == cand_l:
-                return c
-        for c in cats:
-            if c.lower().startswith(cand_l) or cand_l.startswith(c.lower()):
-                return c
-        for c in cats:
-            if cand_l in c.lower() or c.lower() in cand_l:
-                return c
-    except Exception:
-        pass
-    return ""
-
-
 def handler(event, context):
     try:
         method = (event.get("requestContext", {}).get("http", {}) or {}).get("method") or event.get("httpMethod")
         path = event.get("rawPath") or event.get("resource") or ""
         route_key = event.get("requestContext", {}).get("routeKey") or f"{method} {path}"
 
-        # Preflight
         if method == "OPTIONS":
             return _response(200, {"ok": True})
 
@@ -118,52 +76,75 @@ def handler(event, context):
             except Exception:
                 body = {}
 
-        # POST /add -> parse only
         if route_key == "POST /add":
             user_id = body.get("userId")
             raw_text = body.get("rawText", "")
             if not user_id or not raw_text:
                 return _response(400, {"error": "Missing userId or rawText"})
             amount = _parse_amount(raw_text)
-            keyword_map = {
-                "groceries": "Groceries",
-                "food": "Food",
-                "rent": "Rent",
-                "shopping": "Shopping",
-                "travel": "Travel",
-                "transport": "Transport",
-                "entertainment": "Entertainment",
-                "utilities": "Utilities",
-                "health": "Health",
+
+            # Fixed categories: Food, Travel, Entertainment, Shopping, Utilities, Healthcare, Other
+            synonyms = {
+                # Food
+                "groceries": "Food", "grocery": "Food", "restaurant": "Food", "dining": "Food", "lunch": "Food", "dinner": "Food",
+                "breakfast": "Food", "snacks": "Food", "coffee": "Food", "swiggy": "Food", "zomato": "Food", "ubereats": "Food",
+                # Travel
+                "travel": "Travel", "transport": "Travel", "taxi": "Travel", "uber": "Travel", "ola": "Travel", "bus": "Travel",
+                "train": "Travel", "flight": "Travel", "airline": "Travel", "fuel": "Travel", "petrol": "Travel", "gas": "Travel",
+                # Entertainment
+                "entertainment": "Entertainment", "movie": "Entertainment", "cinema": "Entertainment", "netflix": "Entertainment",
+                "hotstar": "Entertainment", "sunnxt": "Entertainment", "spotify": "Entertainment", "prime": "Entertainment",
+                "disney": "Entertainment", "playstation": "Entertainment", "xbox": "Entertainment",
+                # Shopping
+                "shopping": "Shopping", "amazon": "Shopping", "flipkart": "Shopping", "myntra": "Shopping", "apparel": "Shopping",
+                "clothing": "Shopping", "mall": "Shopping", "electronics": "Shopping", "gadget": "Shopping",
+                # Utilities
+                "utilities": "Utilities", "electricity": "Utilities", "water": "Utilities", "internet": "Utilities", "broadband": "Utilities",
+                "jio": "Utilities", "airtel": "Utilities", "bsnl": "Utilities", "bill": "Utilities",
+                # Healthcare
+                "health": "Healthcare", "healthcare": "Healthcare", "medicine": "Healthcare", "hospital": "Healthcare", "doctor": "Healthcare",
+                "pharmacy": "Healthcare", "apollo": "Healthcare", "pharmeasy": "Healthcare", "practo": "Healthcare",
             }
             lower = raw_text.lower()
-            key = next((k for k in keyword_map.keys() if k in lower), None)
+            matched = next((synonyms[k] for k in synonyms.keys() if k in lower), None)
+            final_category = matched if matched else ""
             ai_conf = None
-            final_category = ""
-            if key:
-                final_category = keyword_map[key]
-            else:
-                # Try AI first
+
+            if not final_category:
+                # Groq fallback if no rule matches; map to allowed and apply confidence gate
                 ai = _get_category_from_ai(raw_text)
-                ai_cat = (ai.get("category") or "").strip()
+                ai_cat = (ai.get("category") or "").strip().lower()
                 ai_conf = ai.get("confidence")
-                if ai_cat and ai_cat.lower() not in ("misc",):
-                    final_category = ai_cat.title()
-                # Then try user memory
-                if not final_category:
-                    free = _extract_freeform_category(raw_text)
-                    mem = _match_category_memory(user_id, free)
-                    final_category = mem or free
-                # Fallback
-                if not final_category:
-                    final_category = "Misc"
+                mapping = {
+                    "food": "Food", "restaurant": "Food", "groceries": "Food",
+                    "travel": "Travel", "transport": "Travel", "taxi": "Travel", "fuel": "Travel",
+                    "entertainment": "Entertainment", "movies": "Entertainment", "movie": "Entertainment", "subscription": "Entertainment",
+                    "shopping": "Shopping", "apparel": "Shopping", "clothing": "Shopping", "electronics": "Shopping",
+                    "utilities": "Utilities", "internet": "Utilities", "electricity": "Utilities", "water": "Utilities",
+                    "health": "Healthcare", "healthcare": "Healthcare", "medical": "Healthcare", "medicine": "Healthcare",
+                    "other": "Other"
+                }
+                if ai_cat in mapping:
+                    final_category = mapping[ai_cat]
+                else:
+                    for k, v in mapping.items():
+                        if k in ai_cat or ai_cat in k:
+                            final_category = v
+                            break
+                    if not final_category:
+                        final_category = "Other"
+                try:
+                    if ai_conf is not None and float(ai_conf) < 0.8:
+                        final_category = "Uncategorized"
+                except Exception:
+                    pass
+
             msg = (
                 f"Parsed amount {amount} and category {final_category}" if amount is not None
                 else f"Could not parse amount; suggested category {final_category}"
             )
             return _response(200, {"amount": amount, "category": final_category, "AIConfidence": ai_conf, "message": msg})
 
-        # PUT /add -> confirm & save
         if route_key == "PUT /add":
             user_id = body.get("userId")
             amount = body.get("amount")
@@ -184,14 +165,8 @@ def handler(event, context):
                     "createdAt": datetime.utcnow().isoformat(),
                 }
             )
-            category_memory_table.update_item(
-                Key={"userId": user_id, "category": category},
-                UpdateExpression="ADD usageCount :inc",
-                ExpressionAttributeValues={":inc": Decimal("1")},
-            )
             return _response(200, {"ok": True, "expenseId": expense_id})
 
-        # POST /list
         if route_key == "POST /list":
             user_id = body.get("userId")
             start = body.get("start")
@@ -199,7 +174,6 @@ def handler(event, context):
             category = body.get("category")
             if not user_id:
                 return _response(400, {"error": "Missing userId"})
-            # Scan then filter (dev). For prod, use GSI and Query.
             items = expenses_table.scan().get("Items", [])
             items = [x for x in items if x.get("userId") == user_id]
             def _ok_date(it):
@@ -214,7 +188,6 @@ def handler(event, context):
             items = [x for x in items if (category is None or x.get("category") == category) and _ok_date(x)]
             return _response(200, {"items": items})
 
-        # POST /edit
         if route_key == "POST /edit":
             expense_id = body.get("expenseId")
             updates = body.get("updates") or {}
@@ -240,7 +213,6 @@ def handler(event, context):
             )
             return _response(200, {"ok": True})
 
-        # POST /delete
         if route_key == "POST /delete":
             expense_id = body.get("expenseId")
             if not expense_id:
@@ -248,10 +220,9 @@ def handler(event, context):
             expenses_table.delete_item(Key={"expenseId": expense_id})
             return _response(200, {"ok": True})
 
-        # POST /summary/monthly
         if route_key == "POST /summary/monthly":
             user_id = body.get("userId")
-            month = body.get("month")  # YYYY-MM
+            month = body.get("month")
             if not user_id:
                 return _response(400, {"error": "Missing userId"})
             if not month:
@@ -261,11 +232,10 @@ def handler(event, context):
             items = [x for x in items if x.get("userId") == user_id and str(x.get("date", "")).startswith(month)]
             totals = {}
             for it in items:
-                cat = it.get("category", "Misc")
+                cat = it.get("category", "Other")
                 totals[cat] = float(totals.get(cat, 0)) + float(it.get("amount", 0))
             return _response(200, {"month": month, "totals": totals})
 
-        # POST /summary/category
         if route_key == "POST /summary/category":
             user_id = body.get("userId")
             category = body.get("category")
@@ -280,4 +250,3 @@ def handler(event, context):
     except Exception as e:
         print("handler error", e)
         return _response(500, {"error": "Internal error"})
-
