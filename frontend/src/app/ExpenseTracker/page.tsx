@@ -158,6 +158,31 @@ export default function ExpenseTrackerPage() {
   const [recent, setRecent] = useState<ExpenseItem[]>([]);
   const [loadingRecent, setLoadingRecent] = useState(false);
 
+  // Load persisted chat when userId is ready
+  useEffect(() => {
+    if (!userId) return;
+    try {
+      const raw = localStorage.getItem(`finsightChat_${userId}`);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Message[];
+        if (Array.isArray(parsed)) {
+          setMessages(parsed);
+          queueMicrotask(() => {
+            listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+          });
+        }
+      }
+    } catch {}
+  }, [userId]);
+
+  // Persist chat on every change
+  useEffect(() => {
+    if (!userId) return;
+    try {
+      localStorage.setItem(`finsightChat_${userId}`, JSON.stringify(messages));
+    } catch {}
+  }, [messages, userId]);
+
   async function requestSuggestion(rawText: string): Promise<SuggestionResponse> {
     const res = await fetch(`${API_BASE}/add`, {
       method: "POST",
