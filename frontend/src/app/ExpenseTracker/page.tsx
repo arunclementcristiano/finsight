@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { Card, CardContent } from "../components/Card";
@@ -16,51 +16,36 @@ interface ParsedExpense {
   raw: string;
 }
 
+interface SuggestionResponse {
+  amount?: number;
+  category: string;
+  AIConfidence?: number;
+  message: string;
+}
+
 interface Message {
   id: string;
   role: Role;
   text: string;
   parsed?: ParsedExpense;
+  // Backend suggestion awaiting confirmation
+  suggestion?: SuggestionResponse & { rawText: string };
+  needsConfirmation?: boolean;
 }
 
-function parseExpense(input: string): ParsedExpense | undefined {
-  const lower = input.toLowerCase();
-  const currencyMatch = input.match(/[₹$€£]/)?.[0] ?? "₹";
-  const amountMatch = input.match(/([0-9]+(?:\.[0-9]{1,2})?)/);
-  if (!amountMatch) return undefined;
-  const amount = Number(amountMatch[1]);
+const API_BASE = process.env.NEXT_PUBLIC_EXPENSES_API_BASE || "";
 
-  const categories = [
-    "groceries",
-    "food",
-    "rent",
-    "shopping",
-    "travel",
-    "transport",
-    "entertainment",
-    "utilities",
-    "health",
-  ];
-  const category = categories.find((c) => lower.includes(c)) ?? "misc";
-
-  const iso = input.match(/(\d{4}-\d{2}-\d{2})/);
-  let date = new Date();
-  if (iso) {
-    date = new Date(iso[1]);
-  } else if (lower.includes("yesterday")) {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    date = d;
-  }
-  const dateStr = date.toISOString().slice(0, 10);
-
-  return {
-    amount,
-    currency: currencyMatch,
-    category: category.charAt(0).toUpperCase() + category.slice(1),
-    date: dateStr,
-    raw: input,
-  };
+function useUserId(): string {
+  const [userId, setUserId] = useState("");
+  useEffect(() => {
+    let uid = localStorage.getItem("finsightUserId");
+    if (!uid) {
+      uid = `u-${crypto.randomUUID()}`;
+      localStorage.setItem("finsightUserId", uid);
+    }
+    setUserId(uid);
+  }, []);
+  return userId;
 }
 
 function Bubble({ role, children }: { role: Role; children: React.ReactNode }) {
@@ -159,24 +144,132 @@ export default function ExpenseTrackerPage() {
   const [input, setInput] = useState("");
   const [showSummary, setShowSummary] = useState(true);
   const listRef = useRef<HTMLDivElement>(null);
+  const userId = useUserId();
 
-  function addMessage(text: string) {
-    const userMessage: Message = { id: crypto.randomUUID(), role: "user", text };
-    const parsed = parseExpense(text);
-    const systemText = parsed
-      ? `Added ${parsed.currency}${parsed.amount} to ${parsed.category} on ${parsed.date}.`
-      : `Sorry, I couldn't parse that. Try like: "Spent ₹500 on groceries yesterday".`;
-    const systemMessage: Message = {
-      id: crypto.randomUUID(),
-      role: "system",
-      text: systemText,
-      parsed: parsed ?? undefined,
-    };
-    setMessages((prev) => [...prev, userMessage, systemMessage]);
-    setInput("");
-    queueMicrotask(() => {
-      listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+  async function requestSuggestion(rawText: string): Promise<SuggestionResponse> {
+    const res = await fetch(`${API_BASE}/add`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, rawText })
     });
+    if (!res.ok) throw new Error("Suggestion failed");
+    return res.json();
+  }
+
+  async function confirmExpense(payload: { amount: number; category: string; rawText: string; date?: string }) {
+    const res = await fetch(`${API_BASE}/add`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, ...payload })
+    });
+    if (!res.ok) throw new Error("Save failed");
+    return res.json();
+  }
+
+  async function addMessage(text: string) {
+    const userMessage: Message = { id: crypto.randomUUID(), role: "user", text };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    try {
+      const suggestion = await requestSuggestion(text);
+      const systemMessage: Message = {
+        id: crypto.randomUUID(),
+        role: "system",
+        text: suggestion.message,
+        suggestion: { ...suggestion, rawText: text },
+        needsConfirmation: true,
+      };
+      setMessages((prev) => [...prev, systemMessage]);
+    } catch (e) {
+      const failMsg: Message = {
+        id: crypto.randomUUID(),
+        role: "system",
+        text: "Sorry, something went wrong parsing your expense.",
+      };
+      setMessages((prev) => [...prev, failMsg]);
+    } finally {
+      queueMicrotask(() => {
+        listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+      });
+    }
+  }
+
+  function SuggestionCard({ msg }: { msg: Message }) {
+    const [amount, setAmount] = useState<number | "">(msg.suggestion?.amount ?? "");
+    const [category, setCategory] = useState<string>(msg.suggestion?.category ?? "Misc");
+    const [saving, setSaving] = useState(false);
+    const canSave = typeof amount === "number" && isFinite(amount) && category.trim().length > 0;
+
+    return (
+      <div className="mt-3">
+        <Card>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <div className="text-muted-foreground">Amount</div>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value === "" ? "" : Number(e.target.value))}
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2"
+                  placeholder="e.g. 500"
+                />
+              </div>
+              <div>
+                <div className="text-muted-foreground">Category</div>
+                <input
+                  type="text"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2"
+                  placeholder="e.g. Groceries"
+                />
+              </div>
+              <div className="flex items-end justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    // Cancel: mark suggestion as dismissed
+                    setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, needsConfirmation: false } : m)));
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={!canSave || saving}
+                  onClick={async () => {
+                    if (!canSave || !msg.suggestion) return;
+                    try {
+                      setSaving(true);
+                      const payload = { amount: amount as number, category: category.trim(), rawText: msg.suggestion.rawText };
+                      await confirmExpense(payload);
+                      // Convert suggestion to a finalized parsed record for local summary
+                      const parsed: ParsedExpense = {
+                        amount: amount as number,
+                        category: category.trim(),
+                        currency: "₹",
+                        date: new Date().toISOString().slice(0, 10),
+                        raw: msg.suggestion.rawText,
+                      };
+                      setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, text: "Saved.", needsConfirmation: false, parsed } : m)));
+                    } catch (e) {
+                      setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, text: "Save failed. Please try again.", needsConfirmation: true } : m)));
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                >
+                  {saving ? "Saving..." : "Confirm"}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -223,6 +316,7 @@ export default function ExpenseTrackerPage() {
                     <Bubble role={m.role}>
                       <div className="whitespace-pre-wrap leading-relaxed text-sm">
                         {m.text}
+                        {m.suggestion && m.needsConfirmation ? <SuggestionCard msg={m} /> : null}
                         {m.parsed ? <ParsedCard parsed={m.parsed} /> : null}
                       </div>
                     </Bubble>
