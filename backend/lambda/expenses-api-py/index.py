@@ -9,7 +9,7 @@ import boto3
 from boto3.dynamodb.conditions import Key
 from decimal import Decimal
 
-AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
+AWS_REGION = os.environ.get("REGION", "us-east-1")
 EXPENSES_TABLE = os.environ.get("EXPENSES_TABLE", "Expenses")
 CATEGORY_MEMORY_TABLE = os.environ.get("CATEGORY_MEMORY_TABLE", "CategoryMemory")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
