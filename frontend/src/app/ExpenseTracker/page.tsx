@@ -156,6 +156,8 @@ export default function ExpenseTrackerPage() {
   const userId = useUserId();
   const [recent, setRecent] = useState<ExpenseItem[]>([]);
   const [loadingRecent, setLoadingRecent] = useState(false);
+  const [recentPage, setRecentPage] = useState(1);
+  const [recentHasMore, setRecentHasMore] = useState(false);
 
   // Load persisted chat when userId is ready
   useEffect(() => {
@@ -202,20 +204,21 @@ export default function ExpenseTrackerPage() {
     return res.json();
   }
 
-  async function loadRecent() {
+  async function loadRecent(reset: boolean = false) {
     if (!userId) return;
     try {
       setLoadingRecent(true);
       const res = await fetch(`${API_BASE}/list`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId })
+        body: JSON.stringify({ userId, page: reset ? 1 : recentPage, limit: 10 })
       });
       if (!res.ok) throw new Error("List failed");
       const data = await res.json();
       const items = (data.items ?? []) as ExpenseItem[];
-      items.sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)));
-      setRecent(items);
+      setRecent((prev) => (reset || recentPage === 1 ? items : [...prev, ...items]));
+      setRecentHasMore(Boolean(data.hasMore));
+      if (reset) setRecentPage(1);
     } catch (e) {
       // noop
     } finally {
@@ -234,7 +237,7 @@ export default function ExpenseTrackerPage() {
 
   useEffect(() => {
     if (userId) {
-      loadRecent();
+      loadRecent(true);
     }
   }, [userId]);
 
@@ -462,9 +465,11 @@ export default function ExpenseTrackerPage() {
             <CardContent>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-medium text-muted-foreground">Recent expenses</h2>
-                <Button size="sm" variant="outline" onClick={loadRecent} disabled={loadingRecent}>
-                  {loadingRecent ? "Loading..." : "Refresh"}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="outline" onClick={() => loadRecent(true)} disabled={loadingRecent}>
+                    {loadingRecent ? "Loading..." : "Refresh"}
+                  </Button>
+                </div>
               </div>
               {recent.length === 0 ? (
                 <div className="text-sm text-muted-foreground">No expenses yet.</div>
@@ -484,6 +489,16 @@ export default function ExpenseTrackerPage() {
                   ))}
                 </div>
               )}
+              <div className="mt-3 flex justify-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { if (!loadingRecent && recentHasMore) { setRecentPage((p) => p + 1); loadRecent(); } }}
+                  disabled={!recentHasMore || loadingRecent}
+                >
+                  {recentHasMore ? (loadingRecent ? "Loading..." : "Load more") : "No more"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
