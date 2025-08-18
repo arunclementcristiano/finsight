@@ -4,6 +4,7 @@ import re
 import uuid
 from datetime import datetime
 from urllib import request as urlrequest
+from urllib.error import HTTPError, URLError
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -14,6 +15,7 @@ EXPENSES_TABLE = os.environ.get("EXPENSES_TABLE", "Expenses")
 CATEGORY_MEMORY_TABLE = os.environ.get("CATEGORY_MEMORY_TABLE", "CategoryMemory")
 CATEGORY_RULES_TABLE = os.environ.get("CATEGORY_RULES_TABLE", "CategoryRules")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-70b-versatile")
 
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
 expenses_table = dynamodb.Table(EXPENSES_TABLE)
@@ -61,7 +63,7 @@ def _get_category_from_ai(raw_text: str):
             "Given a user input, respond ONLY as JSON: {\"category\": one of the allowed, \"confidence\": number 0..1}."
         )
         payload = {
-            "model": "llama-3.1-70b-versatile",
+            "model": GROQ_MODEL,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": raw_text},
@@ -74,9 +76,20 @@ def _get_category_from_ai(raw_text: str):
             headers={"Content-Type": "application/json", "Authorization": f"Bearer {GROQ_API_KEY}"},
             method="POST",
         )
-        with urlrequest.urlopen(req, timeout=10) as resp:
-            content = resp.read().decode("utf-8")
-            data = json.loads(content)
+        try:
+            with urlrequest.urlopen(req, timeout=10) as resp:
+                content = resp.read().decode("utf-8")
+                data = json.loads(content)
+        except HTTPError as he:
+            try:
+                err_body = he.read().decode("utf-8")
+            except Exception:
+                err_body = ""
+            print("GROQ_HTTP_ERROR", he.code, err_body[:500])
+            return {"category": "", "confidence": 0.0}
+        except URLError as ue:
+            print("GROQ_URL_ERROR", str(ue))
+            return {"category": "", "confidence": 0.0}
         txt = (
             (data.get("choices") or [{}])[0].get("message", {}).get("content", "")
             if isinstance(data, dict)

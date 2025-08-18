@@ -68,6 +68,7 @@ resource "aws_lambda_function" "expenses" {
       CATEGORY_MEMORY_TABLE    = aws_dynamodb_table.category_memory.name
       GROQ_API_KEY             = var.groq_api_key
       CATEGORY_RULES_TABLE     = aws_dynamodb_table.category_rules.name
+      GROQ_MODEL               = "llama-3.1-70b-versatile"
     }
   }
 }
