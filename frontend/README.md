@@ -20,6 +20,31 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Environment
+
+- The Expense Tracker page uses `NEXT_PUBLIC_EXPENSES_API_BASE` to call the backend.
+- For local development, this defaults to the app routes at `/api/expenses` and requires no env setup.
+- For production against the AWS Lambda HTTP API, set:
+
+```bash
+NEXT_PUBLIC_EXPENSES_API_BASE=https://<your-api-id>.execute-api.<region>.amazonaws.com
+```
+
+You can copy `.env.local.example` to `.env.local` and adjust values.
+
+## API
+
+App routes under `src/app/api/expenses/*` provide a local implementation that writes to DynamoDB:
+
+- POST `/api/expenses/add` – parse suggestion; PUT same path to save confirmed expense
+- POST `/api/expenses/list`
+- POST `/api/expenses/edit`
+- POST `/api/expenses/delete`
+- POST `/api/expenses/summary/monthly`
+- POST `/api/expenses/summary/category`
+
+The AWS Lambda provides identical routes under the deployed API Gateway.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { Send, PanelRightClose, PanelRightOpen, Trash2 } from "lucide-react";
 import { Card, CardContent } from "../components/Card";
 import { Button } from "../components/Button";
 import { cn } from "../components/utils";
@@ -33,7 +33,16 @@ interface Message {
   needsConfirmation?: boolean;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_EXPENSES_API_BASE || "";
+const API_BASE = process.env.NEXT_PUBLIC_EXPENSES_API_BASE || "/api/expenses";
+
+interface ExpenseItem {
+  expenseId: string;
+  userId: string;
+  amount: number;
+  category: string;
+  rawText: string;
+  date: string;
+}
 
 function useUserId(): string {
   const [userId, setUserId] = useState("");
@@ -145,6 +154,8 @@ export default function ExpenseTrackerPage() {
   const [showSummary, setShowSummary] = useState(true);
   const listRef = useRef<HTMLDivElement>(null);
   const userId = useUserId();
+  const [recent, setRecent] = useState<ExpenseItem[]>([]);
+  const [loadingRecent, setLoadingRecent] = useState(false);
 
   async function requestSuggestion(rawText: string): Promise<SuggestionResponse> {
     const res = await fetch(`${API_BASE}/add`, {
@@ -165,6 +176,43 @@ export default function ExpenseTrackerPage() {
     if (!res.ok) throw new Error("Save failed");
     return res.json();
   }
+
+  async function loadRecent() {
+    if (!userId) return;
+    try {
+      setLoadingRecent(true);
+      const res = await fetch(`${API_BASE}/list`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId })
+      });
+      if (!res.ok) throw new Error("List failed");
+      const data = await res.json();
+      const items = (data.items ?? []) as ExpenseItem[];
+      // Sort by date desc then createdAt if present
+      items.sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)));
+      setRecent(items);
+    } catch (e) {
+      // noop for now
+    } finally {
+      setLoadingRecent(false);
+    }
+  }
+
+  async function deleteExpense(expenseId: string) {
+    await fetch(`${API_BASE}/delete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ expenseId })
+    });
+    await loadRecent();
+  }
+
+  useEffect(() => {
+    if (userId) {
+      loadRecent();
+    }
+  }, [userId]);
 
   async function addMessage(text: string) {
     const userMessage: Message = { id: crypto.randomUUID(), role: "user", text };
@@ -255,6 +303,8 @@ export default function ExpenseTrackerPage() {
                         raw: msg.suggestion.rawText,
                       };
                       setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, text: "Saved.", needsConfirmation: false, parsed } : m)));
+                      // Refresh recent list
+                      loadRecent();
                     } catch (e) {
                       setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, text: "Save failed. Please try again.", needsConfirmation: true } : m)));
                     } finally {
@@ -357,6 +407,35 @@ export default function ExpenseTrackerPage() {
               </div>
             </form>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-medium text-muted-foreground">Recent expenses</h2>
+            <Button size="sm" variant="outline" onClick={loadRecent} disabled={loadingRecent}>
+              {loadingRecent ? "Loading..." : "Refresh"}
+            </Button>
+          </div>
+          {recent.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No expenses yet.</div>
+          ) : (
+            <div className="divide-y border rounded-md">
+              {recent.map((it) => (
+                <div key={it.expenseId} className="flex items-center justify-between px-3 py-2 text-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="font-semibold">₹{Number(it.amount).toLocaleString()}</div>
+                    <div className="text-muted-foreground">{it.category}</div>
+                    <div className="text-muted-foreground">{it.date}</div>
+                  </div>
+                  <Button size="sm" variant="ghost" aria-label="Delete" onClick={() => deleteExpense(it.expenseId)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
