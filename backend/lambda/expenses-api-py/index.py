@@ -91,8 +91,8 @@ def handler(event, context):
                 # Travel
                 "travel": "Travel", "transport": "Travel", "taxi": "Travel", "uber": "Travel", "ola": "Travel", "bus": "Travel",
                 "train": "Travel", "flight": "Travel", "airline": "Travel", "fuel": "Travel", "petrol": "Travel", "gas": "Travel",
-                # Entertainment
-                "entertainment": "Entertainment", "movie": "Entertainment", "cinema": "Entertainment", "netflix": "Entertainment",
+                # Entertainment (intentionally exclude plain 'movie' to route via Groq)
+                "entertainment": "Entertainment", "cinema": "Entertainment", "netflix": "Entertainment",
                 "hotstar": "Entertainment", "sunnxt": "Entertainment", "spotify": "Entertainment", "prime": "Entertainment",
                 "disney": "Entertainment", "playstation": "Entertainment", "xbox": "Entertainment",
                 # Shopping
@@ -112,7 +112,9 @@ def handler(event, context):
 
             if not final_category:
                 # Groq fallback if no rule matches; map to allowed and apply confidence gate
+                print("GROQ_CALL_START")
                 ai = _get_category_from_ai(raw_text)
+                print("GROQ_CALL_END", ai)
                 ai_cat = (ai.get("category") or "").strip().lower()
                 ai_conf = ai.get("confidence")
                 mapping = {
