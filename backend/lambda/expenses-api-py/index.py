@@ -14,7 +14,7 @@ AWS_REGION = os.environ.get("AWS_REGION") or os.environ.get("REGION") or "us-eas
 EXPENSES_TABLE = os.environ.get("EXPENSES_TABLE", "Expenses")
 CATEGORY_MEMORY_TABLE = os.environ.get("CATEGORY_MEMORY_TABLE", "CategoryMemory")
 CATEGORY_RULES_TABLE = os.environ.get("CATEGORY_RULES_TABLE", "CategoryRules")
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+GROQ_API_KEY = (os.environ.get("GROQ_API_KEY") or "").strip()
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-70b-versatile")
 
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
@@ -73,7 +73,12 @@ def _get_category_from_ai(raw_text: str):
         req = urlrequest.Request(
             "https://api.groq.com/openai/v1/chat/completions",
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {GROQ_API_KEY}"},
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "User-Agent": "finsight-lambda/1.0 (+https://github.com/arunclementcristiano/finsight)"
+            },
             method="POST",
         )
         try:
@@ -86,6 +91,7 @@ def _get_category_from_ai(raw_text: str):
             except Exception:
                 err_body = ""
             print("GROQ_HTTP_ERROR", he.code, err_body[:500])
+            # Cloudflare 1010 is often due to missing headers/UA; we added UA/Accept above
             return {"category": "", "confidence": 0.0}
         except URLError as ue:
             print("GROQ_URL_ERROR", str(ue))
