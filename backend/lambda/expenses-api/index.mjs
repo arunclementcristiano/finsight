@@ -43,14 +43,17 @@ function json(statusCode, body) {
 
 export const handler = async (event) => {
   try {
-    if (event.requestContext?.http?.method === "OPTIONS" || event.httpMethod === "OPTIONS") {
+    const method = event.requestContext?.http?.method || event.httpMethod;
+    const path = event.rawPath || event.resource || "";
+
+    if (method === "OPTIONS") {
       return json(200, { ok: true });
     }
-    const routeKey = `${event.httpMethod || event.requestContext?.http?.method} ${event.resource || event.rawPath}`;
+    const routeKey = `${method} ${path}`;
     const body = event.body ? JSON.parse(event.body) : {};
 
     // POST /add (parse only)
-    if (routeKey.includes("/add") && event.httpMethod === "POST") {
+    if (path.endsWith("/add") && method === "POST") {
       const { userId, rawText } = body;
       if (!userId || !rawText) return json(400, { error: "Missing userId or rawText" });
       const m = rawText.match(/(?:[₹$€£])?\s*(\d+(?:\.\d{1,2})?)/);
@@ -66,7 +69,7 @@ export const handler = async (event) => {
     }
 
     // PUT /add (confirm & save)
-    if (routeKey.includes("/add") && event.httpMethod === "PUT") {
+    if (path.endsWith("/add") && method === "PUT") {
       const { userId, amount, category, rawText, date } = body;
       if (!userId || typeof amount !== "number" || !category || !rawText) return json(400, { error: "Missing fields" });
       const expenseId = crypto.randomUUID();
@@ -77,7 +80,7 @@ export const handler = async (event) => {
     }
 
     // POST /list
-    if (routeKey.includes("/list") && event.httpMethod === "POST") {
+    if (path.endsWith("/list") && method === "POST") {
       const { userId, start, end, category } = body;
       if (!userId) return json(400, { error: "Missing userId" });
       const res = await ddb.send(new ScanCommand({ TableName: EXPENSES_TABLE }));
@@ -93,7 +96,7 @@ export const handler = async (event) => {
     }
 
     // POST /edit
-    if (routeKey.includes("/edit") && event.httpMethod === "POST") {
+    if (path.endsWith("/edit") && method === "POST") {
       const { expenseId, updates } = body;
       if (!expenseId || !updates) return json(400, { error: "Missing expenseId or updates" });
       const expressions = []; const values = {};
@@ -106,7 +109,7 @@ export const handler = async (event) => {
     }
 
     // POST /delete
-    if (routeKey.includes("/delete") && event.httpMethod === "POST") {
+    if (path.endsWith("/delete") && method === "POST") {
       const { expenseId } = body;
       if (!expenseId) return json(400, { error: "Missing expenseId" });
       await ddb.send(new DeleteCommand({ TableName: EXPENSES_TABLE, Key: { expenseId } }));
@@ -114,7 +117,7 @@ export const handler = async (event) => {
     }
 
     // POST /summary/monthly
-    if (routeKey.includes("/summary/monthly") && event.httpMethod === "POST") {
+    if (path.endsWith("/summary/monthly") && method === "POST") {
       const { userId, month } = body;
       if (!userId) return json(400, { error: "Missing userId" });
       const now = new Date(); const ym = month || `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2, "0")}`;
@@ -125,7 +128,7 @@ export const handler = async (event) => {
     }
 
     // POST /summary/category
-    if (routeKey.includes("/summary/category") && event.httpMethod === "POST") {
+    if (path.endsWith("/summary/category") && method === "POST") {
       const { userId, category } = body;
       if (!userId || !category) return json(400, { error: "Missing userId or category" });
       const res = await ddb.send(new ScanCommand({ TableName: EXPENSES_TABLE }));
