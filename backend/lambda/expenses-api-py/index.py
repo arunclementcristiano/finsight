@@ -9,7 +9,7 @@ import boto3
 from boto3.dynamodb.conditions import Key
 from decimal import Decimal
 
-AWS_REGION = os.environ.get("REGION", "us-east-1")
+AWS_REGION = os.environ.get("AWS_REGION") or os.environ.get("REGION") or "us-east-1"
 EXPENSES_TABLE = os.environ.get("EXPENSES_TABLE", "Expenses")
 CATEGORY_MEMORY_TABLE = os.environ.get("CATEGORY_MEMORY_TABLE", "CategoryMemory")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
@@ -50,14 +50,55 @@ def _get_category_from_ai(raw_text: str):
         )
         with urlrequest.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-        return {"category": data.get("category", "Misc"), "confidence": data.get("confidence", 0.7)}
+        return {"category": data.get("category", ""), "confidence": data.get("confidence", 0.7)}
     except Exception:
-        return {"category": "Misc", "confidence": 0.5}
+        return {"category": "", "confidence": 0.0}
 
 
 def _parse_amount(raw_text: str):
     m = re.search(r"(?:[₹$€£])?\s*(\d+(?:\.\d{1,2})?)", raw_text)
     return float(m.group(1)) if m else None
+
+
+_STOPWORDS = {"spent", "rs", "inr", "on", "for", "at", "to", "the", "a", "an", "and", "of", "in"}
+
+
+def _extract_freeform_category(raw_text: str) -> str:
+    # Try phrases after common prepositions
+    m = re.search(r"\b(?:on|for|at|to)\s+([A-Za-z][A-Za-z\s]{1,30})", raw_text, flags=re.IGNORECASE)
+    if m:
+        cand = m.group(1).strip()
+        cand = re.split(r"\b(yesterday|today|tomorrow|\d{4}-\d{2}-\d{2})\b", cand, flags=re.IGNORECASE)[0].strip()
+        cand = re.sub(r"[^A-Za-z\s]", "", cand).strip()
+        if cand:
+            return cand.title()
+    # Fallback: last alpha token not a stopword
+    tokens = [t for t in re.findall(r"[A-Za-z]+", raw_text) if t.lower() not in _STOPWORDS]
+    if tokens:
+        return tokens[-1].title()
+    return ""
+
+
+def _match_category_memory(user_id: str, candidate: str) -> str:
+    if not candidate:
+        return ""
+    try:
+        resp = category_memory_table.query(KeyConditionExpression=Key("userId").eq(user_id))
+        cats = [it.get("category", "") for it in resp.get("Items", [])]
+        cand_l = candidate.lower()
+        # Prefer exact, then startswith, else contains
+        for c in cats:
+            if c.lower() == cand_l:
+                return c
+        for c in cats:
+            if c.lower().startswith(cand_l) or cand_l.startswith(c.lower()):
+                return c
+        for c in cats:
+            if cand_l in c.lower() or c.lower() in cand_l:
+                return c
+    except Exception:
+        pass
+    return ""
 
 
 def handler(event, context):
@@ -98,13 +139,29 @@ def handler(event, context):
             lower = raw_text.lower()
             key = next((k for k in keyword_map.keys() if k in lower), None)
             ai_conf = None
-            if not key:
+            final_category = ""
+            if key:
+                final_category = keyword_map[key]
+            else:
+                # Try AI first
                 ai = _get_category_from_ai(raw_text)
-                key = ai.get("category")
+                ai_cat = (ai.get("category") or "").strip()
                 ai_conf = ai.get("confidence")
-            category = keyword_map.get(key, key.capitalize() if key else "Misc")
-            msg = f"Parsed amount {amount} and category {category}" if amount is not None else f"Could not parse amount; suggested category {category}"
-            return _response(200, {"amount": amount, "category": category, "AIConfidence": ai_conf, "message": msg})
+                if ai_cat and ai_cat.lower() not in ("misc",):
+                    final_category = ai_cat.title()
+                # Then try user memory
+                if not final_category:
+                    free = _extract_freeform_category(raw_text)
+                    mem = _match_category_memory(user_id, free)
+                    final_category = mem or free
+                # Fallback
+                if not final_category:
+                    final_category = "Misc"
+            msg = (
+                f"Parsed amount {amount} and category {final_category}" if amount is not None
+                else f"Could not parse amount; suggested category {final_category}"
+            )
+            return _response(200, {"amount": amount, "category": final_category, "AIConfidence": ai_conf, "message": msg})
 
         # PUT /add -> confirm & save
         if route_key == "PUT /add":
