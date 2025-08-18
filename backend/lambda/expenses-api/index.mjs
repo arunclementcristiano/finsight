@@ -8,7 +8,24 @@ const CATEGORY_MEMORY_TABLE = process.env.CATEGORY_MEMORY_TABLE || "CategoryMemo
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region }));
 
 async function getCategoryFromAI(rawText) {
-  return { category: "Misc", confidence: 0.5 };
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) {
+    // Fallback
+    return { category: "Misc", confidence: 0.5 };
+  }
+  // Placeholder example call shape; replace with real Groq endpoint
+  try {
+    const resp = await fetch("https://api.groq.com/v1/classify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ text: rawText })
+    });
+    if (!resp.ok) throw new Error("groq error");
+    const data = await resp.json();
+    return { category: data.category || "Misc", confidence: data.confidence ?? 0.7 };
+  } catch {
+    return { category: "Misc", confidence: 0.5 };
+  }
 }
 
 function json(statusCode, body) {

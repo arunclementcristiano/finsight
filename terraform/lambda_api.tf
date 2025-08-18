@@ -4,6 +4,13 @@ variable "lambda_name" {
   description = "Lambda function name"
 }
 
+variable "groq_api_key" {
+  type        = string
+  description = "Groq API key for AI categorization"
+  default     = ""
+  sensitive   = true
+}
+
 data "archive_file" "lambda_zip" {
   type        = "zip"
   source_dir  = "${path.root}/../backend/lambda/expenses-api"
@@ -58,6 +65,7 @@ resource "aws_lambda_function" "expenses" {
       AWS_REGION               = var.aws_region
       EXPENSES_TABLE           = aws_dynamodb_table.expenses.name
       CATEGORY_MEMORY_TABLE    = aws_dynamodb_table.category_memory.name
+      GROQ_API_KEY             = var.groq_api_key
     }
   }
 }

@@ -19,7 +19,8 @@ terraform init
 terraform plan -var="aws_region=us-east-1" \
   -var="expenses_table_name=Expenses" \
   -var="category_memory_table_name=CategoryMemory" \
-  -var="app_role_name=finsight-app-role"
+  -var="app_role_name=finsight-app-role" \
+  -var="groq_api_key=YOUR_GROQ_API_KEY"
 terraform apply
 ```
 
