@@ -29,12 +29,24 @@ async function getCategoryFromAI(rawText) {
 }
 
 function json(statusCode, body) {
-  return { statusCode, headers: { "content-type": "application/json" }, body: JSON.stringify(body) };
+  return {
+    statusCode,
+    headers: {
+      "content-type": "application/json",
+      "access-control-allow-origin": "*",
+      "access-control-allow-headers": "*",
+      "access-control-allow-methods": "GET,POST,PUT,DELETE,OPTIONS"
+    },
+    body: JSON.stringify(body)
+  };
 }
 
 export const handler = async (event) => {
   try {
-    const routeKey = `${event.httpMethod} ${event.resource || event.rawPath}`;
+    if (event.requestContext?.http?.method === "OPTIONS" || event.httpMethod === "OPTIONS") {
+      return json(200, { ok: true });
+    }
+    const routeKey = `${event.httpMethod || event.requestContext?.http?.method} ${event.resource || event.rawPath}`;
     const body = event.body ? JSON.parse(event.body) : {};
 
     // POST /add (parse only)

@@ -73,12 +73,17 @@ resource "aws_lambda_function" "expenses" {
 resource "aws_apigatewayv2_api" "http" {
   name          = "expenses-http-api"
   protocol_type = "HTTP"
+  cors_configuration {
+    allow_origins = ["*"]
+    allow_methods = ["GET","POST","PUT","DELETE","OPTIONS"]
+    allow_headers = ["*"]
+  }
 }
 
 resource "aws_apigatewayv2_integration" "lambda" {
   api_id                 = aws_apigatewayv2_api.http.id
   integration_type       = "AWS_PROXY"
-  integration_uri        = aws_lambda_function.expenses.arn
+  integration_uri        = aws_lambda_function.expenses.invoke_arn
   payload_format_version = "2.0"
 }
 
