@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { useApp, type Expense } from "../store";
 import { parseExpenseInput, suggestCategory } from "./utils";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/Card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "../components/Card";
 import { Button } from "../components/Button";
 import { Doughnut, Bar } from "react-chartjs-2";
 import { Progress } from "../components/Progress";
@@ -431,12 +431,12 @@ export default function ExpenseTrackerPage() {
       {activeTab === "data" ? (
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 p-4 flex-1 overflow-hidden">
         {/* Recent Expenses (full width on xl span 2) */}
-        <Card className="h-full overflow-hidden xl:col-span-2">
+        <Card className="xl:col-span-2 h-full flex flex-col">
           <CardHeader>
             <CardTitle>Recent Expenses</CardTitle>
             <CardDescription>Synced with backend</CardDescription>
           </CardHeader>
-          <CardContent className="h-full flex flex-col min-h-0 pb-0">
+          <CardContent className="flex-1 min-h-0 flex flex-col pb-0">
             <div className="mb-3 flex flex-wrap gap-2 items-center">
               <label className="text-sm text-muted-foreground">Range</label>
               <select value={preset} onChange={(e)=> setPreset(e.target.value as any)} className="h-9 rounded-md border border-border px-2 bg-card">
@@ -503,14 +503,16 @@ export default function ExpenseTrackerPage() {
               </tbody>
             </table>
             </div>
-            <div className="flex items-center justify-between mt-3 text-sm pt-3">
+          </CardContent>
+          <CardFooter className="pt-3">
+            <div className="w-full flex items-center justify-between text-sm">
               <div>Page {page} of {totalPages}</div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={prev} disabled={page === 1}>Prev</Button>
                 <Button variant="outline" size="sm" onClick={next} disabled={page === totalPages}>Next</Button>
               </div>
             </div>
-          </CardContent>
+          </CardFooter>
         </Card>
 
         {/* Budgets in Data tab */}
