@@ -204,7 +204,12 @@ export default function ExpenseTrackerPage() {
                     <td className="px-3 py-2">{e.category as string}</td>
                     <td className="px-3 py-2 text-right">{e.amount.toFixed(2)}</td>
                     <td className="px-3 py-2 text-right">
-                      <button aria-label="Delete" onClick={() => handleDelete(e.id)} className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-muted">
+                      <button
+                        aria-label="Delete"
+                        title="Delete"
+                        onClick={() => handleDelete(e.id)}
+                        className="h-7 w-7 inline-flex items-center justify-center rounded-full border border-transparent text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:border-rose-200 dark:hover:border-rose-800 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                      >
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </td>
