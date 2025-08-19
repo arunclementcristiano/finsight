@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.AWS_REGION || "us-east-1" }));
 const EXPENSES_TABLE = process.env.EXPENSES_TABLE || "Expenses";
@@ -11,8 +11,13 @@ export async function POST(req: NextRequest) {
     const { userId, category } = (await req.json()) as { userId: string; category: string };
     if (!userId || !category) return NextResponse.json({ error: "Missing userId or category" }, { status: 400 });
 
-    const res = await ddb.send(new ScanCommand({ TableName: EXPENSES_TABLE }));
-    const items = (res.Items || []).filter((it: any) => it.userId === userId && it.category === category);
+    const res = await ddb.send(new QueryCommand({
+      TableName: EXPENSES_TABLE,
+      IndexName: "userId-date-index",
+      KeyConditionExpression: "userId = :uid",
+      ExpressionAttributeValues: { ":uid": userId }
+    }));
+    const items = (res.Items || []).filter((it: any) => it.category === category);
     const total = items.reduce((sum: number, it: any) => sum + Number(it.amount || 0), 0);
     return NextResponse.json({ items, total });
   } catch (err) {

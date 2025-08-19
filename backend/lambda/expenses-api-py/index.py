@@ -12,14 +12,12 @@ from decimal import Decimal
 
 AWS_REGION = os.environ.get("AWS_REGION") or os.environ.get("REGION") or "us-east-1"
 EXPENSES_TABLE = os.environ.get("EXPENSES_TABLE", "Expenses")
-CATEGORY_MEMORY_TABLE = os.environ.get("CATEGORY_MEMORY_TABLE", "CategoryMemory")
 CATEGORY_RULES_TABLE = os.environ.get("CATEGORY_RULES_TABLE", "CategoryRules")
 GROQ_API_KEY = (os.environ.get("GROQ_API_KEY") or "").strip()
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-70b-versatile")
 
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
 expenses_table = dynamodb.Table(EXPENSES_TABLE)
-category_memory_table = dynamodb.Table(CATEGORY_MEMORY_TABLE)
 category_rules_table = dynamodb.Table(CATEGORY_RULES_TABLE)
 
 
@@ -229,11 +227,7 @@ def handler(event, context):
                 except Exception:
                     pass
 
-            # 3) CategoryMemory terms (user-specific)
-            if not final_category:
-                mem_cat = _match_memory_terms(user_id, lower)
-                if mem_cat:
-                    final_category = mem_cat
+            # 3) Skip CategoryMemory per new requirement (global rules only)
 
             # 4) Groq fallback
             if not final_category:
@@ -303,27 +297,12 @@ def handler(event, context):
                     "createdAt": datetime.utcnow().isoformat(),
                 }
             )
-            # Update memory: increment usage and add term for future matching (skip Uncategorized)
+            # Persist rule->category mapping for future global use
             try:
                 if category != "Uncategorized":
                     term = _extract_term(raw_text)
                     if term:
-                        category_memory_table.update_item(
-                            Key={"userId": user_id, "category": category},
-                            UpdateExpression="ADD usageCount :one, terms :t",
-                            ExpressionAttributeValues={":one": Decimal("1"), ":t": set([term])},
-                        )
-                        # Also persist rule->category mapping for future global use
-                        try:
-                            category_rules_table.put_item(Item={"rule": term, "category": category})
-                        except Exception:
-                            pass
-                    else:
-                        category_memory_table.update_item(
-                            Key={"userId": user_id, "category": category},
-                            UpdateExpression="ADD usageCount :one",
-                            ExpressionAttributeValues={":one": Decimal("1")},
-                        )
+                        category_rules_table.put_item(Item={"rule": term, "category": category})
             except Exception:
                 pass
             return _response(200, {"ok": True, "expenseId": expense_id})

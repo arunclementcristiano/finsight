@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand, UpdateCommand, GetCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, PutCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
 
 // Utilities
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.AWS_REGION || "us-east-1" }));
 const EXPENSES_TABLE = process.env.EXPENSES_TABLE || "Expenses";
-const CATEGORY_MEMORY_TABLE = process.env.CATEGORY_MEMORY_TABLE || "CategoryMemory";
 const CATEGORY_RULES_TABLE = process.env.CATEGORY_RULES_TABLE || "CategoryRules";
 
 const ALLOWED_CATEGORIES = ["Food","Travel","Entertainment","Shopping","Utilities","Healthcare","Other"] as const;
@@ -89,23 +88,6 @@ export async function POST(req: NextRequest) {
       const r = await ddb.send(new GetCommand({ TableName: CATEGORY_RULES_TABLE, Key: { rule: extracted } }));
       const ruleCat = (r.Item as any)?.category as string | undefined;
       if (ruleCat) category = ruleCat;
-    }
-
-    // 3.5) CategoryMemory lookup (user-specific terms)
-    if (!category) {
-      try {
-        const res = await ddb.send(new ScanCommand({ TableName: CATEGORY_MEMORY_TABLE }));
-        const lowerText = rawText.toLowerCase();
-        for (const it of (res.Items || [])) {
-          if (it.userId !== userId) continue;
-          const terms = (it.terms as any[]) || [];
-          for (const t of terms) {
-            const term = String(t || "").toLowerCase();
-            if (term && lowerText.includes(term)) { category = String(it.category || ""); break; }
-          }
-          if (category) break;
-        }
-      } catch {}
     }
 
     // 4) If category unknown -> call Groq

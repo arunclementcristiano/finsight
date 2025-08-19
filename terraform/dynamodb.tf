@@ -26,31 +26,16 @@ resource "aws_dynamodb_table" "expenses" {
     type = "S"
   }
 
-  # Example GSIs you can add later for efficient queries by user/date
-  # global_secondary_index {
-  #   name            = "userId-date-index"
-  #   hash_key        = "userId"
-  #   range_key       = "date"
-  #   projection_type = "ALL"
-  # }
-}
-
-resource "aws_dynamodb_table" "category_memory" {
-  name         = var.category_memory_table_name
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "userId"
-  range_key    = "category"
-
-  attribute {
-    name = "userId"
-    type = "S"
-  }
-
-  attribute {
-    name = "category"
-    type = "S"
+  # GSI to efficiently query by userId and date for list and monthly summaries
+  global_secondary_index {
+    name            = "userId-date-index"
+    hash_key        = "userId"
+    range_key       = "date"
+    projection_type = "ALL"
   }
 }
+
+// Removed CategoryMemory as per simplified flow (global rules only)
 
 resource "aws_dynamodb_table" "category_rules" {
   name         = var.category_rules_table_name
