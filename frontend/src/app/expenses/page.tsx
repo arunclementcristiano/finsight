@@ -6,31 +6,42 @@ import { parseExpenseInput, parseMultipleExpenses, suggestCategory } from "./uti
 import { Button } from "../components/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/Card";
 
+async function groqSuggestCategoryStub(text: string): Promise<{ category?: string; confidence?: number }> {
+	// Placeholder: returns undefined to keep UI path. Replace with Groq API call.
+	return { category: undefined, confidence: 0 };
+}
+
 export default function ExpensesPage() {
 	const { expenses, addExpense, updateExpense, deleteExpense, categoryMemory, rememberCategory, expenseReminderDaily, setExpenseReminderDaily } = useApp();
 	const [input, setInput] = useState("");
 	const [pending, setPending] = useState<Expense | null>(null);
+	const [pendingSuggest, setPendingSuggest] = useState<{ text: string; amount?: number; aiCategory?: string; confidence?: number } | null>(null);
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [editingAmount, setEditingAmount] = useState<string>("");
 	const [editingCategory, setEditingCategory] = useState<string>("");
 	const inputRef = useRef<HTMLInputElement>(null);
 
-	function handleSubmit(e: React.FormEvent) {
+	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
 		const entries = parseMultipleExpenses(input);
 		let addedAny = false;
 		for (const entry of entries) {
-			const memCat = suggestCategory(entry.raw, categoryMemory);
+			const ruleOrMemCat = suggestCategory(entry.raw, categoryMemory);
 			const amount = entry.amount;
-			const category = memCat || entry.category;
 			const note = entry.note || entry.raw;
-			if (amount && category) {
-				const exp: Expense = { id: uuidv4(), text: entry.raw, amount, category, date: new Date().toISOString(), note };
+			if (amount && ruleOrMemCat) {
+				const exp: Expense = { id: uuidv4(), text: entry.raw, amount, category: ruleOrMemCat, date: new Date().toISOString(), note };
 				addExpense(exp);
 				addedAny = true;
 			} else if (entries.length === 1) {
-				const fallback: Expense = { id: uuidv4(), text: entry.raw, amount: amount || 0, category: category || "", date: new Date().toISOString(), note };
-				setPending(fallback);
+				// Try AI
+				const ai = await groqSuggestCategoryStub(entry.raw);
+				if (ai.category && amount) {
+					setPendingSuggest({ text: entry.raw, amount, aiCategory: ai.category, confidence: ai.confidence });
+				} else {
+					const fallback: Expense = { id: uuidv4(), text: entry.raw, amount: amount || 0, category: "", date: new Date().toISOString(), note };
+					setPending(fallback);
+				}
 				return;
 			}
 		}
@@ -51,6 +62,26 @@ export default function ExpensesPage() {
 		setPending(null);
 		setInput("");
 		inputRef.current?.focus();
+	}
+
+	function acceptAISuggestion() {
+		if (!pendingSuggest) return;
+		const { text, amount, aiCategory } = pendingSuggest;
+		if (!amount || !aiCategory) return;
+		const exp: Expense = { id: uuidv4(), text, amount, category: aiCategory, date: new Date().toISOString(), note: text };
+		addExpense(exp);
+		rememberCategory(text.split(" ")[0].toLowerCase(), aiCategory);
+		setPendingSuggest(null);
+		setInput("");
+		inputRef.current?.focus();
+	}
+
+	function rejectAISuggestion() {
+		// fallback to manual selection
+		if (!pendingSuggest) return;
+		const fallback: Expense = { id: uuidv4(), text: pendingSuggest.text, amount: pendingSuggest.amount || 0, category: "", date: new Date().toISOString(), note: pendingSuggest.text };
+		setPendingSuggest(null);
+		setPending(fallback);
 	}
 
 	function startEdit(e: Expense) {
@@ -91,13 +122,22 @@ export default function ExpensesPage() {
 				<Card>
 					<CardHeader>
 						<CardTitle>Log Expense (Chat)</CardTitle>
-						<CardDescription>Type like "Lunch 250, Uber 120". We'll apply rules first, then your saved mappings.</CardDescription>
+						<CardDescription>Type like "Lunch 250, Uber 120". We'll apply rules first, then your saved mappings, then AI if needed.</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<form onSubmit={handleSubmit} className="flex gap-2">
 							<input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} className="flex-1 h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]" placeholder="e.g., Lunch 250, Uber 120" />
 							<Button type="submit">Add</Button>
 						</form>
+						{pendingSuggest ? (
+							<div className="mt-3 rounded-xl border border-border p-3 text-sm">
+								<p className="mb-2">AI suggests category <span className="font-semibold">{pendingSuggest.aiCategory}</span> {pendingSuggest.confidence ? `(confidence ${Math.round((pendingSuggest.confidence||0)*100)}%)` : ""}. Accept?</p>
+								<div className="flex gap-2">
+									<Button onClick={acceptAISuggestion}>Accept</Button>
+									<Button variant="outline" onClick={rejectAISuggestion}>Change</Button>
+								</div>
+							</div>
+						) : null}
 						{pending ? (
 							<div className="mt-3 rounded-xl border border-border p-3 text-sm">
 								<p className="text-muted-foreground mb-2">Missing info. Please confirm:</p>
@@ -108,7 +148,7 @@ export default function ExpensesPage() {
 									{pending.category ? <span className="rounded-md bg-muted px-2 py-1">Category: {pending.category}</span> : (
 										<select defaultValue="" className="h-9 rounded-md border border-border px-2 bg-card" onChange={(e) => confirmPending(undefined, e.target.value)}>
 											<option value="" disabled>Pick category</option>
-											{["Food","Travel","Bills","Shopping","Entertainment","Health","Groceries","Fuel","Other"].map(c => (<option key={c} value={c}>{c}</option>))}
+											{["Food","Travel","Bills","Shopping","Entertainment","Health","Groceries","Fuel","Utilities","Healthcare","Other"].map(c => (<option key={c} value={c}>{c}</option>))}
 										</select>
 									)}
 									<Button variant="outline" onClick={() => setPending(null)}>Cancel</Button>
@@ -142,7 +182,7 @@ export default function ExpensesPage() {
 										<td className="px-3 py-2">
 											{editingId === e.id ? (
 												<select value={editingCategory} onChange={(ev) => setEditingCategory(ev.target.value)} className="h-9 rounded-md border border-border px-2 bg-card">
-													{["Food","Travel","Bills","Shopping","Entertainment","Health","Groceries","Fuel","Other"].map(c => (<option key={c} value={c}>{c}</option>))}
+													{["Food","Travel","Bills","Shopping","Entertainment","Health","Groceries","Fuel","Utilities","Healthcare","Other"].map(c => (<option key={c} value={c}>{c}</option>))}
 												</select>
 											) : e.category}
 										</td>

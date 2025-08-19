@@ -19,7 +19,7 @@ export interface Holding {
 	currentValue?: number;
 }
 
-export type ExpenseCategory = "Food" | "Travel" | "Bills" | "Shopping" | "Entertainment" | "Health" | "Groceries" | "Fuel" | "Other";
+export type ExpenseCategory = "Food" | "Travel" | "Bills" | "Shopping" | "Entertainment" | "Health" | "Groceries" | "Fuel" | "Utilities" | "Healthcare" | "Other";
 
 export interface Expense {
 	id: string;
