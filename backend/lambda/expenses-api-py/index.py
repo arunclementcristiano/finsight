@@ -69,7 +69,7 @@ def _get_category_from_ai(raw_text: str):
         return {"category": "", "confidence": 0.0}
     try:
         system_prompt = (
-            "You are a financial expense categorizer. Allowed categories: Food, Travel, Entertainment, Shopping, Utilities, Healthcare, Other. "
+            "You are a financial expense categorizer. Allowed categories: " + ", ".join(ALLOWED_CATEGORIES) + ". "
             "Given a user input, respond ONLY as JSON: {\"category\": one of the allowed, \"confidence\": number 0..1}."
         )
         payload = {
