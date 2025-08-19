@@ -8,7 +8,7 @@ import { Button } from "../components/Button";
 import { Doughnut, Bar } from "react-chartjs-2";
 import { Progress } from "../components/Progress";
 import { formatCurrency } from "../utils/format";
-import { X, Calendar, ArrowUpDown, ArrowUp, ArrowDown, Eye, EyeOff, Download } from "lucide-react";
+import { X, Calendar, ArrowUpDown, ArrowUp, ArrowDown, Eye, EyeOff, Download, Settings2 } from "lucide-react";
 import { Chart, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from "chart.js";
 
 Chart.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
@@ -37,6 +37,8 @@ export default function ExpenseTrackerPage() {
   });
   const [privacy, setPrivacy] = useState(false);
   const [activeTab, setActiveTab] = useState<"data" | "insights">("data");
+  const [showBudgetsModal, setShowBudgetsModal] = useState(false);
+  const [tempBudgets, setTempBudgets] = useState<Record<string, number>>({});
 
   async function fetchList() {
     try {
@@ -350,6 +352,10 @@ export default function ExpenseTrackerPage() {
               {privacy ? <EyeOff className="h-4 w-4 mr-2"/> : <Eye className="h-4 w-4 mr-2"/>}
               {privacy ? "Unmask" : "Privacy"}
             </Button>
+            <Button variant="outline" onClick={()=> setShowBudgetsModal(true)}>
+              <Settings2 className="h-4 w-4 mr-2"/>
+              Set Budgets
+            </Button>
             <Button variant="outline" onClick={exportCsv}>
               <Download className="h-4 w-4 mr-2"/>
               Export CSV
@@ -582,6 +588,39 @@ export default function ExpenseTrackerPage() {
           </CardContent>
         </Card>
       </div>
+      )}
+
+      {/* Budgets Modal */}
+      {showBudgetsModal && (
+        <div className="fixed inset-0 z-20 bg-black/30 flex items-center justify-center p-4" onClick={()=> setShowBudgetsModal(false)}>
+          <div className="w-full max-w-2xl rounded-xl border border-border bg-card text-foreground shadow-xl" onClick={e=> e.stopPropagation()}>
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+              <div className="font-semibold">Set Budgets</div>
+              <button className="text-muted-foreground hover:text-foreground" onClick={()=> setShowBudgetsModal(false)}><X className="h-5 w-5"/></button>
+            </div>
+            <div className="p-4 max-h-[60vh] overflow-y-auto">
+              <div className="text-sm text-muted-foreground mb-3">Enter a monthly budget per category. Leave blank or 0 if not applicable.</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {(Array.from(new Set(expenses.map(e=> String(e.category || "Other")))).sort((a,b)=> a.localeCompare(b))).map(cat => (
+                  <div key={cat} className="flex items-center justify-between gap-3 rounded-lg border border-border p-2">
+                    <div className="text-sm font-medium">{cat}</div>
+                    <input type="number" step="0.01" defaultValue={(defaultCategoryBudgets?.[cat] || 0)} onChange={(e)=> setTempBudgets(prev=> ({...prev, [cat]: Number(e.target.value) || 0}))} className="h-9 w-28 rounded-md border border-border px-2 bg-background text-right" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="px-4 py-3 border-t border-border flex items-center justify-end gap-2">
+              <Button variant="outline" onClick={()=> setShowBudgetsModal(false)}>Cancel</Button>
+              <Button onClick={async ()=> {
+                const merged = { ...(defaultCategoryBudgets || {}), ...tempBudgets };
+                try { await fetch(`/api/budgets`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", budgets: merged }) }); } catch {}
+                (useApp.getState() as any).setDefaultCategoryBudgets(merged);
+                setTempBudgets({});
+                setShowBudgetsModal(false);
+              }}>Save</Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
