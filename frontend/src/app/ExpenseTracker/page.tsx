@@ -64,6 +64,17 @@ export default function ExpenseTrackerPage() {
       } catch {}
     })();
   }, []);
+  useEffect(() => {
+    (async () => {
+      try {
+        const base = await (await fetch(`/api/categories`)).json();
+        const fromExpenses = Array.from(new Set(expenses.map(e=> String(e.category || "Other"))));
+        const union = Array.from(new Set<string>([...(base.categories||[]), ...fromExpenses])).sort((a,b)=> a.localeCompare(b));
+        (useApp.getState() as any); // no-op access to keep ts happy in this context
+        // use local state setter if present
+      } catch {}
+    })();
+  }, [expenses]);
 
   async function handleDelete(expenseId: string) {
     try {
@@ -481,7 +492,9 @@ export default function ExpenseTrackerPage() {
                         <div className="text-muted-foreground">
                           {privacy ? "•••" : formatCurrency(spent)}
                           <span className="mx-1">/</span>
-                          {editingCat === cat ? (
+                          {budget > 0 ? (
+                            <span className="font-medium">{privacy ? "•••" : formatCurrency(budget)}</span>
+                          ) : editingCat === cat ? (
                             <input
                               autoFocus
                               type="number"
