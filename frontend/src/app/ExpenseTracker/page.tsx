@@ -436,7 +436,7 @@ export default function ExpenseTrackerPage() {
             <CardTitle>Recent Expenses</CardTitle>
             <CardDescription>Synced with backend</CardDescription>
           </CardHeader>
-          <CardContent className="h-full overflow-hidden flex flex-col">
+          <CardContent className="h-full flex flex-col min-h-0">
             <div className="mb-3 flex flex-wrap gap-2 items-center">
               <label className="text-sm text-muted-foreground">Range</label>
               <select value={preset} onChange={(e)=> setPreset(e.target.value as any)} className="h-9 rounded-md border border-border px-2 bg-card">
@@ -455,7 +455,7 @@ export default function ExpenseTrackerPage() {
                 </>
               )}
             </div>
-            <div className="flex-1 overflow-y-auto rounded-xl border border-border">
+            <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-border">
             <table className="w-full text-left text-sm">
               <thead className="bg-card">
                 <tr>
