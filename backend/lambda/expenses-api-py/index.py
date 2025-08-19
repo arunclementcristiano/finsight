@@ -155,7 +155,6 @@ def _extract_term(raw_text: str) -> str:
         return tokens[-1].lower()
     return ""
 
-
 # CategoryMemory support removed
 
 
@@ -226,8 +225,8 @@ def handler(event, context):
                 except Exception:
                     pass
 
-            # 2) CategoryRules table (global rules configured by you)
-            if not final_category:
+            # 2) CategoryRules table (global rules configured by you). If matched, return directly without acknowledgment
+            if not final_category and extracted_term:
                 try:
                     r = category_rules_table.get_item(Key={"rule": extracted_term})
                     rule_cat = (r.get("Item", {}) or {}).get("category")
@@ -250,24 +249,15 @@ def handler(event, context):
                 matched_allowed = next((c for c in ALLOWED_CATEGORIES if c.lower() == ai_cat), None)
                 mapped_ai = matched_allowed or "Other"
 
-                low_conf = False
-                try:
-                    low_conf = (ai_conf is None) or (float(ai_conf) < 0.8)
-                except Exception:
-                    low_conf = True
-
-                if low_conf or mapped_ai == "Other":
-                    # Provide options, but keep suggested category preselected
-                    msg = (
-                        f"Could not parse amount; low-confidence AI suggestion {mapped_ai}. Pick a category."
-                        if amount is None
-                        else f"Parsed amount {amount}; low-confidence AI suggestion {mapped_ai}. Pick a category."
-                    )
-                    # Optionally include AI's raw suggestion first
-                    opts = list(dict.fromkeys([ai_cat_raw] + ALLOWED_CATEGORIES))
-                    return _response(200, {"amount": amount, "category": mapped_ai, "AIConfidence": ai_conf, "options": opts, "message": msg})
-                else:
-                    final_category = mapped_ai
+                # Always provide acknowledgment when Groq was used
+                msg = (
+                    f"Could not parse amount; AI suggestion {mapped_ai}. Pick a category."
+                    if amount is None
+                    else f"Parsed amount {amount}; AI suggestion {mapped_ai}. Pick a category."
+                )
+                # Optionally include AI's raw suggestion first
+                opts = list(dict.fromkeys([ai_cat_raw] + ALLOWED_CATEGORIES))
+                return _response(200, {"amount": amount, "category": mapped_ai, "AIConfidence": ai_conf, "options": opts, "message": msg})
 
             msg = (
                 f"Parsed amount {amount} and category {final_category}" if amount is not None
