@@ -19,6 +19,9 @@ export default function ExpenseTrackerPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [page, setPage] = useState(1);
   const pageSize = 10;
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const amountRef = useRef<HTMLInputElement>(null);
+  const customRef = useRef<HTMLInputElement>(null);
 
   async function fetchList() {
     try {
@@ -56,6 +59,7 @@ export default function ExpenseTrackerPage() {
       // If AI was used (AIConfidence present), require acknowledgment
       if (data && ("AIConfidence" in data) && data.AIConfidence !== undefined) {
         setAi({ amount: data.amount, category: data.category, options: data.options, AIConfidence: data.AIConfidence, raw: rawText });
+        setSelectedCategory(data.category || "Other");
         return;
       }
       // If rules/memory matched and we have amount/category, auto-save without acknowledge
@@ -137,24 +141,20 @@ export default function ExpenseTrackerPage() {
               <div className="mt-3 rounded-xl border border-border p-3 text-sm space-y-2">
                 <div>Suggested: <span className="font-semibold">{ai.category}</span> {ai.AIConfidence ? `(conf ${Math.round((ai.AIConfidence||0)*100)}%)` : ""}</div>
                 <div className="flex flex-wrap gap-2 items-center">
-                  <input type="number" step="0.01" defaultValue={ai.amount ?? 0} className="h-9 w-28 rounded-md border border-border px-2 bg-card text-right"/>
-                  <select defaultValue={ai.category || "Other"} className="h-9 rounded-md border border-border px-2 bg-card">
+                  <input ref={amountRef} type="number" step="0.01" defaultValue={ai.amount ?? 0} className="h-9 w-28 rounded-md border border-border px-2 bg-card text-right"/>
+                  <select value={selectedCategory || ai.category || "Other"} onChange={(e)=> setSelectedCategory(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card">
                     {Array.from(new Set([
                       ai.category as any,
                       ...(((ai as any).options as string[] | undefined) || []),
                       "Food","Travel","Entertainment","Shopping","Utilities","Healthcare","Housing","Education","Insurance","Investment","Loans","Donations","Grooming","Personal","Subscription","Taxes","Gifts","Pet Care","Other"
                     ].filter(Boolean))).map((c: any) => (<option key={c} value={c}>{c}</option>))}
                   </select>
-                  <input type="text" placeholder="Custom category" className="h-9 rounded-md border border-border px-2 bg-card"/>
-                  <Button onClick={(e)=>{
-                    const wrap = (e.currentTarget.parentElement as HTMLElement);
-                    const num = wrap.querySelector("input") as HTMLInputElement;
-                    const inputs = wrap.querySelectorAll("input");
-                    const amtInput = inputs[0] as HTMLInputElement;
-                    const customInput = inputs[1] as HTMLInputElement;
-                    const sel = wrap.querySelector("select") as HTMLSelectElement;
-                    const chosen = (customInput.value || sel.value);
-                    confirm(chosen, amtInput.value);
+                  {ai.category === "Other" && (
+                    <input ref={customRef} type="text" placeholder="Custom category" className="h-9 rounded-md border border-border px-2 bg-card"/>
+                  )}
+                  <Button onClick={()=>{
+                    const chosen = (ai.category === "Other" && customRef.current && customRef.current.value.trim()) ? customRef.current.value.trim() : (selectedCategory || ai.category || "Other");
+                    confirm(chosen, amountRef.current?.value);
                   }}>Confirm</Button>
                 </div>
               </div>
