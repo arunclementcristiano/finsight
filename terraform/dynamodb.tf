@@ -12,6 +12,12 @@ variable "category_rules_table_name" {
   default     = "CategoryRules"
 }
 
+variable "user_budgets_table_name" {
+  description = "DynamoDB table name for per-user default category budgets"
+  type        = string
+  default     = "UserBudgets"
+}
+
 resource "aws_dynamodb_table" "expenses" {
   name         = var.expenses_table_name
   billing_mode = "PAY_PER_REQUEST"
@@ -55,6 +61,17 @@ resource "aws_dynamodb_table" "category_rules" {
   }
 }
 
+resource "aws_dynamodb_table" "user_budgets" {
+  name         = var.user_budgets_table_name
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "userId"
+
+  attribute {
+    name = "userId"
+    type = "S"
+  }
+}
+
 output "expenses_table_name" {
   value = aws_dynamodb_table.expenses.name
 }
@@ -63,5 +80,9 @@ output "expenses_table_name" {
 
 output "category_rules_table_name" {
   value = aws_dynamodb_table.category_rules.name
+}
+
+output "user_budgets_table_name" {
+  value = aws_dynamodb_table.user_budgets.name
 }
 

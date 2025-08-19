@@ -16,7 +16,7 @@ Chart.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarEleme
 const API_BASE = process.env.NEXT_PUBLIC_EXPENSES_API || "/api/expenses";
 
 export default function ExpenseTrackerPage() {
-  const { expenses, setExpenses, addExpense, deleteExpense, categoryMemory, rememberCategory, categoryBudgets, setCategoryBudget } = useApp() as any;
+  const { expenses, setExpenses, addExpense, deleteExpense, categoryMemory, rememberCategory, categoryBudgets, setCategoryBudget, defaultCategoryBudgets, setDefaultCategoryBudgets } = useApp() as any;
   const [input, setInput] = useState("");
   const [ai, setAi] = useState<{ amount?: number; category?: string; options?: string[]; AIConfidence?: number; raw?: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -50,6 +50,18 @@ export default function ExpenseTrackerPage() {
   }
 
   useEffect(() => { fetchList(); }, []);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/budgets?userId=demo`);
+        const data = await res.json();
+        if (data && data.budgets) {
+          const next = Object.fromEntries(Object.entries(data.budgets).map(([k,v]) => [k, Number(v) || 0]));
+          (useApp.getState() as any).setDefaultCategoryBudgets(next);
+        }
+      } catch {}
+    })();
+  }, []);
 
   async function handleDelete(expenseId: string) {
     try {
@@ -181,9 +193,11 @@ export default function ExpenseTrackerPage() {
   const [editingVal, setEditingVal] = useState<string>("");
   function saveBudget(cat: string) {
     const amt = Math.max(0, Number(editingVal) || 0);
-    setCategoryBudget(currentYm, cat, amt);
+    const next = { ...(defaultCategoryBudgets || {}), [cat]: amt };
+    setDefaultCategoryBudgets(next);
     setEditingCat(null);
     setEditingVal("");
+    fetch(`/api/budgets`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", budgets: next }) }).catch(()=>{});
   }
 
   const [monthFilter, setMonthFilter] = useState<string>("");
@@ -257,9 +271,9 @@ export default function ExpenseTrackerPage() {
   }, [expenses]);
 
   const totalBudget = useMemo(() => {
-    const budgets = categoryBudgets?.[currentYm] || {};
+    const budgets = defaultCategoryBudgets || {};
     return Object.values(budgets).reduce((a: number, b: any) => a + (Number(b) || 0), 0);
-  }, [categoryBudgets, currentYm]);
+  }, [defaultCategoryBudgets]);
 
   const budgetUsedPct = totalBudget > 0 ? Math.round((monthSpend / totalBudget) * 100) : 0;
   const topCategory = monthlyCategorySpend.arr.length > 0 ? monthlyCategorySpend.arr[0][0] : "—";
@@ -449,7 +463,7 @@ export default function ExpenseTrackerPage() {
             {(monthlyCategorySpend.arr).length > 0 ? (
               <div className="space-y-3">
                 {(monthlyCategorySpend.arr).map(([cat, spent]) => {
-                  const budget = (categoryBudgets?.[currentYm]?.[cat]) || 0;
+                  const budget = (defaultCategoryBudgets?.[cat]) || 0;
                   const pct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
                   const warn = pct >= 80 && pct < 100;
                   const alert = pct >= 100;

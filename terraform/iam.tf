@@ -17,7 +17,8 @@ data "aws_iam_policy_document" "ddb_access" {
     ]
     resources = [
       aws_dynamodb_table.expenses.arn,
-      aws_dynamodb_table.category_rules.arn
+      aws_dynamodb_table.category_rules.arn,
+      aws_dynamodb_table.user_budgets.arn
     ]
   }
 }
