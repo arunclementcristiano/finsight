@@ -329,7 +329,7 @@ function HoldingsTableWithPagination({ onImport }: { onImport?: () => void }) {
 							</div>
 							<div className="rounded-xl border border-border p-3">
 								<div className="text-xs text-foreground/80">P/L</div>
-								<div className={cn("text-lg font-semibold", totals.pnl >= 0 ? "text-emerald-600" : "text-rose-600")}>{formatNumber(totals.pnl, 2)} ({formatNumber(totals.pnlPct, 2)}%)</div>
+								<div className={cn("text-lg font-semibold", totals.pnl >= 0 ? "text-emerald-600" : "text-rose-600")}>{formatNumber(totals.pnlPct, 2)}%</div>
 							</div>
 						</div>
 						<table className="w-full text-left border rounded-xl overflow-hidden border-border text-sm">
@@ -365,8 +365,7 @@ function HoldingsTableWithPagination({ onImport }: { onImport?: () => void }) {
 												<div className="text-foreground/80 text-xs leading-tight">{formatNumber(current, 2)}</div>
 											</td>
 											<td className="px-3 py-2 text-right">
-												<span className={cn("font-semibold", pnl >= 0 ? "text-emerald-600" : "text-rose-600")}>{formatNumber(pnl, 2)}</span>
-												<span className="ml-2 text-foreground/80">({formatNumber(pnlPct, 2)}%)</span>
+												<span className={cn("font-semibold", pnl >= 0 ? "text-emerald-600" : "text-rose-600")}>{formatNumber(pnlPct, 2)}%</span>
 											</td>
 											<td className="px-3 py-2"><button className="text-xs text-rose-600 hover:underline" onClick={() => deleteHolding(h.id)}>Delete</button></td>
 										</tr>
