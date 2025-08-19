@@ -243,7 +243,7 @@ def handler(event, context):
                                 FilterExpression="contains(#r, :w1) AND contains(#r, :w2)",
                                 ExpressionAttributeNames={"#r": "rule"},
                                 ExpressionAttributeValues={":w1": w[0], ":w2": w[1]},
-                                ProjectionExpression="#r, category"
+                                ProjectionExpression="category, #r"
                             )
                             items = scan.get("Items", [])
                             if items:

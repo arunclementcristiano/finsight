@@ -118,17 +118,15 @@ export async function POST(req: NextRequest) {
         const parts = extracted.split(" ").filter(Boolean);
         if (parts.length >= 2) {
           try {
-            const fe = `contains(#r, :w1) AND contains(#r, :w2)`;
             const scan = await ddb.send(new ScanCommand({
               TableName: CATEGORY_RULES_TABLE,
-              FilterExpression: fe,
+              FilterExpression: "contains(#r, :w1) AND contains(#r, :w2)",
               ExpressionAttributeNames: { "#r": "rule" },
               ExpressionAttributeValues: { ":w1": parts[0], ":w2": parts[1] },
-              ProjectionExpression: "#r, #c",
-              ExpressionAttributeNamesAdditional: undefined
-            } as any));
+              ProjectionExpression: "category, #r"
+            }));
             const hit = (scan.Items || [])[0] as any;
-            if (hit && hit.category) category = hit.category as string;
+            if (hit && hit.category) category = String(hit.category);
           } catch {}
         }
       }
