@@ -239,15 +239,13 @@ def handler(event, context):
                     try:
                         w = extracted_term.split()
                         if len(w) >= 2:
-                            scan = category_rules_table.scan(
-                                FilterExpression="contains(#r, :w1) AND contains(#r, :w2)",
-                                ExpressionAttributeNames={"#r": "rule"},
-                                ExpressionAttributeValues={":w1": w[0], ":w2": w[1]},
-                                ProjectionExpression="category, #r"
-                            )
+                            scan = category_rules_table.scan(ProjectionExpression="#r, category", ExpressionAttributeNames={"#r": "rule"})
                             items = scan.get("Items", [])
-                            if items:
-                                final_category = items[0].get("category")
+                            for it in items:
+                                r = str(it.get("rule", "")).lower()
+                                if w[0].lower() in r and w[1].lower() in r:
+                                    final_category = it.get("category")
+                                    break
                     except Exception:
                         pass
 

@@ -118,15 +118,19 @@ export async function POST(req: NextRequest) {
         const parts = extracted.split(" ").filter(Boolean);
         if (parts.length >= 2) {
           try {
-            const scan = await ddb.send(new ScanCommand({
+            // Case-insensitive fallback: scan and filter in code
+            const scanAll = await ddb.send(new ScanCommand({
               TableName: CATEGORY_RULES_TABLE,
-              FilterExpression: "contains(#r, :w1) AND contains(#r, :w2)",
-              ExpressionAttributeNames: { "#r": "rule" },
-              ExpressionAttributeValues: { ":w1": parts[0], ":w2": parts[1] },
-              ProjectionExpression: "category, #r"
+              ProjectionExpression: "#r, #c",
+              ExpressionAttributeNames: { "#r": "rule", "#c": "category" }
             }));
-            const hit = (scan.Items || [])[0] as any;
-            if (hit && hit.category) category = String(hit.category);
+            const lc1 = parts[0].toLowerCase();
+            const lc2 = parts[1].toLowerCase();
+            const match = (scanAll.Items || []).find((it: any) => {
+              const r = String(it.rule || "").toLowerCase();
+              return r.includes(lc1) && r.includes(lc2);
+            });
+            if (match && match.category) category = String(match.category);
           } catch {}
         }
       }
