@@ -503,15 +503,13 @@ export default function ExpenseTrackerPage() {
               </tbody>
             </table>
             </div>
-            {sortedExpenses.length > pageSize ? (
-              <div className="flex items-center justify-between mt-3 text-sm">
-                <div>Page {page} of {totalPages}</div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={prev} disabled={page === 1}>Prev</Button>
-                  <Button variant="outline" size="sm" onClick={next} disabled={page === totalPages}>Next</Button>
-                </div>
+            <div className="flex items-center justify-between mt-3 text-sm">
+              <div>Page {page} of {totalPages}</div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={prev} disabled={page === 1}>Prev</Button>
+                <Button variant="outline" size="sm" onClick={next} disabled={page === totalPages}>Next</Button>
               </div>
-            ) : null}
+            </div>
           </CardContent>
         </Card>
 
