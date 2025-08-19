@@ -22,6 +22,17 @@ resource "aws_dynamodb_table" "expenses" {
     type = "S"
   }
 
+  # Attributes used by the GSI must be defined here
+  attribute {
+    name = "userId"
+    type = "S"
+  }
+
+  attribute {
+    name = "date"
+    type = "S"
+  }
+
   # GSI to efficiently query by userId and date for list and monthly summaries
   global_secondary_index {
     name            = "userId-date-index"
