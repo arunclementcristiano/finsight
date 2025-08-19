@@ -139,13 +139,22 @@ export default function ExpenseTrackerPage() {
                 <div className="flex flex-wrap gap-2 items-center">
                   <input type="number" step="0.01" defaultValue={ai.amount ?? 0} className="h-9 w-28 rounded-md border border-border px-2 bg-card text-right"/>
                   <select defaultValue={ai.category || "Other"} className="h-9 rounded-md border border-border px-2 bg-card">
-                    {Array.from(new Set([ai.category, ...(ai as any).options || []].filter(Boolean))).map((c: any) => (<option key={c} value={c}>{c}</option>))}
+                    {Array.from(new Set([
+                      ai.category as any,
+                      ...(((ai as any).options as string[] | undefined) || []),
+                      "Food","Travel","Entertainment","Shopping","Utilities","Healthcare","Housing","Education","Insurance","Investment","Loans","Donations","Grooming","Personal","Subscription","Taxes","Gifts","Pet Care","Other"
+                    ].filter(Boolean))).map((c: any) => (<option key={c} value={c}>{c}</option>))}
                   </select>
+                  <input type="text" placeholder="Custom category" className="h-9 rounded-md border border-border px-2 bg-card"/>
                   <Button onClick={(e)=>{
                     const wrap = (e.currentTarget.parentElement as HTMLElement);
                     const num = wrap.querySelector("input") as HTMLInputElement;
+                    const inputs = wrap.querySelectorAll("input");
+                    const amtInput = inputs[0] as HTMLInputElement;
+                    const customInput = inputs[1] as HTMLInputElement;
                     const sel = wrap.querySelector("select") as HTMLSelectElement;
-                    confirm(sel.value, num.value);
+                    const chosen = (customInput.value || sel.value);
+                    confirm(chosen, amtInput.value);
                   }}>Confirm</Button>
                 </div>
               </div>

@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
       const matchedAllowed = ALLOWED_CATEGORIES.find(c => c.toLowerCase() === aiCat);
       category = matchedAllowed || "Other";
 
-      // Build options for user acknowledgment: distinct CategoryRules categories + allowed
+      // Build options for user acknowledgment: distinct CategoryRules categories + allowed (include AI's raw category)
       try {
         const scan = await ddb.send(new ScanCommand({ TableName: CATEGORY_RULES_TABLE, ProjectionExpression: "#c", ExpressionAttributeNames: { "#c": "category" } }));
         const fromRules = Array.from(new Set((scan.Items || []).map((it: any) => String(it.category || "")).filter(Boolean)));
