@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// 5) After user confirms AI suggestion, save to Expenses + update CategoryMemory
+// 5) After user confirms AI suggestion, save to Expenses and persist global rule mapping
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
@@ -152,14 +152,7 @@ export async function PUT(req: NextRequest) {
       Item: { expenseId, userId, amount, category, rawText, date: isoDate, createdAt: new Date().toISOString() },
     }));
 
-    // Update CategoryMemory (upsert usageCount and append extracted term), and persist rule mapping
     const extracted = (rawText.toLowerCase().match(/\b(?:on|for|at|to)\s+([a-z][a-z\s]{1,30})/i)?.[1] || rawText.toLowerCase().split(/\s+/).filter(Boolean).slice(-1)[0] || "").trim();
-    await ddb.send(new UpdateCommand({
-      TableName: CATEGORY_MEMORY_TABLE,
-      Key: { userId, category },
-      UpdateExpression: "SET terms = list_append(if_not_exists(terms, :empty), :t) ADD usageCount :inc",
-      ExpressionAttributeValues: { ":inc": 1, ":t": extracted ? [extracted] : [], ":empty": [] },
-    }));
 
     if (category !== "Uncategorized" && extracted) {
       await ddb.send(new PutCommand({ TableName: CATEGORY_RULES_TABLE, Item: { rule: extracted, category } }));

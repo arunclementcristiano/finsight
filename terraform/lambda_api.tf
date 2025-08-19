@@ -46,7 +46,6 @@ resource "aws_iam_role_policy" "lambda_ddb_access" {
       ],
       Resource: [
         aws_dynamodb_table.expenses.arn,
-        aws_dynamodb_table.category_memory.arn,
         aws_dynamodb_table.category_rules.arn
       ]
     }]

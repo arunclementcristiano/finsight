@@ -4,11 +4,7 @@ variable "expenses_table_name" {
   default     = "Expenses"
 }
 
-variable "category_memory_table_name" {
-  description = "DynamoDB table name for category memory"
-  type        = string
-  default     = "CategoryMemory"
-}
+// CategoryMemory removed per simplified flow
 
 variable "category_rules_table_name" {
   description = "DynamoDB table name for global category rules"
@@ -52,9 +48,7 @@ output "expenses_table_name" {
   value = aws_dynamodb_table.expenses.name
 }
 
-output "category_memory_table_name" {
-  value = aws_dynamodb_table.category_memory.name
-}
+// category_memory_table_name output removed
 
 output "category_rules_table_name" {
   value = aws_dynamodb_table.category_rules.name

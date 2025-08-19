@@ -137,22 +137,7 @@ def _extract_term(raw_text: str) -> str:
     return ""
 
 
-def _match_memory_terms(user_id: str, lower_text: str) -> str:
-    try:
-        resp = category_memory_table.query(KeyConditionExpression=Key("userId").eq(user_id))
-        for item in resp.get("Items", []):
-            cat = item.get("category")
-            terms = item.get("terms") or []
-            # terms may be SS (set) or list
-            for t in list(terms):
-                try:
-                    if t and t.lower() in lower_text:
-                        return cat
-                except Exception:
-                    continue
-    except Exception:
-        pass
-    return ""
+# CategoryMemory support removed
 
 
 def handler(event, context):
