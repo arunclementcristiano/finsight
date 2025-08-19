@@ -161,7 +161,8 @@ export default function ExpenseTrackerPage() {
                   </select>
                   <input ref={customRef} type="text" placeholder="Custom category (optional)" className="h-9 rounded-md border border-border px-2 bg-card"/>
                   <Button onClick={()=>{
-                    const chosen = (ai.category === "Other" && customRef.current && customRef.current.value.trim()) ? customRef.current.value.trim() : (selectedCategory || ai.category || "Other");
+                    const custom = (customRef.current?.value || "").trim();
+                    const chosen = custom || (selectedCategory || ai.category || "Other");
                     confirm(chosen, amountRef.current?.value);
                   }}>Confirm</Button>
                 </div>
