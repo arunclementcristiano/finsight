@@ -436,7 +436,7 @@ export default function ExpenseTrackerPage() {
             <CardTitle>Recent Expenses</CardTitle>
             <CardDescription>Synced with backend</CardDescription>
           </CardHeader>
-          <CardContent className="h-full flex flex-col min-h-0">
+          <CardContent className="h-full flex flex-col min-h-0 pb-0">
             <div className="mb-3 flex flex-wrap gap-2 items-center">
               <label className="text-sm text-muted-foreground">Range</label>
               <select value={preset} onChange={(e)=> setPreset(e.target.value as any)} className="h-9 rounded-md border border-border px-2 bg-card">
@@ -503,7 +503,7 @@ export default function ExpenseTrackerPage() {
               </tbody>
             </table>
             </div>
-            <div className="flex items-center justify-between mt-3 text-sm">
+            <div className="flex items-center justify-between mt-3 text-sm pt-3">
               <div>Page {page} of {totalPages}</div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={prev} disabled={page === 1}>Prev</Button>
