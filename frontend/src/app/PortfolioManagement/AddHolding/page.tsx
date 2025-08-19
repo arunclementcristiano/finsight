@@ -9,260 +9,6 @@ import { formatCurrency, formatNumber } from "../../utils/format";
 import { Banknote, BarChart3, IndianRupee, Percent, Layers, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "../../components/utils";
 
-type EntryMode = "units" | "amount";
-
-interface HoldingFormState {
-	instrumentClass: AssetClass | "";
-	name: string;
-	symbol: string;
-	units: string;
-	price: string;
-	investedAmount: string;
-	currentValue: string;
-}
-
-const instrumentOptions: AssetClass[] = ["Stocks", "Mutual Funds", "Gold", "Real Estate", "Debt", "Liquid"];
-
-export default function AddHoldingPage() {
-	const { addHolding, profile } = useApp();
-	const currency = profile.currency || "INR";
-	const [mode, setMode] = useState<EntryMode>("units");
-	const [form, setForm] = useState<HoldingFormState>({ instrumentClass: "", name: "", symbol: "", units: "", price: "", investedAmount: "", currentValue: "" });
-	const [submitted, setSubmitted] = useState(false);
-	const [tab, setTab] = useState<"holdings" | "add">("holdings");
-	const [showImport, setShowImport] = useState(false);
-
-	function onChange<K extends keyof HoldingFormState>(key: K) {
-		return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-			setForm(prev => ({ ...prev, [key]: e.target.value }));
-		};
-	}
-
-	const numeric = useMemo(() => {
-		const n = { units: parseFloat(form.units), price: parseFloat(form.price), investedAmount: parseFloat(form.investedAmount), currentValue: parseFloat(form.currentValue) };
-		return {
-			units: Number.isFinite(n.units) ? n.units : NaN,
-			price: Number.isFinite(n.price) ? n.price : NaN,
-			investedAmount: Number.isFinite(n.investedAmount) ? n.investedAmount : NaN,
-			currentValue: Number.isFinite(n.currentValue) ? n.currentValue : NaN,
-		};
-	}, [form]);
-
-	const computed = useMemo(() => {
-		const totalByUnits = !Number.isNaN(numeric.units) && !Number.isNaN(numeric.price) ? numeric.units * numeric.price : NaN;
-		const totalByAmount = !Number.isNaN(numeric.currentValue) ? numeric.currentValue : NaN;
-		const invested = mode === "units" ? (!Number.isNaN(totalByUnits) ? totalByUnits : NaN) : (!Number.isNaN(numeric.investedAmount) ? numeric.investedAmount : NaN);
-		const current = mode === "units" ? totalByUnits : totalByAmount;
-		const pnl = !Number.isNaN(invested) && !Number.isNaN(current) ? current - invested : NaN;
-		const pnlPct = !Number.isNaN(invested) && invested > 0 && !Number.isNaN(current) ? ((current - invested) / invested) * 100 : NaN;
-		return { invested, current, pnl, pnlPct };
-	}, [numeric, mode]);
-
-	const errors = useMemo(() => {
-		const e: Partial<Record<keyof HoldingFormState | "_form", string>> = {};
-		if (!form.instrumentClass) e.instrumentClass = "Select an instrument class";
-		if (!form.name.trim()) e.name = "Enter a name";
-		if (mode === "units") {
-			if (Number.isNaN(numeric.units) || numeric.units <= 0) e.units = "Enter units > 0";
-			if (Number.isNaN(numeric.price) || numeric.price <= 0) e.price = "Enter price > 0";
-		} else {
-			if (Number.isNaN(numeric.investedAmount) || numeric.investedAmount < 0) e.investedAmount = "Enter invested amount ≥ 0";
-			if (Number.isNaN(numeric.currentValue) || numeric.currentValue <= 0) e.currentValue = "Enter current value > 0";
-		}
-		return e;
-	}, [form, mode, numeric]);
-
-	const isValid = useMemo(() => Object.keys(errors).length === 0, [errors]);
-
-	function handleSubmit(e: React.FormEvent) {
-		e.preventDefault();
-		if (!isValid) return;
-		const id = uuidv4();
-		addHolding({
-			id,
-			instrumentClass: form.instrumentClass as AssetClass,
-			name: form.name.trim(),
-			symbol: form.symbol.trim() || undefined,
-			units: mode === "units" && !Number.isNaN(numeric.units) ? numeric.units : undefined,
-			price: mode === "units" && !Number.isNaN(numeric.price) ? numeric.price : undefined,
-			investedAmount: !Number.isNaN(computed.invested) ? Number(computed.invested.toFixed(2)) : undefined,
-			currentValue: !Number.isNaN(computed.current) ? Number(computed.current.toFixed(2)) : undefined,
-		});
-		setSubmitted(true);
-	}
-
-	function resetForm() {
-		setForm({ instrumentClass: "", name: "", symbol: "", units: "", price: "", investedAmount: "", currentValue: "" });
-		setSubmitted(false);
-	}
-
-	return (
-		<div className="space-y-4">
-			<div className="flex items-center gap-2 border-b border-border">
-				<button onClick={() => setTab("holdings")} className={`px-4 py-2 text-sm rounded-t-md transition-colors ${tab === "holdings" ? "text-indigo-600 border-b-2 border-indigo-600 -mb-px" : "text-foreground hover:bg-muted"}`}>Holdings</button>
-				<button onClick={() => setTab("add")} className={`px-4 py-2 text-sm rounded-t-md transition-colors ${tab === "add" ? "text-indigo-600 border-b-2 border-indigo-600 -mb-px" : "text-foreground hover:bg-muted"}`}>Add Holding</button>
-			</div>
-
-			{tab === "holdings" && (
-				<HoldingsTableWithPagination onImport={() => setShowImport(true)} />
-			)}
-
-			{tab === "add" && (
-				<div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-					<div className="flex flex-col gap-6 order-1 xl:order-none">
-						<Card>
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2"><Layers className="h-5 w-5 text-indigo-600" /> Add Holding</CardTitle>
-								<CardDescription>Record a new asset in your portfolio. Choose how you'd like to enter values.</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<div className="mb-4 inline-flex rounded-xl border border-border bg-card p-1 transition-colors">
-									<button type="button" className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === "units" ? "bg-gradient-to-r from-emerald-500 to-indigo-600 text-white" : "text-foreground hover:bg-muted"}`} onClick={() => setMode("units")}>
-										By Units
-									</button>
-									<button type="button" className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === "amount" ? "bg-gradient-to-r from-emerald-500 to-indigo-600 text-white" : "text-foreground hover:bg-muted"}`} onClick={() => setMode("amount")}>
-										By Amount
-									</button>
-								</div>
-
-								<form onSubmit={handleSubmit} className="space-y-5">
-									{/* instrument, name, symbol and numeric inputs - unchanged */}
-									<div>
-										<label className="block text-sm font-medium text-muted-foreground mb-1">Instrument Class</label>
-										<select value={form.instrumentClass} onChange={onChange("instrumentClass")} className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors">
-											<option value="">Select</option>
-											{instrumentOptions.map(opt => (<option key={opt} value={opt}>{opt}</option>))}
-										</select>
-										{errors.instrumentClass ? <p className="mt-1 text-sm text-rose-600">{errors.instrumentClass}</p> : null}
-									</div>
-
-									<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-										<div>
-											<label className="block text-sm font-medium text-muted-foreground mb-1">Name</label>
-											<input value={form.name} onChange={onChange("name")} className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="e.g., Reliance Industries" />
-											{errors.name ? <p className="mt-1 text-sm text-rose-600">{errors.name}</p> : null}
-										</div>
-										<div>
-											<label className="block text-sm font-medium text-muted-foreground mb-1">Symbol (optional)</label>
-											<input value={form.symbol} onChange={onChange("symbol")} className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="e.g., RELIANCE" />
-										</div>
-									</div>
-
-									{mode === "units" ? (
-										<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-											<div>
-												<label className="block text-sm font-medium text-muted-foreground mb-1">Units</label>
-												<div className="relative">
-													<input inputMode="decimal" type="number" step="0.0001" value={form.units} onChange={onChange("units")} className="w-full h-11 rounded-xl border border-border pl-3 pr-10 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
-													<BarChart3 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-												</div>
-												{errors.units ? <p className="mt-1 text-sm text-rose-600">{errors.units}</p> : null}
-											</div>
-											<div>
-												<label className="block text-sm font-medium text-muted-foreground mb-1">Price</label>
-												<div className="relative">
-													<input inputMode="decimal" type="number" step="0.01" value={form.price} onChange={onChange("price")} className="w-full h-11 rounded-xl border border-border pl-9 pr-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
-													<IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-												</div>
-												{errors.price ? <p className="mt-1 text-sm text-rose-600">{errors.price}</p> : null}
-											</div>
-										</div>
-									) : (
-										<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-											<div>
-												<label className="block text-sm font-medium text-muted-foreground mb-1">Invested Amount</label>
-												<div className="relative">
-													<input inputMode="decimal" type="number" step="0.01" value={form.investedAmount} onChange={onChange("investedAmount")} className="w-full h-11 rounded-xl border border-border pl-9 pr-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
-													<Banknote className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-												</div>
-												{errors.investedAmount ? <p className="mt-1 text-sm text-rose-600">{errors.investedAmount}</p> : null}
-											</div>
-											<div>
-												<label className="block text-sm font-medium text-muted-foreground mb-1">Current Value</label>
-												<div className="relative">
-													<input inputMode="decimal" type="number" step="0.01" value={form.currentValue} onChange={onChange("currentValue")} className="w-full h-11 rounded-xl border border-border pl-9 pr-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
-													<IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-												</div>
-												{errors.currentValue ? <p className="mt-1 text-sm text-rose-600">{errors.currentValue}</p> : null}
-											</div>
-										</div>
-									)}
-
-									<CardFooter className="pt-2 flex items-center gap-3">
-										<Button type="submit" disabled={!isValid} className="min-w-[160px]">Save Holding</Button>
-										<Button type="button" variant="outline" onClick={resetForm}>Reset</Button>
-										{submitted && (<span className="text-sm text-emerald-600">Saved!</span>)}
-									</CardFooter>
-								</form>
-							</CardContent>
-						</Card>
-					</div>
-					<div className="flex flex-col gap-6 order-none xl:order-1">
-						<Card className="xl:sticky xl:top-20">
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2"><TrendingUpIcon /> Live Summary</CardTitle>
-								<CardDescription>Real-time preview updates as you type.</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-									<SummaryStat label="Invested" value={formatCurrency(computed.invested, currency)} icon={<Banknote className="h-4 w-4" />} />
-									<SummaryStat label="Current" value={formatCurrency(computed.current, currency)} icon={<IndianRupee className="h-4 w-4" />} />
-									<SummaryStat label="P/L" value={Number.isNaN(computed.pnl) ? "—" : `${formatCurrency(computed.pnl, currency)} (${Number.isNaN(computed.pnlPct) ? "—" : formatNumber(computed.pnlPct, 2)}%)`} icon={<Percent className="h-4 w-4" />} valueClassName={computed.pnl > 0 ? "text-emerald-600" : computed.pnl < 0 ? "text-rose-600" : ""} />
-								</div>
-							</CardContent>
-						</Card>
-					</div>
-				</div>
-			)}
-
-			{/* Import modal */}
-			{showImport && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-					<div className="w-full max-w-md rounded-xl border border-border bg-card p-5 text-foreground">
-						<div className="flex items-center justify-between mb-3">
-							<h3 className="text-lg font-semibold">Import Holdings</h3>
-							<button className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-muted" onClick={() => setShowImport(false)}>✕</button>
-						</div>
-						<div className="space-y-3">
-							<input type="file" className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground" />
-							<p className="text-sm text-muted-foreground">CSV/XLSX supported. This is a UI stub.</p>
-							<div className="flex justify-end gap-2 pt-2">
-								<Button variant="outline" onClick={() => setShowImport(false)}>Cancel</Button>
-								<Button onClick={() => setShowImport(false)}>Continue</Button>
-							</div>
-						</div>
-					</div>
-				</div>
-			)}
-		</div>
-	);
-}
-
-function SummaryStat({ label, value, icon, valueClassName = "" }: { label: string; value: string; icon?: React.ReactNode; valueClassName?: string }) {
-	return (
-		<div className="rounded-xl border border-border p-4 bg-card transition-colors">
-			<div className="flex items-center gap-2 mb-1 text-muted-foreground">
-				<span className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-muted text-foreground/80">{icon}</span>
-				<span className="text-sm">{label}</span>
-			</div>
-			<div className={`text-xl font-semibold ${valueClassName}`}>{value}</div>
-		</div>
-	);
-}
-
-function DetailItem({ label, value }: { label: string; value: string }) {
-	return (
-		<div>
-			<div className="text-xs text-muted-foreground">{label}</div>
-			<div className="text-sm font-medium">{value}</div>
-		</div>
-	);
-}
-
-function TrendingUpIcon() {
-	return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-indigo-100 text-indigo-700"> <BarChart3 className="h-4 w-4" /> </span>;
-}
-
 function HoldingsTableWithPagination({ onImport }: { onImport?: () => void }) {
 	const { holdings, deleteHolding, profile } = useApp();
 	const currency = profile.currency || "INR";
@@ -329,7 +75,7 @@ function HoldingsTableWithPagination({ onImport }: { onImport?: () => void }) {
 							</div>
 							<div className="rounded-xl border border-border p-3">
 								<div className="text-xs text-foreground/80">P/L</div>
-								<div className={cn("text-lg font-semibold", totals.pnl >= 0 ? "text-emerald-600" : "text-rose-600")}>{formatNumber(totals.pnl, 2)} ({formatNumber(totals.pnlPct, 2)}%)</div>
+								<div className={cn("text-lg font-semibold", totals.pnlPct >= 0 ? "text-emerald-600" : "text-rose-600")}>{formatNumber(totals.pnlPct, 2)}%</div>
 							</div>
 						</div>
 						<table className="w-full text-left border rounded-xl overflow-hidden border-border text-sm">
@@ -337,8 +83,10 @@ function HoldingsTableWithPagination({ onImport }: { onImport?: () => void }) {
 								<tr>
 									<th className="px-3 py-2 border-b">Class</th>
 									<th className="px-3 py-2 border-b">Name / Symbol</th>
-									<th className="px-3 py-2 border-b text-right">Units / Price</th>
-									<th className="px-3 py-2 border-b text-right">Invested / Current</th>
+									<th className="px-3 py-2 border-b text-right">Units</th>
+									<th className="px-3 py-2 border-b text-right">Price</th>
+									<th className="px-3 py-2 border-b text-right">Invested</th>
+									<th className="px-3 py-2 border-b text-right">Current</th>
 									<th className="px-3 py-2 border-b text-right">P/L</th>
 									<th className="px-3 py-2 border-b">Actions</th>
 								</tr>
@@ -356,24 +104,17 @@ function HoldingsTableWithPagination({ onImport }: { onImport?: () => void }) {
 												<div className="font-medium leading-tight">{h.name}</div>
 												<div className="text-foreground/80 text-xs leading-tight">{h.symbol || "—"}</div>
 											</td>
-											<td className="px-3 py-2 text-right">
-												<div className="leading-tight">{typeof h.units === "number" ? formatNumber(h.units, 2) : "—"}</div>
-												<div className="text-foreground/80 text-xs leading-tight">{typeof h.price === "number" ? formatNumber(h.price, 2) : "—"}</div>
-											</td>
-											<td className="px-3 py-2 text-right">
-												<div className="leading-tight">{formatNumber(invested, 2)}</div>
-												<div className="text-foreground/80 text-xs leading-tight">{formatNumber(current, 2)}</div>
-											</td>
-											<td className="px-3 py-2 text-right">
-												<span className={cn("font-semibold", pnl >= 0 ? "text-emerald-600" : "text-rose-600")}>{formatNumber(pnl, 2)}</span>
-												<span className="ml-2 text-foreground/80">({formatNumber(pnlPct, 2)}%)</span>
-											</td>
+											<td className="px-3 py-2 text-right">{typeof h.units === "number" ? formatNumber(h.units, 2) : "—"}</td>
+											<td className="px-3 py-2 text-right">{typeof h.price === "number" ? formatNumber(h.price, 2) : "—"}</td>
+											<td className="px-3 py-2 text-right">{formatNumber(invested, 2)}</td>
+											<td className="px-3 py-2 text-right">{formatNumber(current, 2)}</td>
+											<td className="px-3 py-2 text-right"><span className={cn("font-semibold", pnlPct >= 0 ? "text-emerald-600" : "text-rose-600")}>{formatNumber(pnlPct, 2)}%</span></td>
 											<td className="px-3 py-2"><button className="text-xs text-rose-600 hover:underline" onClick={() => deleteHolding(h.id)}>Delete</button></td>
 										</tr>
-								);
-							})}
-						</tbody>
-					</table>
+									);
+								})}
+							</tbody>
+						</table>
 					</>
 				)}
 			</CardContent>

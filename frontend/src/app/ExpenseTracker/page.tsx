@@ -4,6 +4,10 @@ import { v4 as uuidv4 } from "uuid";
 import { useApp, type Expense } from "../store";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/Card";
 import { Button } from "../components/Button";
+import { Doughnut, Bar } from "react-chartjs-2";
+import { Chart, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from "chart.js";
+
+Chart.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
 const API_BASE = process.env.NEXT_PUBLIC_EXPENSES_API || "/api/expenses";
 
@@ -12,6 +16,8 @@ export default function ExpenseTrackerPage() {
   const [input, setInput] = useState("");
   const [ai, setAi] = useState<{ amount?: number; category?: string; options?: string[]; AIConfidence?: number; raw?: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   async function fetchList() {
     try {
@@ -34,7 +40,24 @@ export default function ExpenseTrackerPage() {
     try {
       const res = await fetch(`${API_BASE}/add`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText }) });
       const data = await res.json();
-      setAi({ amount: data.amount, category: data.category, options: data.options, AIConfidence: data.AIConfidence, raw: rawText });
+      // If AI was used (AIConfidence present), require acknowledgment
+      if (data && ("AIConfidence" in data) && data.AIConfidence !== undefined) {
+        setAi({ amount: data.amount, category: data.category, options: data.options, AIConfidence: data.AIConfidence, raw: rawText });
+        return;
+      }
+      // If rules/memory matched and we have amount/category, auto-save without acknowledge
+      if (data && data.category && typeof data.amount === "number" && isFinite(data.amount)) {
+        const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: data.category, amount: data.amount }) });
+        const saved = await put.json();
+        if (saved && saved.ok) {
+          addExpense({ id: saved.expenseId || uuidv4(), text: rawText, amount: data.amount, category: data.category, date: new Date().toISOString(), note: rawText });
+          setInput("");
+          inputRef.current?.focus();
+          return;
+        }
+      }
+      // Missing amount or problematic parse: ask user to confirm amount/category
+      setAi({ amount: data?.amount, category: data?.category, options: data?.options, AIConfidence: data?.AIConfidence, raw: rawText });
     } catch {}
   }
 
@@ -60,6 +83,24 @@ export default function ExpenseTrackerPage() {
     for (const e of expenses) map.set(e.category as string, (map.get(e.category as string) || 0) + e.amount);
     return Array.from(map.entries()).sort((a,b)=> b[1]-a[1]);
   }, [expenses]);
+
+  const monthlySummary = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const e of expenses) {
+      const d = new Date(e.date);
+      const ym = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+      map.set(ym, (map.get(ym) || 0) + e.amount);
+    }
+    const arr = Array.from(map.entries()).sort((a,b)=> a[0] < b[0] ? -1 : 1);
+    const last = arr.slice(-6);
+    return last;
+  }, [expenses]);
+
+  const totalPages = Math.max(1, Math.ceil(expenses.length / pageSize));
+  const startIdx = (page - 1) * pageSize;
+  const pageRows = expenses.slice(startIdx, startIdx + pageSize);
+  function prev() { setPage(p => Math.max(1, p - 1)); }
+  function next() { setPage(p => Math.min(totalPages, p + 1)); }
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -110,7 +151,7 @@ export default function ExpenseTrackerPage() {
                 </tr>
               </thead>
               <tbody>
-                {expenses.map(e => (
+                {pageRows.map(e => (
                   <tr key={e.id} className="border-b align-top">
                     <td className="px-3 py-2">{new Date(e.date).toLocaleString()}</td>
                     <td className="px-3 py-2">{e.text}</td>
@@ -120,6 +161,15 @@ export default function ExpenseTrackerPage() {
                 ))}
               </tbody>
             </table>
+            {expenses.length > pageSize && (
+              <div className="flex items-center justify-between mt-3 text-sm">
+                <div>Page {page} of {totalPages}</div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={prev} disabled={page === 1}>Prev</Button>
+                  <Button variant="outline" size="sm" onClick={next} disabled={page === totalPages}>Next</Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -131,14 +181,29 @@ export default function ExpenseTrackerPage() {
             <CardDescription>Totals by category</CardDescription>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-2 text-sm">
-              {categorySummary.map(([cat, amt]) => (
-                <li key={cat} className="flex items-center justify-between">
-                  <span>{cat}</span>
-                  <span className="font-semibold">{amt.toFixed(2)}</span>
-                </li>
-              ))}
-            </ul>
+            {categorySummary.length > 0 ? (
+              <div className="mx-auto max-w-xs">
+                <Doughnut data={{ labels: categorySummary.map(([c])=>c), datasets: [{ data: categorySummary.map(([,v])=>v), backgroundColor: ["#6366f1", "#10b981", "#f59e42", "#fbbf24", "#3b82f6", "#ef4444", "#a3e635"] }] }} options={{ plugins: { legend: { position: "bottom" as const } }, cutout: "70%" }} />
+              </div>
+            ) : (
+              <div className="text-muted-foreground text-sm">No data yet</div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Monthly Summary</CardTitle>
+            <CardDescription>Last 6 months</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {monthlySummary.length > 0 ? (
+              <div className="h-56">
+                <Bar data={{ labels: monthlySummary.map(([m])=>m), datasets: [{ label: "Total", data: monthlySummary.map(([,v])=>v), backgroundColor: "rgba(99,102,241,0.5)" }] }} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }} />
+              </div>
+            ) : (
+              <div className="text-muted-foreground text-sm">No data yet</div>
+            )}
           </CardContent>
         </Card>
       </div>
