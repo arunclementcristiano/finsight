@@ -4,6 +4,22 @@ import { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand } from "@aw
 
 // Utilities
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.AWS_REGION || "us-east-1" }));
+function extractRuleTerm(rawText: string): string {
+  const lower = rawText.toLowerCase();
+  // Try preposition phrase
+  const m = lower.match(/\b(?:on|for|at|to)\s+([a-z][a-z\s]{1,40})/i);
+  if (m && m[1]) {
+    let cand = m[1].trim().replace(/[^a-z\s]/g, "").replace(/\s+/g, " ");
+    const words = cand.split(" ").filter(Boolean);
+    if (words.length > 3) cand = words.slice(-3).join(" ");
+    return cand;
+  }
+  // Fallback: last two alpha tokens
+  const tokens = (lower.match(/[a-z]+/g) || []);
+  if (tokens.length >= 2) return `${tokens[tokens.length-2]} ${tokens[tokens.length-1]}`;
+  if (tokens.length === 1) return tokens[0];
+  return "";
+}
 const EXPENSES_TABLE = process.env.EXPENSES_TABLE || "Expenses";
 const CATEGORY_RULES_TABLE = process.env.CATEGORY_RULES_TABLE || "CategoryRules";
 
@@ -65,7 +81,7 @@ export async function POST(req: NextRequest) {
     const amount = amountMatch ? Number(amountMatch[1]) : NaN;
 
     const lower = rawText.toLowerCase();
-    const extracted = (lower.match(/\b(?:on|for|at|to)\s+([a-z][a-z\s]{1,30})/i)?.[1] || lower.split(/\s+/).filter(Boolean).slice(-1)[0] || "").trim();
+    const extracted = extractRuleTerm(rawText);
 
     // 2) Predefined rules
     const predefined: Record<string, string> = {
@@ -154,7 +170,7 @@ export async function PUT(req: NextRequest) {
       Item: { expenseId, userId, amount, category, rawText, date: isoDate, createdAt: new Date().toISOString() },
     }));
 
-    const extracted = (rawText.toLowerCase().match(/\b(?:on|for|at|to)\s+([a-z][a-z\s]{1,30})/i)?.[1] || rawText.toLowerCase().split(/\s+/).filter(Boolean).slice(-1)[0] || "").trim();
+    const extracted = extractRuleTerm(rawText);
 
     if (category !== "Uncategorized" && extracted) {
       try {

@@ -135,16 +135,23 @@ def _parse_amount(raw_text: str):
 
 
 def _extract_term(raw_text: str) -> str:
-    # Pick a probable merchant/term after common prepositions; fallback to last alpha token
-    m = re.search(r"\b(?:on|for|at|to)\s+([A-Za-z][A-Za-z\s]{1,30})", raw_text, flags=re.IGNORECASE)
+    # Prefer a phrase following prepositions; normalize to last up-to-3 tokens to add context (e.g., "dog food" instead of "food")
+    m = re.search(r"\b(?:on|for|at|to)\s+([A-Za-z][A-Za-z\s]{1,40})", raw_text, flags=re.IGNORECASE)
     if m:
         cand = m.group(1).strip()
         cand = re.split(r"\b(yesterday|today|tomorrow|\d{4}-\d{2}-\d{2})\b", cand, flags=re.IGNORECASE)[0].strip()
         cand = re.sub(r"[^A-Za-z\s]", "", cand).strip()
+        cand = re.sub(r"\s+", " ", cand)
         if cand:
+            words = cand.split(" ")
+            if len(words) > 3:
+                cand = " ".join(words[-3:])
             return cand.lower()
     tokens = re.findall(r"[A-Za-z]+", raw_text)
     if tokens:
+        # last two tokens give more context than one
+        if len(tokens) >= 2:
+            return f"{tokens[-2].lower()} {tokens[-1].lower()}"
         return tokens[-1].lower()
     return ""
 
