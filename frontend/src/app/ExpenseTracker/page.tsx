@@ -50,7 +50,7 @@ export default function ExpenseTrackerPage() {
 
   async function fetchList() {
     try {
-      const res = await fetch(`${API_BASE}/list`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo" }) });
+      const res = await fetch(`${API_BASE}/list`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", limit: 1000, page: 1 }) });
       const data = await res.json();
       if (Array.isArray(data.items)) {
         const mapped: Expense[] = data.items.map((it: any) => ({ id: it.expenseId || uuidv4(), text: it.rawText, amount: Number(it.amount || 0), category: it.category, date: it.date || new Date().toISOString(), createdAt: it.createdAt, note: it.rawText }));
@@ -503,7 +503,7 @@ export default function ExpenseTrackerPage() {
               </tbody>
             </table>
             </div>
-            {sortedExpenses.length > pageSize && (
+            {sortedExpenses.length > pageSize ? (
               <div className="flex items-center justify-between mt-3 text-sm">
                 <div>Page {page} of {totalPages}</div>
                 <div className="flex gap-2">
@@ -511,7 +511,7 @@ export default function ExpenseTrackerPage() {
                   <Button variant="outline" size="sm" onClick={next} disabled={page === totalPages}>Next</Button>
                 </div>
               </div>
-            )}
+            ) : null}
           </CardContent>
         </Card>
 
