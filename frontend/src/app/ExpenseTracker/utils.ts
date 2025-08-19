@@ -17,21 +17,21 @@ const keywordToCategory: Record<string, ExpenseCategory | string> = {
 	zomato: "Food",
 	ubereats: "Food",
 	// Travel
-	travel: "Travel",	transport: "Travel",	taxi: "Travel",	uber: "Travel",	ola: "Travel",	bus: "Travel",
-	train: "Travel",	flight: "Travel",	airline: "Travel",	fuel: "Travel",	petrol: "Travel",	gas: "Travel",
+	travel: "Travel", transport: "Travel", taxi: "Travel", uber: "Travel", ola: "Travel", bus: "Travel",
+	train: "Travel", flight: "Travel", airline: "Travel", fuel: "Travel", petrol: "Travel", gas: "Travel",
 	// Entertainment
-	entertainment: "Entertainment",	cinema: "Entertainment",	netflix: "Entertainment",	movie: "Entertainment",	movies: "Entertainment",	tv: "Entertainment",
-	hotstar: "Entertainment",	sunnxt: "Entertainment",	spotify: "Entertainment",	prime: "Entertainment",
-	disney: "Entertainment",	playstation: "Entertainment",	xbox: "Entertainment",
+	entertainment: "Entertainment", cinema: "Entertainment", netflix: "Entertainment", movie: "Entertainment", movies: "Entertainment", tv: "Entertainment",
+	hotstar: "Entertainment", sunnxt: "Entertainment", spotify: "Entertainment", prime: "Entertainment",
+	disney: "Entertainment", playstation: "Entertainment", xbox: "Entertainment",
 	// Shopping
-	shopping: "Shopping",	amazon: "Shopping",	flipkart: "Shopping",	myntra: "Shopping",	apparel: "Shopping",
-	clothing: "Shopping",	mall: "Shopping",	electronics: "Shopping",	gadget: "Shopping",
+	shopping: "Shopping", amazon: "Shopping", flipkart: "Shopping", myntra: "Shopping", apparel: "Shopping",
+	clothing: "Shopping", mall: "Shopping", electronics: "Shopping", gadget: "Shopping",
 	// Utilities
-	utilities: "Utilities",	electricity: "Utilities",	water: "Utilities",	internet: "Utilities",	broadband: "Utilities",
-	jio: "Utilities",	airtel: "Utilities",	bsnl: "Utilities",	bill: "Utilities",
+	utilities: "Utilities", electricity: "Utilities", water: "Utilities", internet: "Utilities", broadband: "Utilities",
+	jio: "Utilities", airtel: "Utilities", bsnl: "Utilities", bill: "Utilities",
 	// Healthcare
-	health: "Healthcare",	healthcare: "Healthcare",	medicine: "Healthcare",	hospital: "Healthcare",	doctor: "Healthcare",
-	pharmacy: "Healthcare",	apollo: "Healthcare",	pharmeasy: "Healthcare",	practo: "Healthcare",
+	health: "Healthcare", healthcare: "Healthcare", medicine: "Healthcare", hospital: "Healthcare", doctor: "Healthcare",
+	pharmacy: "Healthcare", apollo: "Healthcare", pharmeasy: "Healthcare", practo: "Healthcare",
 };
 
 function escapeRegex(s: string) {
@@ -68,11 +68,12 @@ export function suggestCategory(input: string, memory: Record<string, string>): 
 	for (const [kw, cat] of Object.entries(keywordToCategory)) {
 		if (hasWord(lower, kw)) return cat as string;
 	}
-	// Then local memory mapping
-	for (const [kw, cat] of Object.entries(memory)) {
+	// Then local memory mapping (optional; currently not used)
+	for (const [kw, cat] of Object.entries(memory || {})) {
 		if (hasWord(lower, kw)) return cat;
 	}
 	return undefined; // AI (Groq) would come after this
 }
 
 export { keywordToCategory };
+

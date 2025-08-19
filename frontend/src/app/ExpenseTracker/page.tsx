@@ -39,16 +39,13 @@ export default function ExpenseTrackerPage() {
     if (!rawText) return;
     setAi(null);
     try {
-      // Instant local rules/memory path for zero-lag UX
+      // Instant local rules path for zero-lag UX
       const parsed = parseExpenseInput(rawText);
-      const memoryCategory = suggestCategory(rawText, categoryMemory as any);
-      const localCategory = (parsed.category as string) || memoryCategory;
-      if (localCategory && typeof parsed.amount === "number") {
-        // Save directly via API but do not block UI unnecessarily
-        const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: localCategory, amount: parsed.amount }) });
+      if (parsed.category && typeof parsed.amount === "number") {
+        const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: parsed.category, amount: parsed.amount }) });
         const saved = await put.json();
         if (saved && saved.ok) {
-          addExpense({ id: saved.expenseId || uuidv4(), text: rawText, amount: parsed.amount, category: localCategory, date: new Date().toISOString(), note: rawText });
+          addExpense({ id: saved.expenseId || uuidv4(), text: rawText, amount: parsed.amount, category: parsed.category as string, date: new Date().toISOString(), note: rawText });
           setInput("");
           inputRef.current?.focus();
           return;
@@ -162,7 +159,7 @@ export default function ExpenseTrackerPage() {
             <CardDescription>Synced with backend</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="max-h-72 overflow-y-auto rounded-xl border border-border">
+            <div className="max-h-96 overflow-y-auto rounded-xl border border-border">
             <table className="w-full text-left text-sm">
               <thead className="bg-card">
                 <tr>

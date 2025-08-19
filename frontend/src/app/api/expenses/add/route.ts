@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
       utilities: "Utilities", electricity: "Utilities", water: "Utilities", internet: "Utilities", broadband: "Utilities", jio: "Utilities", airtel: "Utilities", bsnl: "Utilities", bill: "Utilities",
       health: "Healthcare", healthcare: "Healthcare", medicine: "Healthcare", hospital: "Healthcare", doctor: "Healthcare", pharmacy: "Healthcare", apollo: "Healthcare", pharmeasy: "Healthcare", practo: "Healthcare",
     };
-    const predefinedKey = Object.keys(predefined).find(k => lower.includes(k));
+    const predefinedKey = Object.keys(predefined).find(k => new RegExp(`\\b${k}\\b`).test(lower));
     let category = predefinedKey ? predefined[predefinedKey] : "";
 
     // If predefined matched, upsert CategoryRules for extracted term
@@ -89,9 +89,11 @@ export async function POST(req: NextRequest) {
 
     // 3) CategoryRules lookup
     if (!category && extracted) {
-      const r = await ddb.send(new GetCommand({ TableName: CATEGORY_RULES_TABLE, Key: { rule: extracted } }));
-      const ruleCat = (r.Item as any)?.category as string | undefined;
-      if (ruleCat) category = ruleCat;
+      try {
+        const r = await ddb.send(new GetCommand({ TableName: CATEGORY_RULES_TABLE, Key: { rule: extracted } }));
+        const ruleCat = (r.Item as any)?.category as string | undefined;
+        if (ruleCat) category = ruleCat;
+      } catch {}
     }
 
     // 4) If category unknown -> call Groq
