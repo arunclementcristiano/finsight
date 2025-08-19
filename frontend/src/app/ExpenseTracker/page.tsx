@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { useApp, type Expense } from "../store";
+import { parseExpenseInput, suggestCategory } from "../expenses/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/Card";
 import { Button } from "../components/Button";
 import { Doughnut, Bar } from "react-chartjs-2";
@@ -38,6 +39,21 @@ export default function ExpenseTrackerPage() {
     if (!rawText) return;
     setAi(null);
     try {
+      // Instant local rules/memory path for zero-lag UX
+      const parsed = parseExpenseInput(rawText);
+      const memoryCategory = suggestCategory(rawText, {} as any); // local memory is managed in API; local rules still apply
+      const localCategory = (parsed.category as string) || memoryCategory;
+      if (localCategory && typeof parsed.amount === "number") {
+        // Save directly via API but do not block UI unnecessarily
+        const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: localCategory, amount: parsed.amount }) });
+        const saved = await put.json();
+        if (saved && saved.ok) {
+          addExpense({ id: saved.expenseId || uuidv4(), text: rawText, amount: parsed.amount, category: localCategory, date: new Date().toISOString(), note: rawText });
+          setInput("");
+          inputRef.current?.focus();
+          return;
+        }
+      }
       const res = await fetch(`${API_BASE}/add`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText }) });
       const data = await res.json();
       // If AI was used (AIConfidence present), require acknowledgment
@@ -92,9 +108,14 @@ export default function ExpenseTrackerPage() {
       map.set(ym, (map.get(ym) || 0) + e.amount);
     }
     const arr = Array.from(map.entries()).sort((a,b)=> a[0] < b[0] ? -1 : 1);
-    const last = arr.slice(-6);
-    return last;
+    return arr;
   }, [expenses]);
+
+  const [monthFilter, setMonthFilter] = useState<string>("");
+  const monthlyFiltered = useMemo(() => {
+    if (!monthFilter) return monthlySummary;
+    return monthlySummary.filter(([m]) => m === monthFilter);
+  }, [monthlySummary, monthFilter]);
 
   const totalPages = Math.max(1, Math.ceil(expenses.length / pageSize));
   const startIdx = (page - 1) * pageSize;
@@ -141,7 +162,8 @@ export default function ExpenseTrackerPage() {
             <CardDescription>Synced with backend</CardDescription>
           </CardHeader>
           <CardContent>
-            <table className="w-full text-left border rounded-xl overflow-hidden border-border text-sm">
+            <div className="max-h-72 overflow-y-auto rounded-xl border border-border">
+            <table className="w-full text-left text-sm">
               <thead className="bg-card">
                 <tr>
                   <th className="px-3 py-2 border-b">Date</th>
@@ -161,6 +183,7 @@ export default function ExpenseTrackerPage() {
                 ))}
               </tbody>
             </table>
+            </div>
             {expenses.length > pageSize && (
               <div className="flex items-center justify-between mt-3 text-sm">
                 <div>Page {page} of {totalPages}</div>
@@ -194,12 +217,18 @@ export default function ExpenseTrackerPage() {
         <Card>
           <CardHeader>
             <CardTitle>Monthly Summary</CardTitle>
-            <CardDescription>Last 6 months</CardDescription>
+            <CardDescription>Totals per month</CardDescription>
           </CardHeader>
           <CardContent>
-            {monthlySummary.length > 0 ? (
+            <div className="mb-2">
+              <select value={monthFilter} onChange={(e)=> setMonthFilter(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card">
+                <option value="">All months</option>
+                {monthlySummary.map(([m]) => (<option key={m} value={m}>{m}</option>))}
+              </select>
+            </div>
+            {monthlyFiltered.length > 0 ? (
               <div className="h-56">
-                <Bar data={{ labels: monthlySummary.map(([m])=>m), datasets: [{ label: "Total", data: monthlySummary.map(([,v])=>v), backgroundColor: "rgba(99,102,241,0.5)" }] }} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }} />
+                <Bar data={{ labels: monthlyFiltered.map(([m])=>m), datasets: [{ label: "Total", data: monthlyFiltered.map(([,v])=>v), backgroundColor: "rgba(99,102,241,0.5)" }] }} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }} />
               </div>
             ) : (
               <div className="text-muted-foreground text-sm">No data yet</div>

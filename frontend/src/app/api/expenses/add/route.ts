@@ -10,14 +10,44 @@ const CATEGORY_RULES_TABLE = process.env.CATEGORY_RULES_TABLE || "CategoryRules"
 
 const ALLOWED_CATEGORIES = ["Food","Travel","Entertainment","Shopping","Utilities","Healthcare","Other"] as const;
 
-// Step 2.5: Placeholder AI categorization via Groq
+// Step 2.5: Real AI categorization via Groq
 async function getCategoryFromAI(rawText: string): Promise<{ category: string; confidence: number }> {
-  // Placeholder: Replace with real Groq API call
-  // Example outline:
-  // const res = await fetch("https://api.groq.com/v1/chat/completions", { headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` }, ... })
-  // const data = await res.json();
-  // return { category: data.category, confidence: data.confidence };
-  return { category: "Other", confidence: 0.5 };
+  const apiKey = (process.env.GROQ_API_KEY || "").trim();
+  if (!apiKey) return { category: "", confidence: 0 };
+  try {
+    const system = "You are a financial expense categorizer. Allowed categories: Food, Travel, Entertainment, Shopping, Utilities, Healthcare, Other. Respond ONLY JSON: {\"category\": string, \"confidence\": number between 0 and 1}.";
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+        "User-Agent": "finsight-next/1.0"
+      },
+      body: JSON.stringify({
+        model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: rawText }
+        ],
+        temperature: 0,
+      })
+    });
+    const data = await res.json();
+    const txt = (data?.choices?.[0]?.message?.content as string) || "";
+    try {
+      const parsed = JSON.parse(txt);
+      return { category: String(parsed.category || ""), confidence: Number(parsed.confidence || 0) };
+    } catch {
+      const mcat = /category\W+([A-Za-z]+)/i.exec(txt);
+      const mconf = /confidence\W+(\d+(?:\.\d+)?)/i.exec(txt);
+      let conf = mconf ? Number(mconf[1]) : 0.7;
+      if (conf > 1) conf = conf / 100;
+      return { category: mcat ? mcat[1] : "", confidence: conf };
+    }
+  } catch {
+    return { category: "", confidence: 0 };
+  }
 }
 
 // Step 2.1: add_expense
