@@ -13,7 +13,7 @@ Chart.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarEleme
 const API_BASE = process.env.NEXT_PUBLIC_EXPENSES_API || "/api/expenses";
 
 export default function ExpenseTrackerPage() {
-  const { expenses, setExpenses, addExpense } = useApp();
+  const { expenses, setExpenses, addExpense, categoryMemory } = useApp();
   const [input, setInput] = useState("");
   const [ai, setAi] = useState<{ amount?: number; category?: string; options?: string[]; AIConfidence?: number; raw?: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -41,7 +41,7 @@ export default function ExpenseTrackerPage() {
     try {
       // Instant local rules/memory path for zero-lag UX
       const parsed = parseExpenseInput(rawText);
-      const memoryCategory = suggestCategory(rawText, {} as any); // local memory is managed in API; local rules still apply
+      const memoryCategory = suggestCategory(rawText, categoryMemory as any);
       const localCategory = (parsed.category as string) || memoryCategory;
       if (localCategory && typeof parsed.amount === "number") {
         // Save directly via API but do not block UI unnecessarily
