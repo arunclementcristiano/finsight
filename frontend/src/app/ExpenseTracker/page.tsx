@@ -6,7 +6,7 @@ import { parseExpenseInput, suggestCategory } from "./utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/Card";
 import { Button } from "../components/Button";
 import { Doughnut, Bar } from "react-chartjs-2";
-import { X, Calendar } from "lucide-react";
+import { X, Calendar, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Chart, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from "chart.js";
 
 Chart.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
@@ -20,6 +20,8 @@ export default function ExpenseTrackerPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [page, setPage] = useState(1);
   const pageSize = 10;
+  const [sortField, setSortField] = useState<"date" | "amount" | "category">("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const amountRef = useRef<HTMLInputElement>(null);
   const customRef = useRef<HTMLInputElement>(null);
@@ -153,9 +155,35 @@ export default function ExpenseTrackerPage() {
     return monthlySummary.filter(([m]) => m === monthFilter);
   }, [monthlySummary, monthFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(expenses.length / pageSize));
+  const sortedExpenses = useMemo(() => {
+    const rows = expenses.slice();
+    rows.sort((a, b) => {
+      let cmp = 0;
+      if (sortField === "date") {
+        // ISO date strings compare lexicographically; keep explicit just in case
+        cmp = String(a.date).localeCompare(String(b.date));
+      } else if (sortField === "amount") {
+        cmp = a.amount - b.amount;
+      } else {
+        cmp = String(a.category || "").toLowerCase().localeCompare(String(b.category || "").toLowerCase());
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return rows;
+  }, [expenses, sortField, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedExpenses.length / pageSize));
   const startIdx = (page - 1) * pageSize;
-  const pageRows = expenses.slice(startIdx, startIdx + pageSize);
+  const pageRows = sortedExpenses.slice(startIdx, startIdx + pageSize);
+
+  function toggleSort(field: "date" | "amount" | "category") {
+    if (field === sortField) {
+      setSortDir(d => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDir(field === "category" ? "asc" : "desc");
+    }
+  }
   function prev() { setPage(p => Math.max(1, p - 1)); }
   function next() { setPage(p => Math.min(totalPages, p + 1)); }
 
@@ -210,10 +238,25 @@ export default function ExpenseTrackerPage() {
             <table className="w-full text-left text-sm">
               <thead className="bg-card">
                 <tr>
-                  <th className="px-3 py-2 border-b">Date</th>
+                  <th className="px-3 py-2 border-b">
+                    <button type="button" onClick={() => toggleSort("date")} className="inline-flex items-center gap-1 cursor-pointer select-none">
+                      Date
+                      {sortField !== "date" ? <ArrowUpDown className="h-3.5 w-3.5" /> : (sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
+                    </button>
+                  </th>
                   <th className="px-3 py-2 border-b">Text</th>
-                  <th className="px-3 py-2 border-b">Category</th>
-                  <th className="px-3 py-2 border-b text-right">Amount</th>
+                  <th className="px-3 py-2 border-b">
+                    <button type="button" onClick={() => toggleSort("category")} className="inline-flex items-center gap-1 cursor-pointer select-none">
+                      Category
+                      {sortField !== "category" ? <ArrowUpDown className="h-3.5 w-3.5" /> : (sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
+                    </button>
+                  </th>
+                  <th className="px-3 py-2 border-b text-right">
+                    <button type="button" onClick={() => toggleSort("amount")} className="inline-flex items-center gap-1 cursor-pointer select-none">
+                      Amount
+                      {sortField !== "amount" ? <ArrowUpDown className="h-3.5 w-3.5" /> : (sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
+                    </button>
+                  </th>
                   <th className="px-3 py-2 border-b text-right">Actions</th>
                 </tr>
               </thead>
