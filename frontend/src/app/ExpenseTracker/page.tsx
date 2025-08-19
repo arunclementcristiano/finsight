@@ -36,6 +36,7 @@ export default function ExpenseTrackerPage() {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   });
   const [privacy, setPrivacy] = useState(false);
+  const [activeTab, setActiveTab] = useState<"data" | "insights">("data");
 
   async function fetchList() {
     try {
@@ -296,7 +297,7 @@ export default function ExpenseTrackerPage() {
     <div className="flex flex-col h-[calc(100vh-5rem)] overflow-hidden">
       {/* Sticky Command Bar */}
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 p-4">
+        <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-4 p-4">
           {/* Chat input */}
           <div>
             <form onSubmit={handleSubmit} className="flex gap-2 items-center">
@@ -329,27 +330,6 @@ export default function ExpenseTrackerPage() {
               </div>
             )}
           </div>
-
-          {/* KPIs */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-border p-3">
-              <div className="text-xs text-muted-foreground">Today</div>
-              <div className="text-lg font-semibold">{fmtMoney(todaySpend)}</div>
-            </div>
-            <div className="rounded-xl border border-border p-3">
-              <div className="text-xs text-muted-foreground">This Month</div>
-              <div className="text-lg font-semibold">{fmtMoney(monthSpend)}</div>
-            </div>
-            <div className="rounded-xl border border-border p-3">
-              <div className="text-xs text-muted-foreground">Budget Used</div>
-              <div className="text-lg font-semibold">{totalBudget > 0 ? `${privacy ? '•••' : formatCurrency(monthSpend)} / ${privacy ? '•••' : formatCurrency(totalBudget)} (${budgetUsedPct}%)` : "—"}</div>
-            </div>
-            <div className="rounded-xl border border-border p-3">
-              <div className="text-xs text-muted-foreground">Top Category</div>
-              <div className="text-lg font-semibold">{topCategory}</div>
-            </div>
-          </div>
-
           {/* Actions */}
           <div className="flex items-start justify-end gap-2">
             <Button variant="outline" onClick={()=> setPrivacy(p=>!p)}>
@@ -362,12 +342,20 @@ export default function ExpenseTrackerPage() {
             </Button>
           </div>
         </div>
+        {/* Tabs */}
+        <div className="px-4 pb-3">
+          <div className="inline-flex rounded-lg border border-border overflow-hidden">
+            <button onClick={()=> setActiveTab("data")} className={`px-4 py-2 text-sm ${activeTab==='data' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>Data</button>
+            <button onClick={()=> setActiveTab("insights")} className={`px-4 py-2 text-sm ${activeTab==='insights' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>Insights</button>
+          </div>
+        </div>
       </div>
 
-      {/* Main grid panels */}
+      {/* Main panels */}
+      {activeTab === "data" ? (
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 p-4 flex-1 overflow-hidden">
-        {/* Recent Expenses */}
-        <Card className="h-full overflow-hidden">
+        {/* Recent Expenses (full width on xl span 2) */}
+        <Card className="h-full overflow-hidden xl:col-span-2">
           <CardHeader>
             <CardTitle>Recent Expenses</CardTitle>
             <CardDescription>Synced with backend</CardDescription>
@@ -451,7 +439,7 @@ export default function ExpenseTrackerPage() {
           </CardContent>
         </Card>
 
-        {/* Budgets */}
+        {/* Budgets in Data tab */}
         <Card className="h-full overflow-y-auto">
           <CardHeader>
             <CardTitle>Category Budgets</CardTitle>
@@ -509,12 +497,42 @@ export default function ExpenseTrackerPage() {
             )}
           </CardContent>
         </Card>
-
-        {/* Charts */}
-        <Card className="h-full overflow-y-auto">
+      </div>
+      ) : (
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 p-4 flex-1 overflow-auto">
+        {/* KPIs */}
+        <Card className="xl:col-span-3">
           <CardHeader>
-            <CardTitle>Insights</CardTitle>
-            <CardDescription>Category and monthly summaries</CardDescription>
+            <CardTitle>Overview</CardTitle>
+            <CardDescription>Key metrics for {currentYm}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="rounded-xl border border-border p-3">
+                <div className="text-xs text-muted-foreground">Today</div>
+                <div className="text-lg font-semibold">{fmtMoney(todaySpend)}</div>
+              </div>
+              <div className="rounded-xl border border-border p-3">
+                <div className="text-xs text-muted-foreground">This Month</div>
+                <div className="text-lg font-semibold">{fmtMoney(monthSpend)}</div>
+              </div>
+              <div className="rounded-xl border border-border p-3">
+                <div className="text-xs text-muted-foreground">Budget Used</div>
+                <div className="text-lg font-semibold">{totalBudget > 0 ? `${privacy ? '•••' : formatCurrency(monthSpend)} / ${privacy ? '•••' : formatCurrency(totalBudget)} (${budgetUsedPct}%)` : "—"}</div>
+              </div>
+              <div className="rounded-xl border border-border p-3">
+                <div className="text-xs text-muted-foreground">Top Category</div>
+                <div className="text-lg font-semibold">{topCategory}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Donut */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Category Share</CardTitle>
+            <CardDescription>Distribution across categories</CardDescription>
           </CardHeader>
           <CardContent>
             {categorySummary.length > 0 ? (
@@ -524,24 +542,33 @@ export default function ExpenseTrackerPage() {
             ) : (
               <div className="text-muted-foreground text-sm">No data yet</div>
             )}
-            <div className="mt-4">
-              <div className="mb-2">
-                <select value={monthFilter} onChange={(e)=> setMonthFilter(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card">
-                  <option value="">All months</option>
-                  {monthlySummary.map(([m]) => (<option key={m} value={m}>{m}</option>))}
-                </select>
-              </div>
-              {monthlyFiltered.length > 0 ? (
-                <div className="h-56">
-                  <Bar data={{ labels: monthlyFiltered.map(([m])=>m), datasets: [{ label: "Total", data: monthlyFiltered.map(([,v])=>v), backgroundColor: "rgba(99,102,241,0.5)" }] }} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }} />
-                </div>
-              ) : (
-                <div className="text-muted-foreground text-sm">No data yet</div>
-              )}
+          </CardContent>
+        </Card>
+
+        {/* Monthly */}
+        <Card className="xl:col-span-2">
+          <CardHeader>
+            <CardTitle>Monthly Summary</CardTitle>
+            <CardDescription>Totals per month</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-2">
+              <select value={monthFilter} onChange={(e)=> setMonthFilter(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card">
+                <option value="">All months</option>
+                {monthlySummary.map(([m]) => (<option key={m} value={m}>{m}</option>))}
+              </select>
             </div>
+            {monthlyFiltered.length > 0 ? (
+              <div className="h-56">
+                <Bar data={{ labels: monthlyFiltered.map(([m])=>m), datasets: [{ label: "Total", data: monthlyFiltered.map(([,v])=>v), backgroundColor: "rgba(99,102,241,0.5)" }] }} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }} />
+              </div>
+            ) : (
+              <div className="text-muted-foreground text-sm">No data yet</div>
+            )}
           </CardContent>
         </Card>
       </div>
+      )}
     </div>
   );
 }
