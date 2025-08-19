@@ -6,6 +6,7 @@ import { parseExpenseInput, suggestCategory } from "./utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/Card";
 import { Button } from "../components/Button";
 import { Doughnut, Bar } from "react-chartjs-2";
+import { X } from "lucide-react";
 import { Chart, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from "chart.js";
 
 Chart.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
@@ -13,7 +14,7 @@ Chart.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarEleme
 const API_BASE = process.env.NEXT_PUBLIC_EXPENSES_API || "/api/expenses";
 
 export default function ExpenseTrackerPage() {
-  const { expenses, setExpenses, addExpense, categoryMemory, rememberCategory } = useApp() as any;
+  const { expenses, setExpenses, addExpense, deleteExpense, categoryMemory, rememberCategory } = useApp() as any;
   const [input, setInput] = useState("");
   const [ai, setAi] = useState<{ amount?: number; category?: string; options?: string[]; AIConfidence?: number; raw?: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -35,6 +36,13 @@ export default function ExpenseTrackerPage() {
   }
 
   useEffect(() => { fetchList(); }, []);
+
+  async function handleDelete(expenseId: string) {
+    try {
+      await fetch(`${API_BASE}/delete`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expenseId }) });
+      deleteExpense(expenseId);
+    } catch {}
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -185,6 +193,7 @@ export default function ExpenseTrackerPage() {
                   <th className="px-3 py-2 border-b">Text</th>
                   <th className="px-3 py-2 border-b">Category</th>
                   <th className="px-3 py-2 border-b text-right">Amount</th>
+                  <th className="px-3 py-2 border-b text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -194,6 +203,11 @@ export default function ExpenseTrackerPage() {
                     <td className="px-3 py-2">{e.text}</td>
                     <td className="px-3 py-2">{e.category as string}</td>
                     <td className="px-3 py-2 text-right">{e.amount.toFixed(2)}</td>
+                    <td className="px-3 py-2 text-right">
+                      <button aria-label="Delete" onClick={() => handleDelete(e.id)} className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-muted">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
