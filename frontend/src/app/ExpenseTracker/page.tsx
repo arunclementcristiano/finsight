@@ -193,7 +193,7 @@ export default function ExpenseTrackerPage() {
       return sortDir === "asc" ? cmp : -cmp;
     });
     return rows;
-  }, [expenses, sortField, sortDir]);
+  }, [expenses, sortField, sortDir, preset, customStart, customEnd]);
 
   const totalPages = Math.max(1, Math.ceil(sortedExpenses.length / pageSize));
   const startIdx = (page - 1) * pageSize;
