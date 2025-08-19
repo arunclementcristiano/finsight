@@ -13,7 +13,7 @@ Chart.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarEleme
 const API_BASE = process.env.NEXT_PUBLIC_EXPENSES_API || "/api/expenses";
 
 export default function ExpenseTrackerPage() {
-  const { expenses, setExpenses, addExpense, categoryMemory } = useApp();
+  const { expenses, setExpenses, addExpense, categoryMemory, rememberCategory } = useApp() as any;
   const [input, setInput] = useState("");
   const [ai, setAi] = useState<{ amount?: number; category?: string; options?: string[]; AIConfidence?: number; raw?: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -49,6 +49,18 @@ export default function ExpenseTrackerPage() {
         const saved = await put.json();
         if (saved && saved.ok) {
           addExpense({ id: saved.expenseId || uuidv4(), text: rawText, amount: parsed.amount, category: parsed.category as string, date: new Date().toISOString(), note: rawText });
+          setInput("");
+          inputRef.current?.focus();
+          return;
+        }
+      }
+      // Local memory fallback (from previous acknowledgments) to avoid re-asking in dev/local
+      const memCat = suggestCategory(rawText, categoryMemory as any);
+      if (!parsed.category && memCat && typeof parsed.amount === "number") {
+        const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: memCat, amount: parsed.amount }) });
+        const saved = await put.json();
+        if (saved && saved.ok) {
+          addExpense({ id: saved.expenseId || uuidv4(), text: rawText, amount: parsed.amount, category: memCat, date: new Date().toISOString(), note: rawText });
           setInput("");
           inputRef.current?.focus();
           return;
