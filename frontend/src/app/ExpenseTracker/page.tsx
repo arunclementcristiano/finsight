@@ -6,7 +6,7 @@ import { parseExpenseInput, suggestCategory } from "./utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/Card";
 import { Button } from "../components/Button";
 import { Doughnut, Bar } from "react-chartjs-2";
-import { X } from "lucide-react";
+import { X, Calendar } from "lucide-react";
 import { Chart, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from "chart.js";
 
 Chart.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
@@ -23,6 +23,11 @@ export default function ExpenseTrackerPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const amountRef = useRef<HTMLInputElement>(null);
   const customRef = useRef<HTMLInputElement>(null);
+  const [dateOpen, setDateOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
 
   async function fetchList() {
     try {
@@ -44,6 +49,12 @@ export default function ExpenseTrackerPage() {
     } catch {}
   }
 
+  function resetDatePicker() {
+    const d = new Date();
+    setSelectedDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+    setDateOpen(false);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const rawText = input.trim();
@@ -53,24 +64,26 @@ export default function ExpenseTrackerPage() {
       // Instant local rules path for zero-lag UX
       const parsed = parseExpenseInput(rawText);
       if (parsed.category && typeof parsed.amount === "number") {
-        const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: parsed.category, amount: parsed.amount }) });
+        const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: parsed.category, amount: parsed.amount, date: dateOpen ? selectedDate : undefined }) });
         const saved = await put.json();
         if (saved && saved.ok) {
           addExpense({ id: saved.expenseId || uuidv4(), text: rawText, amount: parsed.amount, category: parsed.category as string, date: new Date().toISOString(), note: rawText });
           setInput("");
           inputRef.current?.focus();
+          resetDatePicker();
           return;
         }
       }
       // Local memory fallback (from previous acknowledgments) to avoid re-asking in dev/local
       const memCat = suggestCategory(rawText, categoryMemory as any);
       if (!parsed.category && memCat && typeof parsed.amount === "number") {
-        const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: memCat, amount: parsed.amount }) });
+        const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: memCat, amount: parsed.amount, date: dateOpen ? selectedDate : undefined }) });
         const saved = await put.json();
         if (saved && saved.ok) {
           addExpense({ id: saved.expenseId || uuidv4(), text: rawText, amount: parsed.amount, category: memCat, date: new Date().toISOString(), note: rawText });
           setInput("");
           inputRef.current?.focus();
+          resetDatePicker();
           return;
         }
       }
@@ -84,12 +97,13 @@ export default function ExpenseTrackerPage() {
       }
       // If rules/memory matched and we have amount/category, auto-save without acknowledge
       if (data && data.category && typeof data.amount === "number" && isFinite(data.amount)) {
-        const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: data.category, amount: data.amount }) });
+        const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: data.category, amount: data.amount, date: dateOpen ? selectedDate : undefined }) });
         const saved = await put.json();
         if (saved && saved.ok) {
           addExpense({ id: saved.expenseId || uuidv4(), text: rawText, amount: data.amount, category: data.category, date: new Date().toISOString(), note: rawText });
           setInput("");
           inputRef.current?.focus();
+          resetDatePicker();
           return;
         }
       }
@@ -104,13 +118,14 @@ export default function ExpenseTrackerPage() {
     const amountFinal = Number(amountStr || ai.amount || 0);
     if (!categoryFinal || !isFinite(amountFinal)) return;
     try {
-      const res = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText: ai.raw, category: categoryFinal, amount: amountFinal }) });
+      const res = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText: ai.raw, category: categoryFinal, amount: amountFinal, date: dateOpen ? selectedDate : undefined }) });
       const data = await res.json();
       if (data.ok) {
         addExpense({ id: data.expenseId || uuidv4(), text: ai.raw, amount: amountFinal, category: categoryFinal, date: new Date().toISOString(), note: ai.raw });
         setAi(null);
         setInput("");
         inputRef.current?.focus();
+        resetDatePicker();
       }
     } catch {}
   }
@@ -125,7 +140,7 @@ export default function ExpenseTrackerPage() {
     const map = new Map<string, number>();
     for (const e of expenses) {
       const d = new Date(e.date);
-      const ym = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+      const ym = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, "0")}`;
       map.set(ym, (map.get(ym) || 0) + e.amount);
     }
     const arr = Array.from(map.entries()).sort((a,b)=> a[0] < b[0] ? -1 : 1);
@@ -153,8 +168,14 @@ export default function ExpenseTrackerPage() {
             <CardDescription>We will use rules → memory → AI with confirm.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="flex gap-2">
+            <form onSubmit={handleSubmit} className="flex gap-2 items-center">
               <input ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} className="flex-1 h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]" placeholder="e.g., Lunch 250 at restaurant"/>
+              <button type="button" aria-label="Set date" title="Set date" onClick={()=> setDateOpen(o=>!o)} className={`h-11 w-11 inline-flex items-center justify-center rounded-xl border ${dateOpen ? 'border-emerald-400 text-emerald-600' : 'border-border text-muted-foreground'} bg-card hover:bg-muted focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]`}>
+                <Calendar className="h-4 w-4" />
+              </button>
+              {dateOpen && (
+                <input type="date" value={selectedDate} onChange={(e)=> setSelectedDate(e.target.value)} className="h-11 rounded-xl border border-border px-3 bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]" />
+              )}
               <Button type="submit">Add Expense</Button>
             </form>
             {ai && (
