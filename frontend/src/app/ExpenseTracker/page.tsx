@@ -8,7 +8,7 @@ import { Button } from "../components/Button";
 import { Doughnut, Bar } from "react-chartjs-2";
 import { Progress } from "../components/Progress";
 import { formatCurrency } from "../utils/format";
-import { X, Calendar, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { X, Calendar, ArrowUpDown, ArrowUp, ArrowDown, Eye, EyeOff, Download } from "lucide-react";
 import { Chart, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from "chart.js";
 
 Chart.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
@@ -35,6 +35,7 @@ export default function ExpenseTrackerPage() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   });
+  const [privacy, setPrivacy] = useState(false);
 
   async function fetchList() {
     try {
@@ -231,6 +232,52 @@ export default function ExpenseTrackerPage() {
   const startIdx = (page - 1) * pageSize;
   const pageRows = sortedExpenses.slice(startIdx, startIdx + pageSize);
 
+  // KPI metrics
+  const todaySpend = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear(); const m = now.getMonth(); const d = now.getDate();
+    let sum = 0;
+    for (const e of expenses) {
+      const dt = new Date(e.date);
+      if (dt.getFullYear() === y && dt.getMonth() === m && dt.getDate() === d) sum += Number(e.amount) || 0;
+    }
+    return sum;
+  }, [expenses]);
+
+  const monthSpend = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear(); const m = now.getMonth();
+    let sum = 0;
+    for (const e of expenses) {
+      const dt = new Date(e.date);
+      if (dt.getFullYear() === y && dt.getMonth() === m) sum += Number(e.amount) || 0;
+    }
+    return sum;
+  }, [expenses]);
+
+  const totalBudget = useMemo(() => {
+    const budgets = categoryBudgets?.[currentYm] || {};
+    return Object.values(budgets).reduce((a: number, b: any) => a + (Number(b) || 0), 0);
+  }, [categoryBudgets, currentYm]);
+
+  const budgetUsedPct = totalBudget > 0 ? Math.round((monthSpend / totalBudget) * 100) : 0;
+  const topCategory = monthlyCategorySpend.arr.length > 0 ? monthlyCategorySpend.arr[0][0] : "—";
+
+  // Helpers
+  function fmtMoney(v: number) { return privacy ? "•••" : formatCurrency(v); }
+  function exportCsv() {
+    const rows = [["Date","Text","Category","Amount"]].concat(
+      sortedExpenses.map(e => [new Date(e.date).toISOString().slice(0,10), e.text, String(e.category || ""), String(e.amount)])
+    );
+    const csv = rows.map(r => r.map(x => `"${String(x).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `expenses-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   function toggleSort(field: "date" | "amount" | "category") {
     if (field === sortField) {
       setSortDir(d => (d === "asc" ? "desc" : "asc"));
@@ -246,14 +293,12 @@ export default function ExpenseTrackerPage() {
   function next() { setPage(p => Math.min(totalPages, p + 1)); }
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-      <div className="xl:col-span-2 space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Expense Chat</CardTitle>
-            <CardDescription>We will use rules → memory → AI with confirm.</CardDescription>
-          </CardHeader>
-          <CardContent>
+    <div className="flex flex-col h-[calc(100vh-5rem)] overflow-hidden">
+      {/* Sticky Command Bar */}
+      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 p-4">
+          {/* Chat input */}
+          <div>
             <form onSubmit={handleSubmit} className="flex gap-2 items-center">
               <input ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} className="flex-1 h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]" placeholder="e.g., Lunch 250 at restaurant"/>
               <button type="button" aria-label="Set date" title="Set date" onClick={()=> setDateOpen(o=>!o)} className={`h-11 w-11 inline-flex items-center justify-center rounded-xl border ${dateOpen ? 'border-emerald-400 text-emerald-600' : 'border-border text-muted-foreground'} bg-card hover:bg-muted focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]`}>
@@ -283,15 +328,51 @@ export default function ExpenseTrackerPage() {
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card>
+          {/* KPIs */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-border p-3">
+              <div className="text-xs text-muted-foreground">Today</div>
+              <div className="text-lg font-semibold">{fmtMoney(todaySpend)}</div>
+            </div>
+            <div className="rounded-xl border border-border p-3">
+              <div className="text-xs text-muted-foreground">This Month</div>
+              <div className="text-lg font-semibold">{fmtMoney(monthSpend)}</div>
+            </div>
+            <div className="rounded-xl border border-border p-3">
+              <div className="text-xs text-muted-foreground">Budget Used</div>
+              <div className="text-lg font-semibold">{totalBudget > 0 ? `${privacy ? '•••' : formatCurrency(monthSpend)} / ${privacy ? '•••' : formatCurrency(totalBudget)} (${budgetUsedPct}%)` : "—"}</div>
+            </div>
+            <div className="rounded-xl border border-border p-3">
+              <div className="text-xs text-muted-foreground">Top Category</div>
+              <div className="text-lg font-semibold">{topCategory}</div>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-start justify-end gap-2">
+            <Button variant="outline" onClick={()=> setPrivacy(p=>!p)}>
+              {privacy ? <EyeOff className="h-4 w-4 mr-2"/> : <Eye className="h-4 w-4 mr-2"/>}
+              {privacy ? "Unmask" : "Privacy"}
+            </Button>
+            <Button variant="outline" onClick={exportCsv}>
+              <Download className="h-4 w-4 mr-2"/>
+              Export CSV
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main grid panels */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 p-4 flex-1 overflow-hidden">
+        {/* Recent Expenses */}
+        <Card className="h-full overflow-hidden">
           <CardHeader>
             <CardTitle>Recent Expenses</CardTitle>
             <CardDescription>Synced with backend</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="h-full overflow-hidden flex flex-col">
             <div className="mb-3 flex flex-wrap gap-2 items-center">
               <label className="text-sm text-muted-foreground">Range</label>
               <select value={preset} onChange={(e)=> setPreset(e.target.value as any)} className="h-9 rounded-md border border-border px-2 bg-card">
@@ -310,7 +391,7 @@ export default function ExpenseTrackerPage() {
                 </>
               )}
             </div>
-            <div className="max-h-96 overflow-y-auto rounded-xl border border-border">
+            <div className="flex-1 overflow-y-auto rounded-xl border border-border">
             <table className="w-full text-left text-sm">
               <thead className="bg-card">
                 <tr>
@@ -342,7 +423,7 @@ export default function ExpenseTrackerPage() {
                     <td className="px-3 py-2">{new Date(e.date).toLocaleDateString()}</td>
                     <td className="px-3 py-2">{e.text}</td>
                     <td className="px-3 py-2">{e.category as string}</td>
-                    <td className="px-3 py-2 text-right">{e.amount.toFixed(2)}</td>
+                    <td className="px-3 py-2 text-right">{privacy ? "•••" : e.amount.toFixed(2)}</td>
                     <td className="px-3 py-2 text-right">
                       <button
                         aria-label="Delete"
@@ -369,91 +450,95 @@ export default function ExpenseTrackerPage() {
             )}
           </CardContent>
         </Card>
-      </div>
 
-      <div className="space-y-4">
-        <Card>
+        {/* Budgets */}
+        <Card className="h-full overflow-y-auto">
           <CardHeader>
-            <CardTitle>Category Summary</CardTitle>
-            <CardDescription>Totals by category</CardDescription>
+            <CardTitle>Category Budgets</CardTitle>
+            <CardDescription>{currentYm} budgets and usage</CardDescription>
           </CardHeader>
           <CardContent>
-            {categorySummary.length > 0 ? (
-              <>
-                <div className="mx-auto max-w-xs">
-                  <Doughnut data={{ labels: categorySummary.map(([c])=>c), datasets: [{ data: categorySummary.map(([,v])=>v), backgroundColor: ["#6366f1", "#10b981", "#f59e42", "#fbbf24", "#3b82f6", "#ef4444", "#a3e635"] }] }} options={{ plugins: { legend: { position: "bottom" as const } }, cutout: "70%" }} />
-                </div>
-                <div className="mt-4 space-y-3">
-                  {(monthlyCategorySpend.arr).map(([cat, spent]) => {
-                    const budget = (categoryBudgets?.[currentYm]?.[cat]) || 0;
-                    const pct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
-                    const warn = pct >= 80 && pct < 100;
-                    const alert = pct >= 100;
-                    const barClass = alert ? "bg-rose-500" : warn ? "bg-amber-500" : undefined;
-                    return (
-                      <div key={cat} className="rounded-lg border border-border p-3">
-                        <div className="flex items-center justify-between text-sm">
-                          <div className="font-medium">{cat}</div>
-                          <div className="text-muted-foreground">
-                            {formatCurrency(spent)}
-                            <span className="mx-1">/</span>
-                            {editingCat === cat ? (
-                              <input
-                                autoFocus
-                                type="number"
-                                step="0.01"
-                                value={editingVal}
-                                onChange={(e)=> setEditingVal(e.target.value)}
-                                onBlur={()=> saveBudget(cat)}
-                                onKeyDown={(e)=> {
-                                  if (e.key === "Enter") saveBudget(cat);
-                                  else if (e.key === "Escape") { setEditingCat(null); setEditingVal(""); }
-                                }}
-                                className="h-7 w-28 ml-1 rounded-md border border-border px-2 bg-card text-right"
-                              />
-                            ) : (
-                              <button className="ml-1 underline decoration-dotted hover:opacity-80" onClick={()=> { setEditingCat(cat); setEditingVal(String(budget || 0)); }}>
-                                {budget > 0 ? formatCurrency(budget) : "Set budget"}
-                              </button>
-                            )}
-                          </div>
+            {(monthlyCategorySpend.arr).length > 0 ? (
+              <div className="space-y-3">
+                {(monthlyCategorySpend.arr).map(([cat, spent]) => {
+                  const budget = (categoryBudgets?.[currentYm]?.[cat]) || 0;
+                  const pct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
+                  const warn = pct >= 80 && pct < 100;
+                  const alert = pct >= 100;
+                  const barClass = alert ? "bg-rose-500" : warn ? "bg-amber-500" : undefined;
+                  return (
+                    <div key={cat} className="rounded-lg border border-border p-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="font-medium">{cat}</div>
+                        <div className="text-muted-foreground">
+                          {privacy ? "•••" : formatCurrency(spent)}
+                          <span className="mx-1">/</span>
+                          {editingCat === cat ? (
+                            <input
+                              autoFocus
+                              type="number"
+                              step="0.01"
+                              value={editingVal}
+                              onChange={(e)=> setEditingVal(e.target.value)}
+                              onBlur={()=> saveBudget(cat)}
+                              onKeyDown={(e)=> {
+                                if (e.key === "Enter") saveBudget(cat);
+                                else if (e.key === "Escape") { setEditingCat(null); setEditingVal(""); }
+                              }}
+                              className="h-7 w-28 ml-1 rounded-md border border-border px-2 bg-card text-right"
+                            />
+                          ) : (
+                            <button className="ml-1 underline decoration-dotted hover:opacity-80" onClick={()=> { setEditingCat(cat); setEditingVal(String(budget || 0)); }}>
+                              {budget > 0 ? (privacy ? "•••" : formatCurrency(budget)) : "Set budget"}
+                            </button>
+                          )}
                         </div>
-                        <Progress value={Math.min(100, pct)} barClassName={barClass} className="mt-2" />
-                        {budget > 0 && (
-                          <div className={`mt-1 text-xs ${alert ? "text-rose-600" : warn ? "text-amber-600" : "text-muted-foreground"}`}>
-                            {alert ? `${formatCurrency(spent - budget)} over` : `${formatCurrency(budget - spent)} left`}
-                          </div>
-                        )}
                       </div>
-                    );
-                  })}
-                </div>
-              </>
+                      <Progress value={Math.min(100, pct)} barClassName={barClass} className="mt-2" />
+                      {budget > 0 && (
+                        <div className={`mt-1 text-xs ${alert ? "text-rose-600" : warn ? "text-amber-600" : "text-muted-foreground"}`}>
+                          {alert ? `${privacy ? '•••' : formatCurrency(spent - budget)} over` : `${privacy ? '•••' : formatCurrency(budget - spent)} left`}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
               <div className="text-muted-foreground text-sm">No data yet</div>
             )}
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Charts */}
+        <Card className="h-full overflow-y-auto">
           <CardHeader>
-            <CardTitle>Monthly Summary</CardTitle>
-            <CardDescription>Totals per month</CardDescription>
+            <CardTitle>Insights</CardTitle>
+            <CardDescription>Category and monthly summaries</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-2">
-              <select value={monthFilter} onChange={(e)=> setMonthFilter(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card">
-                <option value="">All months</option>
-                {monthlySummary.map(([m]) => (<option key={m} value={m}>{m}</option>))}
-              </select>
-            </div>
-            {monthlyFiltered.length > 0 ? (
-              <div className="h-56">
-                <Bar data={{ labels: monthlyFiltered.map(([m])=>m), datasets: [{ label: "Total", data: monthlyFiltered.map(([,v])=>v), backgroundColor: "rgba(99,102,241,0.5)" }] }} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }} />
+            {categorySummary.length > 0 ? (
+              <div className="mx-auto max-w-xs">
+                <Doughnut data={{ labels: categorySummary.map(([c])=>c), datasets: [{ data: categorySummary.map(([,v])=>v), backgroundColor: ["#6366f1", "#10b981", "#f59e42", "#fbbf24", "#3b82f6", "#ef4444", "#a3e635"] }] }} options={{ plugins: { legend: { position: "bottom" as const } }, cutout: "70%" }} />
               </div>
             ) : (
               <div className="text-muted-foreground text-sm">No data yet</div>
             )}
+            <div className="mt-4">
+              <div className="mb-2">
+                <select value={monthFilter} onChange={(e)=> setMonthFilter(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card">
+                  <option value="">All months</option>
+                  {monthlySummary.map(([m]) => (<option key={m} value={m}>{m}</option>))}
+                </select>
+              </div>
+              {monthlyFiltered.length > 0 ? (
+                <div className="h-56">
+                  <Bar data={{ labels: monthlyFiltered.map(([m])=>m), datasets: [{ label: "Total", data: monthlyFiltered.map(([,v])=>v), backgroundColor: "rgba(99,102,241,0.5)" }] }} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }} />
+                </div>
+              ) : (
+                <div className="text-muted-foreground text-sm">No data yet</div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
