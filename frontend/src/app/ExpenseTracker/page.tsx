@@ -39,6 +39,7 @@ export default function ExpenseTrackerPage() {
   const [activeTab, setActiveTab] = useState<"data" | "insights">("data");
   const [showBudgetsModal, setShowBudgetsModal] = useState(false);
   const [tempBudgets, setTempBudgets] = useState<Record<string, number>>({});
+  const [allCategories, setAllCategories] = useState<string[]>([]);
 
   async function fetchList() {
     try {
@@ -64,6 +65,19 @@ export default function ExpenseTrackerPage() {
       } catch {}
     })();
   }, []);
+  useEffect(() => {
+    (async () => {
+      try {
+        const base = await (await fetch(`/api/categories`)).json();
+        const fromExpenses = Array.from(new Set(expenses.map(e=> String(e.category || "Other"))));
+        const union = Array.from(new Set<string>([...(base.categories||[]), ...fromExpenses])).sort((a,b)=> a.localeCompare(b));
+        setAllCategories(union);
+      } catch {
+        const fromExpenses = Array.from(new Set(expenses.map(e=> String(e.category || "Other")))).sort((a,b)=> a.localeCompare(b));
+        setAllCategories(fromExpenses);
+      }
+    })();
+  }, [expenses]);
   useEffect(() => {
     (async () => {
       try {
@@ -477,9 +491,10 @@ export default function ExpenseTrackerPage() {
             <CardDescription>{currentYm} budgets and usage</CardDescription>
           </CardHeader>
           <CardContent>
-            {(monthlyCategorySpend.arr).length > 0 ? (
+            {(allCategories.length > 0) ? (
               <div className="space-y-3">
-                {(monthlyCategorySpend.arr).map(([cat, spent]) => {
+                {allCategories.map((cat) => {
+                  const spent = monthlyCategorySpend.map.get(cat) || 0;
                   const budget = (defaultCategoryBudgets?.[cat]) || 0;
                   const pct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
                   const warn = pct >= 80 && pct < 100;
@@ -614,7 +629,7 @@ export default function ExpenseTrackerPage() {
             <div className="p-4 max-h-[60vh] overflow-y-auto">
               <div className="text-sm text-muted-foreground mb-3">Enter a monthly budget per category. Leave blank or 0 if not applicable.</div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {(Array.from(new Set(expenses.map(e=> String(e.category || "Other")))).sort((a,b)=> a.localeCompare(b))).map(cat => (
+                {allCategories.map(cat => (
                   <div key={cat} className="flex items-center justify-between gap-3 rounded-lg border border-border p-2">
                     <div className="text-sm font-medium">{cat}</div>
                     <input type="number" step="0.01" defaultValue={(defaultCategoryBudgets?.[cat] || 0)} onChange={(e)=> setTempBudgets(prev=> ({...prev, [cat]: Number(e.target.value) || 0}))} className="h-9 w-28 rounded-md border border-border px-2 bg-background text-right" />
