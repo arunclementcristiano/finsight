@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand, UpdateCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, PutCommand, UpdateCommand, GetCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
 
 // Utilities
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.AWS_REGION || "us-east-1" }));
@@ -59,6 +59,23 @@ export async function POST(req: NextRequest) {
       const r = await ddb.send(new GetCommand({ TableName: CATEGORY_RULES_TABLE, Key: { rule: extracted } }));
       const ruleCat = (r.Item as any)?.category as string | undefined;
       if (ruleCat) category = ruleCat;
+    }
+
+    // 3.5) CategoryMemory lookup (user-specific terms)
+    if (!category) {
+      try {
+        const res = await ddb.send(new ScanCommand({ TableName: CATEGORY_MEMORY_TABLE }));
+        const lowerText = rawText.toLowerCase();
+        for (const it of (res.Items || [])) {
+          if (it.userId !== userId) continue;
+          const terms = (it.terms as any[]) || [];
+          for (const t of terms) {
+            const term = String(t || "").toLowerCase();
+            if (term && lowerText.includes(term)) { category = String(it.category || ""); break; }
+          }
+          if (category) break;
+        }
+      } catch {}
     }
 
     // 4) If category unknown -> call Groq
@@ -123,15 +140,15 @@ export async function PUT(req: NextRequest) {
       Item: { expenseId, userId, amount, category, rawText, date: isoDate, createdAt: new Date().toISOString() },
     }));
 
-    // Update CategoryMemory (simple upsert count) and persist rule mapping
+    // Update CategoryMemory (upsert usageCount and append extracted term), and persist rule mapping
+    const extracted = (rawText.toLowerCase().match(/\b(?:on|for|at|to)\s+([a-z][a-z\s]{1,30})/i)?.[1] || rawText.toLowerCase().split(/\s+/).filter(Boolean).slice(-1)[0] || "").trim();
     await ddb.send(new UpdateCommand({
       TableName: CATEGORY_MEMORY_TABLE,
       Key: { userId, category },
-      UpdateExpression: "ADD usageCount :inc",
-      ExpressionAttributeValues: { ":inc": 1 },
+      UpdateExpression: "SET terms = list_append(if_not_exists(terms, :empty), :t) ADD usageCount :inc",
+      ExpressionAttributeValues: { ":inc": 1, ":t": extracted ? [extracted] : [], ":empty": [] },
     }));
 
-    const extracted = (rawText.toLowerCase().match(/\b(?:on|for|at|to)\s+([a-z][a-z\s]{1,30})/i)?.[1] || rawText.toLowerCase().split(/\s+/).filter(Boolean).slice(-1)[0] || "").trim();
     if (category !== "Uncategorized" && extracted) {
       await ddb.send(new PutCommand({ TableName: CATEGORY_RULES_TABLE, Item: { rule: extracted, category } }));
     }

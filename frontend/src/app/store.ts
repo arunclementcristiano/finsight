@@ -54,6 +54,7 @@ interface AppState {
 	reset: () => void;
 
 	addExpense: (e: Expense) => void;
+	setExpenses: (e: Expense[]) => void;
 	updateExpense: (id: string, updates: Partial<Expense>) => void;
 	deleteExpense: (id: string) => void;
 	rememberCategory: (keyword: string, category: ExpenseCategory | string) => void;
@@ -86,6 +87,7 @@ export const useApp = create<AppState>()(
 			reset: () => set(() => ({ profile: { name: "", currency: "INR" }, questionnaire: { preferredAssets: [] }, plan: null, holdings: [], driftTolerancePct: 5, emergencyMonths: 6, expenses: [], categoryMemory: {}, expenseReminderDaily: false })),
 
 			addExpense: (e) => set(state => ({ expenses: [e, ...state.expenses] })),
+			setExpenses: (e) => set(() => ({ expenses: [...e] })),
 			updateExpense: (id, updates) => set(state => ({ expenses: state.expenses.map(ex => (ex.id === id ? { ...ex, ...updates } : ex)) })),
 			deleteExpense: (id) => set(state => ({ expenses: state.expenses.filter(ex => ex.id !== id) })),
 			rememberCategory: (keyword, category) => set(state => ({ categoryMemory: { ...state.categoryMemory, [keyword.toLowerCase()]: category } })),

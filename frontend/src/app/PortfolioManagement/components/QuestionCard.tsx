@@ -32,7 +32,7 @@ export default function QuestionCard({ questionText, options, selected, onChange
 					{options.map(option => (
 						<button
 							key={option}
-							className={`rounded-xl p-4 border transition-colors font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] ${isSelected(option) ? "border-[var(--color-ring)] bg-muted text-foreground" : "border-border bg-card text-foreground hover:bg-muted"}`}
+							className={`rounded-xl p-4 border transition-colors font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] ${isSelected(option) ? "border-[var(--color-ring)] bg-muted/40 text-foreground" : "border-border bg-card text-foreground hover:bg-muted"}`}
 							onClick={() => handleClick(option)}
 						>
 							{option}
