@@ -38,8 +38,15 @@ export default function ExpenseTrackerPage() {
   const [privacy, setPrivacy] = useState(false);
   const [activeTab, setActiveTab] = useState<"data" | "insights">("data");
   const [showBudgetsModal, setShowBudgetsModal] = useState(false);
-  const [tempBudgets, setTempBudgets] = useState<Record<string, number>>({});
+  const [tempDefaultBudgets, setTempDefaultBudgets] = useState<Record<string, number>>({});
+  const [tempOverrideBudgets, setTempOverrideBudgets] = useState<Record<string, number>>({});
   const [allCategories, setAllCategories] = useState<string[]>([]);
+  const [overridesByMonth, setOverridesByMonth] = useState<Record<string, Record<string, number>>>({});
+  // Insights controls
+  const [insightsPreset, setInsightsPreset] = useState<"today"|"week"|"month"|"custom">("month");
+  const [insightsStart, setInsightsStart] = useState<string>("");
+  const [insightsEnd, setInsightsEnd] = useState<string>("");
+  const [insightsOverOnly, setInsightsOverOnly] = useState(false);
 
   async function fetchList() {
     try {
@@ -58,9 +65,10 @@ export default function ExpenseTrackerPage() {
       try {
         const res = await fetch(`/api/budgets?userId=demo`);
         const data = await res.json();
-        if (data && data.budgets) {
-          const next = Object.fromEntries(Object.entries(data.budgets).map(([k,v]) => [k, Number(v) || 0]));
-          (useApp.getState() as any).setDefaultCategoryBudgets(next);
+        if (data) {
+          const def = Object.fromEntries(Object.entries(data.defaultBudgets || {}).map(([k,v]: any) => [k, Number(v) || 0]));
+          (useApp.getState() as any).setDefaultCategoryBudgets(def);
+          setOverridesByMonth(data.overrides || {});
         }
       } catch {}
     })();
@@ -220,11 +228,34 @@ export default function ExpenseTrackerPage() {
   const [editingVal, setEditingVal] = useState<string>("");
   function saveBudget(cat: string) {
     const amt = Math.max(0, Number(editingVal) || 0);
-    const next = { ...(defaultCategoryBudgets || {}), [cat]: amt };
-    setDefaultCategoryBudgets(next);
+    const nextDef = { ...(defaultCategoryBudgets || {}), [cat]: amt };
+    setDefaultCategoryBudgets(nextDef);
     setEditingCat(null);
     setEditingVal("");
-    fetch(`/api/budgets`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", budgets: next }) }).catch(()=>{});
+    fetch(`/api/budgets`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", defaultBudgets: nextDef, overrides: overridesByMonth }) }).catch(()=>{});
+  }
+
+  function getMonthlyBudgetFor(ym: string, cat: string): number {
+    const o = overridesByMonth?.[ym]?.[cat];
+    if (typeof o === "number") return o;
+    const d = (defaultCategoryBudgets || {})[cat] || 0;
+    return Number(d) || 0;
+  }
+
+  function daysInMonth(y: number, mZeroBased: number) { return new Date(y, mZeroBased + 1, 0).getDate(); }
+  function prorationForRange(startISO: string, endISO: string) {
+    const start = new Date(startISO); const end = new Date(endISO);
+    const s = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const e = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+    const map: Record<string, number> = {};
+    let cur = new Date(s);
+    while (cur <= e) {
+      const y = cur.getFullYear(); const m = cur.getMonth();
+      const ym = `${y}-${String(m+1).padStart(2,"0")}`;
+      map[ym] = (map[ym] || 0) + 1;
+      cur.setDate(cur.getDate() + 1);
+    }
+    return map; // ym -> overlapDays
   }
 
   const [monthFilter, setMonthFilter] = useState<string>("");
@@ -595,23 +626,101 @@ export default function ExpenseTrackerPage() {
         {/* Monthly */}
         <Card className="xl:col-span-2">
           <CardHeader>
-            <CardTitle>Monthly Summary</CardTitle>
-            <CardDescription>Totals per month</CardDescription>
+            <CardTitle>Insights</CardTitle>
+            <CardDescription>Actual vs Expected (prorated by day)</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-2">
-              <select value={monthFilter} onChange={(e)=> setMonthFilter(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card">
-                <option value="">All months</option>
-                {monthlySummary.map(([m]) => (<option key={m} value={m}>{m}</option>))}
+            <div className="mb-2 flex flex-wrap gap-2 items-center">
+              <label className="text-sm text-muted-foreground">Range</label>
+              <select value={insightsPreset} onChange={(e)=> setInsightsPreset(e.target.value as any)} className="h-9 rounded-md border border-border px-2 bg-card">
+                <option value="today">Today</option>
+                <option value="week">This week</option>
+                <option value="month">This month</option>
+                <option value="custom">Custom</option>
               </select>
+              {insightsPreset === "custom" && (
+                <>
+                  <input type="date" value={insightsStart} onChange={e=> setInsightsStart(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card" />
+                  <span className="text-sm text-muted-foreground">to</span>
+                  <input type="date" value={insightsEnd} onChange={e=> setInsightsEnd(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card" />
+                </>
+              )}
+              <label className="ml-auto inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={insightsOverOnly} onChange={e=> setInsightsOverOnly(e.target.checked)} /> Over budget only</label>
             </div>
-            {monthlyFiltered.length > 0 ? (
-              <div className="h-56">
-                <Bar data={{ labels: monthlyFiltered.map(([m])=>m), datasets: [{ label: "Total", data: monthlyFiltered.map(([,v])=>v), backgroundColor: "rgba(99,102,241,0.5)" }] }} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }} />
-              </div>
-            ) : (
-              <div className="text-muted-foreground text-sm">No data yet</div>
-            )}
+            {(() => {
+              // Compute range
+              const now = new Date();
+              let start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+              let end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+              if (insightsPreset === "week") { const day = start.getDay() || 7; start.setDate(start.getDate() - (day-1)); end = new Date(start); end.setDate(start.getDate() + 6); }
+              else if (insightsPreset === "month") { start = new Date(now.getFullYear(), now.getMonth(), 1); end = new Date(now.getFullYear(), now.getMonth()+1, 0); }
+              else if (insightsPreset === "custom" && insightsStart && insightsEnd) { start = new Date(insightsStart); end = new Date(insightsEnd); }
+              const startISO = start.toISOString().slice(0,10); const endISO = end.toISOString().slice(0,10);
+              const overlap = prorationForRange(startISO, endISO); // ym -> overlapDays
+              // Actual spend by category in range
+              const actualMap = new Map<string, number>();
+              for (const e of expenses) {
+                const d = new Date(e.date);
+                if (d >= start && d <= end) actualMap.set(String(e.category||"Other"), (actualMap.get(String(e.category||"Other"))||0) + Number(e.amount||0));
+              }
+              // Expected by category (sum across months with overrides)
+              const expectedMap = new Map<string, number>();
+              for (const [ym, days] of Object.entries(overlap)) {
+                const [yStr, mStr] = ym.split("-"); const y = Number(yStr); const m = Number(mStr)-1; const dim = daysInMonth(y, m);
+                for (const cat of allCategories) {
+                  const mb = getMonthlyBudgetFor(ym, cat);
+                  if (mb <= 0) continue;
+                  const add = (mb / dim) * (days as number);
+                  expectedMap.set(cat, (expectedMap.get(cat) || 0) + add);
+                }
+              }
+              // Compose rows
+              let rows = Array.from(new Set([...Array.from(actualMap.keys()), ...Array.from(expectedMap.keys())])).map(cat => {
+                const actual = actualMap.get(cat) || 0;
+                const expected = expectedMap.get(cat) || 0;
+                return { cat, actual, expected, variance: actual - expected };
+              });
+              if (insightsOverOnly) rows = rows.filter(r => r.actual > r.expected);
+              // Simple chart data (top 6)
+              const top = rows.sort((a,b)=> (b.actual - b.expected) - (a.actual - a.expected)).slice(0,6);
+              const chart = {
+                labels: top.map(r=> r.cat),
+                datasets: [
+                  { label: "Actual", data: top.map(r=> r.actual), backgroundColor: "rgba(239,68,68,0.6)" },
+                  { label: "Expected", data: top.map(r=> r.expected), backgroundColor: "rgba(99,102,241,0.5)" }
+                ]
+              };
+              return (
+                <div className="space-y-4">
+                  <div className="h-56">
+                    <Bar data={chart} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" as const } }, scales: { y: { beginAtZero: true } } }} />
+                  </div>
+                  <div className="rounded-xl border border-border overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-card">
+                        <tr>
+                          <th className="px-3 py-2 border-b text-left">Category</th>
+                          <th className="px-3 py-2 border-b text-right">Actual</th>
+                          <th className="px-3 py-2 border-b text-right">Expected</th>
+                          <th className="px-3 py-2 border-b text-right">Variance</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map(r => (
+                          <tr key={r.cat} className="border-b">
+                            <td className="px-3 py-2">{r.cat}</td>
+                            <td className="px-3 py-2 text-right">{fmtMoney(r.actual)}</td>
+                            <td className="px-3 py-2 text-right">{fmtMoney(r.expected)}</td>
+                            <td className={`px-3 py-2 text-right ${r.variance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{fmtMoney(r.variance)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="text-xs text-muted-foreground">Budgets are monthly; expected is prorated to your selected dates. Monthly overrides are applied when set.</div>
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       </div>
@@ -626,12 +735,19 @@ export default function ExpenseTrackerPage() {
               <button className="text-muted-foreground hover:text-foreground" onClick={()=> setShowBudgetsModal(false)}><X className="h-5 w-5"/></button>
             </div>
             <div className="p-4 max-h-[60vh] overflow-y-auto">
-              <div className="text-sm text-muted-foreground mb-3">Enter a monthly budget per category. Leave blank or 0 if not applicable.</div>
+              <div className="text-sm text-muted-foreground mb-3">Set default budgets (apply to all months) and optionally override for this month ({currentYm}). Leave blank to keep unchanged.</div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {allCategories.map(cat => (
-                  <div key={cat} className="flex items-center justify-between gap-3 rounded-lg border border-border p-2">
-                    <div className="text-sm font-medium">{cat}</div>
-                    <input type="number" step="0.01" defaultValue={(defaultCategoryBudgets?.[cat] || 0)} onChange={(e)=> setTempBudgets(prev=> ({...prev, [cat]: Number(e.target.value) || 0}))} className="h-9 w-28 rounded-md border border-border px-2 bg-background text-right" />
+                  <div key={cat} className="rounded-lg border border-border p-3 space-y-2">
+                    <div className="text-sm font-semibold">{cat}</div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-xs text-muted-foreground">Default</div>
+                      <input type="number" step="0.01" placeholder={String(defaultCategoryBudgets?.[cat] || 0)} onChange={(e)=> setTempDefaultBudgets(prev=> ({...prev, [cat]: Number(e.target.value) || 0}))} className="h-9 w-28 rounded-md border border-border px-2 bg-background text-right" />
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-xs text-muted-foreground">This month</div>
+                      <input type="number" step="0.01" placeholder={String((overridesByMonth?.[currentYm]?.[cat] || 0))} onChange={(e)=> setTempOverrideBudgets(prev=> ({...prev, [cat]: Number(e.target.value) || 0}))} className="h-9 w-28 rounded-md border border-border px-2 bg-background text-right" />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -639,10 +755,12 @@ export default function ExpenseTrackerPage() {
             <div className="px-4 py-3 border-t border-border flex items-center justify-end gap-2">
               <Button variant="outline" onClick={()=> setShowBudgetsModal(false)}>Cancel</Button>
               <Button onClick={async ()=> {
-                const merged = { ...(defaultCategoryBudgets || {}), ...tempBudgets };
-                try { await fetch(`/api/budgets`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", budgets: merged }) }); } catch {}
-                (useApp.getState() as any).setDefaultCategoryBudgets(merged);
-                setTempBudgets({});
+                const nextDefaults = { ...(defaultCategoryBudgets || {}), ...tempDefaultBudgets };
+                const nextOverrides = { ...(overridesByMonth || {}), [currentYm]: { ...(overridesByMonth?.[currentYm] || {}), ...tempOverrideBudgets } };
+                try { await fetch(`/api/budgets`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", defaultBudgets: nextDefaults, overrides: nextOverrides }) }); } catch {}
+                (useApp.getState() as any).setDefaultCategoryBudgets(nextDefaults);
+                setOverridesByMonth(nextOverrides);
+                setTempDefaultBudgets({}); setTempOverrideBudgets({});
                 setShowBudgetsModal(false);
               }}>Save</Button>
             </div>
