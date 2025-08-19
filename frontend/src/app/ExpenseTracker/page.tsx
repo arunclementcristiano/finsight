@@ -123,7 +123,7 @@ export default function ExpenseTrackerPage() {
         const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: parsed.category, amount: parsed.amount, date: dateOpen ? selectedDate : undefined }) });
         const saved = await put.json();
         if (saved && saved.ok) {
-          addExpense({ id: saved.expenseId || uuidv4(), text: rawText, amount: parsed.amount, category: parsed.category as string, date: new Date().toISOString(), note: rawText });
+          addExpense({ id: saved.expenseId || uuidv4(), text: rawText, amount: parsed.amount, category: parsed.category as string, date: (dateOpen ? selectedDate : new Date().toISOString().slice(0,10)), createdAt: new Date().toISOString(), note: rawText });
           setInput("");
           inputRef.current?.focus();
           resetDatePicker();
@@ -136,7 +136,7 @@ export default function ExpenseTrackerPage() {
         const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: memCat, amount: parsed.amount, date: dateOpen ? selectedDate : undefined }) });
         const saved = await put.json();
         if (saved && saved.ok) {
-          addExpense({ id: saved.expenseId || uuidv4(), text: rawText, amount: parsed.amount, category: memCat, date: new Date().toISOString(), note: rawText });
+          addExpense({ id: saved.expenseId || uuidv4(), text: rawText, amount: parsed.amount, category: memCat, date: (dateOpen ? selectedDate : new Date().toISOString().slice(0,10)), createdAt: new Date().toISOString(), note: rawText });
           setInput("");
           inputRef.current?.focus();
           resetDatePicker();
@@ -156,7 +156,7 @@ export default function ExpenseTrackerPage() {
         const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: data.category, amount: data.amount, date: dateOpen ? selectedDate : undefined }) });
         const saved = await put.json();
         if (saved && saved.ok) {
-          addExpense({ id: saved.expenseId || uuidv4(), text: rawText, amount: data.amount, category: data.category, date: new Date().toISOString(), note: rawText });
+          addExpense({ id: saved.expenseId || uuidv4(), text: rawText, amount: data.amount, category: data.category, date: (dateOpen ? selectedDate : new Date().toISOString().slice(0,10)), createdAt: new Date().toISOString(), note: rawText });
           setInput("");
           inputRef.current?.focus();
           resetDatePicker();
@@ -177,7 +177,7 @@ export default function ExpenseTrackerPage() {
       const res = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText: ai.raw, category: categoryFinal, amount: amountFinal, date: dateOpen ? selectedDate : undefined }) });
       const data = await res.json();
       if (data.ok) {
-        addExpense({ id: data.expenseId || uuidv4(), text: ai.raw, amount: amountFinal, category: categoryFinal, date: new Date().toISOString(), note: ai.raw });
+        addExpense({ id: data.expenseId || uuidv4(), text: ai.raw, amount: amountFinal, category: categoryFinal, date: (dateOpen ? selectedDate : new Date().toISOString().slice(0,10)), createdAt: new Date().toISOString(), note: ai.raw });
         setAi(null);
         setInput("");
         inputRef.current?.focus();
@@ -404,13 +404,13 @@ export default function ExpenseTrackerPage() {
           </div>
           {/* Actions */}
           <div className="flex items-start justify-end gap-2">
-            <Button variant="outline" onClick={()=> setPrivacy(p=>!p)}>
-              {privacy ? <EyeOff className="h-4 w-4 mr-2"/> : <Eye className="h-4 w-4 mr-2"/>}
-              {privacy ? "Unmask" : "Privacy"}
-            </Button>
             <Button variant="outline" onClick={()=> setShowBudgetsModal(true)}>
               <Settings2 className="h-4 w-4 mr-2"/>
               Set Budgets
+            </Button>
+            <Button variant="outline" onClick={()=> setPrivacy(p=>!p)}>
+              {privacy ? <EyeOff className="h-4 w-4 mr-2"/> : <Eye className="h-4 w-4 mr-2"/>}
+              {privacy ? "Unmask" : "Privacy"}
             </Button>
             <Button variant="outline" onClick={exportCsv}>
               <Download className="h-4 w-4 mr-2"/>
@@ -724,7 +724,7 @@ export default function ExpenseTrackerPage() {
                       </thead>
                       <tbody>
                         {rows.map(r => (
-                          <tr key={r.cat} className="border-b">
+                          <tr key={r.cat} className={`border-b ${r.actual > r.expected ? 'bg-rose-50 dark:bg-rose-950/20' : r.actual > 0 ? 'bg-emerald-50/30 dark:bg-emerald-950/10' : ''}`}>
                             <td className="px-3 py-2">{r.cat}</td>
                             <td className="px-3 py-2 text-right">{fmtMoney(r.actual)}</td>
                             <td className="px-3 py-2 text-right">{fmtMoney(r.expected)}</td>
