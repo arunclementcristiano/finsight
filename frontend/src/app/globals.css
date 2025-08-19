@@ -22,11 +22,11 @@
   --card: #1e293b; /* slate-800 */
   --card-foreground: #e2e8f0;
 
-  --muted: #0b1220; /* dark slate */
+  --muted: #334155; /* slate-700 */
   --muted-foreground: #94a3b8; /* slate-400 */
 
   --border: #334155; /* slate-700 */
-  --input: #1f2a37; /* slate-800-ish */
+  --input: #334155; /* slate-700 */
   --ring: #818cf8; /* indigo-400 */
 }
 

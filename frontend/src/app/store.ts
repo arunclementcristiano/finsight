@@ -19,6 +19,17 @@ export interface Holding {
 	currentValue?: number;
 }
 
+export type ExpenseCategory = "Food" | "Travel" | "Bills" | "Shopping" | "Entertainment" | "Health" | "Groceries" | "Fuel" | "Utilities" | "Healthcare" | "Other";
+
+export interface Expense {
+	id: string;
+	text: string; // original input or description
+	amount: number;
+	category: ExpenseCategory | string;
+	date: string; // ISO string
+	note?: string;
+}
+
 interface AppState {
 	profile: UserProfile;
 	questionnaire: Record<string, any>;
@@ -26,6 +37,10 @@ interface AppState {
 	holdings: Holding[];
 	driftTolerancePct: number;
 	emergencyMonths: number;
+
+	expenses: Expense[];
+	categoryMemory: Record<string, ExpenseCategory | string>; // keyword -> category
+	expenseReminderDaily: boolean;
 
 	setProfile: (profile: Partial<UserProfile>) => void;
 	setQuestionAnswer: (key: string, value: any) => void;
@@ -37,6 +52,13 @@ interface AppState {
 	setDriftTolerancePct: (v: number) => void;
 	setEmergencyMonths: (v: number) => void;
 	reset: () => void;
+
+	addExpense: (e: Expense) => void;
+	setExpenses: (e: Expense[]) => void;
+	updateExpense: (id: string, updates: Partial<Expense>) => void;
+	deleteExpense: (id: string) => void;
+	rememberCategory: (keyword: string, category: ExpenseCategory | string) => void;
+	setExpenseReminderDaily: (enabled: boolean) => void;
 }
 
 export const useApp = create<AppState>()(
@@ -49,6 +71,10 @@ export const useApp = create<AppState>()(
 			driftTolerancePct: 5,
 			emergencyMonths: 6,
 
+			expenses: [],
+			categoryMemory: {},
+			expenseReminderDaily: false,
+
 			setProfile: (profile) => set(state => ({ profile: { ...state.profile, ...profile } })),
 			setQuestionAnswer: (key, value) => set(state => ({ questionnaire: { ...state.questionnaire, [key]: value } })),
 			setQuestionnaire: (q) => set(() => ({ questionnaire: { ...q } })),
@@ -58,7 +84,14 @@ export const useApp = create<AppState>()(
 			deleteHolding: (id) => set(state => ({ holdings: state.holdings.filter(h => h.id !== id) })),
 			setDriftTolerancePct: (v) => set(() => ({ driftTolerancePct: Math.min(10, Math.max(3, Math.round(v))) })),
 			setEmergencyMonths: (v) => set(() => ({ emergencyMonths: Math.min(12, Math.max(3, Math.round(v))) })),
-			reset: () => set(() => ({ profile: { name: "", currency: "INR" }, questionnaire: { preferredAssets: [] }, plan: null, holdings: [], driftTolerancePct: 5, emergencyMonths: 6 })),
+			reset: () => set(() => ({ profile: { name: "", currency: "INR" }, questionnaire: { preferredAssets: [] }, plan: null, holdings: [], driftTolerancePct: 5, emergencyMonths: 6, expenses: [], categoryMemory: {}, expenseReminderDaily: false })),
+
+			addExpense: (e) => set(state => ({ expenses: [e, ...state.expenses] })),
+			setExpenses: (e) => set(() => ({ expenses: [...e] })),
+			updateExpense: (id, updates) => set(state => ({ expenses: state.expenses.map(ex => (ex.id === id ? { ...ex, ...updates } : ex)) })),
+			deleteExpense: (id) => set(state => ({ expenses: state.expenses.filter(ex => ex.id !== id) })),
+			rememberCategory: (keyword, category) => set(state => ({ categoryMemory: { ...state.categoryMemory, [keyword.toLowerCase()]: category } })),
+			setExpenseReminderDaily: (enabled) => set(() => ({ expenseReminderDaily: !!enabled })),
 		}),
 		{
 			name: "finsight-v1",

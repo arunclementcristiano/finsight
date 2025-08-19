@@ -58,3 +58,9 @@ src/output.css
 
 # Misc
 *.log
+
+# Terraform
+terraform/.terraform*
+terraform/terraform.tfstate*
+
+frontend/.env

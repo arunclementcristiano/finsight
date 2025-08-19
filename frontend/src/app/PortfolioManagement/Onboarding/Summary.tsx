@@ -67,24 +67,24 @@ export default function Summary({ plan }: SummaryProps) {
 					<CardTitle>Allocation Details</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<div className="w-full overflow-x-auto">
-						<table className="min-w-[760px] w-full text-left border border-border rounded-xl">
-							<thead className="sticky top-0 z-10">
+					<div className="rounded-xl border border-border">
+						<table className="w-full text-left text-sm">
+							<thead className="bg-card">
 								<tr>
-									<th className="py-3 px-4 border-b text-sm text-muted-foreground">Asset Class</th>
-									<th className="py-3 px-4 border-b text-sm text-muted-foreground">Target</th>
-									<th className="py-3 px-4 border-b text-sm text-muted-foreground">Range</th>
-									<th className="py-3 px-4 border-b text-sm text-muted-foreground">Risk</th>
-									<th className="py-3 px-4 border-b text-sm text-muted-foreground">Notes</th>
+									<th className="py-3 px-4 text-muted-foreground">Asset Class</th>
+									<th className="py-3 px-4 text-muted-foreground text-right">Target</th>
+									<th className="py-3 px-4 text-muted-foreground text-right">Range</th>
+									<th className="py-3 px-4 text-muted-foreground">Risk</th>
+									<th className="py-3 px-4 text-muted-foreground">Notes</th>
 								</tr>
 							</thead>
 							<tbody>
-								{plan.buckets.map((b: any) => (
-									<tr key={b.class} className="border-b hover:bg-muted/20">
+								{plan.buckets.map((b: any, idx: number) => (
+									<tr key={b.class} className={idx % 2 === 0 ? "bg-transparent" : "bg-muted/30"}>
 										<td className="py-3 px-4 font-medium">{b.class}</td>
-										<td className="py-3 px-4 font-semibold text-indigo-600 dark:text-indigo-300">{b.pct}%</td>
-										<td className="py-3 px-4">{b.range[0]}% – {b.range[1]}%</td>
-										<td className="py-3 px-4 font-medium text-emerald-600 dark:text-emerald-300">{b.riskCategory}</td>
+										<td className="py-3 px-4 text-right font-semibold text-indigo-600 dark:text-indigo-300">{b.pct}%</td>
+										<td className="py-3 px-4 text-right">{b.range[0]}% – {b.range[1]}%</td>
+										<td className="py-3 px-4"><span className="inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs">{b.riskCategory}</span></td>
 										<td className="py-3 px-4 italic text-muted-foreground">{b.notes}</td>
 									</tr>
 								))}

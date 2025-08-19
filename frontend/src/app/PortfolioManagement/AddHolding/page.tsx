@@ -38,7 +38,7 @@ export default function AddHoldingPage() {
 		};
 	}
 
-	const numeric = useMemo(() => {
+	const numeric = React.useMemo(() => {
 		const n = { units: parseFloat(form.units), price: parseFloat(form.price), investedAmount: parseFloat(form.investedAmount), currentValue: parseFloat(form.currentValue) };
 		return {
 			units: Number.isFinite(n.units) ? n.units : NaN,
@@ -48,7 +48,7 @@ export default function AddHoldingPage() {
 		};
 	}, [form]);
 
-	const computed = useMemo(() => {
+	const computed = React.useMemo(() => {
 		const totalByUnits = !Number.isNaN(numeric.units) && !Number.isNaN(numeric.price) ? numeric.units * numeric.price : NaN;
 		const totalByAmount = !Number.isNaN(numeric.currentValue) ? numeric.currentValue : NaN;
 		const invested = mode === "units" ? (!Number.isNaN(totalByUnits) ? totalByUnits : NaN) : (!Number.isNaN(numeric.investedAmount) ? numeric.investedAmount : NaN);
@@ -58,7 +58,7 @@ export default function AddHoldingPage() {
 		return { invested, current, pnl, pnlPct };
 	}, [numeric, mode]);
 
-	const errors = useMemo(() => {
+	const errors = React.useMemo(() => {
 		const e: Partial<Record<keyof HoldingFormState | "_form", string>> = {};
 		if (!form.instrumentClass) e.instrumentClass = "Select an instrument class";
 		if (!form.name.trim()) e.name = "Enter a name";
@@ -72,7 +72,7 @@ export default function AddHoldingPage() {
 		return e;
 	}, [form, mode, numeric]);
 
-	const isValid = useMemo(() => Object.keys(errors).length === 0, [errors]);
+	const isValid = React.useMemo(() => Object.keys(errors).length === 0, [errors]);
 
 	function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -126,7 +126,6 @@ export default function AddHoldingPage() {
 								</div>
 
 								<form onSubmit={handleSubmit} className="space-y-5">
-									{/* instrument, name, symbol and numeric inputs - unchanged */}
 									<div>
 										<label className="block text-sm font-medium text-muted-foreground mb-1">Instrument Class</label>
 										<select value={form.instrumentClass} onChange={onChange("instrumentClass")} className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors">
@@ -188,14 +187,14 @@ export default function AddHoldingPage() {
 										</div>
 									)}
 
-									<CardFooter className="pt-2 flex items-center gap-3">
-										<Button type="submit" disabled={!isValid} className="min-w-[160px]">Save Holding</Button>
-										<Button type="button" variant="outline" onClick={resetForm}>Reset</Button>
-										{submitted && (<span className="text-sm text-emerald-600">Saved!</span>)}
-									</CardFooter>
-								</form>
-							</CardContent>
-						</Card>
+								<CardFooter className="pt-2 flex items-center gap-3">
+									<Button type="submit" disabled={!isValid} className="min-w-[160px]">Save Holding</Button>
+									<Button type="button" variant="outline" onClick={resetForm}>Reset</Button>
+									{submitted && (<span className="text-sm text-emerald-600">Saved!</span>)}
+								</CardFooter>
+							</form>
+						</CardContent>
+					</Card>
 					</div>
 					<div className="flex flex-col gap-6 order-none xl:order-1">
 						<Card className="xl:sticky xl:top-20">
@@ -215,7 +214,6 @@ export default function AddHoldingPage() {
 				</div>
 			)}
 
-			{/* Import modal */}
 			{showImport && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
 					<div className="w-full max-w-md rounded-xl border border-border bg-card p-5 text-foreground">
@@ -246,15 +244,6 @@ function SummaryStat({ label, value, icon, valueClassName = "" }: { label: strin
 				<span className="text-sm">{label}</span>
 			</div>
 			<div className={`text-xl font-semibold ${valueClassName}`}>{value}</div>
-		</div>
-	);
-}
-
-function DetailItem({ label, value }: { label: string; value: string }) {
-	return (
-		<div>
-			<div className="text-xs text-muted-foreground">{label}</div>
-			<div className="text-sm font-medium">{value}</div>
 		</div>
 	);
 }
@@ -329,7 +318,7 @@ function HoldingsTableWithPagination({ onImport }: { onImport?: () => void }) {
 							</div>
 							<div className="rounded-xl border border-border p-3">
 								<div className="text-xs text-foreground/80">P/L</div>
-								<div className={cn("text-lg font-semibold", totals.pnl >= 0 ? "text-emerald-600" : "text-rose-600")}>{formatNumber(totals.pnl, 2)} ({formatNumber(totals.pnlPct, 2)}%)</div>
+								<div className={cn("text-lg font-semibold", totals.pnlPct >= 0 ? "text-emerald-600" : "text-rose-600")}>{formatNumber(totals.pnlPct, 2)}%</div>
 							</div>
 						</div>
 						<table className="w-full text-left border rounded-xl overflow-hidden border-border text-sm">
@@ -337,8 +326,10 @@ function HoldingsTableWithPagination({ onImport }: { onImport?: () => void }) {
 								<tr>
 									<th className="px-3 py-2 border-b">Class</th>
 									<th className="px-3 py-2 border-b">Name / Symbol</th>
-									<th className="px-3 py-2 border-b text-right">Units / Price</th>
-									<th className="px-3 py-2 border-b text-right">Invested / Current</th>
+									<th className="px-3 py-2 border-b text-right">Units</th>
+									<th className="px-3 py-2 border-b text-right">Price</th>
+									<th className="px-3 py-2 border-b text-right">Invested</th>
+									<th className="px-3 py-2 border-b text-right">Current</th>
 									<th className="px-3 py-2 border-b text-right">P/L</th>
 									<th className="px-3 py-2 border-b">Actions</th>
 								</tr>
@@ -356,24 +347,17 @@ function HoldingsTableWithPagination({ onImport }: { onImport?: () => void }) {
 												<div className="font-medium leading-tight">{h.name}</div>
 												<div className="text-foreground/80 text-xs leading-tight">{h.symbol || "—"}</div>
 											</td>
-											<td className="px-3 py-2 text-right">
-												<div className="leading-tight">{typeof h.units === "number" ? formatNumber(h.units, 2) : "—"}</div>
-												<div className="text-foreground/80 text-xs leading-tight">{typeof h.price === "number" ? formatNumber(h.price, 2) : "—"}</div>
-											</td>
-											<td className="px-3 py-2 text-right">
-												<div className="leading-tight">{formatNumber(invested, 2)}</div>
-												<div className="text-foreground/80 text-xs leading-tight">{formatNumber(current, 2)}</div>
-											</td>
-											<td className="px-3 py-2 text-right">
-												<span className={cn("font-semibold", pnl >= 0 ? "text-emerald-600" : "text-rose-600")}>{formatNumber(pnl, 2)}</span>
-												<span className="ml-2 text-foreground/80">({formatNumber(pnlPct, 2)}%)</span>
-											</td>
+											<td className="px-3 py-2 text-right">{typeof h.units === "number" ? formatNumber(h.units, 2) : "—"}</td>
+											<td className="px-3 py-2 text-right">{typeof h.price === "number" ? formatNumber(h.price, 2) : "—"}</td>
+											<td className="px-3 py-2 text-right">{formatNumber(invested, 2)}</td>
+											<td className="px-3 py-2 text-right">{formatNumber(current, 2)}</td>
+											<td className="px-3 py-2 text-right"><span className={cn("font-semibold", pnlPct >= 0 ? "text-emerald-600" : "text-rose-600")}>{formatNumber(pnlPct, 2)}%</span></td>
 											<td className="px-3 py-2"><button className="text-xs text-rose-600 hover:underline" onClick={() => deleteHolding(h.id)}>Delete</button></td>
 										</tr>
-								);
-							})}
-						</tbody>
-					</table>
+									);
+								})}
+							</tbody>
+						</table>
 					</>
 				)}
 			</CardContent>
