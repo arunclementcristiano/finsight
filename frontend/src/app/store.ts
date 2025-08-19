@@ -27,6 +27,7 @@ export interface Expense {
 	amount: number;
 	category: ExpenseCategory | string;
 	date: string; // ISO string
+	createdAt?: string; // ISO timestamp, used for sorting, not shown
 	note?: string;
 }
 
