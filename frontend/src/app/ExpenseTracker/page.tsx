@@ -139,7 +139,7 @@ export default function ExpenseTrackerPage() {
                 <div className="flex flex-wrap gap-2 items-center">
                   <input type="number" step="0.01" defaultValue={ai.amount ?? 0} className="h-9 w-28 rounded-md border border-border px-2 bg-card text-right"/>
                   <select defaultValue={ai.category || "Other"} className="h-9 rounded-md border border-border px-2 bg-card">
-                    {["Food","Travel","Entertainment","Shopping","Utilities","Healthcare","Other"].map(c => (<option key={c} value={c}>{c}</option>))}
+                    {Array.from(new Set([ai.category, ...(ai as any).options || []].filter(Boolean))).map((c: any) => (<option key={c} value={c}>{c}</option>))}
                   </select>
                   <Button onClick={(e)=>{
                     const wrap = (e.currentTarget.parentElement as HTMLElement);

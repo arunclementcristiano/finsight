@@ -1,20 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
 
 // Utilities
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.AWS_REGION || "us-east-1" }));
 const EXPENSES_TABLE = process.env.EXPENSES_TABLE || "Expenses";
 const CATEGORY_RULES_TABLE = process.env.CATEGORY_RULES_TABLE || "CategoryRules";
 
-const ALLOWED_CATEGORIES = ["Food","Travel","Entertainment","Shopping","Utilities","Healthcare","Other"] as const;
+const ALLOWED_CATEGORIES = [
+  "Food","Travel","Entertainment","Shopping","Utilities","Healthcare",
+  "Housing","Education","Insurance","Investment","Loans","Donations",
+  "Grooming","Personal","Subscription","Taxes","Gifts","Pet Care","Other"
+] as const;
 
 // Step 2.5: Real AI categorization via Groq
 async function getCategoryFromAI(rawText: string): Promise<{ category: string; confidence: number }> {
   const apiKey = (process.env.GROQ_API_KEY || "").trim();
   if (!apiKey) return { category: "", confidence: 0 };
   try {
-    const system = "You are a financial expense categorizer. Allowed categories: Food, Travel, Entertainment, Shopping, Utilities, Healthcare, Other. Respond ONLY JSON: {\"category\": string, \"confidence\": number between 0 and 1}.";
+    const system = `You are a financial expense categorizer. Allowed categories: ${ALLOWED_CATEGORIES.join(", ")}. Respond ONLY JSON: {"category": string, "confidence": number between 0 and 1}.`;
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -102,28 +106,20 @@ export async function POST(req: NextRequest) {
     if (!category) {
       const ai = await getCategoryFromAI(rawText);
       AIConfidence = ai.confidence;
-      const aiCat = (ai.category || "").toLowerCase();
-      const mapping: Record<string, string> = {
-        food: "Food", restaurant: "Food", groceries: "Food",
-        travel: "Travel", transport: "Travel", taxi: "Travel", fuel: "Travel",
-        entertainment: "Entertainment", movies: "Entertainment", movie: "Entertainment", subscription: "Entertainment",
-        shopping: "Shopping", apparel: "Shopping", clothing: "Shopping", electronics: "Shopping",
-        utilities: "Utilities", internet: "Utilities", electricity: "Utilities", water: "Utilities",
-        health: "Healthcare", healthcare: "Healthcare", medical: "Healthcare", medicine: "Healthcare",
-        other: "Other",
-      };
-      let mapped = mapping[aiCat];
-      if (!mapped) {
-        for (const [k, v] of Object.entries(mapping)) {
-          if (k.includes(aiCat) || aiCat.includes(k)) { mapped = v; break; }
-        }
-      }
-      mapped = mapped || "Other";
-      if (AIConfidence === undefined || Number(AIConfidence) < 0.8) {
-        options = [...ALLOWED_CATEGORIES];
-        category = mapped;
-      } else {
-        category = mapped;
+      const aiCatRaw = (ai.category || "").trim();
+      const aiCat = aiCatRaw.toLowerCase();
+      // Normalize to nearest allowed category (case-insensitive)
+      const matchedAllowed = ALLOWED_CATEGORIES.find(c => c.toLowerCase() === aiCat);
+      category = matchedAllowed || "Other";
+
+      // Build options for user acknowledgment: distinct CategoryRules categories + allowed
+      try {
+        const scan = await ddb.send(new ScanCommand({ TableName: CATEGORY_RULES_TABLE, ProjectionExpression: "#c", ExpressionAttributeNames: { "#c": "category" } }));
+        const fromRules = Array.from(new Set((scan.Items || []).map((it: any) => String(it.category || "")).filter(Boolean)));
+        const union = Array.from(new Set([aiCatRaw, ...fromRules, ...ALLOWED_CATEGORIES])) as string[];
+        options = union;
+      } catch {
+        options = [aiCatRaw, ...ALLOWED_CATEGORIES];
       }
     }
 
