@@ -41,13 +41,25 @@ def _to_json(o):
 
 
 ALLOWED_CATEGORIES = [
-    "Food",
-    "Travel",
-    "Entertainment",
-    "Shopping",
-    "Utilities",
-    "Healthcare",
-    "Other",
+    "Food",          # groceries, restaurants, coffee, snacks
+    "Travel",        # fuel, cab, flights, metro, parking
+    "Entertainment", # movies, OTT, gaming, outings
+    "Shopping",      # clothes, electronics, accessories
+    "Utilities",     # electricity, water, gas, internet, phone
+    "Healthcare",    # doctor visits, pharmacy, health checkup
+    "Housing",       # rent, maintenance, home repairs
+    "Education",     # school fees, courses, books
+    "Insurance",     # life, health, vehicle, home
+    "Investment",    # stocks, mutual funds, SIP, gold
+    "Loans",         # EMI, credit card payment, personal loan
+    "Donations",     # charity, wedding gifts, birthday presents
+    "Grooming",      # haircut, salon, spa, beauty, cosmetics
+    "Personal",      # toiletries, personal items, small lifestyle buys
+    "Subscription",  # Netflix, Spotify, news, memberships
+    "Taxes",         # income tax, GST, penalties
+    "Gifts",         # birthdays, festivals, anniversaries (kept separate from donations)
+    "Pet Care",      # food, grooming, vet (if applicable)
+    "Other",         # uncategorized / misc
 ]
 
 
