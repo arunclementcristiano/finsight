@@ -6,6 +6,8 @@ import { parseExpenseInput, suggestCategory } from "./utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/Card";
 import { Button } from "../components/Button";
 import { Doughnut, Bar } from "react-chartjs-2";
+import { Progress } from "../components/Progress";
+import { formatCurrency } from "../utils/format";
 import { X, Calendar, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Chart, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from "chart.js";
 
@@ -14,7 +16,7 @@ Chart.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarEleme
 const API_BASE = process.env.NEXT_PUBLIC_EXPENSES_API || "/api/expenses";
 
 export default function ExpenseTrackerPage() {
-  const { expenses, setExpenses, addExpense, deleteExpense, categoryMemory, rememberCategory } = useApp() as any;
+  const { expenses, setExpenses, addExpense, deleteExpense, categoryMemory, rememberCategory, categoryBudgets, setCategoryBudget } = useApp() as any;
   const [input, setInput] = useState("");
   const [ai, setAi] = useState<{ amount?: number; category?: string; options?: string[]; AIConfidence?: number; raw?: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -151,6 +153,36 @@ export default function ExpenseTrackerPage() {
     const arr = Array.from(map.entries()).sort((a,b)=> a[0] < b[0] ? -1 : 1);
     return arr;
   }, [expenses]);
+
+  // Budgets: current month key (YYYY-MM)
+  const currentYm = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, "0")}`;
+  }, []);
+
+  // Spend by category for current month
+  const monthlyCategorySpend = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const e of expenses) {
+      const d = new Date(e.date);
+      const ym = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, "0")}`;
+      if (ym === currentYm) {
+        const key = String(e.category || "Other");
+        map.set(key, (map.get(key) || 0) + (Number(e.amount) || 0));
+      }
+    }
+    const arr = Array.from(map.entries()).sort((a,b)=> b[1]-a[1]);
+    return { arr, map };
+  }, [expenses, currentYm]);
+
+  const [editingCat, setEditingCat] = useState<string | null>(null);
+  const [editingVal, setEditingVal] = useState<string>("");
+  function saveBudget(cat: string) {
+    const amt = Math.max(0, Number(editingVal) || 0);
+    setCategoryBudget(currentYm, cat, amt);
+    setEditingCat(null);
+    setEditingVal("");
+  }
 
   const [monthFilter, setMonthFilter] = useState<string>("");
   const monthlyFiltered = useMemo(() => {
@@ -347,9 +379,56 @@ export default function ExpenseTrackerPage() {
           </CardHeader>
           <CardContent>
             {categorySummary.length > 0 ? (
-              <div className="mx-auto max-w-xs">
-                <Doughnut data={{ labels: categorySummary.map(([c])=>c), datasets: [{ data: categorySummary.map(([,v])=>v), backgroundColor: ["#6366f1", "#10b981", "#f59e42", "#fbbf24", "#3b82f6", "#ef4444", "#a3e635"] }] }} options={{ plugins: { legend: { position: "bottom" as const } }, cutout: "70%" }} />
-              </div>
+              <>
+                <div className="mx-auto max-w-xs">
+                  <Doughnut data={{ labels: categorySummary.map(([c])=>c), datasets: [{ data: categorySummary.map(([,v])=>v), backgroundColor: ["#6366f1", "#10b981", "#f59e42", "#fbbf24", "#3b82f6", "#ef4444", "#a3e635"] }] }} options={{ plugins: { legend: { position: "bottom" as const } }, cutout: "70%" }} />
+                </div>
+                <div className="mt-4 space-y-3">
+                  {(monthlyCategorySpend.arr).map(([cat, spent]) => {
+                    const budget = (categoryBudgets?.[currentYm]?.[cat]) || 0;
+                    const pct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
+                    const warn = pct >= 80 && pct < 100;
+                    const alert = pct >= 100;
+                    const barClass = alert ? "bg-rose-500" : warn ? "bg-amber-500" : undefined;
+                    return (
+                      <div key={cat} className="rounded-lg border border-border p-3">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="font-medium">{cat}</div>
+                          <div className="text-muted-foreground">
+                            {formatCurrency(spent)}
+                            <span className="mx-1">/</span>
+                            {editingCat === cat ? (
+                              <input
+                                autoFocus
+                                type="number"
+                                step="0.01"
+                                value={editingVal}
+                                onChange={(e)=> setEditingVal(e.target.value)}
+                                onBlur={()=> saveBudget(cat)}
+                                onKeyDown={(e)=> {
+                                  if (e.key === "Enter") saveBudget(cat);
+                                  else if (e.key === "Escape") { setEditingCat(null); setEditingVal(""); }
+                                }}
+                                className="h-7 w-28 ml-1 rounded-md border border-border px-2 bg-card text-right"
+                              />
+                            ) : (
+                              <button className="ml-1 underline decoration-dotted hover:opacity-80" onClick={()=> { setEditingCat(cat); setEditingVal(String(budget || 0)); }}>
+                                {budget > 0 ? formatCurrency(budget) : "Set budget"}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <Progress value={Math.min(100, pct)} barClassName={barClass} className="mt-2" />
+                        {budget > 0 && (
+                          <div className={`mt-1 text-xs ${alert ? "text-rose-600" : warn ? "text-amber-600" : "text-muted-foreground"}`}>
+                            {alert ? `${formatCurrency(spent - budget)} over` : `${formatCurrency(budget - spent)} left`}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             ) : (
               <div className="text-muted-foreground text-sm">No data yet</div>
             )}

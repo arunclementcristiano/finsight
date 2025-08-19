@@ -42,6 +42,7 @@ interface AppState {
 	expenses: Expense[];
 	categoryMemory: Record<string, ExpenseCategory | string>; // keyword -> category
 	expenseReminderDaily: boolean;
+	categoryBudgets: Record<string, Record<string, number>>; // key: YYYY-MM -> { category -> budget }
 
 	setProfile: (profile: Partial<UserProfile>) => void;
 	setQuestionAnswer: (key: string, value: any) => void;
@@ -60,6 +61,7 @@ interface AppState {
 	deleteExpense: (id: string) => void;
 	rememberCategory: (keyword: string, category: ExpenseCategory | string) => void;
 	setExpenseReminderDaily: (enabled: boolean) => void;
+	setCategoryBudget: (ym: string, category: string, amount: number) => void;
 }
 
 export const useApp = create<AppState>()(
@@ -75,6 +77,7 @@ export const useApp = create<AppState>()(
 			expenses: [],
 			categoryMemory: {},
 			expenseReminderDaily: false,
+			categoryBudgets: {},
 
 			setProfile: (profile) => set(state => ({ profile: { ...state.profile, ...profile } })),
 			setQuestionAnswer: (key, value) => set(state => ({ questionnaire: { ...state.questionnaire, [key]: value } })),
@@ -85,7 +88,7 @@ export const useApp = create<AppState>()(
 			deleteHolding: (id) => set(state => ({ holdings: state.holdings.filter(h => h.id !== id) })),
 			setDriftTolerancePct: (v) => set(() => ({ driftTolerancePct: Math.min(10, Math.max(3, Math.round(v))) })),
 			setEmergencyMonths: (v) => set(() => ({ emergencyMonths: Math.min(12, Math.max(3, Math.round(v))) })),
-			reset: () => set(() => ({ profile: { name: "", currency: "INR" }, questionnaire: { preferredAssets: [] }, plan: null, holdings: [], driftTolerancePct: 5, emergencyMonths: 6, expenses: [], categoryMemory: {}, expenseReminderDaily: false })),
+			reset: () => set(() => ({ profile: { name: "", currency: "INR" }, questionnaire: { preferredAssets: [] }, plan: null, holdings: [], driftTolerancePct: 5, emergencyMonths: 6, expenses: [], categoryMemory: {}, expenseReminderDaily: false, categoryBudgets: {} })),
 
 			addExpense: (e) => set(state => ({ expenses: [e, ...state.expenses] })),
 			setExpenses: (e) => set(() => ({ expenses: [...e] })),
@@ -93,6 +96,15 @@ export const useApp = create<AppState>()(
 			deleteExpense: (id) => set(state => ({ expenses: state.expenses.filter(ex => ex.id !== id) })),
 			rememberCategory: (keyword, category) => set(state => ({ categoryMemory: { ...state.categoryMemory, [keyword.toLowerCase()]: category } })),
 			setExpenseReminderDaily: (enabled) => set(() => ({ expenseReminderDaily: !!enabled })),
+			setCategoryBudget: (ym, category, amount) => set(state => ({
+				categoryBudgets: {
+					...state.categoryBudgets,
+					[ym]: {
+						...(state.categoryBudgets[ym] || {}),
+						[category]: Math.max(0, Number(amount) || 0),
+					},
+				},
+			})),
 		}),
 		{
 			name: "finsight-v1",
