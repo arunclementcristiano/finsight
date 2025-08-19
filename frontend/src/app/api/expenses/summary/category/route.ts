@@ -11,13 +11,18 @@ export async function POST(req: NextRequest) {
     const { userId, category } = (await req.json()) as { userId: string; category: string };
     if (!userId || !category) return NextResponse.json({ error: "Missing userId or category" }, { status: 400 });
 
-    const res = await ddb.send(new QueryCommand({
-      TableName: EXPENSES_TABLE,
-      IndexName: "userId-date-index",
-      KeyConditionExpression: "userId = :uid",
-      ExpressionAttributeValues: { ":uid": userId }
-    }));
-    const items = (res.Items || []).filter((it: any) => it.category === category);
+    let items: any[] = [];
+    try {
+      const res = await ddb.send(new QueryCommand({
+        TableName: EXPENSES_TABLE,
+        IndexName: "userId-date-index",
+        KeyConditionExpression: "userId = :uid",
+        ExpressionAttributeValues: { ":uid": userId }
+      }));
+      items = (res.Items || []).filter((it: any) => it.category === category);
+    } catch {
+      return NextResponse.json({ items: [], total: 0 });
+    }
     const total = items.reduce((sum: number, it: any) => sum + Number(it.amount || 0), 0);
     return NextResponse.json({ items, total });
   } catch (err) {

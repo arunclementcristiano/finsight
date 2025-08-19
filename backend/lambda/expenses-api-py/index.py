@@ -198,7 +198,12 @@ def handler(event, context):
             if final_category:
                 try:
                     if extracted_term:
-                        category_rules_table.put_item(Item={"rule": extracted_term, "category": final_category})
+                        # Conditional put to avoid duplicates
+                        category_rules_table.put_item(
+                            Item={"rule": extracted_term, "category": final_category},
+                            ConditionExpression="attribute_not_exists(#r)",
+                            ExpressionAttributeNames={"#r": "rule"}
+                        )
                 except Exception:
                     pass
 
@@ -287,7 +292,11 @@ def handler(event, context):
                 if category != "Uncategorized":
                     term = _extract_term(raw_text)
                     if term:
-                        category_rules_table.put_item(Item={"rule": term, "category": category})
+                        category_rules_table.put_item(
+                            Item={"rule": term, "category": category},
+                            ConditionExpression="attribute_not_exists(#r)",
+                            ExpressionAttributeNames={"#r": "rule"}
+                        )
             except Exception:
                 pass
             return _response(200, {"ok": True, "expenseId": expense_id})

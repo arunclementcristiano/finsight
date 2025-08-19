@@ -14,14 +14,19 @@ export async function POST(req: NextRequest) {
     const now = new Date();
     const ym = month ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-    const res = await ddb.send(new QueryCommand({
-      TableName: EXPENSES_TABLE,
-      IndexName: "userId-date-index",
-      KeyConditionExpression: "userId = :uid AND begins_with(#d, :ym)",
-      ExpressionAttributeValues: { ":uid": userId, ":ym": ym },
-      ExpressionAttributeNames: { "#d": "date" }
-    }));
-    const items = res.Items || [];
+    let items: any[] = [];
+    try {
+      const res = await ddb.send(new QueryCommand({
+        TableName: EXPENSES_TABLE,
+        IndexName: "userId-date-index",
+        KeyConditionExpression: "userId = :uid AND begins_with(#d, :ym)",
+        ExpressionAttributeValues: { ":uid": userId, ":ym": ym },
+        ExpressionAttributeNames: { "#d": "date" }
+      }));
+      items = res.Items || [];
+    } catch {
+      return NextResponse.json({ month: ym, totals: {} });
+    }
 
     const totals: Record<string, number> = {};
     for (const it of items) {

@@ -21,15 +21,21 @@ export async function POST(req: NextRequest) {
     else if (start) { rangeKeyCond = " AND #d >= :start"; exprVals[":start"] = start; }
     else if (end) { rangeKeyCond = " AND #d <= :end"; exprVals[":end"] = end; }
 
-    const res = await ddb.send(new QueryCommand({
-      TableName: EXPENSES_TABLE,
-      IndexName: "userId-date-index",
-      KeyConditionExpression: keyCond + rangeKeyCond,
-      ExpressionAttributeValues: exprVals,
-      ExpressionAttributeNames: { "#d": "date" }
-    }));
-
-    let items = (res.Items || []).filter((it: any) => (category ? it.category === category : true));
+    let items: any[] = [];
+    try {
+      const res = await ddb.send(new QueryCommand({
+        TableName: EXPENSES_TABLE,
+        IndexName: "userId-date-index",
+        KeyConditionExpression: keyCond + rangeKeyCond,
+        ExpressionAttributeValues: exprVals,
+        ExpressionAttributeNames: { "#d": "date" }
+      }));
+      items = (res.Items || []);
+    } catch {
+      // Fallback: no GSI yet or query error
+      return NextResponse.json({ items: [], page: 1, limit: Number(limit) || 10, hasMore: false, total: 0 });
+    }
+    items = items.filter((it: any) => (category ? it.category === category : true));
 
     // Sort by createdAt desc, fallback to date desc
     items.sort((a: any, b: any) => {

@@ -77,10 +77,14 @@ export async function POST(req: NextRequest) {
 
     // If predefined matched, upsert CategoryRules for extracted term
     if (category && extracted) {
-      await ddb.send(new PutCommand({
-        TableName: CATEGORY_RULES_TABLE,
-        Item: { rule: extracted, category },
-      }));
+      try {
+        await ddb.send(new PutCommand({
+          TableName: CATEGORY_RULES_TABLE,
+          Item: { rule: extracted, category },
+          ConditionExpression: "attribute_not_exists(#r)",
+          ExpressionAttributeNames: { "#r": "rule" },
+        }));
+      } catch {}
     }
 
     // 3) CategoryRules lookup
@@ -155,7 +159,14 @@ export async function PUT(req: NextRequest) {
     const extracted = (rawText.toLowerCase().match(/\b(?:on|for|at|to)\s+([a-z][a-z\s]{1,30})/i)?.[1] || rawText.toLowerCase().split(/\s+/).filter(Boolean).slice(-1)[0] || "").trim();
 
     if (category !== "Uncategorized" && extracted) {
-      await ddb.send(new PutCommand({ TableName: CATEGORY_RULES_TABLE, Item: { rule: extracted, category } }));
+      try {
+        await ddb.send(new PutCommand({
+          TableName: CATEGORY_RULES_TABLE,
+          Item: { rule: extracted, category },
+          ConditionExpression: "attribute_not_exists(#r)",
+          ExpressionAttributeNames: { "#r": "rule" },
+        }));
+      } catch {}
     }
 
     return NextResponse.json({ ok: true, expenseId });

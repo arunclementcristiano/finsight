@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { useApp, type Expense } from "../store";
-import { parseExpenseInput, suggestCategory } from "../expenses/utils";
+import { parseExpenseInput, suggestCategory } from "./utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/Card";
 import { Button } from "../components/Button";
 import { Doughnut, Bar } from "react-chartjs-2";
@@ -134,7 +134,7 @@ export default function ExpenseTrackerPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="flex gap-2">
               <input ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} className="flex-1 h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]" placeholder="e.g., Lunch 250 at restaurant"/>
-              <Button type="submit">Parse</Button>
+              <Button type="submit">Add Expense</Button>
             </form>
             {ai && (
               <div className="mt-3 rounded-xl border border-border p-3 text-sm space-y-2">
