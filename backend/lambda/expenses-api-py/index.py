@@ -41,13 +41,25 @@ def _to_json(o):
 
 
 ALLOWED_CATEGORIES = [
-    "Food",
-    "Travel",
-    "Entertainment",
-    "Shopping",
-    "Utilities",
-    "Healthcare",
-    "Other",
+    "Food",          # groceries, restaurants, coffee, snacks
+    "Travel",        # fuel, cab, flights, metro, parking
+    "Entertainment", # movies, OTT, gaming, outings
+    "Shopping",      # clothes, electronics, accessories
+    "Utilities",     # electricity, water, gas, internet, phone
+    "Healthcare",    # doctor visits, pharmacy, health checkup
+    "Housing",       # rent, maintenance, home repairs
+    "Education",     # school fees, courses, books
+    "Insurance",     # life, health, vehicle, home
+    "Investment",    # stocks, mutual funds, SIP, gold
+    "Loans",         # EMI, credit card payment, personal loan
+    "Donations",     # charity, wedding gifts, birthday presents
+    "Grooming",      # haircut, salon, spa, beauty, cosmetics
+    "Personal",      # toiletries, personal items, small lifestyle buys
+    "Subscription",  # Netflix, Spotify, news, memberships
+    "Taxes",         # income tax, GST, penalties
+    "Gifts",         # birthdays, festivals, anniversaries (kept separate from donations)
+    "Pet Care",      # food, grooming, vet (if applicable)
+    "Other",         # uncategorized / misc
 ]
 
 
@@ -57,7 +69,7 @@ def _get_category_from_ai(raw_text: str):
         return {"category": "", "confidence": 0.0}
     try:
         system_prompt = (
-            "You are a financial expense categorizer. Allowed categories: Food, Travel, Entertainment, Shopping, Utilities, Healthcare, Other. "
+            "You are a financial expense categorizer. Allowed categories: " + ", ".join(ALLOWED_CATEGORIES) + ". "
             "Given a user input, respond ONLY as JSON: {\"category\": one of the allowed, \"confidence\": number 0..1}."
         )
         payload = {
@@ -123,19 +135,25 @@ def _parse_amount(raw_text: str):
 
 
 def _extract_term(raw_text: str) -> str:
-    # Pick a probable merchant/term after common prepositions; fallback to last alpha token
-    m = re.search(r"\b(?:on|for|at|to)\s+([A-Za-z][A-Za-z\s]{1,30})", raw_text, flags=re.IGNORECASE)
+    # Prefer a phrase following prepositions; normalize to last up-to-3 tokens to add context (e.g., "dog food" instead of "food")
+    m = re.search(r"\b(?:on|for|at|to)\s+([A-Za-z][A-Za-z\s]{1,40})", raw_text, flags=re.IGNORECASE)
     if m:
         cand = m.group(1).strip()
         cand = re.split(r"\b(yesterday|today|tomorrow|\d{4}-\d{2}-\d{2})\b", cand, flags=re.IGNORECASE)[0].strip()
         cand = re.sub(r"[^A-Za-z\s]", "", cand).strip()
+        cand = re.sub(r"\s+", " ", cand)
         if cand:
+            words = cand.split(" ")
+            if len(words) > 3:
+                cand = " ".join(words[-3:])
             return cand.lower()
     tokens = re.findall(r"[A-Za-z]+", raw_text)
     if tokens:
+        # last two tokens give more context than one
+        if len(tokens) >= 2:
+            return f"{tokens[-2].lower()} {tokens[-1].lower()}"
         return tokens[-1].lower()
     return ""
-
 
 # CategoryMemory support removed
 
@@ -207,8 +225,8 @@ def handler(event, context):
                 except Exception:
                     pass
 
-            # 2) CategoryRules table (global rules configured by you)
-            if not final_category:
+            # 2) CategoryRules table (global rules configured by you). If matched, return directly without acknowledgment
+            if not final_category and extracted_term:
                 try:
                     r = category_rules_table.get_item(Key={"rule": extracted_term})
                     rule_cat = (r.get("Item", {}) or {}).get("category")
@@ -216,6 +234,20 @@ def handler(event, context):
                         final_category = rule_cat
                 except Exception:
                     pass
+                # Fuzzy contains for reversed word order (e.g., "150 laptop repair")
+                if not final_category:
+                    try:
+                        w = extracted_term.split()
+                        if len(w) >= 2:
+                            scan = category_rules_table.scan(ProjectionExpression="#r, category", ExpressionAttributeNames={"#r": "rule"})
+                            items = scan.get("Items", [])
+                            for it in items:
+                                r = str(it.get("rule", "")).lower()
+                                if w[0].lower() in r and w[1].lower() in r:
+                                    final_category = it.get("category")
+                                    break
+                    except Exception:
+                        pass
 
             # 3) Skip CategoryMemory per new requirement (global rules only)
 
@@ -224,48 +256,31 @@ def handler(event, context):
                 print("GROQ_CALL_START")
                 ai = _get_category_from_ai(raw_text)
                 print("GROQ_CALL_END", ai)
-                ai_cat = (ai.get("category") or "").strip().lower()
+                ai_cat_raw = (ai.get("category") or "").strip()
+                ai_cat = ai_cat_raw.lower()
                 ai_conf = ai.get("confidence")
-                mapping = {
-                    "food": "Food", "restaurant": "Food", "groceries": "Food",
-                    "travel": "Travel", "transport": "Travel", "taxi": "Travel", "fuel": "Travel",
-                    "entertainment": "Entertainment", "movies": "Entertainment", "movie": "Entertainment", "subscription": "Entertainment",
-                    "shopping": "Shopping", "apparel": "Shopping", "clothing": "Shopping", "electronics": "Shopping",
-                    "utilities": "Utilities", "internet": "Utilities", "electricity": "Utilities", "water": "Utilities",
-                    "health": "Healthcare", "healthcare": "Healthcare", "medical": "Healthcare", "medicine": "Healthcare",
-                    "other": "Other"
-                }
-                mapped_ai = mapping.get(ai_cat)
-                if not mapped_ai:
-                    for k, v in mapping.items():
-                        if k in ai_cat or ai_cat in k:
-                            mapped_ai = v
-                            break
-                if not mapped_ai:
-                    mapped_ai = "Other"
+                # Normalize to one of the allowed categories, else "Other"
+                matched_allowed = next((c for c in ALLOWED_CATEGORIES if c.lower() == ai_cat), None)
+                mapped_ai = matched_allowed or "Other"
 
-                low_conf = False
-                try:
-                    low_conf = (ai_conf is None) or (float(ai_conf) < 0.8)
-                except Exception:
-                    low_conf = True
-
-                if low_conf:
-                    # Provide options, but keep suggested category preselected
-                    msg = (
-                        f"Could not parse amount; low-confidence AI suggestion {mapped_ai}. Pick a category."
-                        if amount is None
-                        else f"Parsed amount {amount}; low-confidence AI suggestion {mapped_ai}. Pick a category."
-                    )
-                    return _response(200, {"amount": amount, "category": mapped_ai, "AIConfidence": ai_conf, "options": ALLOWED_CATEGORIES, "message": msg})
-                else:
-                    final_category = mapped_ai
+                # Always provide acknowledgment when Groq was used
+                msg = (
+                    f"Could not parse amount; AI suggestion {mapped_ai}. Pick a category."
+                    if amount is None
+                    else f"Parsed amount {amount}; AI suggestion {mapped_ai}. Pick a category."
+                )
+                # Optionally include AI's raw suggestion first
+                opts = list(dict.fromkeys([ai_cat_raw] + ALLOWED_CATEGORIES))
+                return _response(200, {"amount": amount, "category": mapped_ai, "AIConfidence": ai_conf, "options": opts, "message": msg})
 
             msg = (
                 f"Parsed amount {amount} and category {final_category}" if amount is not None
                 else f"Could not parse amount; suggested category {final_category}"
             )
-            return _response(200, {"amount": amount, "category": final_category, "AIConfidence": ai_conf, "message": msg})
+            resp = {"amount": amount, "category": final_category, "message": msg}
+            if ai_conf is not None:
+                resp["AIConfidence"] = ai_conf
+            return _response(200, resp)
 
         if route_key == "PUT /add":
             user_id = body.get("userId")

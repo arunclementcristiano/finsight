@@ -6,6 +6,7 @@ import { parseExpenseInput, suggestCategory } from "./utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/Card";
 import { Button } from "../components/Button";
 import { Doughnut, Bar } from "react-chartjs-2";
+import { X } from "lucide-react";
 import { Chart, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from "chart.js";
 
 Chart.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
@@ -13,12 +14,15 @@ Chart.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarEleme
 const API_BASE = process.env.NEXT_PUBLIC_EXPENSES_API || "/api/expenses";
 
 export default function ExpenseTrackerPage() {
-  const { expenses, setExpenses, addExpense, categoryMemory } = useApp();
+  const { expenses, setExpenses, addExpense, deleteExpense, categoryMemory, rememberCategory } = useApp() as any;
   const [input, setInput] = useState("");
   const [ai, setAi] = useState<{ amount?: number; category?: string; options?: string[]; AIConfidence?: number; raw?: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [page, setPage] = useState(1);
   const pageSize = 10;
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const amountRef = useRef<HTMLInputElement>(null);
+  const customRef = useRef<HTMLInputElement>(null);
 
   async function fetchList() {
     try {
@@ -32,6 +36,13 @@ export default function ExpenseTrackerPage() {
   }
 
   useEffect(() => { fetchList(); }, []);
+
+  async function handleDelete(expenseId: string) {
+    try {
+      await fetch(`${API_BASE}/delete`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expenseId }) });
+      deleteExpense(expenseId);
+    } catch {}
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -51,11 +62,24 @@ export default function ExpenseTrackerPage() {
           return;
         }
       }
+      // Local memory fallback (from previous acknowledgments) to avoid re-asking in dev/local
+      const memCat = suggestCategory(rawText, categoryMemory as any);
+      if (!parsed.category && memCat && typeof parsed.amount === "number") {
+        const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: memCat, amount: parsed.amount }) });
+        const saved = await put.json();
+        if (saved && saved.ok) {
+          addExpense({ id: saved.expenseId || uuidv4(), text: rawText, amount: parsed.amount, category: memCat, date: new Date().toISOString(), note: rawText });
+          setInput("");
+          inputRef.current?.focus();
+          return;
+        }
+      }
       const res = await fetch(`${API_BASE}/add`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText }) });
       const data = await res.json();
       // If AI was used (AIConfidence present), require acknowledgment
       if (data && ("AIConfidence" in data) && data.AIConfidence !== undefined) {
         setAi({ amount: data.amount, category: data.category, options: data.options, AIConfidence: data.AIConfidence, raw: rawText });
+        setSelectedCategory(data.category || "Other");
         return;
       }
       // If rules/memory matched and we have amount/category, auto-save without acknowledge
@@ -137,15 +161,17 @@ export default function ExpenseTrackerPage() {
               <div className="mt-3 rounded-xl border border-border p-3 text-sm space-y-2">
                 <div>Suggested: <span className="font-semibold">{ai.category}</span> {ai.AIConfidence ? `(conf ${Math.round((ai.AIConfidence||0)*100)}%)` : ""}</div>
                 <div className="flex flex-wrap gap-2 items-center">
-                  <input type="number" step="0.01" defaultValue={ai.amount ?? 0} className="h-9 w-28 rounded-md border border-border px-2 bg-card text-right"/>
-                  <select defaultValue={ai.category || "Other"} className="h-9 rounded-md border border-border px-2 bg-card">
-                    {["Food","Travel","Entertainment","Shopping","Utilities","Healthcare","Other"].map(c => (<option key={c} value={c}>{c}</option>))}
+                  <input ref={amountRef} type="number" step="0.01" defaultValue={ai.amount ?? 0} className="h-9 w-28 rounded-md border border-border px-2 bg-card text-right"/>
+                  <select value={selectedCategory || ai.category || "Other"} onChange={(e)=> setSelectedCategory(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card">
+                    {Array.from(new Set<string>((((ai as any).options as string[] | undefined) || []).concat(ai.category || []).filter(Boolean))).map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
                   </select>
-                  <Button onClick={(e)=>{
-                    const wrap = (e.currentTarget.parentElement as HTMLElement);
-                    const num = wrap.querySelector("input") as HTMLInputElement;
-                    const sel = wrap.querySelector("select") as HTMLSelectElement;
-                    confirm(sel.value, num.value);
+                  <input ref={customRef} type="text" placeholder="Custom category (optional)" className="h-9 rounded-md border border-border px-2 bg-card"/>
+                  <Button onClick={()=>{
+                    const custom = (customRef.current?.value || "").trim();
+                    const chosen = custom || (selectedCategory || ai.category || "Other");
+                    confirm(chosen, amountRef.current?.value);
                   }}>Confirm</Button>
                 </div>
               </div>
@@ -167,6 +193,7 @@ export default function ExpenseTrackerPage() {
                   <th className="px-3 py-2 border-b">Text</th>
                   <th className="px-3 py-2 border-b">Category</th>
                   <th className="px-3 py-2 border-b text-right">Amount</th>
+                  <th className="px-3 py-2 border-b text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -176,6 +203,16 @@ export default function ExpenseTrackerPage() {
                     <td className="px-3 py-2">{e.text}</td>
                     <td className="px-3 py-2">{e.category as string}</td>
                     <td className="px-3 py-2 text-right">{e.amount.toFixed(2)}</td>
+                    <td className="px-3 py-2 text-right">
+                      <button
+                        aria-label="Delete"
+                        title="Delete"
+                        onClick={() => handleDelete(e.id)}
+                        className="h-7 w-7 inline-flex items-center justify-center rounded-full border border-transparent text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:border-rose-200 dark:hover:border-rose-800 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

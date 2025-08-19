@@ -1,20 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
 
 // Utilities
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.AWS_REGION || "us-east-1" }));
+function extractRuleTerm(rawText: string): string {
+  const lower = rawText.toLowerCase();
+  // Try preposition phrase
+  const m = lower.match(/\b(?:on|for|at|to)\s+([a-z][a-z\s]{1,40})/i);
+  if (m && m[1]) {
+    let cand = m[1].trim().replace(/[^a-z\s]/g, "").replace(/\s+/g, " ");
+    const words = cand.split(" ").filter(Boolean);
+    if (words.length > 3) cand = words.slice(-3).join(" ");
+    return cand;
+  }
+  // Fallback: last two alpha tokens
+  const tokens = (lower.match(/[a-z]+/g) || []);
+  if (tokens.length >= 2) return `${tokens[tokens.length-2]} ${tokens[tokens.length-1]}`;
+  if (tokens.length === 1) return tokens[0];
+  return "";
+}
 const EXPENSES_TABLE = process.env.EXPENSES_TABLE || "Expenses";
 const CATEGORY_RULES_TABLE = process.env.CATEGORY_RULES_TABLE || "CategoryRules";
 
-const ALLOWED_CATEGORIES = ["Food","Travel","Entertainment","Shopping","Utilities","Healthcare","Other"] as const;
+const ALLOWED_CATEGORIES = [
+  "Food","Travel","Entertainment","Shopping","Utilities","Healthcare",
+  "Housing","Education","Insurance","Investment","Loans","Donations",
+  "Grooming","Personal","Subscription","Taxes","Gifts","Pet Care","Other"
+] as const;
 
 // Step 2.5: Real AI categorization via Groq
 async function getCategoryFromAI(rawText: string): Promise<{ category: string; confidence: number }> {
   const apiKey = (process.env.GROQ_API_KEY || "").trim();
   if (!apiKey) return { category: "", confidence: 0 };
   try {
-    const system = "You are a financial expense categorizer. Allowed categories: Food, Travel, Entertainment, Shopping, Utilities, Healthcare, Other. Respond ONLY JSON: {\"category\": string, \"confidence\": number between 0 and 1}.";
+    const system = `You are a financial expense categorizer. Allowed categories: ${ALLOWED_CATEGORIES.join(", ")}. Respond ONLY JSON: {"category": string, "confidence": number between 0 and 1}.`;
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -61,7 +81,7 @@ export async function POST(req: NextRequest) {
     const amount = amountMatch ? Number(amountMatch[1]) : NaN;
 
     const lower = rawText.toLowerCase();
-    const extracted = (lower.match(/\b(?:on|for|at|to)\s+([a-z][a-z\s]{1,30})/i)?.[1] || lower.split(/\s+/).filter(Boolean).slice(-1)[0] || "").trim();
+    const extracted = extractRuleTerm(rawText);
 
     // 2) Predefined rules
     const predefined: Record<string, string> = {
@@ -87,13 +107,33 @@ export async function POST(req: NextRequest) {
       } catch {}
     }
 
-    // 3) CategoryRules lookup
+    // 3) CategoryRules lookup (exact, then fuzzy by tokens)
     if (!category && extracted) {
       try {
         const r = await ddb.send(new GetCommand({ TableName: CATEGORY_RULES_TABLE, Key: { rule: extracted } }));
         const ruleCat = (r.Item as any)?.category as string | undefined;
         if (ruleCat) category = ruleCat;
       } catch {}
+      if (!category) {
+        const parts = extracted.split(" ").filter(Boolean);
+        if (parts.length >= 2) {
+          try {
+            // Case-insensitive fallback: scan and filter in code
+            const scanAll = await ddb.send(new ScanCommand({
+              TableName: CATEGORY_RULES_TABLE,
+              ProjectionExpression: "#r, #c",
+              ExpressionAttributeNames: { "#r": "rule", "#c": "category" }
+            }));
+            const lc1 = parts[0].toLowerCase();
+            const lc2 = parts[1].toLowerCase();
+            const match = (scanAll.Items || []).find((it: any) => {
+              const r = String(it.rule || "").toLowerCase();
+              return r.includes(lc1) && r.includes(lc2);
+            });
+            if (match && match.category) category = String(match.category);
+          } catch {}
+        }
+      }
     }
 
     // 4) If category unknown -> call Groq
@@ -102,28 +142,20 @@ export async function POST(req: NextRequest) {
     if (!category) {
       const ai = await getCategoryFromAI(rawText);
       AIConfidence = ai.confidence;
-      const aiCat = (ai.category || "").toLowerCase();
-      const mapping: Record<string, string> = {
-        food: "Food", restaurant: "Food", groceries: "Food",
-        travel: "Travel", transport: "Travel", taxi: "Travel", fuel: "Travel",
-        entertainment: "Entertainment", movies: "Entertainment", movie: "Entertainment", subscription: "Entertainment",
-        shopping: "Shopping", apparel: "Shopping", clothing: "Shopping", electronics: "Shopping",
-        utilities: "Utilities", internet: "Utilities", electricity: "Utilities", water: "Utilities",
-        health: "Healthcare", healthcare: "Healthcare", medical: "Healthcare", medicine: "Healthcare",
-        other: "Other",
-      };
-      let mapped = mapping[aiCat];
-      if (!mapped) {
-        for (const [k, v] of Object.entries(mapping)) {
-          if (k.includes(aiCat) || aiCat.includes(k)) { mapped = v; break; }
-        }
-      }
-      mapped = mapped || "Other";
-      if (AIConfidence === undefined || Number(AIConfidence) < 0.8) {
-        options = [...ALLOWED_CATEGORIES];
-        category = mapped;
-      } else {
-        category = mapped;
+      const aiCatRaw = (ai.category || "").trim();
+      const aiCat = aiCatRaw.toLowerCase();
+      // Normalize to nearest allowed category (case-insensitive)
+      const matchedAllowed = ALLOWED_CATEGORIES.find(c => c.toLowerCase() === aiCat);
+      category = matchedAllowed || "Other";
+
+      // Build options for user acknowledgment: distinct CategoryRules categories + allowed (include AI's raw category)
+      try {
+        const scan = await ddb.send(new ScanCommand({ TableName: CATEGORY_RULES_TABLE, ProjectionExpression: "#c", ExpressionAttributeNames: { "#c": "category" } }));
+        const fromRules = Array.from(new Set((scan.Items || []).map((it: any) => String(it.category || "")).filter(Boolean)));
+        const union = Array.from(new Set([aiCatRaw, ...fromRules, ...ALLOWED_CATEGORIES])) as string[];
+        options = union;
+      } catch {
+        options = [aiCatRaw, ...ALLOWED_CATEGORIES];
       }
     }
 
@@ -134,8 +166,11 @@ export async function POST(req: NextRequest) {
       : `Could not parse amount; suggested category ${normalizedCategory}`;
 
     // Respond first to frontend for confirmation
-    // 4) Return response to frontend: {amount, category, AIConfidence, message}
-    return NextResponse.json({ amount: isFinite(amount) ? amount : undefined, category: normalizedCategory, AIConfidence, message, options });
+    // 4) Return response to frontend: {amount, category, AIConfidence?, message}
+    const payload: any = { amount: isFinite(amount) ? amount : undefined, category: normalizedCategory, message };
+    if (typeof AIConfidence === "number") payload.AIConfidence = AIConfidence;
+    if (options) payload.options = options;
+    return NextResponse.json(payload);
 
   } catch (err) {
     return NextResponse.json({ error: "Failed to parse expense" }, { status: 500 });
@@ -158,7 +193,7 @@ export async function PUT(req: NextRequest) {
       Item: { expenseId, userId, amount, category, rawText, date: isoDate, createdAt: new Date().toISOString() },
     }));
 
-    const extracted = (rawText.toLowerCase().match(/\b(?:on|for|at|to)\s+([a-z][a-z\s]{1,30})/i)?.[1] || rawText.toLowerCase().split(/\s+/).filter(Boolean).slice(-1)[0] || "").trim();
+    const extracted = extractRuleTerm(rawText);
 
     if (category !== "Uncategorized" && extracted) {
       try {
