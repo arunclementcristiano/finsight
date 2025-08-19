@@ -491,10 +491,9 @@ export default function ExpenseTrackerPage() {
             <CardDescription>{currentYm} budgets and usage</CardDescription>
           </CardHeader>
           <CardContent>
-            {(allCategories.length > 0) ? (
+            {(monthlyCategorySpend.arr).length > 0 ? (
               <div className="space-y-3">
-                {allCategories.map((cat) => {
-                  const spent = monthlyCategorySpend.map.get(cat) || 0;
+                {(monthlyCategorySpend.arr).map(([cat, spent]) => {
                   const budget = (defaultCategoryBudgets?.[cat]) || 0;
                   const pct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
                   const warn = pct >= 80 && pct < 100;
