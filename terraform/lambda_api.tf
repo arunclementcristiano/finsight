@@ -46,7 +46,8 @@ resource "aws_iam_role_policy" "lambda_ddb_access" {
       ],
       Resource: [
         aws_dynamodb_table.expenses.arn,
-        aws_dynamodb_table.category_rules.arn
+        aws_dynamodb_table.category_rules.arn,
+        aws_dynamodb_table.user_budgets.arn
       ]
     }]
   })
@@ -66,6 +67,7 @@ resource "aws_lambda_function" "expenses" {
       EXPENSES_TABLE           = aws_dynamodb_table.expenses.name
       GROQ_API_KEY             = var.groq_api_key
       CATEGORY_RULES_TABLE     = aws_dynamodb_table.category_rules.name
+      USER_BUDGETS_TABLE       = aws_dynamodb_table.user_budgets.name
       GROQ_MODEL               = "llama-3.1-8b-instant"
     }
   }
@@ -96,7 +98,9 @@ resource "aws_apigatewayv2_route" "routes" {
     "POST /edit",
     "POST /delete",
     "POST /summary/monthly",
-    "POST /summary/category"
+    "POST /summary/category",
+    "GET /budgets",
+    "PUT /budgets"
   ])
   api_id    = aws_apigatewayv2_api.http.id
   route_key = each.value
