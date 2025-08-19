@@ -22,6 +22,9 @@ export default function ExpenseTrackerPage() {
   const pageSize = 10;
   const [sortField, setSortField] = useState<"date" | "amount" | "category">("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [preset, setPreset] = useState<"all" | "today" | "week" | "month" | "lastMonth" | "custom">("all");
+  const [customStart, setCustomStart] = useState<string>("");
+  const [customEnd, setCustomEnd] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const amountRef = useRef<HTMLInputElement>(null);
   const customRef = useRef<HTMLInputElement>(null);
@@ -156,7 +159,26 @@ export default function ExpenseTrackerPage() {
   }, [monthlySummary, monthFilter]);
 
   const sortedExpenses = useMemo(() => {
-    const rows = expenses.slice();
+    const rows = expenses.slice().filter(e => {
+      if (preset === "all") return true;
+      const d = new Date(e.date);
+      const sod = (dt: Date) => { const x = new Date(dt); x.setHours(0,0,0,0); return x; };
+      const startOfWeek = (dt: Date) => { const x = sod(dt); const day = x.getDay(); const diff = (day === 0 ? 6 : day - 1); x.setDate(x.getDate() - diff); return x; };
+      const endExclusive = (dt: Date) => { const x = sod(dt); x.setDate(x.getDate() + 1); return x; };
+      let start: Date | undefined; let end: Date | undefined;
+      const now = new Date();
+      if (preset === "today") { start = sod(now); end = start; }
+      else if (preset === "week") { start = startOfWeek(now); end = new Date(start); end.setDate(start.getDate() + 6); }
+      else if (preset === "month") { start = new Date(now.getFullYear(), now.getMonth(), 1); end = new Date(now.getFullYear(), now.getMonth() + 1, 0); }
+      else if (preset === "lastMonth") { const s = new Date(now.getFullYear(), now.getMonth() - 1, 1); start = s; end = new Date(now.getFullYear(), now.getMonth(), 0); }
+      else if (preset === "custom") {
+        start = customStart ? new Date(customStart) : undefined;
+        end = customEnd ? new Date(customEnd) : undefined;
+      }
+      if (start && d < sod(start)) return false;
+      if (end && d >= endExclusive(end)) return false;
+      return true;
+    });
     rows.sort((a, b) => {
       let cmp = 0;
       if (sortField === "date") {
@@ -184,6 +206,9 @@ export default function ExpenseTrackerPage() {
       setSortDir(field === "category" ? "asc" : "desc");
     }
   }
+
+  // Reset pagination when filters change
+  useEffect(() => { setPage(1); }, [preset, customStart, customEnd, sortField, sortDir]);
   function prev() { setPage(p => Math.max(1, p - 1)); }
   function next() { setPage(p => Math.min(totalPages, p + 1)); }
 
@@ -234,6 +259,24 @@ export default function ExpenseTrackerPage() {
             <CardDescription>Synced with backend</CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="mb-3 flex flex-wrap gap-2 items-center">
+              <label className="text-sm text-muted-foreground">Range</label>
+              <select value={preset} onChange={(e)=> setPreset(e.target.value as any)} className="h-9 rounded-md border border-border px-2 bg-card">
+                <option value="all">All</option>
+                <option value="today">Today</option>
+                <option value="week">This week</option>
+                <option value="month">This month</option>
+                <option value="lastMonth">Last month</option>
+                <option value="custom">Custom</option>
+              </select>
+              {preset === "custom" && (
+                <>
+                  <input type="date" value={customStart} onChange={(e)=> setCustomStart(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card" />
+                  <span className="text-sm text-muted-foreground">to</span>
+                  <input type="date" value={customEnd} onChange={(e)=> setCustomEnd(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card" />
+                </>
+              )}
+            </div>
             <div className="max-h-96 overflow-y-auto rounded-xl border border-border">
             <table className="w-full text-left text-sm">
               <thead className="bg-card">
