@@ -277,7 +277,10 @@ def handler(event, context):
                 f"Parsed amount {amount} and category {final_category}" if amount is not None
                 else f"Could not parse amount; suggested category {final_category}"
             )
-            return _response(200, {"amount": amount, "category": final_category, "AIConfidence": ai_conf, "message": msg})
+            resp = {"amount": amount, "category": final_category, "message": msg}
+            if ai_conf is not None:
+                resp["AIConfidence"] = ai_conf
+            return _response(200, resp)
 
         if route_key == "PUT /add":
             user_id = body.get("userId")

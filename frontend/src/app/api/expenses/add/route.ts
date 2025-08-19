@@ -166,8 +166,11 @@ export async function POST(req: NextRequest) {
       : `Could not parse amount; suggested category ${normalizedCategory}`;
 
     // Respond first to frontend for confirmation
-    // 4) Return response to frontend: {amount, category, AIConfidence, message}
-    return NextResponse.json({ amount: isFinite(amount) ? amount : undefined, category: normalizedCategory, AIConfidence, message, options });
+    // 4) Return response to frontend: {amount, category, AIConfidence?, message}
+    const payload: any = { amount: isFinite(amount) ? amount : undefined, category: normalizedCategory, message };
+    if (typeof AIConfidence === "number") payload.AIConfidence = AIConfidence;
+    if (options) payload.options = options;
+    return NextResponse.json(payload);
 
   } catch (err) {
     return NextResponse.json({ error: "Failed to parse expense" }, { status: 500 });
