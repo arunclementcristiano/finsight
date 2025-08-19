@@ -2,7 +2,7 @@
 import React, { useMemo, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { useApp, type Expense, type ExpenseCategory } from "../store";
-import { parseExpenseInput, suggestCategory } from "./utils";
+import { parseExpenseInput, parseMultipleExpenses, suggestCategory } from "./utils";
 import { Button } from "../components/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/Card";
 
@@ -17,20 +17,27 @@ export default function ExpensesPage() {
 
 	function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
-		const parsed = parseExpenseInput(input);
-		const memCat = suggestCategory(input, categoryMemory);
-		const amount = parsed.amount;
-		const category = memCat || parsed.category;
-		const note = parsed.note || input.trim();
-		if (amount && category) {
-			const exp: Expense = { id: uuidv4(), text: input.trim(), amount, category, date: new Date().toISOString(), note };
-			addExpense(exp);
+		const entries = parseMultipleExpenses(input);
+		let addedAny = false;
+		for (const entry of entries) {
+			const memCat = suggestCategory(entry.raw, categoryMemory);
+			const amount = entry.amount;
+			const category = memCat || entry.category;
+			const note = entry.note || entry.raw;
+			if (amount && category) {
+				const exp: Expense = { id: uuidv4(), text: entry.raw, amount, category, date: new Date().toISOString(), note };
+				addExpense(exp);
+				addedAny = true;
+			} else if (entries.length === 1) {
+				const fallback: Expense = { id: uuidv4(), text: entry.raw, amount: amount || 0, category: category || "", date: new Date().toISOString(), note };
+				setPending(fallback);
+				return;
+			}
+		}
+		if (addedAny) {
 			setInput("");
 			inputRef.current?.focus();
-			return;
 		}
-		const fallback: Expense = { id: uuidv4(), text: input.trim(), amount: amount || 0, category: category || "", date: new Date().toISOString(), note };
-		setPending(fallback);
 	}
 
 	function confirmPending(amount?: number, category?: string) {
@@ -57,6 +64,9 @@ export default function ExpensesPage() {
 		updateExpense(id, { amount: amt, category: editingCategory });
 		setEditingId(null);
 	}
+	function confirmDelete(id: string) {
+		if (confirm("Delete this expense?")) deleteExpense(id);
+	}
 
 	const monthlySummary = useMemo(() => {
 		const map = new Map<string, number>();
@@ -81,11 +91,11 @@ export default function ExpensesPage() {
 				<Card>
 					<CardHeader>
 						<CardTitle>Log Expense (Chat)</CardTitle>
-						<CardDescription>Type like "Lunch 250". We'll suggest the category.</CardDescription>
+						<CardDescription>Type like "Lunch 250, Uber 120". We'll suggest categories.</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<form onSubmit={handleSubmit} className="flex gap-2">
-							<input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} className="flex-1 h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]" placeholder="e.g., Lunch 250" />
+							<input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} className="flex-1 h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]" placeholder="e.g., Lunch 250, Uber 120" />
 							<Button type="submit">Add</Button>
 						</form>
 						{pending ? (
@@ -150,7 +160,7 @@ export default function ExpensesPage() {
 											) : (
 												<div className="flex gap-2">
 													<Button size="sm" variant="outline" onClick={() => startEdit(e)}>Edit</Button>
-													<Button size="sm" variant="outline" onClick={() => deleteExpense(e.id)}>Delete</Button>
+													<Button size="sm" variant="outline" onClick={() => confirmDelete(e.id)}>Delete</Button>
 												</div>
 											)}
 										</td>

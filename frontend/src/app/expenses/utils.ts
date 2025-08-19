@@ -19,18 +19,20 @@ const keywordToCategory: Record<string, ExpenseCategory> = {
 export function parseExpenseInput(input: string): { amount?: number; category?: ExpenseCategory | string; note?: string } {
 	const text = input.trim();
 	if (!text) return {};
-	// Find the first number (supports 250 or 250.50)
 	const numMatch = text.match(/(?<!\w)(\d+(?:\.\d+)?)(?!\w)/);
 	const amount = numMatch ? parseFloat(numMatch[1]) : undefined;
-	// Infer category from keywords
 	const lower = text.toLowerCase();
 	let category: ExpenseCategory | string | undefined;
 	for (const [kw, cat] of Object.entries(keywordToCategory)) {
 		if (lower.includes(kw)) { category = cat; break; }
 	}
-	// Note is everything except the amount token
 	const note = text.replace(numMatch?.[0] || "", "").trim();
 	return { amount, category, note };
+}
+
+export function parseMultipleExpenses(input: string): Array<{ raw: string; amount?: number; category?: ExpenseCategory | string; note?: string }> {
+	const parts = input.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+	return parts.map(raw => ({ raw, ...parseExpenseInput(raw) }));
 }
 
 export function suggestCategory(input: string, memory: Record<string, string>): string | undefined {
