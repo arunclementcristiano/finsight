@@ -429,9 +429,9 @@ export default function ExpenseTrackerPage() {
 
       {/* Main panels */}
       {activeTab === "data" ? (
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 p-4 flex-1 overflow-hidden">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 p-4 flex-1 min-h-0 overflow-auto">
         {/* Recent Expenses (full width on xl span 2) */}
-        <Card className="xl:col-span-2 h-full flex flex-col">
+        <Card className="xl:col-span-2 h-full flex flex-col overflow-hidden">
           <CardHeader>
             <CardTitle>Recent Expenses</CardTitle>
             <CardDescription>Synced with backend</CardDescription>
@@ -504,8 +504,8 @@ export default function ExpenseTrackerPage() {
             </table>
             </div>
           </CardContent>
-          <CardFooter className="pt-3">
-            <div className="w-full flex items-center justify-between text-sm">
+          <CardFooter className="pt-3 border-t border-border">
+            <div className="w-full flex-none flex items-center justify-between text-sm">
               <div>Page {page} of {totalPages}</div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={prev} disabled={page === 1}>Prev</Button>
