@@ -91,7 +91,7 @@ export default function ExpensesPage() {
 				<Card>
 					<CardHeader>
 						<CardTitle>Log Expense (Chat)</CardTitle>
-						<CardDescription>Type like "Lunch 250, Uber 120". We'll suggest categories.</CardDescription>
+						<CardDescription>Type like "Lunch 250, Uber 120". We'll apply rules first, then your saved mappings.</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<form onSubmit={handleSubmit} className="flex gap-2">
