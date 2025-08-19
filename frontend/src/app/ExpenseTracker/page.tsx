@@ -143,11 +143,9 @@ export default function ExpenseTrackerPage() {
                 <div className="flex flex-wrap gap-2 items-center">
                   <input ref={amountRef} type="number" step="0.01" defaultValue={ai.amount ?? 0} className="h-9 w-28 rounded-md border border-border px-2 bg-card text-right"/>
                   <select value={selectedCategory || ai.category || "Other"} onChange={(e)=> setSelectedCategory(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card">
-                    {Array.from(new Set([
-                      ai.category as any,
-                      ...(((ai as any).options as string[] | undefined) || []),
-                      "Food","Travel","Entertainment","Shopping","Utilities","Healthcare","Housing","Education","Insurance","Investment","Loans","Donations","Grooming","Personal","Subscription","Taxes","Gifts","Pet Care","Other"
-                    ].filter(Boolean))).map((c: any) => (<option key={c} value={c}>{c}</option>))}
+                    {Array.from(new Set<string>((((ai as any).options as string[] | undefined) || []).concat(ai.category || []).filter(Boolean))).map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
                   </select>
                   {ai.category === "Other" && (
                     <input ref={customRef} type="text" placeholder="Custom category" className="h-9 rounded-md border border-border px-2 bg-card"/>

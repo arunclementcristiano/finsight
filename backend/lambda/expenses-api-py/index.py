@@ -236,25 +236,12 @@ def handler(event, context):
                 print("GROQ_CALL_START")
                 ai = _get_category_from_ai(raw_text)
                 print("GROQ_CALL_END", ai)
-                ai_cat = (ai.get("category") or "").strip().lower()
+                ai_cat_raw = (ai.get("category") or "").strip()
+                ai_cat = ai_cat_raw.lower()
                 ai_conf = ai.get("confidence")
-                mapping = {
-                    "food": "Food", "restaurant": "Food", "groceries": "Food",
-                    "travel": "Travel", "transport": "Travel", "taxi": "Travel", "fuel": "Travel",
-                    "entertainment": "Entertainment", "movies": "Entertainment", "movie": "Entertainment", "subscription": "Entertainment",
-                    "shopping": "Shopping", "apparel": "Shopping", "clothing": "Shopping", "electronics": "Shopping",
-                    "utilities": "Utilities", "internet": "Utilities", "electricity": "Utilities", "water": "Utilities",
-                    "health": "Healthcare", "healthcare": "Healthcare", "medical": "Healthcare", "medicine": "Healthcare",
-                    "other": "Other"
-                }
-                mapped_ai = mapping.get(ai_cat)
-                if not mapped_ai:
-                    for k, v in mapping.items():
-                        if k in ai_cat or ai_cat in k:
-                            mapped_ai = v
-                            break
-                if not mapped_ai:
-                    mapped_ai = "Other"
+                # Normalize to one of the allowed categories, else "Other"
+                matched_allowed = next((c for c in ALLOWED_CATEGORIES if c.lower() == ai_cat), None)
+                mapped_ai = matched_allowed or "Other"
 
                 low_conf = False
                 try:
@@ -262,14 +249,16 @@ def handler(event, context):
                 except Exception:
                     low_conf = True
 
-                if low_conf:
+                if low_conf or mapped_ai == "Other":
                     # Provide options, but keep suggested category preselected
                     msg = (
                         f"Could not parse amount; low-confidence AI suggestion {mapped_ai}. Pick a category."
                         if amount is None
                         else f"Parsed amount {amount}; low-confidence AI suggestion {mapped_ai}. Pick a category."
                     )
-                    return _response(200, {"amount": amount, "category": mapped_ai, "AIConfidence": ai_conf, "options": ALLOWED_CATEGORIES, "message": msg})
+                    # Optionally include AI's raw suggestion first
+                    opts = list(dict.fromkeys([ai_cat_raw] + ALLOWED_CATEGORIES))
+                    return _response(200, {"amount": amount, "category": mapped_ai, "AIConfidence": ai_conf, "options": opts, "message": msg})
                 else:
                     final_category = mapped_ai
 
