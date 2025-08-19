@@ -45,6 +45,10 @@ interface AppState {
 	categoryBudgets: Record<string, Record<string, number>>; // legacy monthly budgets (kept for compatibility)
 	defaultCategoryBudgets: Record<string, number>; // one-time per-user budgets
 
+	// Expense Tracker preferences (persisted locally)
+	spendBaselineMode: "last" | "avg3" | "ytd";
+	spendSensitivity: "low" | "medium" | "high";
+
 	setProfile: (profile: Partial<UserProfile>) => void;
 	setQuestionAnswer: (key: string, value: any) => void;
 	setQuestionnaire: (q: Record<string, any>) => void;
@@ -65,6 +69,8 @@ interface AppState {
 	setCategoryBudget: (ym: string, category: string, amount: number) => void;
 	setDefaultCategoryBudgets: (budgets: Record<string, number>) => void;
 	setDefaultCategoryBudget: (category: string, amount: number) => void;
+	setSpendBaselineMode: (mode: "last" | "avg3" | "ytd") => void;
+	setSpendSensitivity: (level: "low" | "medium" | "high") => void;
 }
 
 export const useApp = create<AppState>()(
@@ -82,6 +88,8 @@ export const useApp = create<AppState>()(
 			expenseReminderDaily: false,
 			categoryBudgets: {},
 			defaultCategoryBudgets: {},
+			spendBaselineMode: "last",
+			spendSensitivity: "medium",
 
 			setProfile: (profile) => set(state => ({ profile: { ...state.profile, ...profile } })),
 			setQuestionAnswer: (key, value) => set(state => ({ questionnaire: { ...state.questionnaire, [key]: value } })),
@@ -111,6 +119,8 @@ export const useApp = create<AppState>()(
 			})),
 			setDefaultCategoryBudgets: (budgets) => set(() => ({ defaultCategoryBudgets: { ...budgets } })),
 			setDefaultCategoryBudget: (category, amount) => set(state => ({ defaultCategoryBudgets: { ...state.defaultCategoryBudgets, [category]: Math.max(0, Number(amount) || 0) } })),
+			setSpendBaselineMode: (mode) => set(() => ({ spendBaselineMode: mode })),
+			setSpendSensitivity: (level) => set(() => ({ spendSensitivity: level })),
 		}),
 		{
 			name: "finsight-v1",
