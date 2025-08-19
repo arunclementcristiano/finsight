@@ -107,13 +107,31 @@ export async function POST(req: NextRequest) {
       } catch {}
     }
 
-    // 3) CategoryRules lookup
+    // 3) CategoryRules lookup (exact, then fuzzy by tokens)
     if (!category && extracted) {
       try {
         const r = await ddb.send(new GetCommand({ TableName: CATEGORY_RULES_TABLE, Key: { rule: extracted } }));
         const ruleCat = (r.Item as any)?.category as string | undefined;
         if (ruleCat) category = ruleCat;
       } catch {}
+      if (!category) {
+        const parts = extracted.split(" ").filter(Boolean);
+        if (parts.length >= 2) {
+          try {
+            const fe = `contains(#r, :w1) AND contains(#r, :w2)`;
+            const scan = await ddb.send(new ScanCommand({
+              TableName: CATEGORY_RULES_TABLE,
+              FilterExpression: fe,
+              ExpressionAttributeNames: { "#r": "rule" },
+              ExpressionAttributeValues: { ":w1": parts[0], ":w2": parts[1] },
+              ProjectionExpression: "#r, #c",
+              ExpressionAttributeNamesAdditional: undefined
+            } as any));
+            const hit = (scan.Items || [])[0] as any;
+            if (hit && hit.category) category = hit.category as string;
+          } catch {}
+        }
+      }
     }
 
     // 4) If category unknown -> call Groq

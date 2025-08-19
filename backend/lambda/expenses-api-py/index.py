@@ -234,6 +234,22 @@ def handler(event, context):
                         final_category = rule_cat
                 except Exception:
                     pass
+                # Fuzzy contains for reversed word order (e.g., "150 laptop repair")
+                if not final_category:
+                    try:
+                        w = extracted_term.split()
+                        if len(w) >= 2:
+                            scan = category_rules_table.scan(
+                                FilterExpression="contains(#r, :w1) AND contains(#r, :w2)",
+                                ExpressionAttributeNames={"#r": "rule"},
+                                ExpressionAttributeValues={":w1": w[0], ":w2": w[1]},
+                                ProjectionExpression="#r, category"
+                            )
+                            items = scan.get("Items", [])
+                            if items:
+                                final_category = items[0].get("category")
+                    except Exception:
+                        pass
 
             # 3) Skip CategoryMemory per new requirement (global rules only)
 
