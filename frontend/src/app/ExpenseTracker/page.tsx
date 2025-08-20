@@ -831,7 +831,7 @@ export default function ExpenseTrackerPage() {
                             <td className="px-3 py-2">{r.cat}</td>
                             <td className="px-3 py-2 text-right">{fmtMoney(r.actual)}</td>
                             <td className="px-3 py-2 text-right">{fmtMoney(r.expected)}</td>
-                            <td className={`px-3 py-2 text-right ${r.variance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{fmtMoney(r.variance)}</td>
+                            <td className={`px-3 py-2 text-right ${r.variance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{fmtMoney(Math.abs(r.variance))}</td>
                           </tr>
                         ))}
                       </tbody>
