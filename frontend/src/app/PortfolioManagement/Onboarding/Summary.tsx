@@ -4,7 +4,7 @@ import { Doughnut } from "react-chartjs-2";
 import { Chart, ArcElement, Tooltip, Legend } from "chart.js";
 import { useRouter } from "next/navigation";
 import { useApp } from "../../store";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/Card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { useChartThemeColors } from "../../components/useChartTheme";
 Chart.register(ArcElement, Tooltip, Legend);
@@ -26,6 +26,11 @@ export default function Summary({ plan }: SummaryProps) {
 	const router = useRouter();
 	const { setPlan } = useApp();
 	const [saved, setSaved] = useState(false);
+	const [aiOn, setAiOn] = useState(true);
+	const [aiLoading, setAiLoading] = useState(false);
+	const [aiRationale, setAiRationale] = useState<string | undefined>(undefined);
+	const [aiConfidence, setAiConfidence] = useState<number | undefined>(undefined);
+	const [refined, setRefined] = useState<any | null>(null);
 	const theme = useChartThemeColors();
 	const chartData = {
 		labels: plan.buckets.map(b => b.class),
@@ -56,6 +61,21 @@ export default function Summary({ plan }: SummaryProps) {
 		return { equity: +equity.toFixed(2), defensive: +defensive.toFixed(2), satellite: +satellite.toFixed(2), numClasses };
 	}, [plan]);
 
+	async function refineWithAI() {
+		try {
+			setAiLoading(true);
+			const res = await fetch("/api/plan/suggest", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ questionnaire: {}, baseline: plan }) });
+			const data = await res.json();
+			if (data?.aiPlan?.buckets) {
+				setRefined(data.aiPlan);
+				setAiRationale(data.rationale);
+				setAiConfidence(data.confidence);
+			}
+		} finally {
+			setAiLoading(false);
+		}
+	}
+
 	function riskBadgeClass(risk: string) {
 		if (risk === "High") return "text-rose-700 dark:text-rose-300 border-rose-300/60";
 		if (risk === "Low") return "text-emerald-700 dark:text-emerald-300 border-emerald-300/60";
@@ -66,6 +86,7 @@ export default function Summary({ plan }: SummaryProps) {
 			<Card>
 				<CardHeader className="text-center">
 					<CardTitle className="text-2xl">Your Suggested Allocation</CardTitle>
+					<CardDescription className="mt-1">Toggle AI refinement for a personalized plan within guardrails.</CardDescription>
 					<div className="mt-2 inline-flex items-center gap-2">
 						<span className="text-sm text-muted-foreground">Risk Level:</span>
 						<span className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${riskBadgeClass(plan.riskLevel)}`}>{plan.riskLevel}</span>
@@ -74,7 +95,10 @@ export default function Summary({ plan }: SummaryProps) {
 				<CardContent>
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 						<div className="w-full h-64 md:h-56">
-							<Doughnut data={chartData} options={chartOptions} />
+							<Doughnut data={(refined||plan) ? {
+								labels: (refined||plan).buckets.map((b:any)=>b.class),
+								datasets: [{ data: (refined||plan).buckets.map((b:any)=>b.pct), backgroundColor: ["#6366f1", "#10b981", "#f59e42", "#fbbf24", "#3b82f6", "#ef4444", "#a3e635"], borderWidth: 2, borderColor: "#fff" }]
+							} : chartData} options={chartOptions} />
 						</div>
 						<div className="grid grid-cols-3 gap-3">
 							<div className="rounded-xl border border-border p-3 text-center">
@@ -88,6 +112,13 @@ export default function Summary({ plan }: SummaryProps) {
 							<div className="rounded-xl border border-border p-3 text-center">
 								<div className="text-xs text-muted-foreground">Satellite</div>
 								<div className="text-lg font-semibold text-amber-600 dark:text-amber-300">{kpis.satellite}%</div>
+							</div>
+							<div className="col-span-3 flex items-center justify-between mt-1">
+								<label className="inline-flex items-center gap-2 text-sm">
+									<input type="checkbox" checked={aiOn} onChange={(e)=> { setAiOn(e.target.checked); if (e.target.checked) refineWithAI(); else setRefined(null); }} />
+									<span>AI refinement</span>
+								</label>
+								{aiLoading && <span className="text-xs text-muted-foreground">Refining…</span>}
 							</div>
 						</div>
 					</div>
@@ -111,7 +142,7 @@ export default function Summary({ plan }: SummaryProps) {
 								</tr>
 							</thead>
 							<tbody>
-								{plan.buckets.map((b: any) => (
+								{(refined||plan).buckets.map((b: any) => (
 									<tr key={b.class} className="border-t border-border/50">
 										<td className="py-3 px-4 font-medium">{b.class}</td>
 										<td className="py-3 px-4 text-right font-semibold text-indigo-600 dark:text-indigo-300">{b.pct}%</td>
@@ -124,6 +155,18 @@ export default function Summary({ plan }: SummaryProps) {
 						</table>
 					</div>
 
+					{aiOn && (aiRationale || aiConfidence !== undefined) && (
+						<div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+							<Card className="md:col-span-2">
+								<CardHeader><CardTitle className="text-base">Why this plan</CardTitle></CardHeader>
+								<CardContent><div className="text-sm text-muted-foreground">{aiRationale || "Refined based on your answers and risk profile."}</div></CardContent>
+							</Card>
+							<Card>
+								<CardHeader><CardTitle className="text-base">AI Confidence</CardTitle></CardHeader>
+								<CardContent><div className="text-sm font-medium">{aiConfidence !== undefined ? `${Math.round(aiConfidence*100)}%` : "—"}</div></CardContent>
+							</Card>
+						</div>
+					)}
 				</CardContent>
 			</Card>
 
