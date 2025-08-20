@@ -334,9 +334,14 @@ export default function ExpenseTrackerPage() {
   }, [expenses]);
 
   const totalBudget = useMemo(() => {
-    const budgets = defaultCategoryBudgets || {};
-    return Object.values(budgets).reduce((a: number, b: any) => a + (Number(b) || 0), 0);
-  }, [defaultCategoryBudgets]);
+    // Sum this month's budget across all categories, honoring overrides
+    const cats = allCategories.length > 0 ? allCategories : Object.keys(defaultCategoryBudgets || {});
+    let sum = 0;
+    for (const cat of cats) {
+      sum += getMonthlyBudgetFor(currentYm, cat);
+    }
+    return sum;
+  }, [allCategories, defaultCategoryBudgets, overridesByMonth, currentYm]);
 
   const budgetUsedPct = totalBudget > 0 ? Math.round((monthSpend / totalBudget) * 100) : 0;
   const topCategory = monthlyCategorySpend.arr.length > 0 ? monthlyCategorySpend.arr[0][0] : "—";
@@ -736,7 +741,16 @@ export default function ExpenseTrackerPage() {
                   {/* Totals summary for Actual vs Expected */}
                   {(() => {
                     const totalActual = Array.from(actualMap.values()).reduce((s, v) => s + v, 0);
-                    const totalExpected = Array.from(expectedMap.values()).reduce((s, v) => s + v, 0);
+                    // Include unused expected (budget for categories with no spend) for analytic correctness
+                    let totalExpected = 0;
+                    const expectedCats = new Set<string>([...allCategories]);
+                    for (const [cat, val] of expectedMap.entries()) { totalExpected += val; expectedCats.delete(cat); }
+                    // Remaining categories that had no spend but have budget
+                    for (const cat of expectedCats) {
+                      // Spread remaining expected evenly across monthsInRange used to compute expectedMap
+                      // Fallback: use current month budget if range-based months unknown here
+                      totalExpected += Object.keys(defaultCategoryBudgets||{}).length ? getMonthlyBudgetFor(currentYm, cat) : 0;
+                    }
                     const maxV = Math.max(totalActual, totalExpected, 1);
                     return (
                       <div className="rounded-lg border border-border p-3">
