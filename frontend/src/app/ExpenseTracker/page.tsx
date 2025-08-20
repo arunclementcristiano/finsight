@@ -809,13 +809,21 @@ export default function ExpenseTrackerPage() {
               const shown = compareShowAll ? rows : rows.slice(0,10);
               return (
                 <>
-                  <div className="rounded-lg border border-border p-3 mb-3 text-sm">
-                    <div className="flex items-center justify-between">
-                      <div className="text-muted-foreground">Total</div>
-                      <div className="font-medium">{fmtMonth(compareMonthA) || 'Month A'}: {fmtMoney(totalA)} → {fmtMonth(compareMonthB) || 'Month B'}: {fmtMoney(totalB)}</div>
+                  <div className="rounded-lg border border-border p-3 mb-3">
+                    <div className="flex items-center justify-between mb-2 text-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-indigo-500"></span><span className="text-muted-foreground">{fmtMonth(compareMonthA) || 'Month A'}</span></div>
+                        <div className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-500"></span><span className="text-muted-foreground">{fmtMonth(compareMonthB) || 'Month B'}</span></div>
+                      </div>
+                      <div className="text-xs text-muted-foreground">Totals</div>
                     </div>
-                    <div className={`mt-1 ${diff > 0 ? 'text-rose-600' : (diff < 0 ? 'text-emerald-600' : 'text-muted-foreground')}`}>
-                      {diff === 0 ? 'Same spend' : (diff > 0 ? `Higher by ${fmtMoney(diff)} (${Math.abs(rel)}%) in ${fmtMonth(compareMonthB) || 'Month B'}` : `Lower by ${fmtMoney(Math.abs(diff))} (${Math.abs(rel)}%) in ${fmtMonth(compareMonthB) || 'Month B'}`)}
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="font-medium text-indigo-600">{fmtMoney(totalA)}</div>
+                      <div className="font-medium text-emerald-600">{fmtMoney(totalB)}</div>
+                    </div>
+                    <div className="mt-2 space-y-1">
+                      <div className="h-1.5 rounded bg-indigo-500" style={{ width: `${totalA > 0 || totalB > 0 ? Math.round((totalA/Math.max(totalA,totalB||1))*100) : 0}%` }}></div>
+                      <div className="h-1.5 rounded bg-emerald-500" style={{ width: `${totalA > 0 || totalB > 0 ? Math.round((totalB/Math.max(totalA,totalB||1))*100) : 0}%` }}></div>
                     </div>
                   </div>
                   <div className="rounded-xl border border-border overflow-hidden">
@@ -825,8 +833,8 @@ export default function ExpenseTrackerPage() {
                           <th className="px-3 py-2 border-b text-left">Category</th>
                           <th className="px-3 py-2 border-b text-right">{compareMonthA || 'Month A'}</th>
                           <th className="px-3 py-2 border-b text-right">{compareMonthB || 'Month B'}</th>
-                          <th className="px-3 py-2 border-b text-right">Δ</th>
-                          <th className="px-3 py-2 border-b text-right">Δ%</th>
+                          <th className="px-3 py-2 border-b text-right">Diff</th>
+                          <th className="px-3 py-2 border-b text-left">Viz</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -836,7 +844,14 @@ export default function ExpenseTrackerPage() {
                             <td className="px-3 py-2 text-right">{fmtMoney(r.a)}</td>
                             <td className="px-3 py-2 text-right">{fmtMoney(r.b)}</td>
                             <td className={`px-3 py-2 text-right ${r.d > 0 ? 'text-rose-600' : (r.d < 0 ? 'text-emerald-600' : '')}`}>{fmtMoney(r.d)}</td>
-                            <td className="px-3 py-2 text-right">{`${Math.round(r.dp)}%`}</td>
+                            <td className="px-3 py-2">
+                              {(() => { const scale = Math.max(1, ...shown.map(x=> Math.max(x.a, x.b))); return (
+                                <div className="w-40">
+                                  <div className="h-1.5 rounded bg-indigo-500" style={{ width: `${Math.round((r.a/scale)*100)}%` }}></div>
+                                  <div className="h-1.5 rounded bg-emerald-500 mt-1" style={{ width: `${Math.round((r.b/scale)*100)}%` }}></div>
+                                </div>
+                              ); })()}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
