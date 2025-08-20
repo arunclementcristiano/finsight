@@ -698,8 +698,17 @@ export default function ExpenseTrackerPage() {
               else if (insightsPreset === "month") { start = new Date(now.getFullYear(), now.getMonth(), 1); end = new Date(now.getFullYear(), now.getMonth()+1, 0); }
               else if (insightsPreset === "lastMonth") { const s = new Date(now.getFullYear(), now.getMonth()-1, 1); start = s; end = new Date(now.getFullYear(), now.getMonth(), 0); }
               else if (insightsPreset === "custom" && insightsStart && insightsEnd) { start = new Date(insightsStart); end = new Date(insightsEnd); }
-              const startISO = start.toISOString().slice(0,10); const endISO = end.toISOString().slice(0,10);
-              const overlap = prorationForRange(startISO, endISO); // ym -> overlapDays
+              const overlap = (() => {
+                const map: Record<string, number> = {};
+                const cur = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+                const last = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+                while (cur <= last) {
+                  const ym = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}`;
+                  map[ym] = (map[ym] || 0) + 1;
+                  cur.setDate(cur.getDate() + 1);
+                }
+                return map;
+              })();
               // Actual spend by category in range
               const actualMap = new Map<string, number>();
               for (const e of expenses) {
@@ -710,10 +719,12 @@ export default function ExpenseTrackerPage() {
               const expectedMap = new Map<string, number>();
               for (const [ym, days] of Object.entries(overlap)) {
                 const [yStr, mStr] = ym.split("-"); const y = Number(yStr); const m = Number(mStr)-1; const dim = daysInMonth(y, m);
+                const monthStart = new Date(y, m, 1); const monthEnd = new Date(y, m+1, 0);
+                const isFull = start <= monthStart && end >= monthEnd;
                 for (const cat of allCategories) {
                   const mb = getMonthlyBudgetFor(ym, cat);
                   if (mb <= 0) continue;
-                  const add = (mb / dim) * (days as number);
+                  const add = isFull ? mb : (mb / dim) * (days as number);
                   expectedMap.set(cat, (expectedMap.get(cat) || 0) + add);
                 }
               }
