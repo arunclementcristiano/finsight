@@ -172,9 +172,9 @@ export default function Summary({ plan }: SummaryProps) {
 					<CardTitle>Allocation Details</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<div className="rounded-xl border border-border overflow-hidden">
+					<div className="rounded-xl border border-border overflow-auto max-h-80">
 						<table className="w-full text-left text-sm">
-							<thead className="bg-card">
+							<thead className="bg-card sticky top-0 z-10">
 								<tr>
 									<th className="py-3 px-4 text-muted-foreground">Asset Class</th>
 									<th className="py-3 px-4 text-muted-foreground text-right">Allocation</th>
@@ -212,17 +212,12 @@ export default function Summary({ plan }: SummaryProps) {
 							</Card>
 						</div>
 					)}
-				</CardContent>
-			</Card>
 
-			<Card>
-				<CardHeader>
-					<CardTitle>Next Steps</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<div className="flex flex-wrap gap-3">
+					<div className="mt-4 flex flex-wrap gap-3">
 						{(driftInfo.items?.length||0) > 0 && (
-							<Button onClick={()=>router.push("/PortfolioManagement/Dashboard")}>📌 Rebalance Now</Button>
+							<Button onClick={()=>router.push("/PortfolioManagement/Dashboard")}>
+								📌 Rebalance Now
+							</Button>
 						)}
 						<Button variant="secondary" onClick={()=>router.push("/PortfolioManagement/Dashboard")}>
 							📊 View Historical Performance
