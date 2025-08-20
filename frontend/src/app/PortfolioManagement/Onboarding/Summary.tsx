@@ -64,7 +64,8 @@ export default function Summary({ plan }: SummaryProps) {
 	async function refineWithAI() {
 		try {
 			setAiLoading(true);
-			const res = await fetch("/api/plan/suggest", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ questionnaire: {}, baseline: plan }) });
+			const q = (useApp.getState() as any).questionnaire || {};
+			const res = await fetch("/api/plan/suggest", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ questionnaire: q, baseline: plan }) });
 			const data = await res.json();
 			if (data?.aiPlan?.buckets) {
 				setRefined(data.aiPlan);
