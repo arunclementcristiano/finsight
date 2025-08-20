@@ -910,7 +910,17 @@ export default function ExpenseTrackerPage() {
             </div>
             <div className="p-4 max-h-[60vh] overflow-y-auto">
               <div className="text-sm text-muted-foreground mb-3">Set default budgets (apply to all months) and optionally override for this month ({currentYm}). Leave blank to keep unchanged.</div>
-              {(() => { const cats = allCategories.length ? allCategories : Object.keys(defaultCategoryBudgets||{}); const totalDef = cats.reduce((s,c)=> s + ((defaultCategoryBudgets||{})[c]||0),0); const totalThis = cats.reduce((s,c)=> s + getMonthlyBudgetFor(currentYm, c),0); return (
+              {(() => {
+                const cats = allCategories.length ? allCategories : Object.keys(defaultCategoryBudgets||{});
+                // Preview totals including unsaved edits
+                const totalDef = cats.reduce((s,c)=> s + ((c in tempDefaultBudgets ? tempDefaultBudgets[c] : (defaultCategoryBudgets||{})[c]||0)),0);
+                const nextOverridesMonth = { ...(overridesByMonth?.[currentYm] || {}), ...tempOverrideBudgets } as Record<string, number>;
+                const totalThis = cats.reduce((s,c)=> {
+                  const ov = nextOverridesMonth[c];
+                  const def = (c in tempDefaultBudgets ? tempDefaultBudgets[c] : (defaultCategoryBudgets||{})[c]||0);
+                  return s + (typeof ov === 'number' ? ov : def);
+                },0);
+                return (
                 <div className="mb-3 grid grid-cols-2 gap-3 text-sm">
                   <div className="rounded-lg border border-border p-3"><div className="text-muted-foreground">Total default budget</div><div className="font-medium">{fmtMoney(totalDef)}</div></div>
                   <div className="rounded-lg border border-border p-3"><div className="text-muted-foreground">Total {currentYm} budget</div><div className="font-medium">{fmtMoney(totalThis)}</div></div>
