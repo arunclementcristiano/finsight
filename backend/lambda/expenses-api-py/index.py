@@ -45,22 +45,22 @@ def _to_json(o):
 ALLOWED_CATEGORIES = [
     "Food",          # groceries, restaurants, coffee, snacks
     "Travel",        # fuel, cab, flights, metro, parking
-    "Entertainment", # movies, OTT, gaming, outings
+    "Personal",      # toiletries, personal items, small lifestyle buys
     "Shopping",      # clothes, electronics, accessories
     "Utilities",     # electricity, water, gas, internet, phone
-    "Healthcare",    # doctor visits, pharmacy, health checkup
     "Housing",       # rent, maintenance, home repairs
-    "Education",     # school fees, courses, books
-    "Insurance",     # life, health, vehicle, home
+    "Healthcare",    # doctor visits, pharmacy, health checkup
+    "Entertainment", # movies, OTT, gaming, outings
     "Investment",    # stocks, mutual funds, SIP, gold
     "Loans",         # EMI, credit card payment, personal loan
-    "Donations",     # charity, wedding gifts, birthday presents
+    "Insurance",     # life, health, vehicle, home
     "Grooming",      # haircut, salon, spa, beauty, cosmetics
-    "Personal",      # toiletries, personal items, small lifestyle buys
     "Subscription",  # Netflix, Spotify, news, memberships
+    "Education",     # school fees, courses, books
     "Taxes",         # income tax, GST, penalties
-    "Gifts",         # birthdays, festivals, anniversaries (kept separate from donations)
-    "Pet Care",      # food, grooming, vet (if applicable)
+    "Gifts",         # birthdays, festivals, anniversaries
+    "Donations",     # charity, wedding gifts, birthday presents
+    "Pet Care",      # food, grooming, vet
     "Other",         # uncategorized / misc
 ]
 
@@ -187,25 +187,43 @@ def handler(event, context):
             # Fixed categories (predefined rules)
             synonyms = {
                 # Food
-                "groceries": "Food", "grocery": "Food", "restaurant": "Food", "dining": "Food", "lunch": "Food", "dinner": "Food", "pizza": "Food",
-                "breakfast": "Food", "snacks": "Food", "coffee": "Food", "swiggy": "Food", "zomato": "Food", "ubereats": "Food",
+                "groceries": "Food", "grocery": "Food", "restaurant": "Food", "dining": "Food", 
+                "lunch": "Food", "dinner": "Food", "pizza": "Food", "breakfast": "Food", 
+                "snacks": "Food", "coffee": "Food", "swiggy": "Food", "zomato": "Food", 
+                "ubereats": "Food",
+
                 # Travel
-                "travel": "Travel", "transport": "Travel", "taxi": "Travel", "uber": "Travel", "ola": "Travel", "bus": "Travel",
-                "train": "Travel", "flight": "Travel", "airline": "Travel", "fuel": "Travel", "petrol": "Travel", "gas": "Travel",
-                # Entertainment
-                "entertainment": "Entertainment", "cinema": "Entertainment", "netflix": "Entertainment", "movie": "Entertainment", "movies": "Entertainment", "tv": "Entertainment",
-                "hotstar": "Entertainment", "sunnxt": "Entertainment", "spotify": "Entertainment", "prime": "Entertainment",
-                "disney": "Entertainment", "playstation": "Entertainment", "xbox": "Entertainment",
+                "travel": "Travel", "transport": "Travel", "taxi": "Travel", "uber": "Travel", 
+                "ola": "Travel", "bus": "Travel", "train": "Travel", "flight": "Travel", 
+                "airline": "Travel", "fuel": "Travel", "petrol": "Travel", "gas": "Travel",
+
+                # Entertainment (experiences & gaming, NOT subscriptions)
+                "entertainment": "Entertainment", "cinema": "Entertainment", "movie": "Entertainment", 
+                "movies": "Entertainment", "theatre": "Entertainment", "outing": "Entertainment", 
+                "playstation": "Entertainment", "xbox": "Entertainment", "gaming": "Entertainment",
+
                 # Shopping
-                "shopping": "Shopping", "amazon": "Shopping", "flipkart": "Shopping", "myntra": "Shopping", "apparel": "Shopping",
-                "clothing": "Shopping", "mall": "Shopping", "electronics": "Shopping", "gadget": "Shopping",
+                "shopping": "Shopping", "amazon": "Shopping", "flipkart": "Shopping", "myntra": "Shopping", 
+                "apparel": "Shopping", "clothing": "Shopping", "mall": "Shopping", "electronics": "Shopping", 
+                "gadget": "Shopping", "laptop": "Shopping", "mobile": "Shopping",
+
                 # Utilities
-                "utilities": "Utilities", "electricity": "Utilities", "water": "Utilities", "internet": "Utilities", "broadband": "Utilities",
-                "jio": "Utilities", "airtel": "Utilities", "bsnl": "Utilities", "bill": "Utilities",
+                "utilities": "Utilities", "electricity": "Utilities", "water": "Utilities", "internet": "Utilities", 
+                "broadband": "Utilities", "jio": "Utilities", "airtel": "Utilities", "bsnl": "Utilities", 
+                "bill": "Utilities", "phone": "Utilities", "gas bill": "Utilities",
+
                 # Healthcare
-                "health": "Healthcare", "healthcare": "Healthcare", "medicine": "Healthcare", "hospital": "Healthcare", "doctor": "Healthcare",
-                "pharmacy": "Healthcare", "apollo": "Healthcare", "pharmeasy": "Healthcare", "practo": "Healthcare",
+                "health": "Healthcare", "healthcare": "Healthcare", "medicine": "Healthcare", 
+                "hospital": "Healthcare", "doctor": "Healthcare", "pharmacy": "Healthcare", 
+                "apollo": "Healthcare", "pharmeasy": "Healthcare", "practo": "Healthcare",
+
+                # Subscription (recurring digital services)
+                "netflix": "Subscription", "spotify": "Subscription", "prime": "Subscription", 
+                "disney": "Subscription", "hotstar": "Subscription", "sunnxt": "Subscription", 
+                "membership": "Subscription", "subscription": "Subscription", "zee5": "Subscription",
+                "apple music": "Subscription", "youtube premium": "Subscription",
             }
+
             lower = raw_text.lower()
             extracted_term = _extract_term(raw_text)
 
