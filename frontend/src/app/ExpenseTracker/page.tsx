@@ -22,7 +22,7 @@ export default function ExpenseTrackerPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const [sortField, setSortField] = useState<"date" | "amount" | "category">("date");
+  const [sortField, setSortField] = useState<"createdAt" | "date" | "amount" | "category">("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [preset, setPreset] = useState<"all" | "today" | "week" | "month" | "lastMonth" | "custom">("all");
   const [customStart, setCustomStart] = useState<string>("");
@@ -315,9 +315,13 @@ export default function ExpenseTrackerPage() {
     });
     rows.sort((a, b) => {
       let cmp = 0;
-      if (sortField === "date") {
+      if (sortField === "createdAt") {
         const aKey = (a as any).createdAt ? new Date((a as any).createdAt as string).getTime() : toLocalDateOnly(a.date as any).getTime();
         const bKey = (b as any).createdAt ? new Date((b as any).createdAt as string).getTime() : toLocalDateOnly(b.date as any).getTime();
+        cmp = aKey - bKey;
+      } else if (sortField === "date") {
+        const aKey = toLocalDateOnly(a.date as any).getTime();
+        const bKey = toLocalDateOnly(b.date as any).getTime();
         cmp = aKey - bKey;
       } else if (sortField === "amount") {
         cmp = a.amount - b.amount;
@@ -381,7 +385,7 @@ export default function ExpenseTrackerPage() {
     URL.revokeObjectURL(url);
   }
 
-  function toggleSort(field: "date" | "amount" | "category") {
+  function toggleSort(field: "createdAt" | "date" | "amount" | "category") {
     if (field === sortField) {
       setSortDir(d => (d === "asc" ? "desc" : "asc"));
     } else {
@@ -489,10 +493,16 @@ export default function ExpenseTrackerPage() {
               <thead className="bg-card">
                 <tr>
                   <th className="px-3 py-2 border-b">
-                    <button type="button" onClick={() => toggleSort("date")} className="inline-flex items-center gap-1 cursor-pointer select-none">
-                      Date
-                      {sortField !== "date" ? <ArrowUpDown className="h-3.5 w-3.5" /> : (sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => toggleSort("date")} className="inline-flex items-center gap-1 cursor-pointer select-none">
+                        Date
+                        {sortField !== "date" ? <ArrowUpDown className="h-3.5 w-3.5" /> : (sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
+                      </button>
+                      <button type="button" onClick={() => toggleSort("createdAt")} title="Sort by added time" className={`inline-flex items-center gap-1 cursor-pointer select-none text-xs px-1.5 py-0.5 rounded border ${sortField==='createdAt' ? 'border-foreground text-foreground' : 'border-border text-muted-foreground hover:text-foreground'}`}>
+                        Newest
+                        {sortField !== "createdAt" ? <ArrowUpDown className="h-3 w-3" /> : (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
+                      </button>
+                    </div>
                   </th>
                   <th className="px-3 py-2 border-b">Text</th>
                   <th className="px-3 py-2 border-b">
