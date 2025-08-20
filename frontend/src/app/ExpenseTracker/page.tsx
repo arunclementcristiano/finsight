@@ -771,14 +771,17 @@ export default function ExpenseTrackerPage() {
               <div className="text-lg font-semibold">Compare months</div>
               <button onClick={()=> setCompareOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5"/></button>
             </div>
-            <div className="flex flex-wrap items-center gap-2 mb-3">
+            <div className="flex items-center gap-3 mb-3 flex-nowrap overflow-x-auto">
               <div className="text-sm text-muted-foreground">Month A</div>
-              <input type="month" value={compareMonthA} onChange={e=> setCompareMonthA(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card" />
+              <input type="month" value={compareMonthA} onChange={e=> setCompareMonthA(e.target.value)} className="h-9 w-40 rounded-md border border-border px-2 bg-card" />
               <div className="text-sm text-muted-foreground ml-2">Month B</div>
-              <input type="month" value={compareMonthB} onChange={e=> setCompareMonthB(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card" />
+              <input type="month" value={compareMonthB} onChange={e=> setCompareMonthB(e.target.value)} className="h-9 w-40 rounded-md border border-border px-2 bg-card" />
             </div>
             {(() => {
               // Aggregate Actuals per category for month A and B
+              if (compareMonthA && compareMonthB && compareMonthA === compareMonthB) {
+                return <div className="text-sm text-rose-600">Pick two different months to compare.</div>;
+              }
               function totalByMonth(ym: string) {
                 const map = new Map<string, number>();
                 if (!ym) return map;
@@ -791,6 +794,11 @@ export default function ExpenseTrackerPage() {
               }
               const aMap = totalByMonth(compareMonthA);
               const bMap = totalByMonth(compareMonthB);
+              const totalA = Array.from(aMap.values()).reduce((s,v)=> s+v, 0);
+              const totalB = Array.from(bMap.values()).reduce((s,v)=> s+v, 0);
+              const diff = totalB - totalA;
+              const rel = totalA > 0 ? Math.round((diff/totalA)*100) : (totalB>0 ? 100 : 0);
+              function fmtMonth(ym: string) { if (!ym) return ""; const [y,m]=ym.split('-'); const d=new Date(Number(y), Number(m)-1, 1); return d.toLocaleString(undefined,{month:'short', year:'numeric'}); }
               let rows = Array.from(new Set([ ...Array.from(aMap.keys()), ...Array.from(bMap.keys()) ])).map(cat => {
                 const a = aMap.get(cat) || 0;
                 const b = bMap.get(cat) || 0;
@@ -801,6 +809,15 @@ export default function ExpenseTrackerPage() {
               const shown = compareShowAll ? rows : rows.slice(0,10);
               return (
                 <>
+                  <div className="rounded-lg border border-border p-3 mb-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <div className="text-muted-foreground">Total</div>
+                      <div className="font-medium">{fmtMonth(compareMonthA) || 'Month A'}: {fmtMoney(totalA)} → {fmtMonth(compareMonthB) || 'Month B'}: {fmtMoney(totalB)}</div>
+                    </div>
+                    <div className={`mt-1 ${diff > 0 ? 'text-rose-600' : (diff < 0 ? 'text-emerald-600' : 'text-muted-foreground')}`}>
+                      {diff === 0 ? 'Same spend' : (diff > 0 ? `Higher by ${fmtMoney(diff)} (${Math.abs(rel)}%) in ${fmtMonth(compareMonthB) || 'Month B'}` : `Lower by ${fmtMoney(Math.abs(diff))} (${Math.abs(rel)}%) in ${fmtMonth(compareMonthB) || 'Month B'}`)}
+                    </div>
+                  </div>
                   <div className="rounded-xl border border-border overflow-hidden">
                     <table className="w-full text-sm">
                       <thead className="bg-card">
