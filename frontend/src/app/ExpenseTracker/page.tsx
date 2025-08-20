@@ -596,7 +596,9 @@ export default function ExpenseTrackerPage() {
               </div>
               <div className="rounded-xl border border-border p-3">
                 <div className="text-xs text-muted-foreground">Budget Used</div>
-                <div className="text-lg font-semibold">{totalBudget > 0 ? `${privacy ? '•••' : formatCurrency(monthSpend)} / ${privacy ? '•••' : formatCurrency(totalBudget)} (${budgetUsedPct}%)` : "—"}</div>
+                <div className={`text-lg font-semibold ${totalBudget > 0 ? (budgetUsedPct >= 100 ? 'text-rose-600' : (budgetUsedPct >= 80 ? 'text-amber-600' : 'text-emerald-600')) : ''}`}>
+                  {totalBudget > 0 ? `${privacy ? '•••' : formatCurrency(monthSpend)} / ${privacy ? '•••' : formatCurrency(totalBudget)} (${budgetUsedPct}%)` : "—"}
+                </div>
               </div>
               <div className="rounded-xl border border-border p-3">
                 <div className="text-xs text-muted-foreground">Top Category</div>
