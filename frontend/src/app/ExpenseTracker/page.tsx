@@ -287,6 +287,19 @@ export default function ExpenseTrackerPage() {
     return Number(d) || 0;
   }
 
+  function getPrevMonthBaseline(ym: string, cat: string): number {
+    const [yStr, mStr] = String(ym).split("-");
+    const y = Number(yStr); const m = Number(mStr) - 1;
+    if (isFinite(y) && isFinite(m)) {
+      const prev = new Date(y, m, 1); prev.setMonth(prev.getMonth() - 1);
+      const prevKey = `${prev.getFullYear()}-${String(prev.getMonth()+1).padStart(2,'0')}`;
+      const prevOv = overridesByMonth?.[prevKey]?.[cat];
+      if (typeof prevOv === 'number') return Number(prevOv) || 0;
+    }
+    const d = (defaultCategoryBudgets || {})[cat] || 0;
+    return Number(d) || 0;
+  }
+
   // Initialize draft budgets when opening the modal (effective values per category)
   useEffect(() => {
     if (!showBudgetsModal) return;
@@ -295,10 +308,10 @@ export default function ExpenseTrackerPage() {
     const draft: Record<string, number> = {};
     const inputs: Record<string, string> = {};
     for (const cat of cats) {
-      const eff = getMonthlyBudgetFor(currentYm, cat);
-      baseline[cat] = eff;
-      draft[cat] = eff;
-      inputs[cat] = String(eff);
+      const base = getPrevMonthBaseline(currentYm, cat);
+      baseline[cat] = base;
+      draft[cat] = base;
+      inputs[cat] = String(base);
     }
     setBaselineBudgets(baseline);
     setDraftBudgets(draft);
@@ -1041,7 +1054,7 @@ export default function ExpenseTrackerPage() {
                   const isOverride = Number.isFinite(n) ? (n !== (baselineBudgets[cat] || 0)) : false;
                   return (
                   <div key={cat} className="rounded-lg border border-border p-3 space-y-2">
-                    <div className="text-sm font-semibold flex items-center justify-between"><span>{cat}</span>{(overridesByMonth?.[currentYm]?.[cat] !== undefined) ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 border border-indigo-400/30">Overridden</span> : (isOverride ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 border border-indigo-400/30">Overridden</span> : null)}</div>
+                    <div className="text-sm font-semibold flex items-center justify-between"><span>{cat}</span>{isOverride ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 border border-indigo-400/30">Overridden</span> : null}</div>
                     <div className="flex items-center justify-between gap-3">
                       <div className="text-xs text-muted-foreground">Budget</div>
                       <input
