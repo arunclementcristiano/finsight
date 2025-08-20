@@ -172,7 +172,7 @@ export default function Summary({ plan }: SummaryProps) {
 			</Card>
 
 			<div className="flex flex-col sm:flex-row gap-3 justify-center">
-				<Button onClick={() => { setPlan(plan as any); setSaved(true); }} className="min-w-[160px]">{saved ? "Saved" : "Save Plan"}</Button>
+				<Button onClick={() => { setPlan((refined || plan) as any); setSaved(true); }} className="min-w-[160px]">{saved ? "Saved" : "Save Plan"}</Button>
 				<Button variant="secondary" onClick={() => router.push("/PortfolioManagement/AddHolding")} className="min-w-[160px]">Add Holdings</Button>
 				<Button variant="outline" onClick={() => router.push("/PortfolioManagement/Dashboard")} className="min-w-[160px]">Go to Dashboard</Button>
 			</div>
