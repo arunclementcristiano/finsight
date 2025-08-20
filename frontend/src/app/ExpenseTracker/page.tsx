@@ -986,12 +986,12 @@ export default function ExpenseTrackerPage() {
                   <div key={cat} className="rounded-lg border border-border p-3 space-y-2">
                     <div className="text-sm font-semibold">{cat}</div>
                     <div className="flex items-center justify-between gap-3">
-                      <div className="text-xs text-muted-foreground">Default</div>
-                      <input type="number" step="0.01" placeholder={String(defaultCategoryBudgets?.[cat] || 0)} onChange={(e)=> setTempDefaultBudgets(prev=> ({...prev, [cat]: Number(e.target.value) || 0}))} className="h-9 w-28 rounded-md border border-border px-2 bg-background text-right" />
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
                       <div className="text-xs text-muted-foreground">This month</div>
                       <input type="number" step="0.01" placeholder={String((overridesByMonth?.[currentYm]?.[cat] || 0))} onChange={(e)=> setTempOverrideBudgets(prev=> ({...prev, [cat]: Number(e.target.value) || 0}))} className="h-9 w-28 rounded-md border border-border px-2 bg-background text-right" />
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-xs text-muted-foreground">Default</div>
+                      <input type="number" step="0.01" placeholder={String(defaultCategoryBudgets?.[cat] || 0)} onChange={(e)=> setTempDefaultBudgets(prev=> ({...prev, [cat]: Number(e.target.value) || 0}))} className="h-9 w-28 rounded-md border border-border px-2 bg-background text-right" />
                     </div>
                   </div>
                 ))}
