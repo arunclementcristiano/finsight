@@ -422,7 +422,7 @@ export default function ExpenseTrackerPage() {
         <div className="px-4 pb-3">
           <div className="inline-flex rounded-lg border border-border overflow-hidden">
             <button onClick={()=> setActiveTab("data")} className={`px-4 py-2 text-sm ${activeTab==='data' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>Data</button>
-            <button onClick={()=> setActiveTab("insights")} className={`px-4 py-2 text-sm ${activeTab==='insights' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>Actual vs Expected (prorated by day)</button>
+            <button onClick={()=> setActiveTab("insights")} className={`px-4 py-2 text-sm ${activeTab==='insights' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>Insights</button>
           </div>
         </div>
       </div>
@@ -622,6 +622,7 @@ export default function ExpenseTrackerPage() {
               let end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
               if (insightsPreset === "week") { const day = start.getDay() || 7; start.setDate(start.getDate() - (day-1)); end = new Date(start); end.setDate(start.getDate() + 6); }
               else if (insightsPreset === "month") { start = new Date(now.getFullYear(), now.getMonth(), 1); end = new Date(now.getFullYear(), now.getMonth()+1, 0); }
+              else if (insightsPreset === "lastMonth") { const s = new Date(now.getFullYear(), now.getMonth()-1, 1); start = s; end = new Date(now.getFullYear(), now.getMonth(), 0); }
               else if (insightsPreset === "custom" && insightsStart && insightsEnd) { start = new Date(insightsStart); end = new Date(insightsEnd); }
               const map = new Map<string, number>();
               for (const e of expenses) {
@@ -655,6 +656,7 @@ export default function ExpenseTrackerPage() {
                 <option value="today">Today</option>
                 <option value="week">This week</option>
                 <option value="month">This month</option>
+                <option value="lastMonth">Last month</option>
                 <option value="custom">Custom</option>
               </select>
               {insightsPreset === "custom" && (
@@ -673,6 +675,7 @@ export default function ExpenseTrackerPage() {
               let end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
               if (insightsPreset === "week") { const day = start.getDay() || 7; start.setDate(start.getDate() - (day-1)); end = new Date(start); end.setDate(start.getDate() + 6); }
               else if (insightsPreset === "month") { start = new Date(now.getFullYear(), now.getMonth(), 1); end = new Date(now.getFullYear(), now.getMonth()+1, 0); }
+              else if (insightsPreset === "lastMonth") { const s = new Date(now.getFullYear(), now.getMonth()-1, 1); start = s; end = new Date(now.getFullYear(), now.getMonth(), 0); }
               else if (insightsPreset === "custom" && insightsStart && insightsEnd) { start = new Date(insightsStart); end = new Date(insightsEnd); }
               const startISO = start.toISOString().slice(0,10); const endISO = end.toISOString().slice(0,10);
               const overlap = prorationForRange(startISO, endISO); // ym -> overlapDays
