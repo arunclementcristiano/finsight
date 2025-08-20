@@ -41,6 +41,7 @@ export default function ExpenseTrackerPage() {
   const [tempDefaultBudgets, setTempDefaultBudgets] = useState<Record<string, number>>({});
   const [tempOverrideBudgets, setTempOverrideBudgets] = useState<Record<string, number>>({});
   const [draftBudgets, setDraftBudgets] = useState<Record<string, number>>({});
+  const [draftInputs, setDraftInputs] = useState<Record<string, string>>({});
   const [baselineBudgets, setBaselineBudgets] = useState<Record<string, number>>({});
   const [allCategories, setAllCategories] = useState<string[]>([]);
   const [overridesByMonth, setOverridesByMonth] = useState<Record<string, Record<string, number>>>({});
@@ -292,13 +293,16 @@ export default function ExpenseTrackerPage() {
     const cats = allCategories.length ? allCategories : Object.keys(defaultCategoryBudgets||{});
     const baseline: Record<string, number> = {};
     const draft: Record<string, number> = {};
+    const inputs: Record<string, string> = {};
     for (const cat of cats) {
       const eff = getMonthlyBudgetFor(currentYm, cat);
       baseline[cat] = eff;
       draft[cat] = eff;
+      inputs[cat] = String(eff);
     }
     setBaselineBudgets(baseline);
     setDraftBudgets(draft);
+    setDraftInputs(inputs);
   }, [showBudgetsModal]);
 
   function daysInMonth(y: number, mZeroBased: number) { return new Date(y, mZeroBased + 1, 0).getDate(); }
@@ -1027,7 +1031,7 @@ export default function ExpenseTrackerPage() {
                   if (sa !== sb) return sb - sa;
                   return a.localeCompare(b);
                 }).map(cat => {
-                  const valueToShow = Number(draftBudgets[cat] || 0);
+                  const valueToShow = Number(draftInputs[cat] ?? draftBudgets[cat] ?? 0);
                   const isOverride = valueToShow !== (baselineBudgets[cat] || 0);
                   return (
                   <div key={cat} className="rounded-lg border border-border p-3 space-y-2">
@@ -1037,12 +1041,11 @@ export default function ExpenseTrackerPage() {
                       <input
                         type="number"
                         step="0.01"
-                        value={String(valueToShow)}
+                        value={String(draftInputs[cat] ?? '')}
                         onChange={(e)=> {
                           const num = Number(e.target.value);
-                          if (Number.isFinite(num)) {
-                            setDraftBudgets(prev=> ({...prev, [cat]: num}));
-                          }
+                          setDraftInputs(prev=> ({...prev, [cat]: e.target.value}));
+                          if (Number.isFinite(num)) setDraftBudgets(prev=> ({...prev, [cat]: num}));
                         }}
                         className="h-9 w-28 rounded-md border border-border px-2 bg-background text-right"
                       />
@@ -1066,7 +1069,7 @@ export default function ExpenseTrackerPage() {
                 try { await fetch(`/api/budgets`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", defaultBudgets: nextDefaults, overrides: nextOverrides }) }); } catch {}
                 (useApp.getState() as any).setDefaultCategoryBudgets(nextDefaults);
                 setOverridesByMonth(nextOverrides);
-                setTempDefaultBudgets({}); setTempOverrideBudgets({}); setDraftBudgets({}); setBaselineBudgets({});
+                setTempDefaultBudgets({}); setTempOverrideBudgets({}); setDraftBudgets({}); setBaselineBudgets({}); setDraftInputs({});
                 setShowBudgetsModal(false);
               }}>Save</Button>
             </div>
