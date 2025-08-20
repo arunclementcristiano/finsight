@@ -812,17 +812,17 @@ export default function ExpenseTrackerPage() {
                   <div className="rounded-lg border border-border p-3 mb-3">
                     <div className="flex items-center justify-between mb-2 text-sm">
                       <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-indigo-500"></span><span className="text-muted-foreground">{fmtMonth(compareMonthA) || 'Month A'}</span></div>
+                        <div className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-sky-500"></span><span className="text-muted-foreground">{fmtMonth(compareMonthA) || 'Month A'}</span></div>
                         <div className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-500"></span><span className="text-muted-foreground">{fmtMonth(compareMonthB) || 'Month B'}</span></div>
                       </div>
                       <div className="text-xs text-muted-foreground">Totals</div>
                     </div>
                     <div className="flex items-center justify-between text-sm">
-                      <div className="font-medium text-indigo-600">{fmtMoney(totalA)}</div>
+                      <div className="font-medium text-sky-600">{fmtMoney(totalA)}</div>
                       <div className="font-medium text-emerald-600">{fmtMoney(totalB)}</div>
                     </div>
                     <div className="mt-2 space-y-1">
-                      <div className="h-1.5 rounded bg-indigo-500" style={{ width: `${totalA > 0 || totalB > 0 ? Math.round((totalA/Math.max(totalA,totalB||1))*100) : 0}%` }}></div>
+                      <div className="h-1.5 rounded bg-sky-500" style={{ width: `${totalA > 0 || totalB > 0 ? Math.round((totalA/Math.max(totalA,totalB||1))*100) : 0}%` }}></div>
                       <div className="h-1.5 rounded bg-emerald-500" style={{ width: `${totalA > 0 || totalB > 0 ? Math.round((totalB/Math.max(totalA,totalB||1))*100) : 0}%` }}></div>
                     </div>
                   </div>
@@ -847,7 +847,7 @@ export default function ExpenseTrackerPage() {
                             <td className="px-3 py-2">
                               {(() => { const scale = Math.max(1, ...shown.map(x=> Math.max(x.a, x.b))); return (
                                 <div className="w-40">
-                                  <div className="h-1.5 rounded bg-indigo-500" style={{ width: `${Math.round((r.a/scale)*100)}%` }}></div>
+                                  <div className="h-1.5 rounded bg-sky-500" style={{ width: `${Math.round((r.a/scale)*100)}%` }}></div>
                                   <div className="h-1.5 rounded bg-emerald-500 mt-1" style={{ width: `${Math.round((r.b/scale)*100)}%` }}></div>
                                 </div>
                               ); })()}
