@@ -1027,28 +1027,31 @@ export default function ExpenseTrackerPage() {
               ) })()}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[...allCategories].sort((a,b)=>{
-                  const order: Record<string, number> = {
-                    "Food": 1,
-                    "Travel": 2,
-                    "Shopping": 3,
-                    "Utilities": 4,
-                    "Electricity": 5,
-                    "Internet": 6,
-                    "Healthcare": 7,
-                    "Medicine": 8,
-                    "Entertainment": 9,
-                    "Fuel": 10,
-                    "Groceries": 11,
-                    "Pet Care": 12,
-                    "Insurance": 13,
-                    "Education": 14
-                  };
+                  const ordered = [
+                    "Food",
+                    "Travel",
+                    "Personal",
+                    "Shopping",
+                    "Utilities",
+                    "Housing",
+                    "Healthcare",
+                    "Entertainment",
+                    "Investment",
+                    "Loans",
+                    "Insurance",
+                    "Grooming",
+                    "Subscription",
+                    "Education",
+                    "Taxes",
+                    "Gifts",
+                    "Donations",
+                    "Pet Care",
+                    "Other",
+                  ];
+                  const order: Record<string, number> = Object.fromEntries(ordered.map((k,i)=> [k, i+1]));
                   const wa = order[a] ?? 999;
                   const wb = order[b] ?? 999;
                   if (wa !== wb) return wa - wb;
-                  const sa = (monthlyCategorySpend.map.get(a) || 0);
-                  const sb = (monthlyCategorySpend.map.get(b) || 0);
-                  if (sa !== sb) return sb - sa;
                   return a.localeCompare(b);
                 }).map(cat => {
                   const n = Number(draftInputs[cat]);
