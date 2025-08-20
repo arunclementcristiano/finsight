@@ -40,6 +40,7 @@ export default function ExpenseTrackerPage() {
   const [showBudgetsModal, setShowBudgetsModal] = useState(false);
   const [tempDefaultBudgets, setTempDefaultBudgets] = useState<Record<string, number>>({});
   const [tempOverrideBudgets, setTempOverrideBudgets] = useState<Record<string, number>>({});
+  const [tempOverrideClears, setTempOverrideClears] = useState<Record<string, boolean>>({});
   const [allCategories, setAllCategories] = useState<string[]>([]);
   const [overridesByMonth, setOverridesByMonth] = useState<Record<string, Record<string, number>>>({});
   // Insights controls
@@ -968,17 +969,17 @@ export default function ExpenseTrackerPage() {
               <div className="text-sm text-muted-foreground mb-3">Set default budgets (apply to all months) and optionally override for this month ({currentYm}). Leave blank to keep unchanged.</div>
               {(() => {
                 const cats = allCategories.length ? allCategories : Object.keys(defaultCategoryBudgets||{});
-                const totalDef = cats.reduce((s,c)=> s + ((c in tempDefaultBudgets ? tempDefaultBudgets[c] : (defaultCategoryBudgets||{})[c]||0)),0);
                 const nextOverridesMonth = { ...(overridesByMonth?.[currentYm] || {}), ...tempOverrideBudgets } as Record<string, number>;
                 const totalThis = cats.reduce((s,c)=> {
-                  const ov = nextOverridesMonth[c];
-                  const def = (c in tempDefaultBudgets ? tempDefaultBudgets[c] : (defaultCategoryBudgets||{})[c]||0);
+                  const cleared = !!tempOverrideClears[c];
+                  const ov = cleared ? undefined : nextOverridesMonth[c];
+                  const def = (defaultCategoryBudgets||{})[c]||0;
                   return s + (typeof ov === 'number' ? ov : def);
                 },0);
                 return (
                 <div className="mb-3 grid grid-cols-2 gap-3 text-sm">
-                  <div className="rounded-lg border border-border p-3"><div className="text-muted-foreground">Total default budget</div><div className="font-medium">{fmtMoney(totalDef)}</div></div>
                   <div className="rounded-lg border border-border p-3"><div className="text-muted-foreground">Total {currentYm} budget</div><div className="font-medium">{fmtMoney(totalThis)}</div></div>
+                  <div className="rounded-lg border border-border p-3"><div className="text-muted-foreground">Categories</div><div className="font-medium">{cats.length}</div></div>
                 </div>
               ) })()}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1006,30 +1007,65 @@ export default function ExpenseTrackerPage() {
                   const sb = (monthlyCategorySpend.map.get(b) || 0);
                   if (sa !== sb) return sb - sa;
                   return a.localeCompare(b);
-                }).map(cat => (
+                }).map(cat => {
+                  const def = (defaultCategoryBudgets||{})[cat] || 0;
+                  const ovExisting = (overridesByMonth?.[currentYm]?.[cat]);
+                  const cleared = !!tempOverrideClears[cat];
+                  const ovTemp = tempOverrideBudgets[cat];
+                  const effective = typeof ovTemp === 'number' ? ovTemp : (cleared ? undefined : (typeof ovExisting === 'number' ? ovExisting : undefined));
+                  const valueToShow = typeof effective === 'number' ? effective : def;
+                  const isOverride = typeof effective === 'number';
+                  return (
                   <div key={cat} className="rounded-lg border border-border p-3 space-y-2">
-                    <div className="text-sm font-semibold">{cat}</div>
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-xs text-muted-foreground">This month</div>
-                      <input type="number" step="0.01" placeholder={String((overridesByMonth?.[currentYm]?.[cat] || 0))} onChange={(e)=> setTempOverrideBudgets(prev=> ({...prev, [cat]: Number(e.target.value) || 0}))} className="h-9 w-28 rounded-md border border-border px-2 bg-background text-right" />
+                    <div className="text-sm font-semibold flex items-center justify-between">
+                      <span>{cat}</span>
+                      <span className={`text-xs ${isOverride ? 'text-indigo-600' : 'text-muted-foreground'}`}>{isOverride ? `Overridden for ${currentYm}` : 'Using default'}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <div className="text-xs text-muted-foreground">Default</div>
-                      <input type="number" step="0.01" placeholder={String(defaultCategoryBudgets?.[cat] || 0)} onChange={(e)=> setTempDefaultBudgets(prev=> ({...prev, [cat]: Number(e.target.value) || 0}))} className="h-9 w-28 rounded-md border border-border px-2 bg-background text-right" />
+                      <div className="text-xs text-muted-foreground">Budget</div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={String(valueToShow)}
+                        onChange={(e)=> {
+                          const num = Number(e.target.value);
+                          if (Number.isFinite(num)) {
+                            setTempOverrideBudgets(prev=> ({...prev, [cat]: num}));
+                            setTempOverrideClears(prev=> ({...prev, [cat]: false}));
+                          }
+                        }}
+                        className="h-9 w-28 rounded-md border border-border px-2 bg-background text-right"
+                      />
+                    </div>
+                    <div className="flex items-center justify-end gap-3 text-xs">
+                      <button className="underline decoration-dotted text-muted-foreground hover:text-foreground" onClick={()=> {
+                        setTempOverrideClears(prev=> ({...prev, [cat]: true}));
+                        setTempOverrideBudgets(prev=> { const n={...prev}; delete n[cat]; return n; });
+                      }}>Reset to default</button>
+                      <button className="underline decoration-dotted text-muted-foreground hover:text-foreground" onClick={()=> {
+                        const val = typeof valueToShow === 'number' ? valueToShow : 0;
+                        setTempDefaultBudgets(prev=> ({...prev, [cat]: val}));
+                      }}>Set as default</button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
             <div className="px-4 py-3 border-t border-border flex items-center justify-end gap-2">
               <Button variant="outline" onClick={()=> setShowBudgetsModal(false)}>Cancel</Button>
               <Button onClick={async ()=> {
+                const baseMonth = { ...(overridesByMonth?.[currentYm] || {}) } as Record<string, number>;
+                // Apply clears
+                Object.keys(tempOverrideClears).forEach(cat => { if (tempOverrideClears[cat]) delete baseMonth[cat]; });
+                // Apply edits
+                Object.entries(tempOverrideBudgets).forEach(([cat, val]) => { if (typeof val === 'number' && isFinite(val)) baseMonth[cat] = val; });
+                const nextOverrides = { ...(overridesByMonth || {}), [currentYm]: baseMonth };
                 const nextDefaults = { ...(defaultCategoryBudgets || {}), ...tempDefaultBudgets };
-                const nextOverrides = { ...(overridesByMonth || {}), [currentYm]: { ...(overridesByMonth?.[currentYm] || {}), ...tempOverrideBudgets } };
                 try { await fetch(`/api/budgets`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", defaultBudgets: nextDefaults, overrides: nextOverrides }) }); } catch {}
                 (useApp.getState() as any).setDefaultCategoryBudgets(nextDefaults);
                 setOverridesByMonth(nextOverrides);
-                setTempDefaultBudgets({}); setTempOverrideBudgets({});
+                setTempDefaultBudgets({}); setTempOverrideBudgets({}); setTempOverrideClears({});
                 setShowBudgetsModal(false);
               }}>Save</Button>
             </div>
