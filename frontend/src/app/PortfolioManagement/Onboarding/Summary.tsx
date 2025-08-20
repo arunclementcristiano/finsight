@@ -121,7 +121,7 @@ export default function Summary({ plan }: SummaryProps) {
 		return "text-amber-700 dark:text-amber-300 border-amber-300/60";
 	}
 	return (
-		<div className="space-y-6">
+		<div className="space-y-4">
 			<Card>
 				<CardHeader className="text-center">
 					<CardTitle className="text-2xl">Your Suggested Allocation</CardTitle>
