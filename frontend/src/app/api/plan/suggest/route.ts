@@ -78,10 +78,9 @@ export async function POST(req: NextRequest) {
 		};
 		if (!questionnaire || !baseline) return NextResponse.json({ error: "Missing questionnaire or baseline" }, { status: 400 });
 
-		// Prepare prompt for Groq
+		// Prepare prompt for Groq (include all available answers)
 		const prefs = (questionnaire?.preferredAssets || []).join(", ");
-		const prompt = `User profile: risk=${questionnaire.riskAppetite||""}, horizon=${questionnaire.horizon||""}, volatility=${questionnaire.volatilityComfort||""}, interests=[${prefs}].
-Current suggested mix: ${baseline.buckets.map(b=>`${b.class}:${b.pct}%`).join(", ")}. Propose a refined mix (allowed classes only) keeping changes within reasonable bounds by risk.`;
+		const prompt = `User profile: risk=${questionnaire.riskAppetite||""}, horizon=${questionnaire.horizon||""}, volatility=${questionnaire.volatilityComfort||""}, knowledge=${questionnaire.investmentKnowledge||""}, liquidity=${questionnaire.liquidityPreference||""}, income_balance=${questionnaire.incomeVsExpenses||""}, interests=[${prefs}].\nCurrent suggested mix: ${baseline.buckets.map(b=>`${b.class}:${b.pct}%`).join(", ")}. Propose a refined mix (allowed classes only) keeping changes within per-class ranges and overall risk. Ensure Liquid remains at least 5% and totals sum to ~100%.`;
 		const ai = await callGroqForAllocation(prompt);
 
 		// Build baseline with min/max derived from provided ranges
