@@ -269,8 +269,17 @@ export default function ExpenseTrackerPage() {
   }
 
   function getMonthlyBudgetFor(ym: string, cat: string): number {
-    const o = overridesByMonth?.[ym]?.[cat];
-    if (typeof o === "number") return o;
+    const cur = overridesByMonth?.[ym]?.[cat];
+    if (typeof cur === "number") return Number(cur) || 0;
+    // Carry-forward: look at previous month override if present
+    const [yStr, mStr] = String(ym).split("-");
+    const y = Number(yStr); const m = Number(mStr) - 1;
+    if (isFinite(y) && isFinite(m)) {
+      const prev = new Date(y, m - 1, 1);
+      const prevKey = `${prev.getFullYear()}-${String(prev.getMonth()+1).padStart(2,'0')}`;
+      const prevOv = overridesByMonth?.[prevKey]?.[cat];
+      if (typeof prevOv === 'number') return Number(prevOv) || 0;
+    }
     const d = (defaultCategoryBudgets || {})[cat] || 0;
     return Number(d) || 0;
   }
@@ -968,14 +977,10 @@ export default function ExpenseTrackerPage() {
               <div className="text-sm text-muted-foreground mb-3">Set default budgets (apply to all months) and optionally override for this month ({currentYm}). Leave blank to keep unchanged.</div>
               {(() => {
                 const cats = allCategories.length ? allCategories : Object.keys(defaultCategoryBudgets||{});
-                const prev = new Date(new Date(currentYm+'-01'));
-                const prevYm = `${prev.getFullYear()}-${String(prev.getMonth()).padStart(2,'0')}`; // currentYm month already correct; below we compute previous
-                const prevMonth = new Date(new Date().getFullYear(), new Date().getMonth()-1, 1);
-                const prevKey = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth()+1).padStart(2,'0')}`;
                 const totalThis = cats.reduce((s,c)=> {
-                  const prior = (overridesByMonth?.[prevKey]?.[c]);
-                  const ov = (c in tempOverrideBudgets) ? tempOverrideBudgets[c] : (typeof prior === 'number' ? prior : (defaultCategoryBudgets||{})[c] || 0);
-                  return s + (Number(ov) || 0);
+                  const hasTemp = Object.prototype.hasOwnProperty.call(tempOverrideBudgets, c);
+                  const v = hasTemp ? Number(tempOverrideBudgets[c] || 0) : getMonthlyBudgetFor(currentYm, c);
+                  return s + (Number(v) || 0);
                 },0);
                 return (
                 <div className="mb-3 grid grid-cols-2 gap-3 text-sm">
@@ -1009,20 +1014,12 @@ export default function ExpenseTrackerPage() {
                   if (sa !== sb) return sb - sa;
                   return a.localeCompare(b);
                 }).map(cat => {
-                  const def = (defaultCategoryBudgets||{})[cat] || 0;
-                  const prevMonth = new Date(new Date().getFullYear(), new Date().getMonth()-1, 1);
-                  const prevKey = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth()+1).padStart(2,'0')}`;
-                  const prior = (overridesByMonth?.[prevKey]?.[cat]);
-                  const ovTemp = tempOverrideBudgets[cat];
-                  const effective = typeof ovTemp === 'number' ? ovTemp : (typeof prior === 'number' ? prior : def);
-                  const valueToShow = effective;
-                  const isOverride = typeof ovTemp === 'number' || typeof prior === 'number';
+                  const hasTemp = Object.prototype.hasOwnProperty.call(tempOverrideBudgets, cat);
+                  const valueToShow = hasTemp ? Number(tempOverrideBudgets[cat] || 0) : getMonthlyBudgetFor(currentYm, cat);
+                  const isOverride = hasTemp || (typeof (overridesByMonth?.[currentYm]?.[cat]) === 'number');
                   return (
                   <div key={cat} className="rounded-lg border border-border p-3 space-y-2">
-                    <div className="text-sm font-semibold flex items-center justify-between">
-                      <span>{cat}</span>
-                      <span className={`text-xs ${isOverride ? 'text-indigo-600' : 'text-muted-foreground'}`}>{isOverride ? `Carried from last/overridden` : 'Using default'}</span>
-                    </div>
+                    <div className="text-sm font-semibold flex items-center justify-between"><span>{cat}</span>{isOverride ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 border border-indigo-400/30">Overridden</span> : null}</div>
                     <div className="flex items-center justify-between gap-3">
                       <div className="text-xs text-muted-foreground">Budget</div>
                       <input
