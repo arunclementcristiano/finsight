@@ -422,7 +422,7 @@ export default function ExpenseTrackerPage() {
         <div className="px-4 pb-3">
           <div className="inline-flex rounded-lg border border-border overflow-hidden">
             <button onClick={()=> setActiveTab("data")} className={`px-4 py-2 text-sm ${activeTab==='data' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>Data</button>
-            <button onClick={()=> setActiveTab("insights")} className={`px-4 py-2 text-sm ${activeTab==='insights' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>Insights</button>
+            <button onClick={()=> setActiveTab("insights")} className={`px-4 py-2 text-sm ${activeTab==='insights' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>Actual vs Expected (prorated by day)</button>
           </div>
         </div>
       </div>
@@ -645,8 +645,8 @@ export default function ExpenseTrackerPage() {
         {/* Monthly */}
         <Card className="xl:col-span-2">
           <CardHeader>
-            <CardTitle>Insights</CardTitle>
-            <CardDescription>Actual vs Expected (prorated by day)</CardDescription>
+            <CardTitle>Actual vs Expected (prorated by day)</CardTitle>
+            <CardDescription>Compare spend vs budget for your selected range</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="mb-2 flex flex-wrap gap-2 items-center">
@@ -694,7 +694,7 @@ export default function ExpenseTrackerPage() {
                 }
               }
               // Compose rows
-              let rows = Array.from(new Set([...Array.from(actualMap.keys()), ...Array.from(expectedMap.keys())])).map(cat => {
+              let rows = Array.from(new Set([...Array.from(actualMap.keys()) /* only categories with spend */])).map(cat => {
                 const actual = actualMap.get(cat) || 0;
                 const expected = expectedMap.get(cat) || 0;
                 return { cat, actual, expected, variance: actual - expected };
