@@ -121,7 +121,7 @@ export default function Summary({ plan }: SummaryProps) {
 		return "text-amber-700 dark:text-amber-300 border-amber-300/60";
 	}
 	return (
-		<div className="space-y-4">
+		<div className="space-y-3">
 			<Card>
 				<CardHeader className="text-center">
 					<CardTitle className="text-2xl">Your Suggested Allocation</CardTitle>
@@ -132,24 +132,24 @@ export default function Summary({ plan }: SummaryProps) {
 					</div>
 				</CardHeader>
 				<CardContent>
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-						<div className="w-full h-64 md:h-56">
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+						<div className="w-full h-52 md:h-44">
 							<Doughnut data={innerOuterChartData} options={chartOptions} />
 						</div>
 						<div className="grid grid-cols-3 gap-3">
-							<div className="rounded-xl border border-border p-3 text-center">
+							<div className="rounded-xl border border-border p-2 text-center">
 								<div className="inline-flex items-center justify-center gap-1 text-xs text-muted-foreground"><TrendingUp className="h-3.5 w-3.5"/>Equity</div>
-								<div className="text-lg font-semibold text-indigo-600 dark:text-indigo-300">{kpis.equity}%</div>
+								<div className="text-base font-semibold text-indigo-600 dark:text-indigo-300">{kpis.equity}%</div>
 								<div className="text-[11px] text-muted-foreground mt-1">Growth</div>
 							</div>
-							<div className="rounded-xl border border-border p-3 text-center">
+							<div className="rounded-xl border border-border p-2 text-center">
 								<div className="inline-flex items-center justify-center gap-1 text-xs text-muted-foreground"><Shield className="h-3.5 w-3.5"/>Defensive</div>
-								<div className="text-lg font-semibold text-emerald-600 dark:text-emerald-300">{kpis.defensive}%</div>
+								<div className="text-base font-semibold text-emerald-600 dark:text-emerald-300">{kpis.defensive}%</div>
 								<div className="text-[11px] text-muted-foreground mt-1">Stability</div>
 							</div>
-							<div className="rounded-xl border border-border p-3 text-center">
+							<div className="rounded-xl border border-border p-2 text-center">
 								<div className="inline-flex items-center justify-center gap-1 text-xs text-muted-foreground"><Globe2 className="h-3.5 w-3.5"/>Satellite</div>
-								<div className="text-lg font-semibold text-amber-600 dark:text-amber-300">{kpis.satellite}%</div>
+								<div className="text-base font-semibold text-amber-600 dark:text-amber-300">{kpis.satellite}%</div>
 								<div className="text-[11px] text-muted-foreground mt-1">Diversification</div>
 							</div>
 							<div className="col-span-3 flex items-center justify-between mt-1">
