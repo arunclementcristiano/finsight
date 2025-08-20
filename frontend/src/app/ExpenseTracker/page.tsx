@@ -733,6 +733,31 @@ export default function ExpenseTrackerPage() {
                   <div className="h-56">
                     <Bar data={chart} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" as const } }, scales: { y: { beginAtZero: true } } }} />
                   </div>
+                  {/* Totals summary for Actual vs Expected */}
+                  {(() => {
+                    const totalActual = Array.from(actualMap.values()).reduce((s, v) => s + v, 0);
+                    const totalExpected = Array.from(expectedMap.values()).reduce((s, v) => s + v, 0);
+                    const maxV = Math.max(totalActual, totalExpected, 1);
+                    return (
+                      <div className="rounded-lg border border-border p-3">
+                        <div className="flex items-center justify-between mb-2 text-sm">
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-rose-500"></span><span className="text-muted-foreground">Actual</span></div>
+                            <div className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-indigo-500"></span><span className="text-muted-foreground">Expected</span></div>
+                          </div>
+                          <div className="text-xs text-muted-foreground">Totals</div>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="font-medium text-rose-600">{fmtMoney(totalActual)}</div>
+                          <div className="font-medium text-indigo-600">{fmtMoney(totalExpected)}</div>
+                        </div>
+                        <div className="mt-2 space-y-1">
+                          <div className="h-1.5 rounded bg-rose-500" style={{ width: `${Math.round((totalActual / maxV) * 100)}%` }}></div>
+                          <div className="h-1.5 rounded bg-indigo-500" style={{ width: `${Math.round((totalExpected / maxV) * 100)}%` }}></div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div className="rounded-xl border border-border overflow-hidden">
                     <table className="w-full text-sm">
                       <thead className="bg-card">
