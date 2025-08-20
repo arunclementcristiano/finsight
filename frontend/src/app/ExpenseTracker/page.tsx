@@ -47,6 +47,11 @@ export default function ExpenseTrackerPage() {
   const [insightsStart, setInsightsStart] = useState<string>("");
   const [insightsEnd, setInsightsEnd] = useState<string>("");
   const [insightsOverOnly, setInsightsOverOnly] = useState(false);
+  // Compare months drawer
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [compareMonthA, setCompareMonthA] = useState<string>("");
+  const [compareMonthB, setCompareMonthB] = useState<string>("");
+  const [compareShowAll, setCompareShowAll] = useState(false);
 
   async function fetchList() {
     try {
@@ -667,6 +672,17 @@ export default function ExpenseTrackerPage() {
                 </>
               )}
               <label className="ml-auto inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={insightsOverOnly} onChange={e=> setInsightsOverOnly(e.target.checked)} /> Over budget only</label>
+              <Button variant="outline" onClick={()=> {
+                // Initialize defaults when opening
+                const now = new Date();
+                const thisMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+                const last = new Date(now.getFullYear(), now.getMonth()-1, 1);
+                const lastMonth = `${last.getFullYear()}-${String(last.getMonth()+1).padStart(2,'0')}`;
+                if (!compareMonthA) setCompareMonthA(lastMonth);
+                if (!compareMonthB) setCompareMonthB(thisMonth);
+                setCompareShowAll(false);
+                setCompareOpen(true);
+              }}>Compare months</Button>
             </div>
             {(() => {
               // Compute range
@@ -746,6 +762,79 @@ export default function ExpenseTrackerPage() {
           </CardContent>
         </Card>
       </div>
+      )}
+
+      {compareOpen && (
+        <div className="fixed inset-0 z-30 bg-black/30" onClick={()=> setCompareOpen(false)}>
+          <div className="absolute right-0 top-0 h-full w-full max-w-lg bg-card border-l border-border shadow-xl p-4 overflow-auto" onClick={e=> e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-lg font-semibold">Compare months</div>
+              <button onClick={()=> setCompareOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5"/></button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <div className="text-sm text-muted-foreground">Month A</div>
+              <input type="month" value={compareMonthA} onChange={e=> setCompareMonthA(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card" />
+              <div className="text-sm text-muted-foreground ml-2">Month B</div>
+              <input type="month" value={compareMonthB} onChange={e=> setCompareMonthB(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card" />
+            </div>
+            {(() => {
+              // Aggregate Actuals per category for month A and B
+              function totalByMonth(ym: string) {
+                const map = new Map<string, number>();
+                if (!ym) return map;
+                for (const e of expenses) {
+                  const d = new Date(e.date);
+                  const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+                  if (key === ym) map.set(String(e.category||'Other'), (map.get(String(e.category||'Other'))||0) + Number(e.amount||0));
+                }
+                return map;
+              }
+              const aMap = totalByMonth(compareMonthA);
+              const bMap = totalByMonth(compareMonthB);
+              let rows = Array.from(new Set([ ...Array.from(aMap.keys()), ...Array.from(bMap.keys()) ])).map(cat => {
+                const a = aMap.get(cat) || 0;
+                const b = bMap.get(cat) || 0;
+                const d = b - a;
+                const dp = a > 0 ? (d / a) * 100 : (b > 0 ? 100 : 0);
+                return { cat, a, b, d, dp };
+              }).sort((x,y)=> Math.abs(y.d) - Math.abs(x.d));
+              const shown = compareShowAll ? rows : rows.slice(0,10);
+              return (
+                <>
+                  <div className="rounded-xl border border-border overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-card">
+                        <tr>
+                          <th className="px-3 py-2 border-b text-left">Category</th>
+                          <th className="px-3 py-2 border-b text-right">{compareMonthA || 'Month A'}</th>
+                          <th className="px-3 py-2 border-b text-right">{compareMonthB || 'Month B'}</th>
+                          <th className="px-3 py-2 border-b text-right">Δ</th>
+                          <th className="px-3 py-2 border-b text-right">Δ%</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {shown.map(r => (
+                          <tr key={r.cat} className="border-b">
+                            <td className="px-3 py-2">{r.cat}</td>
+                            <td className="px-3 py-2 text-right">{fmtMoney(r.a)}</td>
+                            <td className="px-3 py-2 text-right">{fmtMoney(r.b)}</td>
+                            <td className={`px-3 py-2 text-right ${r.d > 0 ? 'text-rose-600' : (r.d < 0 ? 'text-emerald-600' : '')}`}>{fmtMoney(r.d)}</td>
+                            <td className="px-3 py-2 text-right">{`${Math.round(r.dp)}%`}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {rows.length > 10 && (
+                    <div className="mt-3 flex justify-end">
+                      <Button variant="outline" size="sm" onClick={()=> setCompareShowAll(v=> !v)}>{compareShowAll ? 'Show top 10' : 'Show all'}</Button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        </div>
       )}
 
       {/* Budgets Modal */}
