@@ -724,7 +724,7 @@ export default function ExpenseTrackerPage() {
                       </thead>
                       <tbody>
                         {rows.map(r => (
-                          <tr key={r.cat} className={`border-b ${r.actual > r.expected ? 'bg-rose-50 dark:bg-rose-950/20' : r.actual > 0 ? 'bg-emerald-50/30 dark:bg-emerald-950/10' : ''}`}>
+                          <tr key={r.cat} className={`border-b`}>
                             <td className="px-3 py-2">{r.cat}</td>
                             <td className="px-3 py-2 text-right">{fmtMoney(r.actual)}</td>
                             <td className="px-3 py-2 text-right">{fmtMoney(r.expected)}</td>
