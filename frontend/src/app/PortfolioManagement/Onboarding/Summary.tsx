@@ -201,15 +201,11 @@ export default function Summary({ plan }: SummaryProps) {
 					</div>
 
 					{aiOn && (aiRationale || aiConfidence !== undefined) && (
-						<div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
-							<Card className="md:col-span-2">
-								<CardHeader><CardTitle className="text-base">Why this plan</CardTitle></CardHeader>
-								<CardContent><div className="text-sm text-muted-foreground">{aiRationale || "Refined based on your answers and risk profile."}</div></CardContent>
-							</Card>
-							<Card>
-								<CardHeader><CardTitle className="text-base">AI Confidence</CardTitle></CardHeader>
-								<CardContent><div className="text-sm font-medium">{aiConfidence !== undefined ? `${Math.round(aiConfidence*100)}%` : "—"}</div></CardContent>
-							</Card>
+						<div className="mt-2 flex items-start justify-between gap-3">
+							<div className="text-xs text-muted-foreground inline-flex items-start gap-2"><Sparkles className="h-3 w-3 mt-0.5" />
+								<span>{aiRationale || "Refined based on your answers and risk profile."}</span>
+							</div>
+							<span className="shrink-0 inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[11px]">{aiConfidence !== undefined ? `${Math.round(aiConfidence*100)}%` : "—"}</span>
 						</div>
 					)}
 
