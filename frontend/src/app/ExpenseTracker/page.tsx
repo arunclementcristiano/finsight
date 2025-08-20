@@ -717,12 +717,19 @@ export default function ExpenseTrackerPage() {
                   expectedMap.set(cat, (expectedMap.get(cat) || 0) + add);
                 }
               }
-              // Compose rows
+              // Compose rows for categories with spend
               let rows = Array.from(new Set([...Array.from(actualMap.keys()) /* only categories with spend */])).map(cat => {
                 const actual = actualMap.get(cat) || 0;
                 const expected = expectedMap.get(cat) || 0;
                 return { cat, actual, expected, variance: actual - expected };
               });
+              // Aggregate unused expected (categories with no spend)
+              const unusedExpected = Array.from(expectedMap.entries())
+                .filter(([cat, _]) => (actualMap.get(cat) || 0) === 0)
+                .reduce((s, [,v]) => s + v, 0);
+              if (unusedExpected > 0) {
+                rows.push({ cat: 'Unused categories', actual: 0, expected: unusedExpected, variance: -unusedExpected });
+              }
               if (insightsOverOnly) rows = rows.filter(r => r.actual > r.expected);
               // Simple chart data (top 6)
               const top = rows.sort((a,b)=> (b.actual - b.expected) - (a.actual - a.expected)).slice(0,6);
@@ -741,7 +748,7 @@ export default function ExpenseTrackerPage() {
                   {/* Totals summary for Actual vs Expected */}
                   {(() => {
                     const totalActual = Array.from(actualMap.values()).reduce((s, v) => s + v, 0);
-                    // Expected total is the sum of budgets across all categories for each month in range (already in expectedMap)
+                    // Expected total equals expectedMap sum; unused expected row is included below but totals remain consistent
                     const totalExpected = Array.from(expectedMap.values()).reduce((s, v) => s + v, 0);
                     const maxV = Math.max(totalActual, totalExpected, 1);
                     return (
