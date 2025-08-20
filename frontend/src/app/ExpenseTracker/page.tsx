@@ -998,7 +998,12 @@ export default function ExpenseTrackerPage() {
               <div className="text-sm text-muted-foreground mb-3">Set default budgets (apply to all months) and optionally override for this month ({currentYm}). Leave blank to keep unchanged.</div>
               {(() => {
                 const cats = allCategories.length ? allCategories : Object.keys(defaultCategoryBudgets||{});
-                const totalThis = cats.reduce((s,c)=> s + (Number(draftBudgets[c] || 0)), 0);
+                const totalThis = cats.reduce((s,c)=> {
+                  const str = draftInputs[c];
+                  const n = Number(str);
+                  const v = Number.isFinite(n) ? n : (baselineBudgets[c] || 0);
+                  return s + v;
+                }, 0);
                 return (
                 <div className="mb-3 grid grid-cols-2 gap-3 text-sm">
                   <div className="rounded-lg border border-border p-3"><div className="text-muted-foreground">Total {currentYm} budget</div><div className="font-medium">{fmtMoney(totalThis)}</div></div>
@@ -1031,8 +1036,9 @@ export default function ExpenseTrackerPage() {
                   if (sa !== sb) return sb - sa;
                   return a.localeCompare(b);
                 }).map(cat => {
-                  const valueToShow = Number(draftInputs[cat] ?? draftBudgets[cat] ?? 0);
-                  const isOverride = valueToShow !== (baselineBudgets[cat] || 0);
+                  const n = Number(draftInputs[cat]);
+                  const valueToShow = Number.isFinite(n) ? n : (baselineBudgets[cat] || 0);
+                  const isOverride = Number.isFinite(n) ? (n !== (baselineBudgets[cat] || 0)) : false;
                   return (
                   <div key={cat} className="rounded-lg border border-border p-3 space-y-2">
                     <div className="text-sm font-semibold flex items-center justify-between"><span>{cat}</span>{(overridesByMonth?.[currentYm]?.[cat] !== undefined) ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 border border-indigo-400/30">Overridden</span> : (isOverride ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 border border-indigo-400/30">Overridden</span> : null)}</div>
