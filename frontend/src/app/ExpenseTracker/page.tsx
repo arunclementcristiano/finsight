@@ -40,6 +40,8 @@ export default function ExpenseTrackerPage() {
   const [showBudgetsModal, setShowBudgetsModal] = useState(false);
   const [tempDefaultBudgets, setTempDefaultBudgets] = useState<Record<string, number>>({});
   const [tempOverrideBudgets, setTempOverrideBudgets] = useState<Record<string, number>>({});
+  const [draftBudgets, setDraftBudgets] = useState<Record<string, number>>({});
+  const [baselineBudgets, setBaselineBudgets] = useState<Record<string, number>>({});
   const [allCategories, setAllCategories] = useState<string[]>([]);
   const [overridesByMonth, setOverridesByMonth] = useState<Record<string, Record<string, number>>>({});
   // Insights controls
@@ -283,6 +285,21 @@ export default function ExpenseTrackerPage() {
     const d = (defaultCategoryBudgets || {})[cat] || 0;
     return Number(d) || 0;
   }
+
+  // Initialize draft budgets when opening the modal (effective values per category)
+  useEffect(() => {
+    if (!showBudgetsModal) return;
+    const cats = allCategories.length ? allCategories : Object.keys(defaultCategoryBudgets||{});
+    const baseline: Record<string, number> = {};
+    const draft: Record<string, number> = {};
+    for (const cat of cats) {
+      const eff = getMonthlyBudgetFor(currentYm, cat);
+      baseline[cat] = eff;
+      draft[cat] = eff;
+    }
+    setBaselineBudgets(baseline);
+    setDraftBudgets(draft);
+  }, [showBudgetsModal, allCategories, defaultCategoryBudgets, overridesByMonth, currentYm]);
 
   function daysInMonth(y: number, mZeroBased: number) { return new Date(y, mZeroBased + 1, 0).getDate(); }
   function prorationForRange(startISO: string, endISO: string) {
@@ -977,11 +994,7 @@ export default function ExpenseTrackerPage() {
               <div className="text-sm text-muted-foreground mb-3">Set default budgets (apply to all months) and optionally override for this month ({currentYm}). Leave blank to keep unchanged.</div>
               {(() => {
                 const cats = allCategories.length ? allCategories : Object.keys(defaultCategoryBudgets||{});
-                const totalThis = cats.reduce((s,c)=> {
-                  const hasTemp = Object.prototype.hasOwnProperty.call(tempOverrideBudgets, c);
-                  const v = hasTemp ? Number(tempOverrideBudgets[c] || 0) : getMonthlyBudgetFor(currentYm, c);
-                  return s + (Number(v) || 0);
-                },0);
+                const totalThis = cats.reduce((s,c)=> s + (Number(draftBudgets[c] || 0)), 0);
                 return (
                 <div className="mb-3 grid grid-cols-2 gap-3 text-sm">
                   <div className="rounded-lg border border-border p-3"><div className="text-muted-foreground">Total {currentYm} budget</div><div className="font-medium">{fmtMoney(totalThis)}</div></div>
@@ -1014,9 +1027,8 @@ export default function ExpenseTrackerPage() {
                   if (sa !== sb) return sb - sa;
                   return a.localeCompare(b);
                 }).map(cat => {
-                  const hasTemp = Object.prototype.hasOwnProperty.call(tempOverrideBudgets, cat);
-                  const valueToShow = hasTemp ? Number(tempOverrideBudgets[cat] || 0) : getMonthlyBudgetFor(currentYm, cat);
-                  const isOverride = hasTemp || (typeof (overridesByMonth?.[currentYm]?.[cat]) === 'number');
+                  const valueToShow = Number(draftBudgets[cat] || 0);
+                  const isOverride = valueToShow !== (baselineBudgets[cat] || 0);
                   return (
                   <div key={cat} className="rounded-lg border border-border p-3 space-y-2">
                     <div className="text-sm font-semibold flex items-center justify-between"><span>{cat}</span>{isOverride ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 border border-indigo-400/30">Overridden</span> : null}</div>
@@ -1029,7 +1041,7 @@ export default function ExpenseTrackerPage() {
                         onChange={(e)=> {
                           const num = Number(e.target.value);
                           if (Number.isFinite(num)) {
-                            setTempOverrideBudgets(prev=> ({...prev, [cat]: num}));
+                            setDraftBudgets(prev=> ({...prev, [cat]: num}));
                           }
                         }}
                         className="h-9 w-28 rounded-md border border-border px-2 bg-background text-right"
@@ -1044,13 +1056,17 @@ export default function ExpenseTrackerPage() {
               <Button variant="outline" onClick={()=> setShowBudgetsModal(false)}>Cancel</Button>
               <Button onClick={async ()=> {
                 const baseMonth = {} as Record<string, number>;
-                Object.entries(tempOverrideBudgets).forEach(([cat, val]) => { if (typeof val === 'number' && isFinite(val)) baseMonth[cat] = val; });
+                Object.entries(draftBudgets).forEach(([cat, val]) => {
+                  const base = baselineBudgets[cat] || 0;
+                  const v = Number(val) || 0;
+                  if (v !== base) baseMonth[cat] = v;
+                });
                 const nextOverrides = { ...(overridesByMonth || {}), [currentYm]: baseMonth };
                 const nextDefaults = { ...(defaultCategoryBudgets || {}), ...tempDefaultBudgets };
                 try { await fetch(`/api/budgets`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", defaultBudgets: nextDefaults, overrides: nextOverrides }) }); } catch {}
                 (useApp.getState() as any).setDefaultCategoryBudgets(nextDefaults);
                 setOverridesByMonth(nextOverrides);
-                setTempDefaultBudgets({}); setTempOverrideBudgets({});
+                setTempDefaultBudgets({}); setTempOverrideBudgets({}); setDraftBudgets({}); setBaselineBudgets({});
                 setShowBudgetsModal(false);
               }}>Save</Button>
             </div>
