@@ -52,6 +52,11 @@ export default function ExpenseTrackerPage() {
   const [compareMonthA, setCompareMonthA] = useState<string>("");
   const [compareMonthB, setCompareMonthB] = useState<string>("");
   const [compareShowAll, setCompareShowAll] = useState(false);
+  // Export CSV modal controls
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportPreset, setExportPreset] = useState<"all"|"today"|"week"|"month"|"lastMonth"|"custom">("all");
+  const [exportStart, setExportStart] = useState<string>("");
+  const [exportEnd, setExportEnd] = useState<string>("");
 
   // Helpers: money + local date handling
   function fmtMoney(v: number) { return privacy ? "•••" : formatCurrency(v); }
@@ -372,9 +377,9 @@ export default function ExpenseTrackerPage() {
   const budgetUsedPct = totalBudget > 0 ? Math.round((monthSpend / totalBudget) * 100) : 0;
   const topCategory = monthlyCategorySpend.arr.length > 0 ? monthlyCategorySpend.arr[0][0] : "—";
 
-  function exportCsv() {
+  function exportCsvFrom(list: Expense[]) {
     const rows = [["Date","Text","Category","Amount"]].concat(
-      sortedExpenses.map(e => [fmtDateYYYYMMDDLocal(e.date as any), e.text, String(e.category || ""), String(e.amount)])
+      list.map(e => [fmtDateYYYYMMDDLocal(e.date as any), e.text, String(e.category || ""), String(e.amount)])
     );
     const csv = rows.map(r => r.map(x => `"${String(x).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -384,6 +389,7 @@ export default function ExpenseTrackerPage() {
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
+  function exportCsv() { exportCsvFrom(sortedExpenses); }
 
   function toggleSort(field: "createdAt" | "date" | "amount" | "category") {
     if (field === sortField) {
@@ -445,7 +451,7 @@ export default function ExpenseTrackerPage() {
               {privacy ? <EyeOff className="h-4 w-4 mr-2"/> : <Eye className="h-4 w-4 mr-2"/>}
               {privacy ? "Unmask" : "Privacy"}
             </Button>
-            <Button variant="outline" onClick={exportCsv}>
+            <Button variant="outline" onClick={()=> setExportOpen(true)}>
               <Download className="h-4 w-4 mr-2"/>
               Export CSV
             </Button>
@@ -924,7 +930,7 @@ export default function ExpenseTrackerPage() {
                             <td className="px-3 py-2">{r.cat}</td>
                             <td className="px-3 py-2 text-right">{fmtMoney(r.a)}</td>
                             <td className="px-3 py-2 text-right">{fmtMoney(r.b)}</td>
-                            <td className={`px-3 py-2 text-right ${r.d > 0 ? 'text-rose-600' : (r.d < 0 ? 'text-emerald-600' : '')}`}>{fmtMoney(r.d)}</td>
+                            <td className={`px-3 py-2 text-right ${r.d > 0 ? 'text-rose-600' : (r.d < 0 ? 'text-emerald-600' : '')}`}>{fmtMoney(Math.abs(r.d))}</td>
                             <td className="px-3 py-2">
                               {(() => { const scale = Math.max(1, ...shown.map(x=> Math.max(x.a, x.b))); return (
                                 <div className="w-40">
@@ -1002,6 +1008,64 @@ export default function ExpenseTrackerPage() {
                 setTempDefaultBudgets({}); setTempOverrideBudgets({});
                 setShowBudgetsModal(false);
               }}>Save</Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Export CSV Modal */}
+      {exportOpen && (
+        <div className="fixed inset-0 z-30 bg-black/30 flex items-center justify-center p-4" onClick={()=> setExportOpen(false)}>
+          <div className="w-full max-w-lg rounded-xl border border-border bg-card text-foreground shadow-xl" onClick={e=> e.stopPropagation()}>
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+              <div className="font-semibold">Export CSV</div>
+              <button className="text-muted-foreground hover:text-foreground" onClick={()=> setExportOpen(false)}><X className="h-5 w-5"/></button>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="text-sm text-muted-foreground">Choose a date range to export. Uses local time boundaries.</div>
+              <div className="flex flex-wrap gap-2 items-center">
+                <label className="text-sm text-muted-foreground">Range</label>
+                <select value={exportPreset} onChange={(e)=> setExportPreset(e.target.value as any)} className="h-9 rounded-md border border-border px-2 bg-card">
+                  <option value="all">All</option>
+                  <option value="today">Today</option>
+                  <option value="week">This week</option>
+                  <option value="month">This month</option>
+                  <option value="lastMonth">Last month</option>
+                  <option value="custom">Custom</option>
+                </select>
+                {exportPreset === 'custom' && (
+                  <>
+                    <input type="date" value={exportStart} onChange={(e)=> setExportStart(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card" />
+                    <span className="text-sm text-muted-foreground">to</span>
+                    <input type="date" value={exportEnd} onChange={(e)=> setExportEnd(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card" />
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="px-4 py-3 border-t border-border flex items-center justify-end gap-2">
+              <Button variant="outline" onClick={()=> setExportOpen(false)}>Cancel</Button>
+              <Button onClick={()=>{
+                const sod = (dt: Date) => { const x = new Date(dt); x.setHours(0,0,0,0); return x; };
+                const startOfWeek = (dt: Date) => { const x = sod(dt); const day = x.getDay(); const diff = (day === 0 ? 6 : day - 1); x.setDate(x.getDate() - diff); return x; };
+                const endExclusive = (dt: Date) => { const x = sod(dt); x.setDate(x.getDate() + 1); return x; };
+                let start: Date | undefined; let end: Date | undefined;
+                const now = new Date();
+                if (exportPreset === 'today') { start = sod(now); end = start; }
+                else if (exportPreset === 'week') { start = startOfWeek(now); end = new Date(start); end.setDate(start.getDate() + 6); }
+                else if (exportPreset === 'month') { start = new Date(now.getFullYear(), now.getMonth(), 1); end = new Date(now.getFullYear(), now.getMonth()+1, 0); }
+                else if (exportPreset === 'lastMonth') { const s = new Date(now.getFullYear(), now.getMonth()-1, 1); start = s; end = new Date(now.getFullYear(), now.getMonth(), 0); }
+                else if (exportPreset === 'custom') { start = exportStart ? new Date(exportStart) : undefined; end = exportEnd ? new Date(exportEnd) : undefined; }
+                const startS = start ? sod(start) : undefined;
+                const endE = end ? endExclusive(end) : undefined;
+                const filtered = expenses.filter(e => {
+                  const d0 = new Date(e.date as any);
+                  const d = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate());
+                  if (startS && d < startS) return false;
+                  if (endE && d >= endE) return false;
+                  return true;
+                });
+                exportCsvFrom(filtered);
+                setExportOpen(false);
+              }}>Export</Button>
             </div>
           </div>
         </div>
