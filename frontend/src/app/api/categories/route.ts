@@ -4,8 +4,8 @@ import { DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
 
 const ALLOWED_CATEGORIES = [
   "Food","Travel","Entertainment","Shopping","Utilities","Healthcare",
-  "Housing","Education","Insurance","Investment","Loans","Donations",
-  "Grooming","Personal","Subscription","Taxes","Gifts","Pet Care","Other"
+  "Housing","Education","Insurance","Investment","Loans",
+  "Grooming","Subscription","Taxes","Gifts","Pet Care","Other"
 ];
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.AWS_REGION || "us-east-1" }));

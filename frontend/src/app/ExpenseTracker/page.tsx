@@ -1030,7 +1030,6 @@ export default function ExpenseTrackerPage() {
                   const ordered = [
                     "Food",
                     "Travel",
-                    "Personal",
                     "Shopping",
                     "Utilities",
                     "Housing",
@@ -1044,7 +1043,6 @@ export default function ExpenseTrackerPage() {
                     "Education",
                     "Taxes",
                     "Gifts",
-                    "Donations",
                     "Pet Care",
                     "Other",
                   ];

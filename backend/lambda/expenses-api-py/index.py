@@ -45,7 +45,6 @@ def _to_json(o):
 ALLOWED_CATEGORIES = [
     "Food",          # groceries, restaurants, coffee, snacks
     "Travel",        # fuel, cab, flights, metro, parking
-    "Personal",      # toiletries, personal items, small lifestyle buys
     "Shopping",      # clothes, electronics, accessories
     "Utilities",     # electricity, water, gas, internet, phone
     "Housing",       # rent, maintenance, home repairs
@@ -58,8 +57,7 @@ ALLOWED_CATEGORIES = [
     "Subscription",  # Netflix, Spotify, news, memberships
     "Education",     # school fees, courses, books
     "Taxes",         # income tax, GST, penalties
-    "Gifts",         # birthdays, festivals, anniversaries
-    "Donations",     # charity, wedding gifts, birthday presents
+    "Gifts",         # birthdays, festivals, anniversaries (incl. donations)
     "Pet Care",      # food, grooming, vet
     "Other",         # uncategorized / misc
 ]
