@@ -741,16 +741,8 @@ export default function ExpenseTrackerPage() {
                   {/* Totals summary for Actual vs Expected */}
                   {(() => {
                     const totalActual = Array.from(actualMap.values()).reduce((s, v) => s + v, 0);
-                    // Include unused expected (budget for categories with no spend) for analytic correctness
-                    let totalExpected = 0;
-                    const expectedCats = new Set<string>([...allCategories]);
-                    for (const [cat, val] of expectedMap.entries()) { totalExpected += val; expectedCats.delete(cat); }
-                    // Remaining categories that had no spend but have budget
-                    for (const cat of expectedCats) {
-                      // Spread remaining expected evenly across monthsInRange used to compute expectedMap
-                      // Fallback: use current month budget if range-based months unknown here
-                      totalExpected += Object.keys(defaultCategoryBudgets||{}).length ? getMonthlyBudgetFor(currentYm, cat) : 0;
-                    }
+                    // Expected total is the sum of budgets across all categories for each month in range (already in expectedMap)
+                    const totalExpected = Array.from(expectedMap.values()).reduce((s, v) => s + v, 0);
                     const maxV = Math.max(totalActual, totalExpected, 1);
                     return (
                       <div className="rounded-lg border border-border p-3">
@@ -918,6 +910,12 @@ export default function ExpenseTrackerPage() {
             </div>
             <div className="p-4 max-h-[60vh] overflow-y-auto">
               <div className="text-sm text-muted-foreground mb-3">Set default budgets (apply to all months) and optionally override for this month ({currentYm}). Leave blank to keep unchanged.</div>
+              {(() => { const cats = allCategories.length ? allCategories : Object.keys(defaultCategoryBudgets||{}); const totalDef = cats.reduce((s,c)=> s + ((defaultCategoryBudgets||{})[c]||0),0); const totalThis = cats.reduce((s,c)=> s + getMonthlyBudgetFor(currentYm, c),0); return (
+                <div className="mb-3 grid grid-cols-2 gap-3 text-sm">
+                  <div className="rounded-lg border border-border p-3"><div className="text-muted-foreground">Total default budget</div><div className="font-medium">{fmtMoney(totalDef)}</div></div>
+                  <div className="rounded-lg border border-border p-3"><div className="text-muted-foreground">Total {currentYm} budget</div><div className="font-medium">{fmtMoney(totalThis)}</div></div>
+                </div>
+              ) })()}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {allCategories.map(cat => (
                   <div key={cat} className="rounded-lg border border-border p-3 space-y-2">
