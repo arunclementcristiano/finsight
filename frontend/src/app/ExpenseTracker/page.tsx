@@ -309,9 +309,11 @@ export default function ExpenseTrackerPage() {
     const inputs: Record<string, string> = {};
     for (const cat of cats) {
       const base = getPrevMonthBaseline(currentYm, cat);
+      const curOv = overridesByMonth?.[currentYm]?.[cat];
+      const init = (typeof curOv === 'number') ? (Number(curOv) || 0) : base;
       baseline[cat] = base;
-      draft[cat] = base;
-      inputs[cat] = String(base);
+      draft[cat] = init;
+      inputs[cat] = String(init);
     }
     setBaselineBudgets(baseline);
     setDraftBudgets(draft);
@@ -1051,10 +1053,11 @@ export default function ExpenseTrackerPage() {
                 }).map(cat => {
                   const n = Number(draftInputs[cat]);
                   const valueToShow = Number.isFinite(n) ? n : (baselineBudgets[cat] || 0);
+                  const hasCur = overridesByMonth?.[currentYm]?.[cat] !== undefined;
                   const isOverride = Number.isFinite(n) ? (n !== (baselineBudgets[cat] || 0)) : false;
                   return (
                   <div key={cat} className="rounded-lg border border-border p-3 space-y-2">
-                    <div className="text-sm font-semibold flex items-center justify-between"><span>{cat}</span>{isOverride ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 border border-indigo-400/30">Overridden</span> : null}</div>
+                    <div className="text-sm font-semibold flex items-center justify-between"><span>{cat}</span>{(hasCur ? true : isOverride) ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 border border-indigo-400/30">Overridden</span> : null}</div>
                     <div className="flex items-center justify-between gap-3">
                       <div className="text-xs text-muted-foreground">Budget</div>
                       <input
