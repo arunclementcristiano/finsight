@@ -277,7 +277,7 @@ export default function ExpenseTrackerPage() {
     const [yStr, mStr] = String(ym).split("-");
     const y = Number(yStr); const m = Number(mStr) - 1;
     if (isFinite(y) && isFinite(m)) {
-      const prev = new Date(y, m - 1, 1);
+      const prev = new Date(y, m, 1); prev.setMonth(prev.getMonth() - 1);
       const prevKey = `${prev.getFullYear()}-${String(prev.getMonth()+1).padStart(2,'0')}`;
       const prevOv = overridesByMonth?.[prevKey]?.[cat];
       if (typeof prevOv === 'number') return Number(prevOv) || 0;
@@ -299,7 +299,7 @@ export default function ExpenseTrackerPage() {
     }
     setBaselineBudgets(baseline);
     setDraftBudgets(draft);
-  }, [showBudgetsModal, allCategories, defaultCategoryBudgets, overridesByMonth, currentYm]);
+  }, [showBudgetsModal]);
 
   function daysInMonth(y: number, mZeroBased: number) { return new Date(y, mZeroBased + 1, 0).getDate(); }
   function prorationForRange(startISO: string, endISO: string) {
@@ -1031,7 +1031,7 @@ export default function ExpenseTrackerPage() {
                   const isOverride = valueToShow !== (baselineBudgets[cat] || 0);
                   return (
                   <div key={cat} className="rounded-lg border border-border p-3 space-y-2">
-                    <div className="text-sm font-semibold flex items-center justify-between"><span>{cat}</span>{isOverride ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 border border-indigo-400/30">Overridden</span> : null}</div>
+                    <div className="text-sm font-semibold flex items-center justify-between"><span>{cat}</span>{(overridesByMonth?.[currentYm]?.[cat] !== undefined) ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 border border-indigo-400/30">Overridden</span> : (isOverride ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 border border-indigo-400/30">Overridden</span> : null)}</div>
                     <div className="flex items-center justify-between gap-3">
                       <div className="text-xs text-muted-foreground">Budget</div>
                       <input
