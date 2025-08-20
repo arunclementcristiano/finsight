@@ -25,13 +25,38 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
   const horizon = map(q.horizon, { "Short (<3 yrs)": 0, "Medium (3–7 yrs)": 0.5, "Long (>7 yrs)": 1 });
   const income = map(q.incomeVsExpenses, { Deficit: 0, "Break-even": 0.5, Surplus: 1 });
   const liquidityPref = map(q.liquidityPreference, { Low: 0, Medium: 0.5, High: 1 });
+  const age = map(q.ageBand, { "60+": 0, "46–60": 0.33, "31–45": 0.66, "18–30": 1 }, 0.5);
+  const drawdownTol = map(q.maxDrawdownTolerance, { "5%": 0, "10%": 0.25, "20%": 0.6, "30%+": 1 }, 0.4);
 
   // 2) Risk tolerance & capacity
-  const riskTolerance = Math.max(0, Math.min(1, 0.35 * risk + 0.25 * vol + 0.2 * horizon + 0.1 * knowledge + 0.1 * income));
+  const riskTolerance = Math.max(0, Math.min(1,
+    0.30 * risk +
+    0.20 * vol +
+    0.18 * horizon +
+    0.10 * knowledge +
+    0.08 * income +
+    0.08 * age +
+    0.06 * drawdownTol
+  ));
   const riskLevel: RiskLevel = riskTolerance >= 0.67 ? "High" : riskTolerance <= 0.33 ? "Low" : "Moderate";
 
   // 3) Top-down targets for Liquid, Satellite, Equity, Debt (continuous)
-  let liquidTarget = Math.min(0.2, Math.max(0.05, 0.05 + 0.10 * liquidityPref));
+  // Liquid target incorporates emergency fund and upcoming big expense
+  const liquidFloorFromEmergency = (() => {
+    const em = String(q.emergencyFundMonthsTarget || "");
+    if (em === "12") return 0.12;
+    if (em === "9") return 0.10;
+    if (em === "6") return 0.08;
+    return 0.05; // 3 or default
+  })();
+  const bigExpenseOverlay = (() => {
+    const t = q.bigExpenseTimeline as string | undefined;
+    if (t === "<12 months") return 0.05;
+    if (t === "12–36 months") return 0.02;
+    return 0;
+  })();
+  let liquidTarget = Math.min(0.25, Math.max(liquidFloorFromEmergency, 0.05 + 0.10 * liquidityPref + bigExpenseOverlay));
+
   let satelliteTarget = 0.05;
   const prefs: AssetClass[] = (q.preferredAssets || []) as AssetClass[];
   const prefersGold = prefs.includes("Gold");
@@ -52,7 +77,7 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
     equityTarget = Math.max(0.2, equityTarget - shortfall);
     defensive = 1 - equityTarget - satelliteTarget;
   }
-  const debtTarget = Math.max(0.05, defensive - liquidTarget);
+  let debtTarget = Math.max(0.05, defensive - liquidTarget);
 
   // 4) Split categories
   // Equity -> Stocks vs Mutual Funds (knowledge tilts to Stocks)
@@ -64,6 +89,14 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
   const goldShare = prefersGold && prefersRE ? 0.5 : prefersGold ? 0.7 : prefersRE ? 0.3 : 0.6;
   let gold = satelliteTarget * goldShare;
   let realEstate = satelliteTarget - gold;
+  // Adjust for existing real estate exposure: trim RE and shift to Debt
+  const reExpo = q.realEstateExposure as string | undefined;
+  if (reExpo === "Own home only" || reExpo === "Investment property" || reExpo === "Both") {
+    const trimPct = reExpo === "Both" ? 0.3 : reExpo === "Investment property" ? 0.2 : 0.1;
+    const delta = realEstate * trimPct;
+    realEstate -= delta;
+    debtTarget += delta;
+  }
 
   // 5) Soft preference weighting (do not drop classes; down-weight non-preferred for core/satellite)
   const softFactor = 0.85;
@@ -93,11 +126,16 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
     Liquid: +(weightMap.Liquid * 100 / sumW).toFixed(2),
   };
 
-  // 6) Ranges scale with tolerance: wider for equities when tolerant; tighter for defensive
+  // 6) Ranges scale with tolerance and drawdown tolerance
   function bandFor(cls: AssetClass): number {
-    if (cls === "Stocks" || cls === "Mutual Funds") return 4 + 6 * riskTolerance; // 4%..10%
-    if (cls === "Gold" || cls === "Real Estate") return 3 + 4 * riskTolerance; // 3%..7%
-    return 2 + 2 * (1 - riskTolerance); // Defensive 2%..4%
+    // Include drawdown tolerance to widen bands when user can tolerate more
+    const equityBase = 4 + 6 * riskTolerance;
+    const satBase = 3 + 4 * riskTolerance;
+    const defBase = 2 + 2 * (1 - riskTolerance);
+    const tolFactor = 0.9 + 0.2 * drawdownTol; // 0.9..1.1
+    if (cls === "Stocks" || cls === "Mutual Funds") return equityBase * tolFactor;
+    if (cls === "Gold" || cls === "Real Estate") return satBase * tolFactor;
+    return defBase * (1.05 - 0.1 * drawdownTol);
   }
 
   // Helper functions for display
@@ -131,7 +169,7 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
     };
   });
 
-  const rationale = `Derived from your tolerance (${riskLevel}), horizon (${q.horizon||""}), liquidity (${q.liquidityPreference||""}), and preferences (${(q.preferredAssets||[]).join(", ")||"diversified"}).`;
+  const rationale = `Derived from your tolerance (${riskLevel}), horizon (${q.horizon||""}), emergency fund (${q.emergencyFundMonthsTarget||""} months), upcoming expense (${q.bigExpenseTimeline||"None"}), liquidity (${q.liquidityPreference||""}), and preferences (${(q.preferredAssets||[]).join(", ")||"diversified"}).`;
 
   return { riskLevel, rationale, buckets };
 }
