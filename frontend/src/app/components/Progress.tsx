@@ -5,9 +5,10 @@ interface ProgressProps {
 	value: number; // 0-100
 	label?: string;
 	className?: string;
+	barClassName?: string; // optional override for the inner bar color
 }
 
-export function Progress({ value, label, className }: ProgressProps) {
+export function Progress({ value, label, className, barClassName }: ProgressProps) {
 	const clamped = Math.max(0, Math.min(100, Math.round(value)));
 	return (
 		<div className={cn("w-full", className)}>
@@ -17,7 +18,10 @@ export function Progress({ value, label, className }: ProgressProps) {
 			</div>
 			<div className="h-2 w-full rounded-full bg-muted overflow-hidden">
 				<div
-					className="h-2 rounded-full bg-gradient-to-r from-emerald-500 via-indigo-500 to-indigo-600 transition-all"
+					className={cn(
+						"h-2 rounded-full transition-all",
+						barClassName ? barClassName : "bg-gradient-to-r from-emerald-500 via-indigo-500 to-indigo-600"
+					)}
 					style={{ width: `${clamped}%` }}
 				/>
 			</div>

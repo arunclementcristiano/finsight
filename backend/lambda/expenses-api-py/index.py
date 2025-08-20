@@ -13,12 +13,14 @@ from decimal import Decimal
 AWS_REGION = os.environ.get("AWS_REGION") or os.environ.get("REGION") or "us-east-1"
 EXPENSES_TABLE = os.environ.get("EXPENSES_TABLE", "Expenses")
 CATEGORY_RULES_TABLE = os.environ.get("CATEGORY_RULES_TABLE", "CategoryRules")
+USER_BUDGETS_TABLE = os.environ.get("USER_BUDGETS_TABLE", "UserBudgets")
 GROQ_API_KEY = (os.environ.get("GROQ_API_KEY") or "").strip()
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-70b-versatile")
 
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
 expenses_table = dynamodb.Table(EXPENSES_TABLE)
 category_rules_table = dynamodb.Table(CATEGORY_RULES_TABLE)
+user_budgets_table = dynamodb.Table(USER_BUDGETS_TABLE)
 
 
 def _cors_headers():
@@ -43,22 +45,20 @@ def _to_json(o):
 ALLOWED_CATEGORIES = [
     "Food",          # groceries, restaurants, coffee, snacks
     "Travel",        # fuel, cab, flights, metro, parking
-    "Entertainment", # movies, OTT, gaming, outings
     "Shopping",      # clothes, electronics, accessories
     "Utilities",     # electricity, water, gas, internet, phone
-    "Healthcare",    # doctor visits, pharmacy, health checkup
     "Housing",       # rent, maintenance, home repairs
-    "Education",     # school fees, courses, books
-    "Insurance",     # life, health, vehicle, home
+    "Healthcare",    # doctor visits, pharmacy, health checkup
+    "Entertainment", # movies, OTT, gaming, outings
     "Investment",    # stocks, mutual funds, SIP, gold
     "Loans",         # EMI, credit card payment, personal loan
-    "Donations",     # charity, wedding gifts, birthday presents
+    "Insurance",     # life, health, vehicle, home
     "Grooming",      # haircut, salon, spa, beauty, cosmetics
-    "Personal",      # toiletries, personal items, small lifestyle buys
     "Subscription",  # Netflix, Spotify, news, memberships
+    "Education",     # school fees, courses, books
     "Taxes",         # income tax, GST, penalties
-    "Gifts",         # birthdays, festivals, anniversaries (kept separate from donations)
-    "Pet Care",      # food, grooming, vet (if applicable)
+    "Gifts",         # birthdays, festivals, anniversaries (incl. donations)
+    "Pet Care",      # food, grooming, vet
     "Other",         # uncategorized / misc
 ]
 
@@ -173,6 +173,7 @@ def handler(event, context):
                 body = json.loads(event["body"]) or {}
             except Exception:
                 body = {}
+        qs = event.get("queryStringParameters") or {}
 
         if route_key == "POST /add":
             user_id = body.get("userId")
@@ -184,25 +185,43 @@ def handler(event, context):
             # Fixed categories (predefined rules)
             synonyms = {
                 # Food
-                "groceries": "Food", "grocery": "Food", "restaurant": "Food", "dining": "Food", "lunch": "Food", "dinner": "Food", "pizza": "Food",
-                "breakfast": "Food", "snacks": "Food", "coffee": "Food", "swiggy": "Food", "zomato": "Food", "ubereats": "Food",
+                "groceries": "Food", "grocery": "Food", "restaurant": "Food", "dining": "Food", 
+                "lunch": "Food", "dinner": "Food", "pizza": "Food", "breakfast": "Food", 
+                "snacks": "Food", "coffee": "Food", "swiggy": "Food", "zomato": "Food", 
+                "ubereats": "Food",
+
                 # Travel
-                "travel": "Travel", "transport": "Travel", "taxi": "Travel", "uber": "Travel", "ola": "Travel", "bus": "Travel",
-                "train": "Travel", "flight": "Travel", "airline": "Travel", "fuel": "Travel", "petrol": "Travel", "gas": "Travel",
-                # Entertainment
-                "entertainment": "Entertainment", "cinema": "Entertainment", "netflix": "Entertainment", "movie": "Entertainment", "movies": "Entertainment", "tv": "Entertainment",
-                "hotstar": "Entertainment", "sunnxt": "Entertainment", "spotify": "Entertainment", "prime": "Entertainment",
-                "disney": "Entertainment", "playstation": "Entertainment", "xbox": "Entertainment",
+                "travel": "Travel", "transport": "Travel", "taxi": "Travel", "uber": "Travel", 
+                "ola": "Travel", "bus": "Travel", "train": "Travel", "flight": "Travel", 
+                "airline": "Travel", "fuel": "Travel", "petrol": "Travel", "gas": "Travel",
+
+                # Entertainment (experiences & gaming, NOT subscriptions)
+                "entertainment": "Entertainment", "cinema": "Entertainment", "movie": "Entertainment", 
+                "movies": "Entertainment", "theatre": "Entertainment", "outing": "Entertainment", 
+                "playstation": "Entertainment", "xbox": "Entertainment", "gaming": "Entertainment",
+
                 # Shopping
-                "shopping": "Shopping", "amazon": "Shopping", "flipkart": "Shopping", "myntra": "Shopping", "apparel": "Shopping",
-                "clothing": "Shopping", "mall": "Shopping", "electronics": "Shopping", "gadget": "Shopping",
+                "shopping": "Shopping", "amazon": "Shopping", "flipkart": "Shopping", "myntra": "Shopping", 
+                "apparel": "Shopping", "clothing": "Shopping", "mall": "Shopping", "electronics": "Shopping", 
+                "gadget": "Shopping", "laptop": "Shopping", "mobile": "Shopping",
+
                 # Utilities
-                "utilities": "Utilities", "electricity": "Utilities", "water": "Utilities", "internet": "Utilities", "broadband": "Utilities",
-                "jio": "Utilities", "airtel": "Utilities", "bsnl": "Utilities", "bill": "Utilities",
+                "utilities": "Utilities", "electricity": "Utilities", "water": "Utilities", "internet": "Utilities", 
+                "broadband": "Utilities", "jio": "Utilities", "airtel": "Utilities", "bsnl": "Utilities", 
+                "bill": "Utilities", "phone": "Utilities", "gas bill": "Utilities",
+
                 # Healthcare
-                "health": "Healthcare", "healthcare": "Healthcare", "medicine": "Healthcare", "hospital": "Healthcare", "doctor": "Healthcare",
-                "pharmacy": "Healthcare", "apollo": "Healthcare", "pharmeasy": "Healthcare", "practo": "Healthcare",
+                "health": "Healthcare", "healthcare": "Healthcare", "medicine": "Healthcare", 
+                "hospital": "Healthcare", "doctor": "Healthcare", "pharmacy": "Healthcare", 
+                "apollo": "Healthcare", "pharmeasy": "Healthcare", "practo": "Healthcare",
+
+                # Subscription (recurring digital services)
+                "netflix": "Subscription", "spotify": "Subscription", "prime": "Subscription", 
+                "disney": "Subscription", "hotstar": "Subscription", "sunnxt": "Subscription", 
+                "membership": "Subscription", "subscription": "Subscription", "zee5": "Subscription",
+                "apple music": "Subscription", "youtube premium": "Subscription",
             }
+
             lower = raw_text.lower()
             extracted_term = _extract_term(raw_text)
 
@@ -281,6 +300,37 @@ def handler(event, context):
             if ai_conf is not None:
                 resp["AIConfidence"] = ai_conf
             return _response(200, resp)
+
+        if route_key == "GET /budgets":
+            user_id = qs.get("userId") or body.get("userId")
+            if not user_id:
+                return _response(400, {"error": "Missing userId"})
+            try:
+                res = user_budgets_table.get_item(Key={"userId": user_id})
+                budgets = (res.get("Item", {}) or {}).get("budgets", {})
+                # Normalize Decimals -> float via _to_json in _response
+                return _response(200, {"budgets": budgets})
+            except Exception as e:
+                print("BUDGETS_GET_ERROR", str(e))
+                return _response(200, {"budgets": {}})
+
+        if route_key == "PUT /budgets":
+            user_id = body.get("userId")
+            budgets = body.get("budgets") or {}
+            if not user_id or not isinstance(budgets, dict):
+                return _response(400, {"error": "Missing userId or budgets"})
+            try:
+                # Convert to Decimal for DynamoDB
+                put_budgets = {k: Decimal(str(v)) for k, v in budgets.items()}
+                user_budgets_table.put_item(Item={
+                    "userId": user_id,
+                    "budgets": put_budgets,
+                    "updatedAt": datetime.utcnow().isoformat(),
+                })
+                return _response(200, {"ok": True})
+            except Exception as e:
+                print("BUDGETS_PUT_ERROR", str(e))
+                return _response(500, {"error": "Failed to save budgets"})
 
         if route_key == "PUT /add":
             user_id = body.get("userId")

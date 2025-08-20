@@ -25,8 +25,8 @@ const CATEGORY_RULES_TABLE = process.env.CATEGORY_RULES_TABLE || "CategoryRules"
 
 const ALLOWED_CATEGORIES = [
   "Food","Travel","Entertainment","Shopping","Utilities","Healthcare",
-  "Housing","Education","Insurance","Investment","Loans","Donations",
-  "Grooming","Personal","Subscription","Taxes","Gifts","Pet Care","Other"
+  "Housing","Education","Insurance","Investment","Loans",
+  "Grooming","Subscription","Taxes","Gifts","Pet Care","Other"
 ] as const;
 
 // Step 2.5: Real AI categorization via Groq

@@ -27,6 +27,7 @@ export interface Expense {
 	amount: number;
 	category: ExpenseCategory | string;
 	date: string; // ISO string
+	createdAt?: string; // ISO timestamp, used for sorting, not shown
 	note?: string;
 }
 
@@ -41,6 +42,12 @@ interface AppState {
 	expenses: Expense[];
 	categoryMemory: Record<string, ExpenseCategory | string>; // keyword -> category
 	expenseReminderDaily: boolean;
+	categoryBudgets: Record<string, Record<string, number>>; // legacy monthly budgets (kept for compatibility)
+	defaultCategoryBudgets: Record<string, number>; // one-time per-user budgets
+
+	// Expense Tracker preferences (persisted locally)
+	spendBaselineMode: "last" | "avg3" | "ytd";
+	spendSensitivity: "low" | "medium" | "high";
 
 	setProfile: (profile: Partial<UserProfile>) => void;
 	setQuestionAnswer: (key: string, value: any) => void;
@@ -59,6 +66,11 @@ interface AppState {
 	deleteExpense: (id: string) => void;
 	rememberCategory: (keyword: string, category: ExpenseCategory | string) => void;
 	setExpenseReminderDaily: (enabled: boolean) => void;
+	setCategoryBudget: (ym: string, category: string, amount: number) => void;
+	setDefaultCategoryBudgets: (budgets: Record<string, number>) => void;
+	setDefaultCategoryBudget: (category: string, amount: number) => void;
+	setSpendBaselineMode: (mode: "last" | "avg3" | "ytd") => void;
+	setSpendSensitivity: (level: "low" | "medium" | "high") => void;
 }
 
 export const useApp = create<AppState>()(
@@ -74,6 +86,10 @@ export const useApp = create<AppState>()(
 			expenses: [],
 			categoryMemory: {},
 			expenseReminderDaily: false,
+			categoryBudgets: {},
+			defaultCategoryBudgets: {},
+			spendBaselineMode: "last",
+			spendSensitivity: "medium",
 
 			setProfile: (profile) => set(state => ({ profile: { ...state.profile, ...profile } })),
 			setQuestionAnswer: (key, value) => set(state => ({ questionnaire: { ...state.questionnaire, [key]: value } })),
@@ -84,7 +100,7 @@ export const useApp = create<AppState>()(
 			deleteHolding: (id) => set(state => ({ holdings: state.holdings.filter(h => h.id !== id) })),
 			setDriftTolerancePct: (v) => set(() => ({ driftTolerancePct: Math.min(10, Math.max(3, Math.round(v))) })),
 			setEmergencyMonths: (v) => set(() => ({ emergencyMonths: Math.min(12, Math.max(3, Math.round(v))) })),
-			reset: () => set(() => ({ profile: { name: "", currency: "INR" }, questionnaire: { preferredAssets: [] }, plan: null, holdings: [], driftTolerancePct: 5, emergencyMonths: 6, expenses: [], categoryMemory: {}, expenseReminderDaily: false })),
+			reset: () => set(() => ({ profile: { name: "", currency: "INR" }, questionnaire: { preferredAssets: [] }, plan: null, holdings: [], driftTolerancePct: 5, emergencyMonths: 6, expenses: [], categoryMemory: {}, expenseReminderDaily: false, categoryBudgets: {}, defaultCategoryBudgets: {} })),
 
 			addExpense: (e) => set(state => ({ expenses: [e, ...state.expenses] })),
 			setExpenses: (e) => set(() => ({ expenses: [...e] })),
@@ -92,6 +108,19 @@ export const useApp = create<AppState>()(
 			deleteExpense: (id) => set(state => ({ expenses: state.expenses.filter(ex => ex.id !== id) })),
 			rememberCategory: (keyword, category) => set(state => ({ categoryMemory: { ...state.categoryMemory, [keyword.toLowerCase()]: category } })),
 			setExpenseReminderDaily: (enabled) => set(() => ({ expenseReminderDaily: !!enabled })),
+			setCategoryBudget: (ym, category, amount) => set(state => ({
+				categoryBudgets: {
+					...state.categoryBudgets,
+					[ym]: {
+						...(state.categoryBudgets[ym] || {}),
+						[category]: Math.max(0, Number(amount) || 0),
+					},
+				},
+			})),
+			setDefaultCategoryBudgets: (budgets) => set(() => ({ defaultCategoryBudgets: { ...budgets } })),
+			setDefaultCategoryBudget: (category, amount) => set(state => ({ defaultCategoryBudgets: { ...state.defaultCategoryBudgets, [category]: Math.max(0, Number(amount) || 0) } })),
+			setSpendBaselineMode: (mode) => set(() => ({ spendBaselineMode: mode })),
+			setSpendSensitivity: (level) => set(() => ({ spendSensitivity: level })),
 		}),
 		{
 			name: "finsight-v1",
