@@ -45,6 +45,8 @@ export default function Questionnaire() {
 						selected={questionnaire[questions[step].key]}
 						onChange={(value) => handleAnswer(questions[step].key, value)}
 						multiSelect={questions[step].key === "preferredAssets"}
+						helperText={questions[step] as any?.helperText}
+						maxSelect={(questions[step] as any)?.maxSelect}
 					/>
 					<div className="flex justify-between w-full mt-8 gap-3">
 						<Button variant="secondary" onClick={prevStep} disabled={step === 0}>Back</Button>
