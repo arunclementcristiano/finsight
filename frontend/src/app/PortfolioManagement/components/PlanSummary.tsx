@@ -69,7 +69,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                   </tr>
                 </thead>
                 <tbody>
-                  {plan.buckets.map((b: any, idx: number) => (
+                  {plan.buckets.filter((b: any)=> (typeof b.pct === 'number' ? b.pct > 0 : true)).map((b: any, idx: number) => (
                     <tr key={b.class} className="border-t border-border/50">
                       <td className="py-2 px-3 font-medium"><span className="inline-flex items-center">{(() => { const common = "h-4 w-4 mr-2"; if (b.class === "Stocks") return <LineChart className={common} />; if (b.class === "Mutual Funds") return <Layers className={common} />; if (b.class === "Debt") return <Banknote className={common} />; if (b.class === "Gold") return <Coins className={common} />; if (b.class === "Real Estate") return <Home className={common} />; if (b.class === "Liquid") return <Droplet className={common} />; return <LineChart className={common} />; })()}{b.class}</span></td>
                       <td className="py-2 px-3 text-right">{b.pct}%</td>
@@ -79,7 +79,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                       <td className="py-2 px-3">
                         <input type="range" min={0} max={100} value={b.pct} onChange={(e)=>{
                           const v = Math.max(0, Math.min(100, Number(e.target.value)||0));
-                          if (onChangeBucketPct) onChangeBucketPct(idx, v);
+                          if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
                         }} />
                       </td>
                     </tr>
