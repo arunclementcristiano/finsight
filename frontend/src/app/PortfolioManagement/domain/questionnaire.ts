@@ -66,10 +66,5 @@ export const questions = [
     helperText: "Pick the asset classes you genuinely want to hold. Leaving this broad keeps diversification.",
     maxSelect: 4
   },
-  {
-    key: "realEstateExposure",
-    text: "Your current Real Estate exposure?",
-    options: ["None", "Own home only", "Investment property", "Both"],
-    helperText: "We avoid over-concentration in Real Estate if you already hold property."
-  }
+  
 ];

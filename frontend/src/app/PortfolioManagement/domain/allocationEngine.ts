@@ -89,11 +89,9 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
   const goldShare = prefersGold && prefersRE ? 0.5 : prefersGold ? 0.7 : prefersRE ? 0.3 : 0.6;
   let gold = satelliteTarget * goldShare;
   let realEstate = satelliteTarget - gold;
-  // Adjust for existing real estate exposure: trim RE and shift to Debt
-  const reExpo = q.realEstateExposure as string | undefined;
-  if (reExpo === "Own home only" || reExpo === "Investment property" || reExpo === "Both") {
-    const trimPct = reExpo === "Both" ? 0.3 : reExpo === "Investment property" ? 0.2 : 0.1;
-    const delta = realEstate * trimPct;
+  // Removed explicit realEstateExposure question; mildly de-emphasize RE unless explicitly preferred
+  if (!prefs.includes("Real Estate")) {
+    const delta = realEstate * 0.15; // trim 15% if not preferred
     realEstate -= delta;
     debtTarget += delta;
   }

@@ -77,13 +77,17 @@ export default function PlanPage() {
 				<>
 					<Button variant="outline" onClick={()=> setAnswersOpen(false)}>Cancel</Button>
 					<Button variant="outline" onClick={()=>{
-						// apply answers to store
-						const keys = Object.keys(editAnswers||{});
-						for (const k of keys) setQuestionAnswer(k, editAnswers[k]);
-						const allocation = buildPlan(editAnswers||{});
-						setLocal(allocation);
-						setAiInfo(null);
-						setLastRefSig(null);
+						const prev = questionnaire || {};
+						const next = editAnswers || {};
+						const changed = JSON.stringify(prev) !== JSON.stringify(next);
+						if (changed) {
+							const keys = Object.keys(next);
+							for (const k of keys) setQuestionAnswer(k, next[k]);
+							const allocation = buildPlan(next);
+							setLocal(allocation);
+							setAiInfo(null);
+							setLastRefSig(null);
+						}
 						setAnswersOpen(false);
 					}}>Done</Button>
 				</>
