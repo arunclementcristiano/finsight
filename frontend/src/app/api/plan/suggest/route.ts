@@ -6,9 +6,10 @@ const ALLOWED_CLASSES = ["Stocks","Mutual Funds","Gold","Real Estate","Debt","Li
 type AllowedClass = typeof ALLOWED_CLASSES[number];
 
 // Call Groq to get refined allocation percentages and optional comfort ranges
-async function callGroqForAllocation(prompt: string): Promise<{ buckets: Array<{ class: string; pct: number; min?: number; max?: number; range?: [number, number] }>; rationale?: string; confidence?: number }> {
+type AiResult = { buckets: Array<{ class: string; pct: number; min?: number; max?: number; range?: [number, number] }>; rationale?: string; confidence?: number; diag?: { missingKey?: boolean; status?: number; parseError?: string; raw?: string } };
+async function callGroqForAllocation(prompt: string): Promise<AiResult> {
 	const apiKey = (process.env.GROQ_API_KEY || "").trim();
-	if (!apiKey) return { buckets: [] };
+	if (!apiKey) return { buckets: [], diag: { missingKey: true } };
 	try {
 		const system = `You are a portfolio allocation assistant. Allowed classes: ${ALLOWED_CLASSES.join(", ")}. Respond ONLY JSON like {"buckets":[{"class":"Stocks","pct":35,"min":30,"max":40},...], "rationale": string, "confidence": 0.0-1.0}. Percentages must sum to ~100. For each bucket, include a reasonable comfort range (min/max in percent) that contains pct.`;
 		const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -29,6 +30,7 @@ async function callGroqForAllocation(prompt: string): Promise<{ buckets: Array<{
 				top_p: 1,
 			})
 		});
+		const status = res.status;
 		const data = await res.json();
 		const txt = (data?.choices?.[0]?.message?.content as string) || "";
 		try {
@@ -37,12 +39,13 @@ async function callGroqForAllocation(prompt: string): Promise<{ buckets: Array<{
 				buckets: Array.isArray(parsed?.buckets) ? parsed.buckets : [],
 				rationale: typeof parsed?.rationale === "string" ? parsed.rationale : undefined,
 				confidence: typeof parsed?.confidence === "number" ? parsed.confidence : undefined,
+				diag: { status, raw: typeof txt === 'string' ? txt.slice(0, 300) : undefined }
 			};
-		} catch {
-			return { buckets: [] };
+		} catch (e: any) {
+			return { buckets: [], diag: { status, parseError: String(e), raw: typeof txt === 'string' ? txt.slice(0, 300) : undefined } };
 		}
 	} catch {
-		return { buckets: [] };
+		return { buckets: [], diag: { parseError: "request_failed" } };
 	}
 }
 
@@ -90,6 +93,7 @@ export async function POST(req: NextRequest) {
 			baseline: { riskLevel: string; buckets: Array<{ class: AllowedClass; pct: number; range: [number, number] }> }
 		};
 		if (!questionnaire || !baseline) return NextResponse.json({ error: "Missing questionnaire or baseline" }, { status: 400 });
+		const debug = (req.nextUrl?.searchParams?.get('debug') === '1');
 
 		// Prepare prompt for Groq (include all available answers)
 		const prefs = (questionnaire?.emphasizeAssets || []).join(", ");
@@ -107,6 +111,7 @@ export async function POST(req: NextRequest) {
 			},
 			rationale: ai.rationale || "Refined based on your risk and preferences.",
 			confidence: typeof ai.confidence === "number" ? ai.confidence : undefined,
+			...(debug ? { diag: ai.diag || {} } : {})
 		});
 	} catch (err) {
 		// Safe fallback: return baseline as AI plan with note instead of 500
