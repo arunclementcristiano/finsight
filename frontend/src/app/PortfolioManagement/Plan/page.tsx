@@ -20,6 +20,14 @@ export default function PlanPage() {
   const [aiInfo, setAiInfo] = useState<{ rationale?: string; confidence?: number } | null>(null);
   const [genOpen, setGenOpen] = useState(false);
   const [step, setStep] = useState(0);
+  const [lastRefSig, setLastRefSig] = useState<string | null>(null);
+
+  function makeRefSig(q: any, baseline: any): string {
+    try {
+      const buckets = Array.isArray(baseline?.buckets) ? baseline.buckets.map((b: any)=> ({ class: b.class, pct: b.pct })) : [];
+      return JSON.stringify({ q, buckets });
+    } catch { return ""; }
+  }
 
   useEffect(() => { setLocal(plan || null); }, [plan]);
 
@@ -85,11 +93,14 @@ export default function PlanPage() {
                       setPlan(allocation);
                     } catch {}
                   }
+                  const sig = makeRefSig(questionnaire, baseline);
+                  if (sig && sig === lastRefSig) { return; }
                   const res = await fetch('/api/plan/suggest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionnaire, baseline }) });
                   const data = await res.json();
                   if (data?.aiPlan?.buckets) {
                     setLocal((prev: any)=> ({ ...(prev||{}), buckets: data.aiPlan.buckets }));
                     setAiInfo({ rationale: data.rationale, confidence: data.confidence });
+                    setLastRefSig(sig);
                   }
                 } finally { setAiLoading(false); }
               }}>
@@ -158,11 +169,14 @@ export default function PlanPage() {
                       try {
                         setAiLoading(true);
                         const q = (useApp.getState() as any).questionnaire || {};
+                        const sig = makeRefSig(q, local);
+                        if (sig && sig === lastRefSig) { return; }
                         const res = await fetch('/api/plan/suggest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionnaire: q, baseline: local }) });
                         const data = await res.json();
                         if (data?.aiPlan?.buckets) {
                           setLocal((prev: any)=> ({ ...(prev||{}), buckets: data.aiPlan.buckets }));
                           setAiInfo({ rationale: data.rationale, confidence: data.confidence });
+                          setLastRefSig(sig);
                         }
                       } finally {
                         setAiLoading(false);
