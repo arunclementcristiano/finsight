@@ -25,7 +25,8 @@ async function callGroqForAllocation(prompt: string): Promise<{ buckets: Array<{
 					{ role: "system", content: system },
 					{ role: "user", content: prompt }
 				],
-				temperature: 0.2,
+				temperature: 0,
+				top_p: 1,
 			})
 		});
 		const data = await res.json();
