@@ -21,6 +21,13 @@ export default function PlanPage() {
   const [genOpen, setGenOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [lastRefSig, setLastRefSig] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; type: 'success'|'info'|'error' } | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2200);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   function makeRefSig(q: any, baseline: any): string {
     try {
@@ -60,10 +67,14 @@ export default function PlanPage() {
           {(() => { const prune = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))}); const dirty = local && plan && JSON.stringify(prune(local)) !== JSON.stringify(prune(plan)); return dirty ? (<span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200">Unsaved changes</span>) : null; })()}
           <Button variant="outline" onClick={()=> setLocal(plan)}>Reset</Button>
           <Button onClick={async ()=>{
+            const prune = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))});
+            const dirty = !!(local && plan && JSON.stringify(prune(local)) !== JSON.stringify(prune(plan)));
+            if (!dirty) { setToast({ msg: 'No changes to save', type: 'info' }); return; }
             if (!activePortfolioId || !local) return;
             await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: activePortfolioId, plan: local }) });
             setPlan(local);
-          }} disabled={(() => { const prune = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))}); return !(local && plan && JSON.stringify(prune(local)) !== JSON.stringify(prune(plan))); })()}>Save Plan</Button>
+            setToast({ msg: 'Plan saved', type: 'success' });
+          }}>Save Plan</Button>
         </div>
       </div>
 
@@ -196,6 +207,11 @@ export default function PlanPage() {
             )}
           </CardContent>
         </Card>
+      )}
+		{toast && (
+        <div className={`fixed bottom-4 right-4 z-50 rounded-md border px-3 py-2 text-sm shadow-lg ${toast.type==='success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : toast.type==='info' ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
+          {toast.msg}
+        </div>
       )}
 		</div>
 	);
