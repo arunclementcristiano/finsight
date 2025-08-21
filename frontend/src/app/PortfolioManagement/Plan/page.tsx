@@ -9,6 +9,7 @@ import QuestionCard from "../components/QuestionCard";
 import { questions } from "../domain/questionnaire";
 import { buildPlan } from "../domain/allocationEngine";
 import { Modal } from "../../components/Modal";
+import { RotateCcw, Save as SaveIcon } from "lucide-react";
 
 export default function PlanPage() {
 	const { plan, setPlan, activePortfolioId, questionnaire, setQuestionAnswer } = useApp() as any;
@@ -58,8 +59,8 @@ export default function PlanPage() {
 				<div className="text-sm text-muted-foreground">Allocation Plan</div>
 				<div className="flex items-center gap-2">
 					{(() => { const prune = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))}); const dirty = local && plan && JSON.stringify(prune(local)) !== JSON.stringify(prune(plan)); return dirty ? (<span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200">Unsaved changes</span>) : null; })()}
-					<Button variant="outline" onClick={()=> setLocal(plan)}>Reset</Button>
-					<Button variant="outline" onClick={async ()=>{
+					<Button variant="outline" leftIcon={<RotateCcw className="h-4 w-4 text-rose-600" />} onClick={()=> setLocal(plan)}>Reset</Button>
+					<Button variant="outline" leftIcon={<SaveIcon className="h-4 w-4 text-emerald-600" />} onClick={async ()=>{
 						const prune = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))});
 						const dirty = !!(local && plan && JSON.stringify(prune(local)) !== JSON.stringify(prune(plan)));
 						if (!dirty) { setToast({ msg: 'No changes to save', type: 'info' }); return; }
@@ -96,6 +97,7 @@ export default function PlanPage() {
 						multiSelect={questions[ansStep].key === 'preferredAssets'}
 						helperText={(questions[ansStep] as any)?.helperText}
 						maxSelect={(questions[ansStep] as any)?.maxSelect}
+						compact
 					/>
 					<div className="flex items-center justify-between">
 						<Button variant="outline" onClick={()=> setAnsStep(s=> Math.max(0, s-1))} disabled={ansStep===0}>Back</Button>
