@@ -1,12 +1,12 @@
 "use client";
 import React, { useMemo } from "react";
-import { Doughnut, Bar } from "react-chartjs-2";
-import { Chart, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from "chart.js";
+import { Doughnut } from "react-chartjs-2";
+import { Chart, ArcElement, Tooltip, Legend } from "chart.js";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/Card";
 import { useApp } from "../../store";
 import { computeRebalance } from "../domain/rebalance";
 
-Chart.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
+Chart.register(ArcElement, Tooltip, Legend);
 
 export default function PlanSummary({ plan }: { plan: any }) {
   const { holdings, driftTolerancePct } = useApp();
@@ -38,41 +38,6 @@ export default function PlanSummary({ plan }: { plan: any }) {
 
   const rebalance = useMemo(() => (plan ? computeRebalance(holdings, plan, driftTolerancePct) : { items: [], totalCurrentValue: 0 }), [holdings, plan, driftTolerancePct]);
 
-  function valueOfHolding(h: any): number {
-    if (typeof h.currentValue === "number") return h.currentValue;
-    if (typeof h.units === "number" && typeof h.price === "number") return h.units * h.price;
-    if (typeof h.investedAmount === "number") return h.investedAmount;
-    return 0;
-  }
-
-  const targetVsActual = useMemo(() => {
-    if (!plan) return null as any;
-    const classToValue = new Map<string, number>();
-    for (const h of holdings) {
-      const v = valueOfHolding(h);
-      classToValue.set(h.instrumentClass, (classToValue.get(h.instrumentClass) || 0) + v);
-    }
-    const total = Array.from(classToValue.values()).reduce((a, b) => a + b, 0) || 1;
-    const labels: string[] = plan.buckets.map((b: any) => b.class);
-    const target = plan.buckets.map((b: any) => b.pct);
-    const actual = labels.map((lbl: string) => +(((classToValue.get(lbl) || 0) / total) * 100).toFixed(2));
-    return {
-      data: {
-        labels,
-        datasets: [
-          { label: "Target %", data: target, backgroundColor: "rgba(99,102,241,0.5)" },
-          { label: "Actual %", data: actual, backgroundColor: "rgba(16,185,129,0.5)" },
-        ],
-      },
-      options: {
-        plugins: { legend: { position: "bottom" as const, labels: { font: { size: 11 } } } },
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: { y: { beginAtZero: true, max: 100, ticks: { stepSize: 20, font: { size: 10 } } }, x: { ticks: { font: { size: 10 } } } },
-      },
-    };
-  }, [plan, holdings]);
-
   return (
     <div className="space-y-3">
       {/* Compact KPIs */}
@@ -98,7 +63,7 @@ export default function PlanSummary({ plan }: { plan: any }) {
         <CardContent className="pt-0">
           {plan && donutData ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
-              <div className="mx-auto h-52 w-full max-w-xs"><Doughnut data={donutData} options={{ plugins: { legend: { position: "bottom" as const, labels: { font: { size: 11 } } } }, cutout: "70%" }} /></div>
+              <div className="mx-auto h-52 w/full max-w-xs"><Doughnut data={donutData} options={{ plugins: { legend: { position: "bottom" as const, labels: { font: { size: 11 } } } }, cutout: "70%" }} /></div>
               <div className="rounded-xl border border-border overflow-auto max-h-56">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-card sticky top-0 z-10">
@@ -128,38 +93,25 @@ export default function PlanSummary({ plan }: { plan: any }) {
 
       <Card>
         <CardHeader className="py-2">
-          <CardTitle className="text-base">Target vs Actual</CardTitle>
-          <CardDescription className="text-xs">Compact comparison</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {plan && targetVsActual ? (
-            <div className="h-48">
-              <Bar data={targetVsActual.data} options={targetVsActual.options as any} />
-            </div>
-          ) : (
-            <div className="text-muted-foreground text-sm">No data yet.</div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="py-2">
           <CardTitle className="text-base">Rebalancing Suggestions</CardTitle>
           <CardDescription className="text-xs">Based on drift tolerance of {driftTolerancePct}%</CardDescription>
         </CardHeader>
         <CardContent className="pt-0">
           {plan && rebalance.items.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-2">
               {rebalance.items.map((item) => (
-                <Card key={item.class}><CardContent>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-sm text-muted-foreground">{item.class}</div>
-                      <div className="text-lg font-semibold">{item.action} {item.amount.toFixed(2)}</div>
-                    </div>
-                    <div className="text-sm text-muted-foreground">{item.actualPct}% → {item.targetPct}%</div>
+                <div key={item.class} className="rounded-lg border border-border p-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="font-medium">{item.class}</div>
+                    <div className="text-muted-foreground">{item.actualPct}% → {item.targetPct}%</div>
                   </div>
-                </CardContent></Card>
+                  <div className="mt-1 flex items-center gap-2">
+                    <div className="h-2 rounded bg-muted w-full overflow-hidden">
+                      <div className={`h-2 ${item.action === 'Increase' ? 'bg-indigo-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(100, Math.max(5, Math.round((item.amount / Math.max(1, rebalance.totalCurrentValue)) * 100)))}%` }}></div>
+                    </div>
+                    <div className={`text-xs ${item.action === 'Increase' ? 'text-indigo-600' : 'text-rose-600'}`}>{item.action} {item.amount.toFixed(0)}</div>
+                  </div>
+                </div>
               ))}
             </div>
           ) : (
@@ -170,4 +122,3 @@ export default function PlanSummary({ plan }: { plan: any }) {
     </div>
   );
 }
-
