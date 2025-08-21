@@ -89,11 +89,10 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
   const goldShare = prefersGold && prefersRE ? 0.5 : prefersGold ? 0.7 : prefersRE ? 0.3 : 0.6;
   let gold = satelliteTarget * goldShare;
   let realEstate = satelliteTarget - gold;
-  // Removed explicit realEstateExposure question; mildly de-emphasize RE unless explicitly preferred
-  if (!prefs.includes("Real Estate")) {
-    const delta = realEstate * 0.15; // trim 15% if not preferred
-    realEstate -= delta;
-    debtTarget += delta;
+  // Preference handling: if Real Estate not preferred, remove it and shift to defensive
+  if (!prefersRE) {
+    debtTarget += realEstate;
+    realEstate = 0;
   }
 
   // 5) Soft preference weighting (do not drop classes; down-weight non-preferred for core/satellite)
