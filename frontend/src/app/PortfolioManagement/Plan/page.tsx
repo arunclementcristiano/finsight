@@ -57,12 +57,13 @@ export default function PlanPage() {
           <button onClick={()=> setTab("editor")} className={`px-4 py-2 text-sm ${tab==='editor' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>Editor</button>
         </div>
         <div className="flex items-center gap-2">
+          {(() => { const prune = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))}); const dirty = local && plan && JSON.stringify(prune(local)) !== JSON.stringify(prune(plan)); return dirty ? (<span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200">Unsaved changes</span>) : null; })()}
           <Button variant="outline" onClick={()=> setLocal(plan)}>Reset</Button>
           <Button onClick={async ()=>{
             if (!activePortfolioId || !local) return;
             await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: activePortfolioId, plan: local }) });
             setPlan(local);
-          }}>Save Plan</Button>
+          }} disabled={(() => { const prune = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))}); return !(local && plan && JSON.stringify(prune(local)) !== JSON.stringify(prune(plan))); })()}>Save Plan</Button>
         </div>
       </div>
 
