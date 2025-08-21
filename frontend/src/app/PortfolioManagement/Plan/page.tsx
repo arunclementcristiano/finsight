@@ -8,6 +8,7 @@ import PlanSummary from "../components/PlanSummary";
 import QuestionCard from "../components/QuestionCard";
 import { questions } from "../domain/questionnaire";
 import { buildPlan } from "../domain/allocationEngine";
+import { Sparkles } from "lucide-react";
 
 export default function PlanPage() {
 	const { plan, setPlan, activePortfolioId, questionnaire, setQuestionAnswer } = useApp() as any;
@@ -61,10 +62,42 @@ export default function PlanPage() {
         <CardHeader className="py-2">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-base">Generate / Refine</CardTitle>
-              <CardDescription className="text-xs">Answer a few questions to generate a plan and optionally refine with AI</CardDescription>
+              <CardTitle className="text-base">Plan Builder</CardTitle>
+              <CardDescription className="text-xs">Answer questions, generate a baseline, and optionally refine with AI</CardDescription>
             </div>
-            <Button variant="outline" onClick={()=> setGenOpen(o=>!o)}>{genOpen ? 'Hide' : 'Open'}</Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={async ()=>{
+                try {
+                  setAiLoading(true);
+                  // Ensure baseline
+                  let baseline = local;
+                  if (!baseline) {
+                    const allocation = buildPlan(questionnaire);
+                    setLocal(allocation);
+                    baseline = allocation;
+                    try {
+                      let pid = (useApp.getState() as any).activePortfolioId as string | undefined;
+                      if (!pid) {
+                        const created = await (await fetch('/api/portfolio', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'My Portfolio' }) })).json();
+                        pid = created?.portfolioId; if (pid) (useApp.getState() as any).setActivePortfolio(pid);
+                      }
+                      if (pid) await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: pid, plan: allocation }) });
+                      setPlan(allocation);
+                    } catch {}
+                  }
+                  const res = await fetch('/api/plan/suggest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionnaire, baseline }) });
+                  const data = await res.json();
+                  if (data?.aiPlan?.buckets) {
+                    setLocal((prev: any)=> ({ ...(prev||{}), buckets: data.aiPlan.buckets }));
+                    setAiInfo({ rationale: data.rationale, confidence: data.confidence });
+                  }
+                } finally { setAiLoading(false); }
+              }}>
+                <Sparkles className="h-4 w-4 mr-2"/>
+                {aiLoading ? 'Refining…' : 'Refine with AI'}
+              </Button>
+              <Button variant="outline" onClick={()=> setGenOpen(o=>!o)}>{genOpen ? 'Hide' : 'Open'}</Button>
+            </div>
           </div>
         </CardHeader>
         {genOpen && (
@@ -82,7 +115,7 @@ export default function PlanPage() {
             <div className="flex items-center justify-between">
               <Button variant="outline" onClick={()=> setStep(s=> Math.max(0, s-1))} disabled={step===0}>Back</Button>
               <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={async ()=>{
+                <Button onClick={async ()=>{
                   const allocation = buildPlan(questionnaire);
                   setLocal(allocation);
                   try {
@@ -95,18 +128,6 @@ export default function PlanPage() {
                     setPlan(allocation);
                   } catch {}
                 }}>Generate Plan</Button>
-                <Button onClick={async ()=>{
-                  if (!local) return;
-                  try {
-                    setAiLoading(true);
-                    const res = await fetch('/api/plan/suggest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionnaire, baseline: local }) });
-                    const data = await res.json();
-                    if (data?.aiPlan?.buckets) {
-                      setLocal((prev: any)=> ({ ...(prev||{}), buckets: data.aiPlan.buckets }));
-                      setAiInfo({ rationale: data.rationale, confidence: data.confidence });
-                    }
-                  } finally { setAiLoading(false); }
-                }} disabled={!local}>{aiLoading ? 'Refining…' : 'Refine with AI'}</Button>
                 <Button variant="outline" onClick={()=> setStep(s=> Math.min(questions.length-1, s+1))} disabled={step===questions.length-1}>Next</Button>
               </div>
             </div>
