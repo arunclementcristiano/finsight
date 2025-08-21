@@ -92,46 +92,36 @@ export default function PlanSummary({ plan }: { plan: any }) {
       </div>
       <Card>
         <CardHeader className="py-2">
-          <CardTitle className="text-base">Target Allocation</CardTitle>
-          <CardDescription className="text-xs">Your plan’s target mix</CardDescription>
+          <CardTitle className="text-base">Allocation Overview</CardTitle>
+          <CardDescription className="text-xs">Target mix and details</CardDescription>
         </CardHeader>
         <CardContent className="pt-0">
           {plan && donutData ? (
-            <div className="mx-auto h-52 max-w-xs"><Doughnut data={donutData} options={{ plugins: { legend: { position: "bottom" as const, labels: { font: { size: 11 } } } }, cutout: "70%" }} /></div>
-          ) : (
-            <div className="text-muted-foreground text-sm">No plan yet.</div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="py-2">
-          <CardTitle className="text-base">Allocation Details</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {plan ? (
-            <div className="rounded-xl border border-border overflow-auto max-h-80">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-card sticky top-0 z-10">
-                  <tr>
-                    <th className="py-3 px-4 text-muted-foreground">Asset Class</th>
-                    <th className="py-3 px-4 text-muted-foreground text-right">Allocation</th>
-                    <th className="py-3 px-4 text-muted-foreground text-right">Comfort Zone</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {plan.buckets.map((b: any) => (
-                    <tr key={b.class} className="border-t border-border/50">
-                      <td className="py-3 px-4 font-medium">{b.class}</td>
-                      <td className="py-3 px-4 text-right">{b.pct}%</td>
-                      <td className="py-3 px-4 text-right">{b.range?.[0]}% – {b.range?.[1]}%</td>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+              <div className="mx-auto h-52 w-full max-w-xs"><Doughnut data={donutData} options={{ plugins: { legend: { position: "bottom" as const, labels: { font: { size: 11 } } } }, cutout: "70%" }} /></div>
+              <div className="rounded-xl border border-border overflow-auto max-h-56">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-card sticky top-0 z-10">
+                    <tr>
+                      <th className="py-2 px-3 text-muted-foreground">Asset Class</th>
+                      <th className="py-2 px-3 text-muted-foreground text-right">Allocation</th>
+                      <th className="py-2 px-3 text-muted-foreground text-right">Comfort Zone</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {plan.buckets.map((b: any) => (
+                      <tr key={b.class} className="border-t border-border/50">
+                        <td className="py-2 px-3 font-medium">{b.class}</td>
+                        <td className="py-2 px-3 text-right">{b.pct}%</td>
+                        <td className="py-2 px-3 text-right">{b.range?.[0]}% – {b.range?.[1]}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ) : (
-            <div className="text-muted-foreground">Create a plan to see details.</div>
+            <div className="text-muted-foreground text-sm">No plan yet.</div>
           )}
         </CardContent>
       </Card>
