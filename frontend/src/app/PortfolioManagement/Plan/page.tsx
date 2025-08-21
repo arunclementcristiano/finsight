@@ -62,7 +62,7 @@ export default function PlanPage() {
             if (!activePortfolioId || !local) return;
             await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: activePortfolioId, plan: local }) });
             setPlan(local);
-          }}>Save</Button>
+          }}>Save Plan</Button>
         </div>
       </div>
 
@@ -71,7 +71,7 @@ export default function PlanPage() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-base">Plan Builder</CardTitle>
-              <CardDescription className="text-xs">Answer questions, generate a baseline, and optionally refine with AI</CardDescription>
+              <CardDescription className="text-xs">Generate a baseline and optionally refine with AI. Use Save to persist.</CardDescription>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={async ()=>{
@@ -83,15 +83,6 @@ export default function PlanPage() {
                     const allocation = buildPlan(questionnaire);
                     setLocal(allocation);
                     baseline = allocation;
-                    try {
-                      let pid = (useApp.getState() as any).activePortfolioId as string | undefined;
-                      if (!pid) {
-                        const created = await (await fetch('/api/portfolio', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'My Portfolio' }) })).json();
-                        pid = created?.portfolioId; if (pid) (useApp.getState() as any).setActivePortfolio(pid);
-                      }
-                      if (pid) await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: pid, plan: allocation }) });
-                      setPlan(allocation);
-                    } catch {}
                   }
                   const sig = makeRefSig(questionnaire, baseline);
                   if (sig && sig === lastRefSig) { return; }
@@ -129,15 +120,6 @@ export default function PlanPage() {
                 <Button onClick={async ()=>{
                   const allocation = buildPlan(questionnaire);
                   setLocal(allocation);
-                  try {
-                    let pid = (useApp.getState() as any).activePortfolioId as string | undefined;
-                    if (!pid) {
-                      const created = await (await fetch('/api/portfolio', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'My Portfolio' }) })).json();
-                      pid = created?.portfolioId; if (pid) (useApp.getState() as any).setActivePortfolio(pid);
-                    }
-                    if (pid) await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: pid, plan: allocation }) });
-                    setPlan(allocation);
-                  } catch {}
                 }}>Generate Plan</Button>
                 <Button variant="outline" onClick={()=> setStep(s=> Math.min(questions.length-1, s+1))} disabled={step===questions.length-1}>Next</Button>
               </div>
