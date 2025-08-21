@@ -177,10 +177,11 @@ export function suggestAllocation(ans: Answers): Allocation {
   // 9) Avoid / Emphasize
   const avoidSet = new Set(ans.avoidAssets || []);
   // Hard avoid core/satellite
-  ([("Stocks" as Asset), "Mutual Funds", "Gold", "Real Estate"]).forEach(k => {
+  const avoidables: Asset[] = ["Stocks", "Mutual Funds", "Gold", "Real Estate"];
+  avoidables.forEach((k: Asset) => {
     if (avoidSet.has(k as any)) {
-      const val = base[k];
-      base[k] = 0;
+      const val = base[k as Asset];
+      base[k as Asset] = 0;
       base.Debt += val; // send to Debt first
     }
   });

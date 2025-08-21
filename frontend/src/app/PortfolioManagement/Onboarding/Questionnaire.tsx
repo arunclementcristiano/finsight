@@ -50,7 +50,7 @@ export default function Questionnaire() {
 					options={questions[step].options}
 					selected={questionnaire[questions[step].key]}
 					onChange={(value) => handleAnswer(questions[step].key, value)}
-					multiSelect={Array.isArray(questions[step].options)}
+					multiSelect={questions[step].key === 'avoidAssets' || questions[step].key === 'emphasizeAssets'}
 					helperText={(questions[step] as any)?.helperText}
 					maxSelect={(questions[step] as any)?.maxSelect}
 				/>
