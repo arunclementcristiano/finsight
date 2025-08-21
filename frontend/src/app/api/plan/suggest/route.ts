@@ -109,7 +109,22 @@ export async function POST(req: NextRequest) {
 			confidence: typeof ai.confidence === "number" ? ai.confidence : undefined,
 		});
 	} catch (err) {
-		return NextResponse.json({ error: "Failed to suggest plan" }, { status: 500 });
+		// Safe fallback: return baseline as AI plan with note instead of 500
+		try {
+			const body = await req.json();
+			const { baseline } = body as { baseline: { riskLevel: string; buckets: Array<{ class: AllowedClass; pct: number; range: [number, number] }> } };
+			if (baseline?.buckets) {
+				return NextResponse.json({
+					aiPlan: {
+						riskLevel: baseline.riskLevel || "Moderate",
+						buckets: baseline.buckets.map(b => ({ class: b.class, pct: b.pct, range: b.range, riskCategory: "", notes: "" }))
+					},
+					rationale: "AI unavailable; using baseline.",
+					confidence: undefined,
+				});
+			}
+		} catch {}
+		return NextResponse.json({ aiPlan: { riskLevel: "Moderate", buckets: [] }, rationale: "AI unavailable.", confidence: undefined });
 	}
 }
 
