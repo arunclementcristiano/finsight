@@ -1,12 +1,12 @@
 "use client";
 import React, { useMemo } from "react";
-import { Doughnut } from "react-chartjs-2";
-import { Chart, ArcElement, Tooltip, Legend } from "chart.js";
+import { Doughnut, Bar } from "react-chartjs-2";
+import { Chart, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from "chart.js";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/Card";
 import { useApp } from "../../store";
 import { computeRebalance } from "../domain/rebalance";
 
-Chart.register(ArcElement, Tooltip, Legend);
+Chart.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
 export default function PlanSummary({ plan }: { plan: any }) {
   const { holdings, driftTolerancePct } = useApp();
@@ -38,30 +38,80 @@ export default function PlanSummary({ plan }: { plan: any }) {
 
   const rebalance = useMemo(() => (plan ? computeRebalance(holdings, plan, driftTolerancePct) : { items: [], totalCurrentValue: 0 }), [holdings, plan, driftTolerancePct]);
 
+  function valueOfHolding(h: any): number {
+    if (typeof h.currentValue === "number") return h.currentValue;
+    if (typeof h.units === "number" && typeof h.price === "number") return h.units * h.price;
+    if (typeof h.investedAmount === "number") return h.investedAmount;
+    return 0;
+  }
+
+  const targetVsActual = useMemo(() => {
+    if (!plan) return null as any;
+    const classToValue = new Map<string, number>();
+    for (const h of holdings) {
+      const v = valueOfHolding(h);
+      classToValue.set(h.instrumentClass, (classToValue.get(h.instrumentClass) || 0) + v);
+    }
+    const total = Array.from(classToValue.values()).reduce((a, b) => a + b, 0) || 1;
+    const labels: string[] = plan.buckets.map((b: any) => b.class);
+    const target = plan.buckets.map((b: any) => b.pct);
+    const actual = labels.map((lbl: string) => +(((classToValue.get(lbl) || 0) / total) * 100).toFixed(2));
+    return {
+      data: {
+        labels,
+        datasets: [
+          { label: "Target %", data: target, backgroundColor: "rgba(99,102,241,0.5)" },
+          { label: "Actual %", data: actual, backgroundColor: "rgba(16,185,129,0.5)" },
+        ],
+      },
+      options: {
+        plugins: { legend: { position: "bottom" as const, labels: { font: { size: 11 } } } },
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true, max: 100, ticks: { stepSize: 20, font: { size: 10 } } }, x: { ticks: { font: { size: 10 } } } },
+      },
+    };
+  }, [plan, holdings]);
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
+      {/* Compact KPIs */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="rounded-lg border border-border p-2 text-center">
+          <div className="text-[11px] text-muted-foreground">Equity</div>
+          <div className="text-base font-semibold text-indigo-600">{kpis.equity.toFixed(0)}%</div>
+        </div>
+        <div className="rounded-lg border border-border p-2 text-center">
+          <div className="text-[11px] text-muted-foreground">Defensive</div>
+          <div className="text-base font-semibold text-emerald-600">{kpis.defensive.toFixed(0)}%</div>
+        </div>
+        <div className="rounded-lg border border-border p-2 text-center">
+          <div className="text-[11px] text-muted-foreground">Satellite</div>
+          <div className="text-base font-semibold text-amber-600">{kpis.satellite.toFixed(0)}%</div>
+        </div>
+      </div>
       <Card>
-        <CardHeader>
-          <CardTitle>Target Allocation</CardTitle>
-          <CardDescription>Your plan’s target mix</CardDescription>
+        <CardHeader className="py-2">
+          <CardTitle className="text-base">Target Allocation</CardTitle>
+          <CardDescription className="text-xs">Your plan’s target mix</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0">
           {plan && donutData ? (
-            <div className="mx-auto h-64 max-w-sm"><Doughnut data={donutData} options={{ plugins: { legend: { position: "bottom" as const, labels: { font: { size: 12 } } } }, cutout: "70%" }} /></div>
+            <div className="mx-auto h-52 max-w-xs"><Doughnut data={donutData} options={{ plugins: { legend: { position: "bottom" as const, labels: { font: { size: 11 } } } }, cutout: "70%" }} /></div>
           ) : (
-            <div className="text-muted-foreground">No plan yet.</div>
+            <div className="text-muted-foreground text-sm">No plan yet.</div>
           )}
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Allocation Details</CardTitle>
+        <CardHeader className="py-2">
+          <CardTitle className="text-base">Allocation Details</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0">
           {plan ? (
             <div className="rounded-xl border border-border overflow-auto max-h-80">
-              <table className="w-full text-left text-sm">
+              <table className="w-full text-left text-xs">
                 <thead className="bg-card sticky top-0 z-10">
                   <tr>
                     <th className="py-3 px-4 text-muted-foreground">Asset Class</th>
@@ -87,11 +137,27 @@ export default function PlanSummary({ plan }: { plan: any }) {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Rebalancing Suggestions</CardTitle>
-          <CardDescription>Based on drift tolerance of {driftTolerancePct}%</CardDescription>
+        <CardHeader className="py-2">
+          <CardTitle className="text-base">Target vs Actual</CardTitle>
+          <CardDescription className="text-xs">Compact comparison</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0">
+          {plan && targetVsActual ? (
+            <div className="h-48">
+              <Bar data={targetVsActual.data} options={targetVsActual.options as any} />
+            </div>
+          ) : (
+            <div className="text-muted-foreground text-sm">No data yet.</div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="py-2">
+          <CardTitle className="text-base">Rebalancing Suggestions</CardTitle>
+          <CardDescription className="text-xs">Based on drift tolerance of {driftTolerancePct}%</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-0">
           {plan && rebalance.items.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {rebalance.items.map((item) => (
@@ -107,7 +173,7 @@ export default function PlanSummary({ plan }: { plan: any }) {
               ))}
             </div>
           ) : (
-            <div className="text-muted-foreground">{!plan ? "No plan yet." : "All good! No rebalancing needed."}</div>
+            <div className="text-muted-foreground text-sm">{!plan ? "No plan yet." : "All good! No rebalancing needed."}</div>
           )}
         </CardContent>
       </Card>
