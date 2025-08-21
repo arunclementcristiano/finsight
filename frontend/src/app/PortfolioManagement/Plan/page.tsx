@@ -146,7 +146,12 @@ export default function PlanPage() {
       </Card>
 
       {tab === 'summary' ? (
-        <PlanSummary plan={local} />
+        <PlanSummary plan={local} onChangeBucketPct={(idx: number, newPct: number)=>{
+          const next = { ...(local||{}) } as any;
+          next.buckets = [...(local?.buckets||[])];
+          if (next.buckets[idx]) next.buckets[idx] = { ...next.buckets[idx], pct: newPct };
+          setLocal(next);
+        }} />
       ) : (
         <Card>
           <CardHeader>

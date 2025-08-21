@@ -1,12 +1,13 @@
 "use client";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/Card";
 import { useApp } from "../../store";
 import { computeRebalance } from "../domain/rebalance";
 import { LineChart, Layers, Banknote, Coins, Home, Droplet } from "lucide-react";
 
-export default function PlanSummary({ plan }: { plan: any }) {
+export default function PlanSummary({ plan, onChangeBucketPct }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void }) {
   const { holdings, driftTolerancePct } = useApp();
+  const [wideRange, setWideRange] = useState(false);
 
   const kpis = useMemo(() => {
     if (!plan) return { equity: 0, defensive: 0, satellite: 0 };
@@ -19,6 +20,17 @@ export default function PlanSummary({ plan }: { plan: any }) {
   }, [plan]);
 
   const rebalance = useMemo(() => (plan ? computeRebalance(holdings, plan, driftTolerancePct) : { items: [], totalCurrentValue: 0 }), [holdings, plan, driftTolerancePct]);
+
+  function displayRange(range?: [number, number]) {
+    if (!range) return "—";
+    let [min, max] = range;
+    if (wideRange) {
+      const widenBy = 2; // widen by 2% on each side for a softer comfort zone
+      min = Math.max(0, Math.floor(min - widenBy));
+      max = Math.min(100, Math.ceil(max + widenBy));
+    }
+    return `${min}% – ${max}%`;
+  }
 
   return (
     <div className="space-y-3">
@@ -39,8 +51,16 @@ export default function PlanSummary({ plan }: { plan: any }) {
       </div>
       <Card>
         <CardHeader className="py-2">
-          <CardTitle className="text-base">Allocation</CardTitle>
-          <CardDescription className="text-xs">Target mix and details</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base">Allocation</CardTitle>
+              <CardDescription className="text-xs">Target mix and details</CardDescription>
+            </div>
+            <div className="inline-flex rounded-md border border-border overflow-hidden">
+              <button onClick={()=> setWideRange(false)} className={`px-2 py-1 text-[11px] ${!wideRange ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>Normal</button>
+              <button onClick={()=> setWideRange(true)} className={`px-2 py-1 text-[11px] ${wideRange ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>Wide</button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="pt-0">
           {plan ? (
@@ -53,16 +73,23 @@ export default function PlanSummary({ plan }: { plan: any }) {
                     <th className="py-2 px-3 text-muted-foreground text-right">Comfort Zone</th>
                     <th className="py-2 px-3 text-muted-foreground">Role</th>
                     <th className="py-2 px-3 text-muted-foreground">Remarks</th>
+                    <th className="py-2 px-3 text-muted-foreground">Adjust</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {plan.buckets.map((b: any) => (
+                  {plan.buckets.map((b: any, idx: number) => (
                     <tr key={b.class} className="border-t border-border/50">
                       <td className="py-2 px-3 font-medium"><span className="inline-flex items-center">{(() => { const common = "h-4 w-4 mr-2"; if (b.class === "Stocks") return <LineChart className={common} />; if (b.class === "Mutual Funds") return <Layers className={common} />; if (b.class === "Debt") return <Banknote className={common} />; if (b.class === "Gold") return <Coins className={common} />; if (b.class === "Real Estate") return <Home className={common} />; if (b.class === "Liquid") return <Droplet className={common} />; return <LineChart className={common} />; })()}{b.class}</span></td>
                       <td className="py-2 px-3 text-right">{b.pct}%</td>
-                      <td className="py-2 px-3 text-right">{b.range?.[0]}% – {b.range?.[1]}%</td>
+                      <td className="py-2 px-3 text-right">{displayRange(b.range)}</td>
                       <td className="py-2 px-3">{b.riskCategory || (b.class === 'Stocks' || b.class === 'Mutual Funds' ? 'Core' : (b.class === 'Gold' || b.class === 'Real Estate' ? 'Satellite' : (b.class === 'Debt' || b.class === 'Liquid' ? 'Defensive' : '')))}</td>
                       <td className="py-2 px-3">{b.notes || (b.class === 'Stocks' ? 'Growth focus' : b.class === 'Mutual Funds' ? 'Diversified equity' : b.class === 'Debt' ? 'Stability & income' : b.class === 'Liquid' ? 'Emergency buffer' : b.class === 'Gold' ? 'Inflation hedge' : b.class === 'Real Estate' ? 'Long-term asset' : '')}</td>
+                      <td className="py-2 px-3">
+                        <input type="range" min={0} max={100} value={b.pct} onChange={(e)=>{
+                          const v = Math.max(0, Math.min(100, Number(e.target.value)||0));
+                          if (onChangeBucketPct) onChangeBucketPct(idx, v);
+                        }} />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
