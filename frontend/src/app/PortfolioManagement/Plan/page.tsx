@@ -71,6 +71,22 @@ export default function PlanPage() {
         </div>
         <div className="flex items-center gap-2">
           {(() => { const prune = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))}); const dirty = local && plan && JSON.stringify(prune(local)) !== JSON.stringify(prune(plan)); return dirty ? (<span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200">Unsaved changes</span>) : null; })()}
+          <Button variant="outline" onClick={()=>{ const allocation = buildPlan(questionnaire); setLocal(allocation); setAiInfo(null); }}>Build Baseline</Button>
+          <Button variant="outline" onClick={async ()=>{
+            try {
+              setAiLoading(true);
+              const baseline = buildPlan(questionnaire);
+              const sig = makeAnswersSig(questionnaire);
+              if (sig && sig === lastRefSig) { return; }
+              const res = await fetch('/api/plan/suggest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionnaire, baseline }) });
+              const data = await res.json();
+              if (data?.aiPlan?.buckets) {
+                setLocal((prev: any)=> ({ ...(prev||{}), buckets: data.aiPlan.buckets }));
+                setAiInfo({ rationale: data.rationale, confidence: data.confidence });
+                setLastRefSig(sig);
+              }
+            } finally { setAiLoading(false); }
+          }}>{aiLoading ? 'Refining…' : 'Refine with AI'}</Button>
           <Button variant="outline" onClick={()=> setLocal(plan)}>Reset</Button>
           <Button onClick={async ()=>{
             const prune = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))});
@@ -89,28 +105,9 @@ export default function PlanPage() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-base">Plan Builder</CardTitle>
-              <CardDescription className="text-xs">Generate a baseline and optionally refine with AI. Use Save to persist.</CardDescription>
+              <CardDescription className="text-xs">Adjust answers to influence your baseline. Use top actions to rebuild/refine.</CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={async ()=>{
-                try {
-                  setAiLoading(true);
-                  // Always refine from rule-engine baseline
-                  const baseline = buildPlan(questionnaire);
-                  const sig = makeAnswersSig(questionnaire);
-                  if (sig && sig === lastRefSig) { return; }
-                  const res = await fetch('/api/plan/suggest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionnaire, baseline }) });
-                  const data = await res.json();
-                  if (data?.aiPlan?.buckets) {
-                    setLocal((prev: any)=> ({ ...(prev||{}), buckets: data.aiPlan.buckets }));
-                    setAiInfo({ rationale: data.rationale, confidence: data.confidence });
-                    setLastRefSig(sig);
-                  }
-                } finally { setAiLoading(false); }
-              }}>
-                <Sparkles className="h-4 w-4 mr-2"/>
-                {aiLoading ? 'Refining…' : 'Refine with AI'}
-              </Button>
+            <div>
               <Button variant="outline" onClick={()=> setGenOpen(o=>!o)}>{genOpen ? 'Hide' : 'Open'}</Button>
             </div>
           </div>
@@ -130,10 +127,6 @@ export default function PlanPage() {
             <div className="flex items-center justify-between">
               <Button variant="outline" onClick={()=> setStep(s=> Math.max(0, s-1))} disabled={step===0}>Back</Button>
               <div className="flex items-center gap-2">
-                <Button onClick={async ()=>{
-                  const allocation = buildPlan(questionnaire);
-                  setLocal(allocation);
-                }}>Generate Plan</Button>
                 <Button variant="outline" onClick={()=> setStep(s=> Math.min(questions.length-1, s+1))} disabled={step===questions.length-1}>Next</Button>
               </div>
             </div>
