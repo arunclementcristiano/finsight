@@ -8,7 +8,7 @@ import PlanSummary from "../components/PlanSummary";
 import QuestionCard from "../components/QuestionCard";
 import { questions } from "../domain/questionnaire";
 import { buildPlan } from "../domain/allocationEngine";
-import { Sparkles } from "lucide-react";
+import { Modal } from "../../components/Modal";
 
 export default function PlanPage() {
 	const { plan, setPlan, activePortfolioId, questionnaire, setQuestionAnswer } = useApp() as any;
@@ -18,8 +18,9 @@ export default function PlanPage() {
   const [aiOn, setAiOn] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiInfo, setAiInfo] = useState<{ rationale?: string; confidence?: number } | null>(null);
-  const [genOpen, setGenOpen] = useState(false);
-  const [step, setStep] = useState(0);
+  const [answersOpen, setAnswersOpen] = useState(false);
+  const [ansStep, setAnsStep] = useState(0);
+  const [editAnswers, setEditAnswers] = useState<any>({});
   const [lastRefSig, setLastRefSig] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: 'success'|'info'|'error' } | null>(null);
 
@@ -71,6 +72,7 @@ export default function PlanPage() {
         </div>
         <div className="flex items-center gap-2">
           {(() => { const prune = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))}); const dirty = local && plan && JSON.stringify(prune(local)) !== JSON.stringify(prune(plan)); return dirty ? (<span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200">Unsaved changes</span>) : null; })()}
+          <Button variant="outline" onClick={()=>{ setEditAnswers({ ...(questionnaire||{}) }); setAnsStep(0); setAnswersOpen(true); }}>Edit Answers</Button>
           <Button variant="outline" onClick={()=>{ const allocation = buildPlan(questionnaire); setLocal(allocation); setAiInfo(null); }}>Build Baseline</Button>
           <Button variant="outline" onClick={async ()=>{
             try {
@@ -100,43 +102,40 @@ export default function PlanPage() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader className="py-2">
+      {/* Edit Answers Modal */}
+      <Modal open={answersOpen} onClose={()=> setAnswersOpen(false)} title="Edit Answers" footer={(
+        <>
+          <Button variant="outline" onClick={()=> setAnswersOpen(false)}>Cancel</Button>
+          <Button variant="outline" onClick={()=>{
+            // apply answers to store
+            const keys = Object.keys(editAnswers||{});
+            for (const k of keys) setQuestionAnswer(k, editAnswers[k]);
+            const allocation = buildPlan(editAnswers||{});
+            setLocal(allocation);
+            setAiInfo(null);
+            setLastRefSig(null);
+            setAnswersOpen(false);
+          }}>Done</Button>
+        </>
+      )}>
+        <div className="space-y-3">
+          <QuestionCard
+            questionText={questions[ansStep].text}
+            options={questions[ansStep].options as any}
+            selected={editAnswers[questions[ansStep].key]}
+            onChange={(value: any) => setEditAnswers((prev:any)=> ({ ...(prev||{}), [questions[ansStep].key]: value }))}
+            multiSelect={questions[ansStep].key === 'preferredAssets'}
+            helperText={(questions[ansStep] as any)?.helperText}
+            maxSelect={(questions[ansStep] as any)?.maxSelect}
+          />
           <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">Plan Builder</CardTitle>
-              <CardDescription className="text-xs">Adjust answers to influence your baseline. Use top actions to rebuild/refine.</CardDescription>
-            </div>
-            <div>
-              <Button variant="outline" onClick={()=> setGenOpen(o=>!o)}>{genOpen ? 'Hide' : 'Open'}</Button>
+            <Button variant="outline" onClick={()=> setAnsStep(s=> Math.max(0, s-1))} disabled={ansStep===0}>Back</Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={()=> setAnsStep(s=> Math.min(questions.length-1, s+1))} disabled={ansStep===questions.length-1}>Next</Button>
             </div>
           </div>
-        </CardHeader>
-        {genOpen && (
-        <CardContent className="pt-0">
-          <div className="space-y-3">
-            <QuestionCard
-              questionText={questions[step].text}
-              options={questions[step].options as any}
-              selected={questionnaire[questions[step].key]}
-              onChange={(value: any) => setQuestionAnswer(questions[step].key, value)}
-              multiSelect={questions[step].key === 'preferredAssets'}
-              helperText={(questions[step] as any)?.helperText}
-              maxSelect={(questions[step] as any)?.maxSelect}
-            />
-            <div className="flex items-center justify-between">
-              <Button variant="outline" onClick={()=> setStep(s=> Math.max(0, s-1))} disabled={step===0}>Back</Button>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={()=> setStep(s=> Math.min(questions.length-1, s+1))} disabled={step===questions.length-1}>Next</Button>
-              </div>
-            </div>
-            {aiInfo && (
-              <div className="text-xs text-muted-foreground">{aiInfo.rationale || 'Refined based on your answers and risk profile.'} {typeof aiInfo.confidence==='number' ? `(${Math.round((aiInfo.confidence||0)*100)}%)` : ''}</div>
-            )}
-          </div>
-        </CardContent>
-        )}
-      </Card>
+        </div>
+      </Modal>
 
       {tab === 'summary' ? (
         <PlanSummary plan={local} onChangeBucketPct={(idx: number, newPct: number)=>{
