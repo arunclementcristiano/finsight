@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../..
 import { Button } from "../../components/Button";
 import { useApp } from "../../store";
 import { computeRebalance } from "../domain/rebalance";
-import { LineChart, Layers, Banknote, Coins, Home, Droplet } from "lucide-react";
+import { LineChart, Layers, Banknote, Coins, Home, Droplet, Edit3, RefreshCw, Sparkles } from "lucide-react";
 
 export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, onBuildBaseline, onRefine }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void; onEditAnswers?: () => void; onBuildBaseline?: () => void; onRefine?: () => void }) {
   const { holdings, driftTolerancePct } = useApp();
@@ -48,9 +48,9 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
               <CardDescription className="text-xs">Target mix and details</CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={onEditAnswers}>Edit Answers</Button>
-              <Button variant="outline" onClick={onBuildBaseline}>Build Baseline</Button>
-              <Button variant="outline" onClick={onRefine}>Refine with AI</Button>
+              <Button variant="outline" leftIcon={<Edit3 className="h-4 w-4" />} onClick={onEditAnswers}>Adjust Profile</Button>
+              <Button variant="outline" leftIcon={<RefreshCw className="h-4 w-4" />} onClick={onBuildBaseline}>Rebuild Mix</Button>
+              <Button variant="outline" leftIcon={<Sparkles className="h-4 w-4" />} onClick={onRefine}>Refine with AI</Button>
             </div>
           </div>
         </CardHeader>
