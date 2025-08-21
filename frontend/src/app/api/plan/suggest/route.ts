@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
 		if (!questionnaire || !baseline) return NextResponse.json({ error: "Missing questionnaire or baseline" }, { status: 400 });
 
 		// Prepare prompt for Groq (include all available answers)
-		const prefs = (questionnaire?.preferredAssets || []).join(", ");
+		const prefs = (questionnaire?.emphasizeAssets || []).join(", ");
 		const prompt = `User profile: risk=${questionnaire.riskAppetite||""}, horizon=${questionnaire.horizon||""}, volatility=${questionnaire.volatilityComfort||""}, knowledge=${questionnaire.investmentKnowledge||""}, liquidity=${questionnaire.liquidityPreference||""}, income_balance=${questionnaire.incomeVsExpenses||""}, age=${questionnaire.ageBand||""}, income_stability=${questionnaire.incomeStability||""}, drawdown_tol=${questionnaire.maxDrawdownTolerance||""}, big_expense=${questionnaire.bigExpenseTimeline||""}, intl_equity=${questionnaire.intlEquityPreference||""}, rebalance_pref=${questionnaire.rebalancingComfort||""}, sip=${questionnaire.sipRegularity||""}, ef_months=${questionnaire.emergencyFundMonthsTarget||""}, interests=[${prefs}].\nCurrent suggested mix: ${baseline.buckets.map(b=>`${b.class}:${b.pct}% [${b.range[0]}-${b.range[1]}]`).join(", ")}. Propose a refined mix (allowed classes only) keeping changes within per-class ranges and overall risk. For each class, also propose a comfort range (min/max in percent) that contains the proposed pct. Ensure Liquid remains at least 5% and totals sum to ~100%.`;
 		const ai = await callGroqForAllocation(prompt);
 

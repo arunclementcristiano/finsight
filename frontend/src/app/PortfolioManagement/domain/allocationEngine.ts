@@ -58,9 +58,10 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
   let liquidTarget = Math.min(0.25, Math.max(liquidFloorFromEmergency, 0.05 + 0.10 * liquidityPref + bigExpenseOverlay));
 
   let satelliteTarget = 0.05;
-  const prefs: AssetClass[] = (q.preferredAssets || []) as AssetClass[];
-  const prefersGold = prefs.includes("Gold");
-  const prefersRE = prefs.includes("Real Estate");
+  const avoid: AssetClass[] = (q.avoidAssets || []) as AssetClass[];
+  const emphasize: AssetClass[] = (q.emphasizeAssets || []) as AssetClass[];
+  const prefersGold = emphasize.includes("Gold");
+  const prefersRE = emphasize.includes("Real Estate");
   if (prefersGold) satelliteTarget += 0.04;
   if (prefersRE) satelliteTarget += 0.04;
   satelliteTarget = Math.min(0.2, Math.max(0.05, satelliteTarget));
@@ -90,7 +91,7 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
   let gold = satelliteTarget * goldShare;
   let realEstate = satelliteTarget - gold;
   // Preference handling: if Real Estate not preferred, remove it and shift to defensive
-  if (!prefersRE) {
+  if (avoid.includes("Real Estate")) {
     debtTarget += realEstate;
     realEstate = 0;
   }
@@ -105,10 +106,21 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
     Debt: debtTarget,
     Liquid: liquidTarget,
   };
+  // Hard exclude avoided core/satellite assets
   (Object.keys(weightMap) as AssetClass[]).forEach(cls => {
-    const isCoreOrSat = cls === "Stocks" || cls === "Mutual Funds" || cls === "Gold" || cls === "Real Estate";
-    if (isCoreOrSat && !prefs.includes(cls)) {
-      weightMap[cls] = weightMap[cls] * softFactor;
+    if ((cls === "Stocks" || cls === "Mutual Funds" || cls === "Gold" || cls === "Real Estate") && avoid.includes(cls)) {
+      const val = weightMap[cls];
+      weightMap[cls] = 0;
+      // shift to defensive first
+      weightMap.Debt += val * 0.7;
+      weightMap.Liquid += val * 0.3;
+    }
+  });
+  // Softly emphasize selected assets (cap tilt to +20% of their own weight)
+  (Object.keys(weightMap) as AssetClass[]).forEach(cls => {
+    if (emphasize.includes(cls as AssetClass)) {
+      const bump = weightMap[cls as AssetClass] * 0.2;
+      weightMap[cls as AssetClass] += bump;
     }
   });
 

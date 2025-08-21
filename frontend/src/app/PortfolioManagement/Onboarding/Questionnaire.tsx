@@ -50,15 +50,13 @@ export default function Questionnaire() {
 					options={questions[step].options}
 					selected={questionnaire[questions[step].key]}
 					onChange={(value) => handleAnswer(questions[step].key, value)}
-					multiSelect={questions[step].key === "preferredAssets"}
+					multiSelect={Array.isArray(questions[step].options)}
 					helperText={(questions[step] as any)?.helperText}
 					maxSelect={(questions[step] as any)?.maxSelect}
 				/>
 				<div className="flex justify-between w-full mt-8 gap-3">
 					<Button variant="secondary" onClick={prevStep} disabled={step === 0}>Back</Button>
-					<Button onClick={nextStep} disabled={questions[step].key === "preferredAssets"
-						? !questionnaire["preferredAssets"] || (Array.isArray(questionnaire["preferredAssets"]) && questionnaire["preferredAssets"].length === 0)
-						: !questionnaire[questions[step].key]}>
+					<Button onClick={nextStep} disabled={!questionnaire[questions[step].key] && (questions[step].key !== 'avoidAssets' && questions[step].key !== 'emphasizeAssets')}>
 						{step === questions.length - 1 ? "Submit" : "Next"}
 					</Button>
 				</div>

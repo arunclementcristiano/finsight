@@ -60,11 +60,18 @@ export const questions = [
     helperText: "More knowledge tilts equity towards direct Stocks versus Mutual Funds."
   },
   {
-    key: "preferredAssets",
-    text: "Which assets do you prefer?",
-    options: ["Stocks", "Mutual Funds", "Gold", "Real Estate", "Debt"],
-    helperText: "Pick the asset classes you genuinely want to hold. Leaving this broad keeps diversification.",
+    key: "avoidAssets",
+    text: "Assets to avoid (optional)",
+    options: ["Stocks", "Mutual Funds", "Gold", "Real Estate"],
+    helperText: "We will set avoided assets to 0% (safety sleeve remains).",
     maxSelect: 4
+  },
+  {
+    key: "emphasizeAssets",
+    text: "Assets to emphasize (optional)",
+    options: ["Stocks", "Mutual Funds", "Gold", "Real Estate"],
+    helperText: "We tilt toward emphasized assets within safe bounds, keeping diversification.",
+    maxSelect: 3
   },
   
 ];
