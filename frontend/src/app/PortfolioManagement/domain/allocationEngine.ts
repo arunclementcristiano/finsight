@@ -84,7 +84,12 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
     };
   });
 
-  const rationale = `Derived from risk (${riskLevel}), horizon (${q.horizon||""}), emergency fund (${q.emergencyFundMonthsTarget||""} months), expense (${q.bigExpenseTimeline||"None"}), liquidity (${q.liquidityPreference||""}), avoid [${(q.avoidAssets||[]).join(", ")}], emphasize [${(q.emphasizeAssets||[]).join(", ")}].`;
+  const toList = (v: any): string => {
+    if (Array.isArray(v)) return v.join(", ");
+    if (typeof v === 'string') return v;
+    return "";
+  };
+  const rationale = `Derived from risk (${riskLevel}), horizon (${q.horizon||""}), emergency fund (${q.emergencyFundMonthsTarget||""} months), expense (${q.bigExpenseTimeline||"None"}), liquidity (${q.liquidityPreference||""}), avoid [${toList((q as any).avoidAssets)}], emphasize [${toList((q as any).emphasizeAssets)}].`;
 
   return { riskLevel, rationale, buckets };
 }
