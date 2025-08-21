@@ -36,6 +36,9 @@ interface AppState {
 	questionnaire: Record<string, any>;
 	plan: AllocationPlan | null;
 	holdings: Holding[];
+	// Portfolio metadata
+	portfolios: Array<{ id: string; name: string; createdAt?: string }>;
+	activePortfolioId?: string;
 	driftTolerancePct: number;
 	emergencyMonths: number;
 
@@ -53,6 +56,8 @@ interface AppState {
 	setQuestionAnswer: (key: string, value: any) => void;
 	setQuestionnaire: (q: Record<string, any>) => void;
 	setPlan: (plan: AllocationPlan | null) => void;
+	setPortfolios: (items: Array<{ id: string; name: string; createdAt?: string }>) => void;
+	setActivePortfolio: (id: string) => void;
 	addHolding: (h: Holding) => void;
 	updateHolding: (id: string, updates: Partial<Holding>) => void;
 	deleteHolding: (id: string) => void;
@@ -80,6 +85,7 @@ export const useApp = create<AppState>()(
 			questionnaire: { preferredAssets: [] },
 			plan: null,
 			holdings: [],
+			portfolios: [],
 			driftTolerancePct: 5,
 			emergencyMonths: 6,
 
@@ -95,6 +101,8 @@ export const useApp = create<AppState>()(
 			setQuestionAnswer: (key, value) => set(state => ({ questionnaire: { ...state.questionnaire, [key]: value } })),
 			setQuestionnaire: (q) => set(() => ({ questionnaire: { ...q } })),
 			setPlan: (plan) => set(() => ({ plan })),
+			setPortfolios: (items) => set(() => ({ portfolios: items })),
+			setActivePortfolio: (id) => set(() => ({ activePortfolioId: id })),
 			addHolding: (h) => set(state => ({ holdings: [...state.holdings, h] })),
 			updateHolding: (id, updates) => set(state => ({ holdings: state.holdings.map(h => (h.id === id ? { ...h, ...updates } : h)) })),
 			deleteHolding: (id) => set(state => ({ holdings: state.holdings.filter(h => h.id !== id) })),
