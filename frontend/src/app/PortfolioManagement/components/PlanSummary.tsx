@@ -1,30 +1,12 @@
 "use client";
 import React, { useMemo } from "react";
-import { Doughnut } from "react-chartjs-2";
-import { Chart, ArcElement, Tooltip, Legend } from "chart.js";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/Card";
 import { useApp } from "../../store";
 import { computeRebalance } from "../domain/rebalance";
-
-Chart.register(ArcElement, Tooltip, Legend);
+import { LineChart, Layers, Banknote, Coins, Home, Droplet } from "lucide-react";
 
 export default function PlanSummary({ plan }: { plan: any }) {
   const { holdings, driftTolerancePct } = useApp();
-
-  const donutData = useMemo(() => {
-    if (!plan) return null;
-    return {
-      labels: plan.buckets.map((b: any) => b.class),
-      datasets: [
-        {
-          data: plan.buckets.map((b: any) => b.pct),
-          backgroundColor: ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#f97316", "#06b6d4"],
-          borderWidth: 2,
-          borderColor: "#fff",
-        },
-      ],
-    };
-  }, [plan]);
 
   const kpis = useMemo(() => {
     if (!plan) return { equity: 0, defensive: 0, satellite: 0 };
@@ -57,33 +39,34 @@ export default function PlanSummary({ plan }: { plan: any }) {
       </div>
       <Card>
         <CardHeader className="py-2">
-          <CardTitle className="text-base">Allocation Overview</CardTitle>
+          <CardTitle className="text-base">Allocation</CardTitle>
           <CardDescription className="text-xs">Target mix and details</CardDescription>
         </CardHeader>
         <CardContent className="pt-0">
-          {plan && donutData ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
-              <div className="mx-auto h-52 w/full max-w-xs"><Doughnut data={donutData} options={{ plugins: { legend: { position: "bottom" as const, labels: { font: { size: 11 } } } }, cutout: "70%" }} /></div>
-              <div className="rounded-xl border border-border overflow-auto max-h-56">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-card sticky top-0 z-10">
-                    <tr>
-                      <th className="py-2 px-3 text-muted-foreground">Asset Class</th>
-                      <th className="py-2 px-3 text-muted-foreground text-right">Allocation</th>
-                      <th className="py-2 px-3 text-muted-foreground text-right">Comfort Zone</th>
+          {plan ? (
+            <div className="rounded-xl border border-border overflow-auto max-h-72">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-card sticky top-0 z-10">
+                  <tr>
+                    <th className="py-2 px-3 text-muted-foreground">Asset Class</th>
+                    <th className="py-2 px-3 text-muted-foreground text-right">Allocation</th>
+                    <th className="py-2 px-3 text-muted-foreground text-right">Comfort Zone</th>
+                    <th className="py-2 px-3 text-muted-foreground">Role</th>
+                    <th className="py-2 px-3 text-muted-foreground">Remarks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {plan.buckets.map((b: any) => (
+                    <tr key={b.class} className="border-t border-border/50">
+                      <td className="py-2 px-3 font-medium"><span className="inline-flex items-center">{(() => { const common = "h-4 w-4 mr-2"; if (b.class === "Stocks") return <LineChart className={common} />; if (b.class === "Mutual Funds") return <Layers className={common} />; if (b.class === "Debt") return <Banknote className={common} />; if (b.class === "Gold") return <Coins className={common} />; if (b.class === "Real Estate") return <Home className={common} />; if (b.class === "Liquid") return <Droplet className={common} />; return <LineChart className={common} />; })()}{b.class}</span></td>
+                      <td className="py-2 px-3 text-right">{b.pct}%</td>
+                      <td className="py-2 px-3 text-right">{b.range?.[0]}% – {b.range?.[1]}%</td>
+                      <td className="py-2 px-3">{b.riskCategory || (b.class === 'Stocks' || b.class === 'Mutual Funds' ? 'Core' : (b.class === 'Gold' || b.class === 'Real Estate' ? 'Satellite' : (b.class === 'Debt' || b.class === 'Liquid' ? 'Defensive' : '')))}</td>
+                      <td className="py-2 px-3">{b.notes || (b.class === 'Stocks' ? 'Growth focus' : b.class === 'Mutual Funds' ? 'Diversified equity' : b.class === 'Debt' ? 'Stability & income' : b.class === 'Liquid' ? 'Emergency buffer' : b.class === 'Gold' ? 'Inflation hedge' : b.class === 'Real Estate' ? 'Long-term asset' : '')}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {plan.buckets.map((b: any) => (
-                      <tr key={b.class} className="border-t border-border/50">
-                        <td className="py-2 px-3 font-medium">{b.class}</td>
-                        <td className="py-2 px-3 text-right">{b.pct}%</td>
-                        <td className="py-2 px-3 text-right">{b.range?.[0]}% – {b.range?.[1]}%</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
           ) : (
             <div className="text-muted-foreground text-sm">No plan yet.</div>
