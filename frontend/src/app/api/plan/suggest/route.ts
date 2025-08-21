@@ -5,8 +5,24 @@ const ALLOWED_CLASSES = ["Stocks","Mutual Funds","Gold","Real Estate","Debt","Li
 
 type AllowedClass = typeof ALLOWED_CLASSES[number];
 
-// Call Groq to get refined allocation percentages and optional comfort ranges
 type AiResult = { buckets: Array<{ class: string; pct: number; min?: number; max?: number; range?: [number, number] }>; rationale?: string; confidence?: number; diag?: { missingKey?: boolean; status?: number; parseError?: string; raw?: string } };
+
+function extractJson(text: string): any {
+  try { return JSON.parse(text); } catch {}
+  try {
+    const cleaned = text.replace(/```json|```/g, "").trim();
+    return JSON.parse(cleaned);
+  } catch {}
+  try {
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      return JSON.parse(text.slice(start, end + 1));
+    }
+  } catch {}
+  throw new Error("parse_failed");
+}
+
 async function callGroqForAllocation(prompt: string): Promise<AiResult> {
 	const apiKey = (process.env.GROQ_API_KEY || "").trim();
 	if (!apiKey) return { buckets: [], diag: { missingKey: true } };
@@ -28,13 +44,15 @@ async function callGroqForAllocation(prompt: string): Promise<AiResult> {
 				],
 				temperature: 0,
 				top_p: 1,
+				response_format: { type: "json_object" },
+				max_tokens: 512
 			})
 		});
 		const status = res.status;
 		const data = await res.json();
 		const txt = (data?.choices?.[0]?.message?.content as string) || "";
 		try {
-			const parsed = JSON.parse(txt);
+			const parsed = extractJson(txt);
 			return {
 				buckets: Array.isArray(parsed?.buckets) ? parsed.buckets : [],
 				rationale: typeof parsed?.rationale === "string" ? parsed.rationale : undefined,
@@ -62,7 +80,6 @@ function clampRefined(
 		let min = v.min;
 		let max = v.max;
 		if (aiEntry) {
-			// Accept ai-provided min/max (or range) but clamp within baseline bounds
 			const aiMin = Number.isFinite(aiEntry.min) ? Number(aiEntry.min) : (Array.isArray(aiEntry.range) ? Number(aiEntry.range[0]) : undefined);
 			const aiMax = Number.isFinite(aiEntry.max) ? Number(aiEntry.max) : (Array.isArray(aiEntry.range) ? Number(aiEntry.range[1]) : undefined);
 			if (Number.isFinite(aiMin)) min = Math.max(v.min, Math.min(v.max, aiMin as number));
@@ -74,13 +91,10 @@ function clampRefined(
 		}
 		out.push({ class: cls, pct, min, max });
 	}
-	// Ensure minimum Liquid 5%
 	const liq = out.find(o => o.class === "Liquid");
 	if (liq && liq.pct < 5) liq.pct = 5;
-	// Normalize to 100
 	const sum = out.reduce((s, x) => s + x.pct, 0) || 1;
 	for (const o of out) o.pct = +(o.pct * 100 / sum).toFixed(2);
-	// Final clamp pct within its min/max after normalization
 	for (const o of out) o.pct = Math.max(o.min, Math.min(o.max, o.pct));
 	return out;
 }
@@ -95,12 +109,11 @@ export async function POST(req: NextRequest) {
 		if (!questionnaire || !baseline) return NextResponse.json({ error: "Missing questionnaire or baseline" }, { status: 400 });
 		const debug = (req.nextUrl?.searchParams?.get('debug') === '1');
 
-		// Prepare prompt for Groq (include all available answers)
 		const prefs = (questionnaire?.emphasizeAssets || []).join(", ");
 		const prompt = `User profile: risk=${questionnaire.riskAppetite||""}, horizon=${questionnaire.horizon||""}, volatility=${questionnaire.volatilityComfort||""}, knowledge=${questionnaire.investmentKnowledge||""}, liquidity=${questionnaire.liquidityPreference||""}, income_balance=${questionnaire.incomeVsExpenses||""}, age=${questionnaire.ageBand||""}, income_stability=${questionnaire.incomeStability||""}, drawdown_tol=${questionnaire.maxDrawdownTolerance||""}, big_expense=${questionnaire.bigExpenseTimeline||""}, intl_equity=${questionnaire.intlEquityPreference||""}, rebalance_pref=${questionnaire.rebalancingComfort||""}, sip=${questionnaire.sipRegularity||""}, ef_months=${questionnaire.emergencyFundMonthsTarget||""}, interests=[${prefs}].\nCurrent suggested mix: ${baseline.buckets.map(b=>`${b.class}:${b.pct}% [${b.range[0]}-${b.range[1]}]`).join(", ")}. Propose a refined mix (allowed classes only) keeping changes within per-class ranges and overall risk. For each class, also propose a comfort range (min/max in percent) that contains the proposed pct. Ensure Liquid remains at least 5% and totals sum to ~100%.`;
 		const ai = await callGroqForAllocation(prompt);
+		if (ai?.diag?.missingKey) return NextResponse.json({ error: "Missing GROQ_API_KEY" }, { status: 400 });
 
-		// Build baseline with min/max derived from provided ranges
 		const baseForClamp = baseline.buckets.map(b => ({ class: b.class, pct: b.pct, min: b.range[0], max: b.range[1] }));
 		const refined = clampRefined(baseForClamp, ai.buckets || []);
 
@@ -113,7 +126,7 @@ export async function POST(req: NextRequest) {
 			confidence: typeof ai.confidence === "number" ? ai.confidence : undefined,
 			...(debug ? { diag: ai.diag || {} } : {})
 		});
-	} catch (err) {
-		return NextResponse.json({ error: "Failed to suggest plan" }, { status: 500 });
+	} catch (err: any) {
+		return NextResponse.json({ error: "Failed to suggest plan" }, { status: 502 });
 	}
 }
