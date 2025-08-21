@@ -11,6 +11,9 @@ export default function PlanPage() {
 	const router = useRouter();
   const [tab, setTab] = useState<"summary"|"editor">("summary");
   const [local, setLocal] = useState<any | null>(plan || null);
+  const [aiOn, setAiOn] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiInfo, setAiInfo] = useState<{ rationale?: string; confidence?: number } | null>(null);
 
   useEffect(() => { setLocal(plan || null); }, [plan]);
 
@@ -60,6 +63,35 @@ export default function PlanPage() {
           <CardContent>
             {local ? (
               <div className="space-y-3">
+                <div className="flex items-center justify-between rounded-md border border-border p-2">
+                  <div className="inline-flex items-center gap-3">
+                    <button type="button" onClick={async ()=>{
+                      const v = !aiOn; setAiOn(v);
+                      if (!v) { setAiInfo(null); return; }
+                      try {
+                        setAiLoading(true);
+                        const q = (useApp.getState() as any).questionnaire || {};
+                        const res = await fetch('/api/plan/suggest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionnaire: q, baseline: local }) });
+                        const data = await res.json();
+                        if (data?.aiPlan?.buckets) {
+                          setLocal((prev: any)=> ({ ...(prev||{}), buckets: data.aiPlan.buckets }));
+                          setAiInfo({ rationale: data.rationale, confidence: data.confidence });
+                        }
+                      } finally {
+                        setAiLoading(false);
+                      }
+                    }} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${aiOn?"bg-indigo-600":"bg-muted"}`}>
+                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white dark:bg-zinc-900 shadow transition-transform ${aiOn?"translate-x-5":"translate-x-1"}`}></span>
+                    </button>
+                    <span className="text-sm">AI refinement</span>
+                    {aiLoading && <span className="text-xs text-muted-foreground">Refining…</span>}
+                  </div>
+                  {aiInfo && (
+                    <div className="text-xs text-muted-foreground">
+                      {aiInfo.rationale || "Refined based on your answers and risk profile."} {typeof aiInfo.confidence === 'number' ? `(${Math.round((aiInfo.confidence||0)*100)}%)` : ''}
+                    </div>
+                  )}
+                </div>
                 {(local.buckets||[]).map((b: any, idx: number) => (
                   <div key={b.class} className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
                     <div className="font-medium">{b.class}</div>
