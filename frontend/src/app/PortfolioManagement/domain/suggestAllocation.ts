@@ -51,6 +51,15 @@ function largestRemainderRound(input: Allocation): Allocation {
 }
 
 export function suggestAllocation(ans: Answers): Allocation {
+  // Defensive normalization of array inputs (handle legacy or malformed values)
+  const avoidRaw: any = (ans as any).avoidAssets;
+  const emphasizeRaw: any = (ans as any).emphasizeAssets;
+  const avoidList: Array<"Stocks" | "Mutual Funds" | "Gold" | "Real Estate"> = Array.isArray(avoidRaw)
+    ? avoidRaw
+    : (typeof avoidRaw === 'string' && avoidRaw ? [avoidRaw] : []);
+  const emphasizeList: Array<"Stocks" | "Mutual Funds" | "Gold" | "Real Estate"> = Array.isArray(emphasizeRaw)
+    ? emphasizeRaw
+    : (typeof emphasizeRaw === 'string' && emphasizeRaw ? [emphasizeRaw] : []);
   // 2) riskScore
   const mapRA: Record<Answers["riskAppetite"], number> = { Low: 20, Moderate: 50, High: 80 };
   const mapVol: Record<Answers["volatilityComfort"], number> = { Low: 20, Medium: 50, High: 80 } as any;
@@ -175,7 +184,7 @@ export function suggestAllocation(ans: Answers): Allocation {
   clampAsset("Real Estate", 0, 7);
 
   // 9) Avoid / Emphasize
-  const avoidSet = new Set(ans.avoidAssets || []);
+  const avoidSet = new Set(avoidList);
   // Hard avoid core/satellite
   const avoidables: Asset[] = ["Stocks", "Mutual Funds", "Gold", "Real Estate"];
   avoidables.forEach((k: Asset) => {
@@ -186,7 +195,7 @@ export function suggestAllocation(ans: Answers): Allocation {
     }
   });
   // Emphasize: up to +3% each, max +7% combined, from Debt then non-emphasized equity pro-rata
-  const emphasize = (ans.emphasizeAssets || []).filter(k => !avoidSet.has(k)) as Asset[];
+  const emphasize = (emphasizeList || []).filter(k => !avoidSet.has(k)) as Asset[];
   const tiltPer = 3;
   const maxTotalTilt = 7;
   let remainingTilt = Math.min(maxTotalTilt, emphasize.length * tiltPer);
