@@ -95,14 +95,9 @@ export default function PlanPage() {
               <Button variant="outline" onClick={async ()=>{
                 try {
                   setAiLoading(true);
-                  // Ensure baseline
-                  let baseline = local;
-                  if (!baseline) {
-                    const allocation = buildPlan(questionnaire);
-                    setLocal(allocation);
-                    baseline = allocation;
-                  }
-                  const sig = makeRefSig(questionnaire, baseline);
+                  // Always refine from rule-engine baseline
+                  const baseline = buildPlan(questionnaire);
+                  const sig = makeAnswersSig(questionnaire);
                   if (sig && sig === lastRefSig) { return; }
                   const res = await fetch('/api/plan/suggest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionnaire, baseline }) });
                   const data = await res.json();
