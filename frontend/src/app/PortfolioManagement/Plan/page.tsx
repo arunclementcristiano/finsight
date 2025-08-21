@@ -36,6 +36,12 @@ export default function PlanPage() {
     } catch { return ""; }
   }
 
+  function makeAnswersSig(q: any): string {
+    try {
+      return JSON.stringify({ q });
+    } catch { return ""; }
+  }
+
   useEffect(() => { setLocal(plan || null); }, [plan]);
 
 	if (!plan) {
@@ -163,12 +169,13 @@ export default function PlanPage() {
                       try {
                         setAiLoading(true);
                         const q = (useApp.getState() as any).questionnaire || {};
-                        const sig = makeRefSig(q, local);
+                        const baseline = buildPlan(q);
+                        const sig = makeAnswersSig(q);
                         if (sig && sig === lastRefSig) { return; }
-                        const res = await fetch('/api/plan/suggest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionnaire: q, baseline: local }) });
+                        const res = await fetch('/api/plan/suggest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionnaire: q, baseline }) });
                         const data = await res.json();
                         if (data?.aiPlan?.buckets) {
-                          setLocal((prev: any)=> ({ ...(prev||{}), buckets: data.aiPlan.buckets }));
+                          setLocal((prev: any)=> ({ ...(prev||baseline), buckets: data.aiPlan.buckets }));
                           setAiInfo({ rationale: data.rationale, confidence: data.confidence });
                           setLastRefSig(sig);
                         }
