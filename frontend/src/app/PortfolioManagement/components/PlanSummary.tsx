@@ -1,11 +1,12 @@
 "use client";
 import React, { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/Card";
+import { Button } from "../../components/Button";
 import { useApp } from "../../store";
 import { computeRebalance } from "../domain/rebalance";
 import { LineChart, Layers, Banknote, Coins, Home, Droplet } from "lucide-react";
 
-export default function PlanSummary({ plan, onChangeBucketPct }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void }) {
+export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, onBuildBaseline, onRefine }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void; onEditAnswers?: () => void; onBuildBaseline?: () => void; onRefine?: () => void }) {
   const { holdings, driftTolerancePct } = useApp();
 
   const kpis = useMemo(() => {
@@ -41,8 +42,17 @@ export default function PlanSummary({ plan, onChangeBucketPct }: { plan: any; on
       </div>
       <Card>
         <CardHeader className="py-2">
-          <CardTitle className="text-base">Allocation</CardTitle>
-          <CardDescription className="text-xs">Target mix and details</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base">Allocation</CardTitle>
+              <CardDescription className="text-xs">Target mix and details</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={onEditAnswers}>Edit Answers</Button>
+              <Button variant="outline" onClick={onBuildBaseline}>Build Baseline</Button>
+              <Button variant="outline" onClick={onRefine}>Refine with AI</Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="pt-0">
           {plan ? (
