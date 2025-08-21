@@ -5,12 +5,12 @@ const ALLOWED_CLASSES = ["Stocks","Mutual Funds","Gold","Real Estate","Debt","Li
 
 type AllowedClass = typeof ALLOWED_CLASSES[number];
 
-// Call Groq to get refined allocation percentages
-async function callGroqForAllocation(prompt: string): Promise<{ buckets: Array<{ class: string; pct: number }>; rationale?: string; confidence?: number }> {
+// Call Groq to get refined allocation percentages and optional comfort ranges
+async function callGroqForAllocation(prompt: string): Promise<{ buckets: Array<{ class: string; pct: number; min?: number; max?: number; range?: [number, number] }>; rationale?: string; confidence?: number }> {
 	const apiKey = (process.env.GROQ_API_KEY || "").trim();
 	if (!apiKey) return { buckets: [] };
 	try {
-		const system = `You are a portfolio allocation assistant. Allowed classes: ${ALLOWED_CLASSES.join(", ")}. Respond ONLY JSON like {"buckets":[{"class":"Stocks","pct":35},...], "rationale": string, "confidence": 0.0-1.0}. Percentages must sum to ~100.`;
+		const system = `You are a portfolio allocation assistant. Allowed classes: ${ALLOWED_CLASSES.join(", ")}. Respond ONLY JSON like {"buckets":[{"class":"Stocks","pct":35,"min":30,"max":40},...], "rationale": string, "confidence": 0.0-1.0}. Percentages must sum to ~100. For each bucket, include a reasonable comfort range (min/max in percent) that contains pct.`;
 		const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
 			method: "POST",
 			headers: {
@@ -48,7 +48,7 @@ async function callGroqForAllocation(prompt: string): Promise<{ buckets: Array<{
 
 function clampRefined(
 	baseline: Array<{ class: AllowedClass; pct: number; min: number; max: number }>,
-	ai: Array<{ class: string; pct: number }>,
+	ai: Array<{ class: string; pct: number; min?: number; max?: number; range?: [number, number] }>,
 ): Array<{ class: AllowedClass; pct: number; min: number; max: number }>{
 	const baseMap = new Map<AllowedClass, { pct: number; min: number; max: number }>();
 	for (const b of baseline) baseMap.set(b.class, { pct: b.pct, min: b.min, max: b.max });
@@ -56,10 +56,20 @@ function clampRefined(
 	for (const [cls, v] of baseMap.entries()) {
 		const aiEntry = ai.find(x => x.class?.toLowerCase() === cls.toLowerCase());
 		let pct = v.pct;
-		if (aiEntry && Number.isFinite(aiEntry.pct)) {
-			pct = Math.max(v.min, Math.min(v.max, Number(aiEntry.pct)));
+		let min = v.min;
+		let max = v.max;
+		if (aiEntry) {
+			// Accept ai-provided min/max (or range) but clamp within baseline bounds
+			const aiMin = Number.isFinite(aiEntry.min) ? Number(aiEntry.min) : (Array.isArray(aiEntry.range) ? Number(aiEntry.range[0]) : undefined);
+			const aiMax = Number.isFinite(aiEntry.max) ? Number(aiEntry.max) : (Array.isArray(aiEntry.range) ? Number(aiEntry.range[1]) : undefined);
+			if (Number.isFinite(aiMin)) min = Math.max(v.min, Math.min(v.max, aiMin as number));
+			if (Number.isFinite(aiMax)) max = Math.max(v.min, Math.min(v.max, aiMax as number));
+			if (min > max) { const mid = (min + max) / 2; min = Math.max(v.min, Math.min(v.max, Math.floor(mid))); max = Math.max(min, Math.min(v.max, Math.ceil(mid))); }
+			if (Number.isFinite(aiEntry.pct)) {
+				pct = Math.max(min, Math.min(max, Number(aiEntry.pct)));
+			}
 		}
-		out.push({ class: cls, pct, min: v.min, max: v.max });
+		out.push({ class: cls, pct, min, max });
 	}
 	// Ensure minimum Liquid 5%
 	const liq = out.find(o => o.class === "Liquid");
@@ -67,6 +77,8 @@ function clampRefined(
 	// Normalize to 100
 	const sum = out.reduce((s, x) => s + x.pct, 0) || 1;
 	for (const o of out) o.pct = +(o.pct * 100 / sum).toFixed(2);
+	// Final clamp pct within its min/max after normalization
+	for (const o of out) o.pct = Math.max(o.min, Math.min(o.max, o.pct));
 	return out;
 }
 
@@ -81,7 +93,7 @@ export async function POST(req: NextRequest) {
 
 		// Prepare prompt for Groq (include all available answers)
 		const prefs = (questionnaire?.preferredAssets || []).join(", ");
-		const prompt = `User profile: risk=${questionnaire.riskAppetite||""}, horizon=${questionnaire.horizon||""}, volatility=${questionnaire.volatilityComfort||""}, knowledge=${questionnaire.investmentKnowledge||""}, liquidity=${questionnaire.liquidityPreference||""}, income_balance=${questionnaire.incomeVsExpenses||""}, age=${questionnaire.ageBand||""}, income_stability=${questionnaire.incomeStability||""}, drawdown_tol=${questionnaire.maxDrawdownTolerance||""}, big_expense=${questionnaire.bigExpenseTimeline||""}, re_exposure=${questionnaire.realEstateExposure||""}, intl_equity=${questionnaire.intlEquityPreference||""}, rebalance_pref=${questionnaire.rebalancingComfort||""}, sip=${questionnaire.sipRegularity||""}, ef_months=${questionnaire.emergencyFundMonthsTarget||""}, interests=[${prefs}].\nCurrent suggested mix: ${baseline.buckets.map(b=>`${b.class}:${b.pct}%`).join(", ")}. Propose a refined mix (allowed classes only) keeping changes within per-class ranges and overall risk. Ensure Liquid remains at least 5% and totals sum to ~100%.`;
+		const prompt = `User profile: risk=${questionnaire.riskAppetite||""}, horizon=${questionnaire.horizon||""}, volatility=${questionnaire.volatilityComfort||""}, knowledge=${questionnaire.investmentKnowledge||""}, liquidity=${questionnaire.liquidityPreference||""}, income_balance=${questionnaire.incomeVsExpenses||""}, age=${questionnaire.ageBand||""}, income_stability=${questionnaire.incomeStability||""}, drawdown_tol=${questionnaire.maxDrawdownTolerance||""}, big_expense=${questionnaire.bigExpenseTimeline||""}, re_exposure=${questionnaire.realEstateExposure||""}, intl_equity=${questionnaire.intlEquityPreference||""}, rebalance_pref=${questionnaire.rebalancingComfort||""}, sip=${questionnaire.sipRegularity||""}, ef_months=${questionnaire.emergencyFundMonthsTarget||""}, interests=[${prefs}].\nCurrent suggested mix: ${baseline.buckets.map(b=>`${b.class}:${b.pct}% [${b.range[0]}-${b.range[1]}]`).join(", ")}. Propose a refined mix (allowed classes only) keeping changes within per-class ranges and overall risk. For each class, also propose a comfort range (min/max in percent) that contains the proposed pct. Ensure Liquid remains at least 5% and totals sum to ~100%.`;
 		const ai = await callGroqForAllocation(prompt);
 
 		// Build baseline with min/max derived from provided ranges

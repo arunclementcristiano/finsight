@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/Card";
 import { useApp } from "../../store";
 import { computeRebalance } from "../domain/rebalance";
@@ -7,7 +7,6 @@ import { LineChart, Layers, Banknote, Coins, Home, Droplet } from "lucide-react"
 
 export default function PlanSummary({ plan, onChangeBucketPct }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void }) {
   const { holdings, driftTolerancePct } = useApp();
-  const [wideRange, setWideRange] = useState(false);
 
   const kpis = useMemo(() => {
     if (!plan) return { equity: 0, defensive: 0, satellite: 0 };
@@ -21,16 +20,7 @@ export default function PlanSummary({ plan, onChangeBucketPct }: { plan: any; on
 
   const rebalance = useMemo(() => (plan ? computeRebalance(holdings, plan, driftTolerancePct) : { items: [], totalCurrentValue: 0 }), [holdings, plan, driftTolerancePct]);
 
-  function displayRange(range?: [number, number]) {
-    if (!range) return "—";
-    let [min, max] = range;
-    if (wideRange) {
-      const widenBy = 2; // widen by 2% on each side for a softer comfort zone
-      min = Math.max(0, Math.floor(min - widenBy));
-      max = Math.min(100, Math.ceil(max + widenBy));
-    }
-    return `${min}% – ${max}%`;
-  }
+  function displayRange(range?: [number, number]) { if (!range) return "—"; const [min, max] = range; return `${min}% – ${max}%`; }
 
   return (
     <div className="space-y-3">
@@ -51,16 +41,8 @@ export default function PlanSummary({ plan, onChangeBucketPct }: { plan: any; on
       </div>
       <Card>
         <CardHeader className="py-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">Allocation</CardTitle>
-              <CardDescription className="text-xs">Target mix and details</CardDescription>
-            </div>
-            <div className="inline-flex rounded-md border border-border overflow-hidden">
-              <button onClick={()=> setWideRange(false)} className={`px-2 py-1 text-[11px] ${!wideRange ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>Normal</button>
-              <button onClick={()=> setWideRange(true)} className={`px-2 py-1 text-[11px] ${wideRange ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>Wide</button>
-            </div>
-          </div>
+          <CardTitle className="text-base">Allocation</CardTitle>
+          <CardDescription className="text-xs">Target mix and details</CardDescription>
         </CardHeader>
         <CardContent className="pt-0">
           {plan ? (
