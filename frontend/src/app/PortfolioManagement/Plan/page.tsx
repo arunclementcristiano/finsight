@@ -88,7 +88,7 @@ export default function PlanPage() {
             } finally { setAiLoading(false); }
           }}>{aiLoading ? 'Refining…' : 'Refine with AI'}</Button>
           <Button variant="outline" onClick={()=> setLocal(plan)}>Reset</Button>
-          <Button onClick={async ()=>{
+          <Button variant="outline" onClick={async ()=>{
             const prune = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))});
             const dirty = !!(local && plan && JSON.stringify(prune(local)) !== JSON.stringify(prune(plan)));
             if (!dirty) { setToast({ msg: 'No changes to save', type: 'info' }); return; }
