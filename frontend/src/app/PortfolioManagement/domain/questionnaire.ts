@@ -1,101 +1,89 @@
 export const questions = [
   {
+    key: "ageBand",
+    text: "Age (Because younger = higher equity capacity)",
+    options: ["<30", "30–45", "45–60", "60+"],
+    helperText: "Age helps determine risk capacity and equity ceiling."
+  },
+  {
     key: "horizon",
-    text: "What is your investment time horizon?",
-    options: ["Short (<3 yrs)", "Medium (3–7 yrs)", "Long (>7 yrs)"],
-    helperText: "Longer horizons can support more equity exposure; shorter horizons favor defensive assets."
-  },
-  {
-    key: "bigExpenseTimeline",
-    text: "Any big planned expense?",
-    options: ["None", "<12 months", "12–36 months", ">36 months"],
-    helperText: "Near-term expenses increase the recommended Liquid/short-duration allocation."
-  },
-  {
-    key: "emergencyFundMonthsTarget",
-    text: "Emergency fund target (months of expenses)?",
-    options: ["3", "6", "9", "12"],
-    helperText: "Sets a minimum Liquid allocation as your safety buffer."
-  },
-  {
-    key: "liquidityPreference",
-    text: "What is your liquidity preference?",
-    options: ["High", "Medium", "Low"],
-    helperText: "Higher liquidity preference means a larger cash/buffer allocation."
-  },
-  {
-    key: "incomeVsExpenses",
-    text: "How would you describe your income vs expenses?",
-    options: ["Surplus", "Break-even", "Deficit"],
-    helperText: "A consistent surplus can support growth assets; deficits call for more defensive mix."
+    text: "Investment Horizon (How long can the money stay invested)",
+    options: ["<3 years", "3–7 years", "7+ years"],
+    helperText: "Longer horizons allow higher equity; shorter horizons favor defensive assets."
   },
   {
     key: "incomeStability",
-    text: "How stable is your income?",
-    options: ["Stable", "Variable", "Unstable"],
-    helperText: "Less stable income warrants a more defensive allocation."
-  },
-  {
-    key: "dependents",
-    text: "How many financial dependents do you have?",
-    options: ["None", "1", "2", "3+"],
-    helperText: "More dependents generally call for higher safety allocation."
+    text: "Monthly Savings / Income Stability (Ability to absorb risks)",
+    options: ["Very stable", "Somewhat stable", "Not stable"],
+    helperText: "Less stable income calls for more conservative allocation."
   },
   {
     key: "liabilities",
-    text: "What is your current liability level?",
-    options: ["None", "Low", "Moderate", "High"],
-    helperText: "Higher liabilities increase the need for Debt/Liquid."
+    text: "Existing Liabilities (Loans/EMIs)",
+    options: ["None", "Moderate", "Heavy"],
+    helperText: "Higher liabilities reduce equity capacity."
   },
   {
-    key: "financialGoal",
-    text: "What best describes your primary goal?",
-    options: ["Wealth growth", "Capital preservation", "Income generation", "Major purchase", "Retirement"],
-    helperText: "Your goal helps tilt between equity, income, and liquidity."
-  },
-  {
-    key: "ageBand",
-    text: "What is your age band?",
-    options: ["18–30", "31–45", "46–60", "60+"],
-    helperText: "Used as a proxy for risk capacity alongside horizon."
-  },
-  {
-    key: "riskAppetite",
-    text: "What is your risk appetite?",
-    options: ["Low", "Moderate", "High"],
-    helperText: "Your comfort with risk influences the core equity/defensive split."
+    key: "dependents",
+    text: "Dependents (Family responsibilities)",
+    options: ["None", "Few", "Many"],
+    helperText: "More dependents generally require more safety allocation."
   },
   {
     key: "volatilityComfort",
-    text: "How comfortable are you with market volatility?",
-    options: ["Low", "Medium", "High"],
-    helperText: "Higher comfort tolerates larger swings and allows wider rebalancing ranges."
+    text: "Comfort with Volatility (Psychological tolerance)",
+    options: ["Very comfortable", "Somewhat", "Not at all"],
+    helperText: "Helps set your risk tolerance."
   },
   {
-    key: "maxDrawdownTolerance",
-    text: "What max portfolio drawdown can you tolerate?",
-    options: ["5%", "10%", "20%", "30%+"],
-    helperText: "Helps calibrate risk and the width of the target ranges."
+    key: "financialGoal",
+    text: "Financial Goals",
+    options: ["Wealth growth", "Retirement", "House purchase", "Education", "Mixed"],
+    helperText: "Maps assets to objectives like growth vs safety."
   },
   {
     key: "investmentKnowledge",
-    text: "What is your investment knowledge level?",
-    options: ["Beginner", "Intermediate", "Advanced"],
-    helperText: "More knowledge tilts equity towards direct Stocks versus Mutual Funds."
+    text: "Past Investing Experience (Optional)",
+    options: ["Beginner", "Intermediate", "Experienced"],
+    helperText: "Novices need safer allocation.",
+    optional: true
+  },
+  {
+    key: "withdrawNext2Yrs",
+    text: "Liquidity Needs: Do you expect to withdraw in the next 1–2 years?",
+    options: ["Yes", "No"],
+    helperText: "Caps illiquid exposure and boosts cash if yes."
+  },
+  {
+    key: "emergencyFundSixMonths",
+    text: "Emergency Fund: Do you already have at least 6 months saved?",
+    options: ["Yes", "No"],
+    helperText: "If no, we raise Liquid until a six-month buffer is built."
+  },
+  {
+    key: "insuranceCoverage",
+    text: "Insurance Coverage: Do you have health & life insurance?",
+    options: ["Yes", "No"],
+    helperText: "If no, we reduce risky allocation and flag coverage gap."
+  },
+  {
+    key: "taxPreference",
+    text: "Tax Preference",
+    options: ["Tax efficiency", "Max return"],
+    helperText: "Guides product selection within buckets."
+  },
+  {
+    key: "geoPreference",
+    text: "Geographic Preference",
+    options: ["Domestic only", "Global ok"],
+    helperText: "Impacts diversification at product level."
   },
   {
     key: "avoidAssets",
-    text: "Assets to avoid (optional)",
+    text: "Ethical/Custom Constraints (Optional) — assets to avoid",
     options: ["Stocks", "Mutual Funds", "Gold", "Real Estate"],
-    helperText: "We will set avoided assets to 0% (safety sleeve remains).",
-    maxSelect: 4
+    helperText: "We will set avoided assets to 0% (safety sleeves remain).",
+    maxSelect: 4,
+    optional: true
   },
-  {
-    key: "emphasizeAssets",
-    text: "Assets to emphasize (optional)",
-    options: ["Stocks", "Mutual Funds", "Gold", "Real Estate"],
-    helperText: "We tilt toward emphasized assets within safe bounds, keeping diversification.",
-    maxSelect: 3
-  },
-  
 ];
