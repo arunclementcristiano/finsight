@@ -102,6 +102,24 @@ export function suggestAllocation(ans: Answers): Allocation {
   base.Stocks = equity * sShare;
   base["Mutual Funds"] = equity * mfShare;
 
+  // Age tilt within equity: younger → slightly more Stocks; older → slightly more MF
+  (function ageSplitTilt(){
+    const eq = base.Stocks + base["Mutual Funds"]; if (eq <= 0) return;
+    let tilt = 0;
+    if (ans.ageBand === "18–30") tilt = 0.04; // 4% of equity to Stocks
+    else if (ans.ageBand === "31–45") tilt = 0.02;
+    else if (ans.ageBand === "46–60") tilt = -0.02; // toward MF
+    else if (ans.ageBand === "60+") tilt = -0.04;
+    const shift = eq * Math.abs(tilt);
+    if (tilt > 0) { // Stocks up, MF down
+      const move = Math.min(shift, base["Mutual Funds"]);
+      base.Stocks += move; base["Mutual Funds"] -= move;
+    } else if (tilt < 0) {
+      const move = Math.min(shift, base.Stocks);
+      base.Stocks -= move; base["Mutual Funds"] += move;
+    }
+  })();
+
   // Helper redistributors
   const takeFrom = (pool: Array<Asset>, want: number): number => {
     let remaining = want;
@@ -147,9 +165,12 @@ export function suggestAllocation(ans: Answers): Allocation {
     giveTo("Liquid", moved);
   }
 
-  // 6) Equity cap by drawdown tolerance
+  // 6) Equity cap by drawdown tolerance and age ceiling (use the stricter)
   const capByDD: Record<Answers["maxDrawdownTolerance"], number> = { "5%": 30, "10%": 45, "20%": 65, "30%+": 90 };
-  const eqCap = capByDD[ans.maxDrawdownTolerance];
+  const capByAge: Record<Answers["ageBand"], number> = { "18–30": 60, "31–45": 58, "46–60": 55, "60+": 50 };
+  const eqCapDD = capByDD[ans.maxDrawdownTolerance];
+  const eqCapAge = capByAge[ans.ageBand];
+  const eqCap = Math.min(eqCapDD, eqCapAge);
   let eqNow = base.Stocks + base["Mutual Funds"];
   if (eqNow > eqCap) {
     const reduce = eqNow - eqCap;
@@ -161,7 +182,7 @@ export function suggestAllocation(ans: Answers): Allocation {
     eqNow = eqCap;
   }
 
-  // 7) Nudges
+  // 7) Nudges (horizon) + age nudges
   if (ans.horizon === "Short (<3 yrs)") {
     const take = 5;
     const sFrac = base.Stocks / (base.Stocks + base["Mutual Funds"] || 1);
@@ -175,16 +196,19 @@ export function suggestAllocation(ans: Answers): Allocation {
     base["Mutual Funds"] += add * (1 - sFrac);
     base.Debt -= add;
   }
-  if (ans.ageBand === "60+") {
-    const eq = base.Stocks + base["Mutual Funds"];
-    if (eq > 50) {
-      const reduce = eq - 50;
-      const sFrac = base.Stocks / eq || 0;
-      base.Stocks -= reduce * sFrac;
-      base["Mutual Funds"] -= reduce * (1 - sFrac);
-      base.Debt += reduce;
+  // Age nudges beyond cap: small shifts if room
+  (function ageNudge(){
+    const younger = ans.ageBand === "18–30" || ans.ageBand === "31–45";
+    const older = ans.ageBand === "46–60" || ans.ageBand === "60+";
+    if (younger) {
+      let room = Math.max(0, eqCap - (base.Stocks + base["Mutual Funds"]));
+      const add = Math.min(3, room);
+      if (add > 0) { base.Debt = Math.max(0, base.Debt - add); const eq = base.Stocks + base["Mutual Funds"]; const sFrac = eq > 0 ? (base.Stocks / eq) : 0.5; base.Stocks += add * sFrac; base["Mutual Funds"] += add * (1 - sFrac); }
+    } else if (older) {
+      const take = 3;
+      const eq = base.Stocks + base["Mutual Funds"]; const sFrac = eq > 0 ? (base.Stocks / eq) : 0.5; base.Stocks = Math.max(0, base.Stocks - take * sFrac); base["Mutual Funds"] = Math.max(0, base["Mutual Funds"] - take * (1 - sFrac)); base.Debt += take;
     }
-  }
+  })();
 
   // 8) Bounds for Gold/RE
   const clampAsset = (k: Asset, min: number, max: number) => {
