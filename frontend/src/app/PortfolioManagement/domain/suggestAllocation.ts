@@ -259,38 +259,54 @@ export function suggestAllocation(ans: Answers): Allocation {
     remainingTilt -= moved;
   }
 
-  // 10) Advisor-like tilts from new inputs
-  if (ans.incomeStability === "Unstable") {
-    let moved = 0; moved += takeFrom(["Stocks", "Mutual Funds"], 3); base.Debt += moved; moved = 0; moved += takeFrom(["Stocks", "Mutual Funds", "Gold"], 2); base.Liquid += moved;
-  } else if (ans.incomeStability === "Variable") {
-    const moved = takeFrom(["Stocks", "Mutual Funds"], 2); base.Debt += moved;
-  }
-  if (ans.dependents === "3+") {
-    let moved = 0; moved += takeFrom(["Stocks", "Mutual Funds"], 3); base.Debt += moved; moved = 0; moved += takeFrom(["Stocks", "Mutual Funds", "Gold"], 1); base.Liquid += moved;
-  } else if (ans.dependents === "2") {
-    const moved = takeFrom(["Stocks", "Mutual Funds"], 2); base.Debt += moved;
-  } else if (ans.dependents === "1") {
-    const moved = takeFrom(["Stocks", "Mutual Funds"], 1); base.Debt += moved;
-  }
-  if (ans.liabilities === "High") {
-    let moved = 0; moved += takeFrom(["Stocks", "Mutual Funds"], 5); base.Debt += moved; moved = 0; moved += takeFrom(["Stocks", "Mutual Funds", "Gold"], 1); base.Liquid += moved;
-  } else if (ans.liabilities === "Moderate") {
-    const moved = takeFrom(["Stocks", "Mutual Funds"], 3); base.Debt += moved;
-  } else if (ans.liabilities === "Low") {
-    const moved = takeFrom(["Stocks", "Mutual Funds"], 1); base.Debt += moved;
-  }
-  if (ans.financialGoal === "Wealth growth") {
-    const moved = takeFrom(["Debt"], 5);
-    const eq = base.Stocks + base["Mutual Funds"]; const sFrac = eq > 0 ? (base.Stocks / eq) : 0.5; base.Stocks += moved * sFrac; base["Mutual Funds"] += moved * (1 - sFrac);
-  } else if (ans.financialGoal === "Capital preservation") {
-    let moved = 0; moved += takeFrom(["Stocks", "Mutual Funds"], 3); base.Debt += moved; moved = 0; moved += takeFrom(["Stocks", "Mutual Funds", "Debt"], 2); base.Liquid += moved;
-  } else if (ans.financialGoal === "Income generation") {
-    const moved = takeFrom(["Stocks", "Mutual Funds"], 4); base.Debt += moved;
-  } else if (ans.financialGoal === "Major purchase") {
-    const moved = takeFrom(["Stocks", "Mutual Funds", "Debt"], 4); base.Liquid += moved;
-  } else if (ans.financialGoal === "Retirement") {
-    const moved = takeFrom(["Stocks", "Mutual Funds"], 3); base.Debt += moved;
-  }
+  // 10b) Gold tilt from Debt under conservative signals (cumulative cap +4%)
+  (function goldTilt() {
+    // Skip if near-term expense (keep gold near floor)
+    if (ans.bigExpenseTimeline !== "None") return;
+    let desired = 0;
+    if (ans.volatilityComfort === "Low" || ans.riskAppetite === "Low") desired += 2;
+    if (ans.liabilities === "Moderate") desired += 1; else if (ans.liabilities === "High") desired += 2;
+    if (ans.dependents === "3+") desired += 2;
+    if (ans.financialGoal === "Capital preservation" || ans.financialGoal === "Retirement") desired += 1;
+    desired = Math.min(desired, 4);
+    if (desired <= 0) return;
+    const goldRoom = Math.max(0, 12 - base.Gold);
+    if (goldRoom <= 0) return;
+    const debtFloor = (ans.liabilities === "High" || ans.dependents === "3+") ? 20 : 15;
+    const fromDebt = Math.max(0, base.Debt - debtFloor);
+    let move = Math.min(desired, goldRoom, fromDebt);
+    if (move > 0) {
+      base.Debt -= move;
+      base.Gold += move;
+    }
+  })();
+
+  // 10c) High-capacity growth profiles: gently bias away from Gold
+  (function highCapacityGoldReduce() {
+    const hasEF = ans.emergencyFundMonthsTarget === "6";
+    const noNearTerm = ans.bigExpenseTimeline === "None";
+    const ageYoung = ans.ageBand === "18–30" || ans.ageBand === "31–45" || ans.ageBand === "46–60";
+    const longHor = ans.horizon === "Long (>7 yrs)";
+    const highCapacity = ans.riskAppetite === "High" && ageYoung && longHor && ans.liabilities !== "High" && ans.dependents !== "3+";
+    if (!(hasEF && noNearTerm && highCapacity)) return;
+    const targetFloor = 6;
+    const reducible = Math.max(0, base.Gold - targetFloor);
+    let reduce = Math.min(2, reducible);
+    if (reduce <= 0) return;
+    base.Gold -= reduce;
+    // Prefer adding to equity up to cap, else to Debt
+    let eqNow2 = base.Stocks + base["Mutual Funds"];
+    const eqRoom = Math.max(0, 60 - eqNow2);
+    if (eqRoom > 0) {
+      const addEq = Math.min(reduce, eqRoom);
+      const eqTotal = base.Stocks + base["Mutual Funds"];
+      const sFracEq = eqTotal > 0 ? (base.Stocks / eqTotal) : 0.5;
+      base.Stocks += addEq * sFracEq;
+      base["Mutual Funds"] += addEq * (1 - sFracEq);
+      reduce -= addEq;
+    }
+    if (reduce > 0) base.Debt += reduce;
+  })();
 
   // 11) Global safety caps
   let equityNow = base.Stocks + base["Mutual Funds"];
