@@ -52,6 +52,10 @@ interface AppState {
 	spendBaselineMode: "last" | "avg3" | "ytd";
 	spendSensitivity: "low" | "medium" | "high";
 
+	// Custom mode persistence
+	customDraftByPortfolio: Record<string, AllocationPlan | null>;
+	customLocksByPortfolio: Record<string, Record<string, boolean>>;
+
 	setProfile: (profile: Partial<UserProfile>) => void;
 	setQuestionAnswer: (key: string, value: any) => void;
 	setQuestionnaire: (q: Record<string, any>) => void;
@@ -76,6 +80,11 @@ interface AppState {
 	setDefaultCategoryBudget: (category: string, amount: number) => void;
 	setSpendBaselineMode: (mode: "last" | "avg3" | "ytd") => void;
 	setSpendSensitivity: (level: "low" | "medium" | "high") => void;
+
+	setCustomDraft: (portfolioId: string, plan: AllocationPlan | null) => void;
+	getCustomDraft: (portfolioId: string) => AllocationPlan | null;
+	setCustomLocks: (portfolioId: string, locks: Record<string, boolean>) => void;
+	getCustomLocks: (portfolioId: string) => Record<string, boolean>;
 }
 
 export const useApp = create<AppState>()(
@@ -97,6 +106,9 @@ export const useApp = create<AppState>()(
 			spendBaselineMode: "last",
 			spendSensitivity: "medium",
 
+			customDraftByPortfolio: {},
+			customLocksByPortfolio: {},
+
 			setProfile: (profile) => set(state => ({ profile: { ...state.profile, ...profile } })),
 			setQuestionAnswer: (key, value) => set(state => ({ questionnaire: { ...state.questionnaire, [key]: value } })),
 			setQuestionnaire: (q) => set(() => ({ questionnaire: { ...q } })),
@@ -108,7 +120,7 @@ export const useApp = create<AppState>()(
 			deleteHolding: (id) => set(state => ({ holdings: state.holdings.filter(h => h.id !== id) })),
 			setDriftTolerancePct: (v) => set(() => ({ driftTolerancePct: Math.min(10, Math.max(3, Math.round(v))) })),
 			setEmergencyMonths: (v) => set(() => ({ emergencyMonths: Math.min(12, Math.max(3, Math.round(v))) })),
-			reset: () => set(() => ({ profile: { name: "", currency: "INR" }, questionnaire: { preferredAssets: [] }, plan: null, holdings: [], driftTolerancePct: 5, emergencyMonths: 6, expenses: [], categoryMemory: {}, expenseReminderDaily: false, categoryBudgets: {}, defaultCategoryBudgets: {} })),
+			reset: () => set(() => ({ profile: { name: "", currency: "INR" }, questionnaire: { preferredAssets: [] }, plan: null, holdings: [], driftTolerancePct: 5, emergencyMonths: 6, expenses: [], categoryMemory: {}, expenseReminderDaily: false, categoryBudgets: {}, defaultCategoryBudgets: {}, customDraftByPortfolio: {}, customLocksByPortfolio: {} })),
 
 			addExpense: (e) => set(state => ({ expenses: [e, ...state.expenses] })),
 			setExpenses: (e) => set(() => ({ expenses: [...e] })),
@@ -129,6 +141,11 @@ export const useApp = create<AppState>()(
 			setDefaultCategoryBudget: (category, amount) => set(state => ({ defaultCategoryBudgets: { ...state.defaultCategoryBudgets, [category]: Math.max(0, Number(amount) || 0) } })),
 			setSpendBaselineMode: (mode) => set(() => ({ spendBaselineMode: mode })),
 			setSpendSensitivity: (level) => set(() => ({ spendSensitivity: level })),
+
+			setCustomDraft: (portfolioId, plan) => set(state => ({ customDraftByPortfolio: { ...state.customDraftByPortfolio, [portfolioId]: plan } })),
+			getCustomDraft: (portfolioId) => (get().customDraftByPortfolio?.[portfolioId] || null),
+			setCustomLocks: (portfolioId, locks) => set(state => ({ customLocksByPortfolio: { ...state.customLocksByPortfolio, [portfolioId]: { ...(state.customLocksByPortfolio?.[portfolioId]||{}), ...locks } } })),
+			getCustomLocks: (portfolioId) => (get().customLocksByPortfolio?.[portfolioId] || {}),
 		}),
 		{
 			name: "finsight-v1",

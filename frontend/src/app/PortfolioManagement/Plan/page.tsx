@@ -14,7 +14,7 @@ import { pruneQuestionnaire, stableAnswersSig } from "../domain/answersUtil";
 import { advisorTune } from "../domain/advisorTune";
 
 export default function PlanPage() {
-	const { plan, setPlan, activePortfolioId, questionnaire, setQuestionAnswer } = useApp() as any;
+	const { plan, setPlan, activePortfolioId, questionnaire, setQuestionAnswer, getCustomDraft, setCustomDraft, getCustomLocks, setCustomLocks } = useApp() as any;
 	const router = useRouter();
 	const [local, setLocal] = useState<any | null>(plan || null);
 	const [aiLoading, setAiLoading] = useState(false);
@@ -28,7 +28,7 @@ export default function PlanPage() {
 	const [aiSummary, setAiSummary] = useState<string | undefined>(undefined);
 	const [answersDrift, setAnswersDrift] = useState(false);
 	const [mode, setMode] = useState<'advisor'|'custom'>('advisor');
-	const [customLocks, setCustomLocks] = useState<Record<string, boolean>>({});
+	const [customLocks, setLocalCustomLocks] = useState<Record<string, boolean>>({});
 
 	useEffect(() => {
 		if (!toast) return;
@@ -74,8 +74,15 @@ export default function PlanPage() {
 			const baseline = buildPlan(questionnaire);
 			setAiSummary(makeSummary(baseline, (plan as any).buckets));
 		}
-		// Clear any stale locks when loading a saved plan
-		setCustomLocks({});
+		// Load persisted custom draft/locks if in custom mode
+		try {
+			if (origin === 'custom' && activePortfolioId) {
+				const draft = getCustomDraft(activePortfolioId);
+				if (draft) setLocal(draft);
+				const locks = getCustomLocks(activePortfolioId);
+				if (locks) setLocalCustomLocks(locks);
+			}
+		} catch {}
 	}, [plan]);
 
 	function normalizeCustom(next: any, changedIndex: number, newPct: number) {
@@ -162,7 +169,7 @@ export default function PlanPage() {
 					<div className="text-xs mr-2">
 						Mode:
 						<Button variant="outline" onClick={()=>{ setMode('advisor'); setAiViewOn(false); setLocal(buildPlan(questionnaire)); }} disabled={mode==='advisor'} className="ml-1">Advisor</Button>
-						<Button variant="outline" onClick={()=>{ setMode('custom'); setAiViewOn(false); }} disabled={mode==='custom'} className="ml-1">Custom</Button>
+						<Button variant="outline" onClick={()=>{ setMode('custom'); setAiViewOn(false); try { if (activePortfolioId) { const draft = getCustomDraft(activePortfolioId); if (draft) setLocal(draft); const locks = getCustomLocks(activePortfolioId); if (locks) setLocalCustomLocks(locks); } } catch {} }} disabled={mode==='custom'} className="ml-1">Custom</Button>
 					</div>
 					<Button variant="outline" leftIcon={<RotateCcw className="h-4 w-4 text-rose-600" />} onClick={()=> { 
 						const snap = (plan as any)?.answersSnapshot || {}; 
@@ -189,7 +196,8 @@ export default function PlanPage() {
 						const planToSave = { ...(local||{}), origin, offPolicy: mode==='custom', mode, answersSig: makeAnswersSig(snapshot), answersSnapshot: snapshot, policyVersion: 'v1' };
 						await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: activePortfolioId, plan: planToSave }) });
 						setPlan(planToSave);
-						setCustomLocks({});
+						// persist custom draft/locks if custom
+						try { if (mode==='custom' && activePortfolioId) { setCustomDraft(activePortfolioId, planToSave); setCustomLocks(activePortfolioId, customLocks || {}); } } catch {}
 						setToast({ msg: 'Plan saved', type: 'success' });
 					}}>Save Plan</Button>
 				</div>
@@ -249,6 +257,7 @@ export default function PlanPage() {
 					if (mode === 'custom') {
 						const tunedCustom = normalizeCustom(next, idx, newPct);
 						setLocal(tunedCustom);
+						try { if (activePortfolioId) setCustomDraft(activePortfolioId, tunedCustom); } catch {}
 						return;
 					}
 					const changedClass = next.buckets[idx].class as any;
@@ -298,7 +307,7 @@ export default function PlanPage() {
 				mode={mode}
 				aiDisabled={mode==='custom'}
 				locks={customLocks}
-				onToggleLock={(cls:string)=> setCustomLocks(prev=> ({ ...(prev||{}), [cls]: !prev?.[cls] }))}
+				onToggleLock={(cls:string)=> { setLocalCustomLocks(prev=> ({ ...(prev||{}), [cls]: !prev?.[cls] })); try { if (activePortfolioId) setCustomLocks(activePortfolioId, { [cls]: !customLocks?.[cls] }); } catch {} }}
 			/>
 			{toast && (
 				<div className={`fixed bottom-4 right-4 z-50 rounded-md border px-3 py-2 text-sm shadow-lg ${toast.type==='success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : toast.type==='info' ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
