@@ -156,10 +156,10 @@ function roundWhole(obj: Record<AllowedClass, number>): Record<AllowedClass, num
 // Comfort zone utilities
 function getToleranceFromRiskProfile(risk: string): number {
 	const r = String(risk || "").toLowerCase();
-	if (r.includes("conservative")) return 0.05;
-	if (r.includes("aggressive")) return 0.15;
-	if (r.includes("balanced") || r.includes("moderate")) return 0.10;
-	return 0.10;
+	if (r.includes("low") || r.includes("conservative")) return 0.03; // ±3%
+	if (r.includes("high") || r.includes("aggressive")) return 0.10; // ±10%
+	if (r.includes("moderate") || r.includes("balanced")) return 0.07; // ±7%
+	return 0.07;
 }
 
 function mapFromAnyBuckets(buckets: Array<{ class: string; pct: number }>): Record<AllowedClass, number> {
@@ -240,12 +240,20 @@ export async function POST(req: NextRequest) {
 		const advisorSafe = normalizeTo100(advisor);
 		const aiSuggestion = rawAiNorm;
 		const tolPct = Math.round(getToleranceFromRiskProfile(riskProfile) * 100);
+		// Build per-asset comfort range around baseline for UI when AI view is ON
+		const comfortRanges: Record<AllowedClass, [number, number]> = {} as any;
+		(ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).forEach(k => {
+			const base = advisor[k] || 0;
+			const min = Math.max(0, base - base * (tolPct/100));
+			const max = Math.min(100, base + base * (tolPct/100));
+			comfortRanges[k] = [Math.round(min), Math.round(max)];
+		});
 		const explanation = `Applied comfort zone ±${tolPct}% around baseline, then blended with AI via ±${cap}% cap/midpoint. Adjustments: ${notes.join("; ")}.`;
 
 		return NextResponse.json({
 			aiPlan: {
 				riskLevel: baseline?.riskLevel || "Moderate",
-				buckets: (ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).map(cls => ({ class: cls, pct: finalInt[cls], range: [0, 100], riskCategory: "", notes: "" }))
+				buckets: (ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).map(cls => ({ class: cls, pct: finalInt[cls], range: comfortRanges[cls], riskCategory: "", notes: "" }))
 			},
 			rationale: ai.rationale || "Refined based on your risk and preferences.",
 			confidence: typeof ai.confidence === "number" ? ai.confidence : undefined,
