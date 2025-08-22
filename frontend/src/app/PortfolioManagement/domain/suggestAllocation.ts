@@ -34,6 +34,7 @@ function interpTri(score: number, a0: number, a50: number, a100: number): number
 }
 
 function largestRemainderRound(input: Allocation): Allocation {
+  const order: Asset[] = ["Stocks","Mutual Funds","Gold","Real Estate","Debt","Liquid"];
   const keys = Object.keys(input) as Asset[];
   const floors: Allocation = { Stocks: 0, "Mutual Funds": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 };
   const remainders: Array<{ key: Asset; remainder: number }> = [];
@@ -46,7 +47,7 @@ function largestRemainderRound(input: Allocation): Allocation {
     remainders.push({ key: k, remainder: v - f });
   }
   let leftover = 100 - totalFloor;
-  remainders.sort((x, y) => y.remainder - x.remainder);
+  remainders.sort((x, y) => (y.remainder - x.remainder) || (order.indexOf(x.key) - order.indexOf(y.key)));
   for (let i = 0; i < remainders.length && leftover > 0; i++) {
     floors[remainders[i].key] += 1;
     leftover--;
