@@ -31,7 +31,9 @@ export default function Questionnaire() {
 					if (pid) (useApp.getState() as any).setActivePortfolio(pid);
 				}
 				if (pid) {
-					await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: pid, plan: allocation }) });
+					const answersSig = JSON.stringify({ q: questionnaire });
+					const planToSave = { ...allocation, origin: 'engine', answersSig, policyVersion: 'v1' };
+					await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: pid, plan: planToSave }) });
 				}
 			} catch {}
 			router.push("/PortfolioManagement/Plan");
