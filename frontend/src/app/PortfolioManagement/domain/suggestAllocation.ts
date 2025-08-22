@@ -5,6 +5,10 @@ export type Answers = {
   emergencyFundMonthsTarget: "3" | "6" | "9" | "12";
   liquidityPreference: "High" | "Medium" | "Low";
   incomeVsExpenses: "Surplus" | "Break-even" | "Deficit";
+  incomeStability: "Stable" | "Variable" | "Unstable";
+  dependents: "None" | "1" | "2" | "3+";
+  liabilities: "None" | "Low" | "Moderate" | "High";
+  financialGoal: "Wealth growth" | "Capital preservation" | "Income generation" | "Major purchase" | "Retirement";
   ageBand: "18–30" | "31–45" | "46–60" | "60+";
   riskAppetite: "Low" | "Moderate" | "High";
   volatilityComfort: "Low" | "Medium" | "High";
@@ -219,7 +223,66 @@ export function suggestAllocation(ans: Answers): Allocation {
     remainingTilt -= moved;
   }
 
-  // 10) Final clamp/normalize/round
+  // 10) Advisor-like tilts from new inputs
+  // Income stability: shift toward safety if variable/unstable
+  if (ans.incomeStability === "Unstable") {
+    let moved = 0; moved += takeFrom(["Stocks", "Mutual Funds"], 3); base.Debt += moved; moved = 0; moved += takeFrom(["Stocks", "Mutual Funds", "Gold"], 2); base.Liquid += moved;
+  } else if (ans.incomeStability === "Variable") {
+    const moved = takeFrom(["Stocks", "Mutual Funds"], 2); base.Debt += moved;
+  }
+  // Dependents: more dependents -> more Debt/Liquid
+  if (ans.dependents === "3+") {
+    let moved = 0; moved += takeFrom(["Stocks", "Mutual Funds"], 3); base.Debt += moved; moved = 0; moved += takeFrom(["Stocks", "Mutual Funds", "Gold"], 1); base.Liquid += moved;
+  } else if (ans.dependents === "2") {
+    const moved = takeFrom(["Stocks", "Mutual Funds"], 2); base.Debt += moved;
+  } else if (ans.dependents === "1") {
+    const moved = takeFrom(["Stocks", "Mutual Funds"], 1); base.Debt += moved;
+  }
+  // Liabilities: higher -> more Debt/Liquid
+  if (ans.liabilities === "High") {
+    let moved = 0; moved += takeFrom(["Stocks", "Mutual Funds"], 5); base.Debt += moved; moved = 0; moved += takeFrom(["Stocks", "Mutual Funds", "Gold"], 1); base.Liquid += moved;
+  } else if (ans.liabilities === "Moderate") {
+    const moved = takeFrom(["Stocks", "Mutual Funds"], 3); base.Debt += moved;
+  } else if (ans.liabilities === "Low") {
+    const moved = takeFrom(["Stocks", "Mutual Funds"], 1); base.Debt += moved;
+  }
+  // Goals: growth/preservation/income/purchase/retirement
+  if (ans.financialGoal === "Wealth growth") {
+    const moved = takeFrom(["Debt"], 5); // fund from Debt
+    const eq = base.Stocks + base["Mutual Funds"]; const sFrac = eq > 0 ? (base.Stocks / eq) : 0.5; base.Stocks += moved * sFrac; base["Mutual Funds"] += moved * (1 - sFrac);
+  } else if (ans.financialGoal === "Capital preservation") {
+    let moved = 0; moved += takeFrom(["Stocks", "Mutual Funds"], 3); base.Debt += moved; moved = 0; moved += takeFrom(["Stocks", "Mutual Funds", "Debt"], 2); base.Liquid += moved;
+  } else if (ans.financialGoal === "Income generation") {
+    const moved = takeFrom(["Stocks", "Mutual Funds"], 4); base.Debt += moved;
+  } else if (ans.financialGoal === "Major purchase") {
+    const moved = takeFrom(["Stocks", "Mutual Funds", "Debt"], 4); base.Liquid += moved;
+  } else if (ans.financialGoal === "Retirement") {
+    const moved = takeFrom(["Stocks", "Mutual Funds"], 3); base.Debt += moved;
+  }
+
+  // 11) Global safety caps
+  // Equity cap 60%
+  let equityNow = base.Stocks + base["Mutual Funds"];
+  if (equityNow > 60) {
+    const reduce = equityNow - 60;
+    const sFrac = base.Stocks / equityNow || 0;
+    base.Stocks -= reduce * sFrac;
+    base["Mutual Funds"] -= reduce * (1 - sFrac);
+    base.Debt += reduce;
+    equityNow = 60;
+  }
+  // Debt cap 70%
+  if (base.Debt > 70) {
+    const excess = base.Debt - 70;
+    base.Debt -= excess;
+    base.Liquid += excess; // park in Liquid
+  }
+
+  // Re-apply bounds for Gold/RE just in case
+  clampAsset("Gold", 3, 12);
+  clampAsset("Real Estate", 0, 7);
+
+  // 12) Final clamp/normalize/round
   const sum = Object.values(base).reduce((a, b) => a + b, 0) || 1;
   const normalized: Allocation = {
     Stocks: (base.Stocks * 100) / sum,

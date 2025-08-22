@@ -30,6 +30,30 @@ export const questions = [
     helperText: "A consistent surplus can support growth assets; deficits call for more defensive mix."
   },
   {
+    key: "incomeStability",
+    text: "How stable is your income?",
+    options: ["Stable", "Variable", "Unstable"],
+    helperText: "Less stable income warrants a more defensive allocation."
+  },
+  {
+    key: "dependents",
+    text: "How many financial dependents do you have?",
+    options: ["None", "1", "2", "3+"],
+    helperText: "More dependents generally call for higher safety allocation."
+  },
+  {
+    key: "liabilities",
+    text: "What is your current liability level?",
+    options: ["None", "Low", "Moderate", "High"],
+    helperText: "Higher liabilities increase the need for Debt/Liquid."
+  },
+  {
+    key: "financialGoal",
+    text: "What best describes your primary goal?",
+    options: ["Wealth growth", "Capital preservation", "Income generation", "Major purchase", "Retirement"],
+    helperText: "Your goal helps tilt between equity, income, and liquidity."
+  },
+  {
     key: "ageBand",
     text: "What is your age band?",
     options: ["18–30", "31–45", "46–60", "60+"],
