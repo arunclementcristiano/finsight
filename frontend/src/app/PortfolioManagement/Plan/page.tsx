@@ -9,7 +9,7 @@ import QuestionCard from "../components/QuestionCard";
 import { questions } from "../domain/questionnaire";
 import { buildPlan } from "../domain/allocationEngine";
 import { Modal } from "../../components/Modal";
-import { RotateCcw, Save as SaveIcon } from "lucide-react";
+import { RotateCcw, Save as SaveIcon, AlertTriangle } from "lucide-react";
 
 export default function PlanPage() {
 	const { plan, setPlan, activePortfolioId, questionnaire, setQuestionAnswer } = useApp() as any;
@@ -91,10 +91,13 @@ export default function PlanPage() {
 	return (
 		<div className="max-w-4xl mx-auto space-y-4">
 			{answersDrift ? (
-				<div className="rounded-md border border-amber-300 bg-amber-50 text-amber-800 px-3 py-2 text-xs flex items-center justify-between">
-					<div>Answers changed since last save. Save Plan to keep changes, or reset answers to revert.</div>
+				<div className="rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs flex items-center justify-between">
 					<div className="flex items-center gap-2">
-						<Button variant="outline" onClick={async ()=>{
+						<AlertTriangle className="h-4 w-4 text-amber-600" />
+						<span className="text-amber-800">Unsaved answers detected. We recalculated your plan. Save to keep, or reset to revert.</span>
+					</div>
+					<div className="flex items-center gap-2">
+						<Button size="sm" variant="outline" leftIcon={<SaveIcon className="h-3.5 w-3.5" />} onClick={async ()=>{
 							if (!activePortfolioId || !local) return;
 							const origin = aiViewOn ? 'ai' : 'engine';
 							const planToSave = { ...(local||{}), origin, answersSig: makeAnswersSig(questionnaire), answersSnapshot: questionnaire, policyVersion: 'v1' };
@@ -103,7 +106,7 @@ export default function PlanPage() {
 							setAnswersDrift(false);
 							setToast({ msg: 'Plan saved', type: 'success' });
 						}}>Save Plan</Button>
-						<Button variant="outline" onClick={()=>{
+						<Button size="sm" variant="outline" leftIcon={<RotateCcw className="h-3.5 w-3.5" />} onClick={()=>{
 							const snap = (plan as any)?.answersSnapshot || {};
 							Object.keys(snap).forEach(k=> setQuestionAnswer(k, (snap as any)[k]));
 							const allocation = buildPlan(snap);
