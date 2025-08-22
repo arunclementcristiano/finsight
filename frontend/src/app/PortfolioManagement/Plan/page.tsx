@@ -55,7 +55,9 @@ export default function PlanPage() {
 
 	useEffect(() => {
 		setLocal(plan || null);
-		const on = !!(plan && (plan as any).origin === 'ai');
+		const origin = (plan as any)?.origin;
+		setMode(origin === 'custom' ? 'custom' : 'advisor');
+		const on = !!(plan && origin === 'ai');
 		setAiViewOn(on);
 		const sigSaved = (plan as any)?.answersSig;
 		const sigNow = makeAnswersSig(questionnaire);
@@ -72,6 +74,8 @@ export default function PlanPage() {
 			const baseline = buildPlan(questionnaire);
 			setAiSummary(makeSummary(baseline, (plan as any).buckets));
 		}
+		// Clear any stale locks when loading a saved plan
+		setCustomLocks({});
 	}, [plan]);
 
 	function normalizeCustom(next: any, changedIndex: number, newPct: number) {
@@ -185,6 +189,7 @@ export default function PlanPage() {
 						const planToSave = { ...(local||{}), origin, offPolicy: mode==='custom', mode, answersSig: makeAnswersSig(snapshot), answersSnapshot: snapshot, policyVersion: 'v1' };
 						await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: activePortfolioId, plan: planToSave }) });
 						setPlan(planToSave);
+						setCustomLocks({});
 						setToast({ msg: 'Plan saved', type: 'success' });
 					}}>Save Plan</Button>
 				</div>
