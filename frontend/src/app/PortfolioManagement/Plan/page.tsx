@@ -96,7 +96,7 @@ export default function PlanPage() {
 					{answersDrift ? (
 						<span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-1 text-[11px]">
 							<span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
-							<span className="text-amber-600">Unsaved answers. Plan reflects current edits.</span>
+							<span className="text-amber-600">Profile edits not saved — plan recalculated</span>
 						</span>
 					) : null}
 				</div>
