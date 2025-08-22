@@ -86,24 +86,27 @@ export default function PlanPage() {
 		const unlockedIdx = buckets.map((b:any, i:number)=> (!lockedSet.has(b.class) && i!==changedIndex) ? i : -1).filter(i=> i>=0);
 		const sumUnlockedOthers = unlockedIdx.reduce((s:number,i:number)=> s + (buckets[i].pct||0), 0);
 		// Target for others
-		const targetOthers = Math.max(0, 100 - newPct - sumLocked);
-		if (unlockedIdx.length === 0 || sumUnlockedOthers <= 0) {
-			// No room to adjust others; clamp changed to keep total 100
+		let targetOthers = Math.max(0, 100 - newPct - sumLocked);
+		if (unlockedIdx.length === 0) {
+			// No adjustable others: scale changed back to fit
 			const allowed = Math.max(0, 100 - sumLocked);
 			buckets[changedIndex] = { ...buckets[changedIndex], pct: allowed };
-			// Build rounded result preserving locked values
-			const rounded = order.map((cls, i)=> ({ class: cls, pct: Math.round(buckets[i].pct||0) }));
-			return { ...(next||{}), buckets: rounded };
+			targetOthers = 100 - allowed - sumLocked;
 		}
-		// Scale only unlocked others proportionally
-		const scale = targetOthers / sumUnlockedOthers;
-		const cont = buckets.map((b:any, i:number)=> {
-			if (i===changedIndex) return { class: b.class as string, v: newPct };
-			if (lockedSet.has(b.class)) return { class: b.class as string, v: b.pct||0 };
-			return { class: b.class as string, v: (b.pct||0) * scale };
-		});
+		// If sumUnlockedOthers zero but we have more than one unlocked including changed, scale all unlocked including changed
+		if (sumUnlockedOthers <= 0 && unlockedIdx.length > 0) {
+			const unlockedAll = buckets.map((b:any,i:number)=> (!lockedSet.has(b.class)) ? i : -1).filter(i=> i>=0);
+			const sumUnlockedAll = unlockedAll.reduce((s:number,i:number)=> s + (buckets[i].pct||0), 0) || 1;
+			const scaleAll = (100 - sumLocked) / sumUnlockedAll;
+			for (const i of unlockedAll) buckets[i] = { ...buckets[i], pct: (buckets[i].pct||0) * scaleAll };
+		}
+		else if (sumUnlockedOthers > 0) {
+			const scale = targetOthers / sumUnlockedOthers;
+			for (const i of unlockedIdx) buckets[i] = { ...buckets[i], pct: (buckets[i].pct||0) * scale };
+		}
 		// Largest remainder rounding preserving locked exact integers
-		const floors = cont.map((x:any, i:number)=> {
+		const cont = buckets.map((b:any)=> ({ class: b.class as string, v: b.pct||0 }));
+		const floors = cont.map((x:any)=> {
 			const locked = lockedSet.has(x.class);
 			const fv = locked ? Math.round(x.v) : Math.floor(x.v);
 			const rem = locked ? -1 : (x.v - Math.floor(x.v));

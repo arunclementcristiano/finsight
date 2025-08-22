@@ -84,7 +84,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                       <td className="py-2 px-3">{b.notes || (b.class === 'Stocks' ? 'Growth focus' : b.class === 'Mutual Funds' ? 'Diversified equity' : b.class === 'Debt' ? 'Stability & income' : b.class === 'Liquid' ? 'Emergency buffer' : b.class === 'Gold' ? 'Inflation hedge' : b.class === 'Real Estate' ? 'Long-term asset' : '')}</td>
                       <td className="py-2 px-3">
                         <div className="flex items-center gap-2">
-                          <input type="range" min={0} max={100} value={b.pct} disabled={!!aiViewOn} onChange={(e)=>{
+                          <input type="range" min={0} max={100} value={b.pct} disabled={!!aiViewOn || (mode==='custom' && !!locks?.[b.class])} onChange={(e)=>{
                             const v = Math.max(0, Math.min(100, Number(e.target.value)||0));
                             if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
                           }} />
