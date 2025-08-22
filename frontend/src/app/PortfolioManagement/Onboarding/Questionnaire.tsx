@@ -32,7 +32,7 @@ export default function Questionnaire() {
 				}
 				if (pid) {
 					const answersSig = JSON.stringify({ q: questionnaire });
-					const planToSave = { ...allocation, origin: 'engine', answersSig, policyVersion: 'v1' };
+					const planToSave = { ...allocation, origin: 'engine', answersSig, answersSnapshot: questionnaire, policyVersion: 'v1' };
 					await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: pid, plan: planToSave }) });
 				}
 			} catch {}
