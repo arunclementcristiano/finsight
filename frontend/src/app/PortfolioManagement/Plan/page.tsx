@@ -55,7 +55,15 @@ export default function PlanPage() {
 		setAiViewOn(on);
 		const sigSaved = (plan as any)?.answersSig;
 		const sigNow = makeAnswersSig(questionnaire);
-		setAnswersDrift(!!(sigSaved && sigNow && sigSaved !== sigNow));
+		const driftNow = !!(sigSaved && sigNow && sigSaved !== sigNow);
+		setAnswersDrift(driftNow);
+		if (driftNow) {
+			const allocation = buildPlan(questionnaire);
+			setLocal(allocation);
+			setAiViewOn(false);
+			setAiSummary(undefined);
+			return;
+		}
 		if (on && sigSaved && sigSaved === sigNow && (plan as any)?.buckets) {
 			const baseline = buildPlan(questionnaire);
 			setAiSummary(makeSummary(baseline, (plan as any).buckets));
@@ -84,9 +92,17 @@ export default function PlanPage() {
 		<div className="max-w-4xl mx-auto space-y-4">
 			{answersDrift ? (
 				<div className="rounded-md border border-amber-300 bg-amber-50 text-amber-800 px-3 py-2 text-xs flex items-center justify-between">
-					<div>Answers changed since last save. Recalculate plan to reflect updates or reset answers.</div>
+					<div>Answers changed since last save. Save Plan to keep changes, or reset answers to revert.</div>
 					<div className="flex items-center gap-2">
-						<Button variant="outline" onClick={()=>{ const allocation = buildPlan(questionnaire); setLocal(allocation); setAiViewOn(false); setAiSummary(undefined); setAnswersDrift(false); }}>Recalculate</Button>
+						<Button variant="outline" onClick={async ()=>{
+							if (!activePortfolioId || !local) return;
+							const origin = aiViewOn ? 'ai' : 'engine';
+							const planToSave = { ...(local||{}), origin, answersSig: makeAnswersSig(questionnaire), answersSnapshot: questionnaire, policyVersion: 'v1' };
+							await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: activePortfolioId, plan: planToSave }) });
+							setPlan(planToSave);
+							setAnswersDrift(false);
+							setToast({ msg: 'Plan saved', type: 'success' });
+						}}>Save Plan</Button>
 						<Button variant="outline" onClick={()=>{
 							const snap = (plan as any)?.answersSnapshot || {};
 							Object.keys(snap).forEach(k=> setQuestionAnswer(k, (snap as any)[k]));
