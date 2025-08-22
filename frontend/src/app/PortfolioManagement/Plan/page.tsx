@@ -91,9 +91,12 @@ export default function PlanPage() {
 	return (
 		<div className="max-w-4xl mx-auto space-y-4">
 			{answersDrift ? (
-				<div className="rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs flex items-center gap-2">
-					<AlertTriangle className="h-4 w-4 text-amber-600" />
-					<span className="text-amber-800">Unsaved answers detected. We recalculated your plan. Use Save Plan to keep changes, or Reset if you wish to revert.</span>
+				<div className="relative overflow-hidden rounded-xl border border-amber-200/70 bg-amber-50/70 dark:bg-amber-950/20 px-3 py-2 text-xs flex items-center gap-3 shadow-sm">
+					<div className="absolute left-0 top-0 h-full w-1 bg-amber-400/70"></div>
+					<span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-700 ring-1 ring-amber-200">
+						<AlertTriangle className="h-3 w-3" />
+					</span>
+					<span className="text-amber-900 dark:text-amber-100">Unsaved answers detected. We recalculated your plan. Use Save Plan to keep changes, or Reset if you wish to revert.</span>
 				</div>
 			) : null}
 			<div className="flex items-center justify-between">
