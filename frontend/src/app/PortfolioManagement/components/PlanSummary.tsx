@@ -6,13 +6,13 @@ import { useApp } from "../../store";
 import { computeRebalance } from "../domain/rebalance";
 import { LineChart, Layers, Banknote, Coins, Home, Droplet, Edit3, RefreshCw, Sparkles } from "lucide-react";
 
-export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, onBuildBaseline, onRefine }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void; onEditAnswers?: () => void; onBuildBaseline?: () => void; onRefine?: () => void }) {
+export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, onBuildBaseline, onRefine, aiViewOn, onToggleAiView, aiLoading, aiExplanation }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void; onEditAnswers?: () => void; onBuildBaseline?: () => void; onRefine?: () => void; aiViewOn?: boolean; onToggleAiView?: () => void; aiLoading?: boolean; aiExplanation?: string }) {
   const { holdings, driftTolerancePct } = useApp();
 
   const kpis = useMemo(() => {
     if (!plan) return { equity: 0, defensive: 0, satellite: 0 };
     const byClass = new Map<string, number>();
-    for (const b of plan.buckets) byClass.set(b.class, (byClass.get(b.class) || 0) + b.pct);
+    for (const b of (plan?.buckets||[])) byClass.set(b.class, (byClass.get(b.class) || 0) + b.pct);
     const equity = (byClass.get("Stocks") || 0) + (byClass.get("Mutual Funds") || 0);
     const defensive = (byClass.get("Debt") || 0) + (byClass.get("Liquid") || 0);
     const satellite = (byClass.get("Gold") || 0) + (byClass.get("Real Estate") || 0);
@@ -50,12 +50,19 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
             <div className="flex items-center gap-2">
               <Button variant="outline" leftIcon={<Edit3 className="h-4 w-4 text-sky-600" />} onClick={onEditAnswers}>Adjust Profile</Button>
               <Button variant="outline" leftIcon={<RefreshCw className="h-4 w-4 text-indigo-600" />} onClick={onBuildBaseline}>Recalculate Plan</Button>
-              <Button variant="outline" leftIcon={<Sparkles className="h-4 w-4 text-amber-500" />} onClick={onRefine}>Refine with AI</Button>
+              <Button variant="outline" leftIcon={<Sparkles className="h-4 w-4 text-amber-500" />} onClick={onRefine}>{aiLoading ? 'Refining…' : 'Refine with AI'}</Button>
+              <div className="inline-flex items-center gap-2 ml-2">
+                <span className="text-[11px] text-muted-foreground">AI view</span>
+                <button type="button" onClick={onToggleAiView} disabled={!!aiLoading} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${aiViewOn?"bg-indigo-600":"bg-muted"}`}>
+                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white dark:bg-zinc-900 shadow transition-transform ${aiViewOn?"translate-x-5":"translate-x-1"}`}></span>
+                </button>
+              </div>
             </div>
           </div>
         </CardHeader>
         <CardContent className="pt-0">
           {plan ? (
+            <>
             <div className="rounded-xl border border-border overflow-auto max-h-72">
               <table className="w-full text-left text-xs">
                 <thead className="bg-card sticky top-0 z-10">
@@ -77,7 +84,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                       <td className="py-2 px-3">{b.riskCategory || (b.class === 'Stocks' || b.class === 'Mutual Funds' ? 'Core' : (b.class === 'Gold' || b.class === 'Real Estate' ? 'Satellite' : (b.class === 'Debt' || b.class === 'Liquid' ? 'Defensive' : '')))}</td>
                       <td className="py-2 px-3">{b.notes || (b.class === 'Stocks' ? 'Growth focus' : b.class === 'Mutual Funds' ? 'Diversified equity' : b.class === 'Debt' ? 'Stability & income' : b.class === 'Liquid' ? 'Emergency buffer' : b.class === 'Gold' ? 'Inflation hedge' : b.class === 'Real Estate' ? 'Long-term asset' : '')}</td>
                       <td className="py-2 px-3">
-                        <input type="range" min={0} max={100} value={b.pct} onChange={(e)=>{
+                        <input type="range" min={0} max={100} value={b.pct} disabled={!!aiViewOn} onChange={(e)=>{
                           const v = Math.max(0, Math.min(100, Number(e.target.value)||0));
                           if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
                         }} />
@@ -87,6 +94,10 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                 </tbody>
               </table>
             </div>
+            {aiViewOn && aiExplanation ? (
+              <div className="mt-2 text-xs text-muted-foreground">{aiExplanation}</div>
+            ) : null}
+            </>
           ) : (
             <div className="text-muted-foreground text-sm">No plan yet.</div>
           )}
