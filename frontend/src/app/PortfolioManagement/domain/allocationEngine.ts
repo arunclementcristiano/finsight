@@ -145,6 +145,20 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
   // Compute whole-number allocation using the spec-driven engine
   const alloc = suggestAllocation(ans);
 
+  // De-risk if insurance coverage is missing: shift ~4% from equity to safety
+  try {
+    const hasInsurance = String(q?.insuranceCoverage || "Yes").toLowerCase() === "yes";
+    if (!hasInsurance) {
+      const eq = (alloc as any).Stocks + (alloc as any)["Mutual Funds"];
+      const reduce = Math.min(4, Math.max(0, eq));
+      const sFrac = eq > 0 ? ((alloc as any).Stocks / eq) : 0.5;
+      (alloc as any).Stocks = Math.max(0, (alloc as any).Stocks - reduce * sFrac);
+      (alloc as any)["Mutual Funds"] = Math.max(0, (alloc as any)["Mutual Funds"] - reduce * (1 - sFrac));
+      (alloc as any).Debt = Math.min(100, (alloc as any).Debt + 3);
+      (alloc as any).Liquid = Math.min(100, (alloc as any).Liquid + 1);
+    }
+  } catch {}
+
   // Risk score for display/ranges
   const mapRA: Record<Answers["riskAppetite"], number> = { Low: 20, Moderate: 50, High: 80 };
   const mapVol: Record<Answers["volatilityComfort"], number> = { Low: 20, Medium: 50, High: 80 } as any;
