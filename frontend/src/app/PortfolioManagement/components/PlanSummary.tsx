@@ -6,7 +6,7 @@ import { useApp } from "../../store";
 import { computeRebalance } from "../domain/rebalance";
 import { LineChart, Layers, Banknote, Coins, Home, Droplet, Edit3, RefreshCw } from "lucide-react";
 
-export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, onBuildBaseline, aiViewOn, onToggleAiView, aiLoading, aiExplanation, aiSummary }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void; onEditAnswers?: () => void; onBuildBaseline?: () => void; aiViewOn?: boolean; onToggleAiView?: () => void; aiLoading?: boolean; aiExplanation?: string; aiSummary?: string }) {
+export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, onBuildBaseline, aiViewOn, onToggleAiView, aiLoading, aiExplanation, aiSummary, mode, aiDisabled }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void; onEditAnswers?: () => void; onBuildBaseline?: () => void; aiViewOn?: boolean; onToggleAiView?: () => void; aiLoading?: boolean; aiExplanation?: string; aiSummary?: string; mode?: 'advisor'|'custom'; aiDisabled?: boolean }) {
   const { holdings, driftTolerancePct } = useApp();
 
   const kpis = useMemo(() => {
@@ -49,10 +49,10 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" leftIcon={<Edit3 className="h-4 w-4 text-sky-600" />} onClick={onEditAnswers}>Adjust Profile</Button>
-              <Button variant="outline" leftIcon={<RefreshCw className="h-4 w-4 text-indigo-600" />} onClick={onBuildBaseline}>Recalculate Plan</Button>
+              <Button variant="outline" leftIcon={<RefreshCw className="h-4 w-4 text-indigo-600" />} onClick={onBuildBaseline} disabled={mode==='custom'}>Recalculate Plan</Button>
               <div className="inline-flex items-center gap-2 ml-2">
                 <span className="text-[11px] text-muted-foreground">AI view</span>
-                <button type="button" onClick={onToggleAiView} disabled={!!aiLoading} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${aiViewOn?"bg-indigo-600":"bg-muted"}`}>
+                <button type="button" onClick={onToggleAiView} disabled={!!aiLoading || !!aiDisabled || mode==='custom'} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${aiViewOn?"bg-indigo-600":"bg-muted"}`}>
                   <span className={`inline-block h-5 w-5 transform rounded-full bg-white dark:bg-zinc-900 shadow transition-transform ${aiViewOn?"translate-x-5":"translate-x-1"}`}></span>
                 </button>
               </div>
@@ -79,7 +79,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                     <tr key={b.class} className="border-t border-border/50">
                       <td className="py-2 px-3 font-medium"><span className="inline-flex items-center">{(() => { const common = "h-4 w-4 mr-2"; if (b.class === "Stocks") return <LineChart className={common} />; if (b.class === "Mutual Funds") return <Layers className={common} />; if (b.class === "Debt") return <Banknote className={common} />; if (b.class === "Gold") return <Coins className={common} />; if (b.class === "Real Estate") return <Home className={common} />; if (b.class === "Liquid") return <Droplet className={common} />; return <LineChart className={common} />; })()}{b.class}</span></td>
                       <td className="py-2 px-3 text-right">{b.pct}%</td>
-                      <td className="py-2 px-3 text-right">{displayRange(b.range)}</td>
+                      <td className="py-2 px-3 text-right">{mode==='custom' ? '—' : displayRange(b.range)}</td>
                       <td className="py-2 px-3">{b.riskCategory || (b.class === 'Stocks' || b.class === 'Mutual Funds' ? 'Core' : (b.class === 'Gold' || b.class === 'Real Estate' ? 'Satellite' : (b.class === 'Debt' || b.class === 'Liquid' ? 'Defensive' : '')))}</td>
                       <td className="py-2 px-3">{b.notes || (b.class === 'Stocks' ? 'Growth focus' : b.class === 'Mutual Funds' ? 'Diversified equity' : b.class === 'Debt' ? 'Stability & income' : b.class === 'Liquid' ? 'Emergency buffer' : b.class === 'Gold' ? 'Inflation hedge' : b.class === 'Real Estate' ? 'Long-term asset' : '')}</td>
                       <td className="py-2 px-3">
@@ -93,6 +93,11 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                 </tbody>
               </table>
             </div>
+            {mode==='custom' ? (
+              <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 text-amber-800 p-3 text-xs">
+                Off‑policy custom mode: advisor guardrails and bands are disabled. Save requires confirmation.
+              </div>
+            ) : null}
             {aiViewOn ? (
               <div className="mt-3 rounded-md border border-border p-3">
                 <div className="text-xs font-semibold mb-1">AI recommendation</div>
