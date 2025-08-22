@@ -27,6 +27,7 @@ export default function PlanPage() {
 	const [aiCache, setAiCache] = useState<Record<string, { buckets: any[]; explanation?: string }>>({});
 	const [aiSummary, setAiSummary] = useState<string | undefined>(undefined);
 	const [answersDrift, setAnswersDrift] = useState(false);
+	const [mode, setMode] = useState<'advisor'|'custom'>('advisor');
 
 	useEffect(() => {
 		if (!toast) return;
@@ -72,6 +73,29 @@ export default function PlanPage() {
 		}
 	}, [plan]);
 
+	function normalizeCustom(next: any, changedIndex: number, newPct: number) {
+		const buckets = [...(next?.buckets||[])];
+		if (!buckets[changedIndex]) return next;
+		const totalBefore = buckets.reduce((s: number, b: any)=> s + (b.pct||0), 0) || 1;
+		const cls = buckets[changedIndex].class;
+		const old = buckets[changedIndex].pct || 0;
+		buckets[changedIndex] = { ...buckets[changedIndex], pct: newPct };
+		const others = buckets.map((b:any, i:number)=> i===changedIndex ? 0 : b.pct||0);
+		const sumOthers = others.reduce((s:number,v:number)=> s+v, 0) || 1;
+		const targetOthers = Math.max(0, 100 - newPct);
+		const scale = targetOthers / sumOthers;
+		const cont = buckets.map((b:any, i:number)=> ({ class: b.class, v: i===changedIndex ? newPct : (others[i] * scale) }));
+		// largest remainder rounding
+		const order = buckets.map((b:any)=> b.class);
+		const floors = cont.map(x=> ({ class: x.class, f: Math.floor(x.v), r: x.v - Math.floor(x.v) }));
+		let leftover = 100 - floors.reduce((s,c)=> s + c.f, 0);
+		floors.sort((a,b)=> (b.r - a.r) || (order.indexOf(a.class) - order.indexOf(b.class)));
+		for (let i=0;i<floors.length && leftover>0;i++){ floors[i].f += 1; leftover--; }
+		floors.sort((a,b)=> order.indexOf(a.class) - order.indexOf(b.class));
+		const rounded = floors.map(x=> ({ class: x.class, pct: x.f }));
+		return { ...(next||{}), buckets: rounded };
+	}
+
 	if (!plan) {
 		return (
 			<div className="max-w-3xl mx-auto">
@@ -104,6 +128,11 @@ export default function PlanPage() {
 				</div>
 				<div className="flex items-center gap-2">
 					{(() => { const prune = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))}); const dirty = local && plan && JSON.stringify(prune(local)) !== JSON.stringify(prune(plan)); return dirty ? (<span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200">Unsaved changes</span>) : null; })()}
+					<div className="text-xs mr-2">
+						Mode:
+						<Button variant="outline" onClick={()=>{ setMode('advisor'); setAiViewOn(false); setLocal(buildPlan(questionnaire)); }} disabled={mode==='advisor'} className="ml-1">Advisor</Button>
+						<Button variant="outline" onClick={()=>{ setMode('custom'); setAiViewOn(false); }} disabled={mode==='custom'} className="ml-1">Custom</Button>
+					</div>
 					<Button variant="outline" leftIcon={<RotateCcw className="h-4 w-4 text-rose-600" />} onClick={()=> { 
 						const snap = (plan as any)?.answersSnapshot || {}; 
 						Object.keys(snap).forEach(k=> setQuestionAnswer(k, (snap as any)[k])); 
@@ -118,11 +147,15 @@ export default function PlanPage() {
 						const snapshot = pruneQuestionnaire(questionnaire);
 						const answersDirty = makeAnswersSig(snapshot) !== (((plan as any)?.answersSig) || "");
 						const allocDirty = !!(local && plan && JSON.stringify(pruneAlloc(local)) !== JSON.stringify(pruneAlloc(plan)));
-						const dirty = answersDirty || allocDirty;
+						const dirty = answersDirty || allocDirty || (mode === 'custom' && ((plan as any)?.origin !== 'custom'));
 						if (!dirty) { setToast({ msg: 'No changes to save', type: 'info' }); return; }
 						if (!activePortfolioId || !local) return;
-						const origin = aiViewOn ? 'ai' : 'engine';
-						const planToSave = { ...(local||{}), origin, answersSig: makeAnswersSig(snapshot), answersSnapshot: snapshot, policyVersion: 'v1' };
+						const origin = mode === 'custom' ? 'custom' : (aiViewOn ? 'ai' : 'engine');
+						if (mode === 'custom') {
+							const typed = window.prompt("Custom mode: type CONFIRM to save off‑policy allocation.", "");
+							if ((typed||"").toUpperCase() !== 'CONFIRM') { setToast({ msg: 'Save cancelled', type: 'info' }); return; }
+						}
+						const planToSave = { ...(local||{}), origin, offPolicy: mode==='custom', mode, answersSig: makeAnswersSig(snapshot), answersSnapshot: snapshot, policyVersion: 'v1' };
 						await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: activePortfolioId, plan: planToSave }) });
 						setPlan(planToSave);
 						setToast({ msg: 'Plan saved', type: 'success' });
@@ -141,11 +174,13 @@ export default function PlanPage() {
 						if (changed) {
 							const keys = Object.keys(next);
 							for (const k of keys) setQuestionAnswer(k, next[k]);
-							const allocation = buildPlan(next);
-							setLocal(allocation);
-							setAiInfo(null);
-							setAiViewOn(false);
-							setAnswersDrift(true);
+							if (mode === 'advisor') {
+								const allocation = buildPlan(next);
+								setLocal(allocation);
+								setAiInfo(null);
+								setAiViewOn(false);
+								setAnswersDrift(true);
+							}
 						}
 						setAnswersOpen(false);
 					}}>Done</Button>
@@ -179,6 +214,11 @@ export default function PlanPage() {
 					const next = { ...(local||{}) } as any;
 					next.buckets = [...(local?.buckets||[])];
 					if (!next.buckets[idx]) return;
+					if (mode === 'custom') {
+						const tunedCustom = normalizeCustom(next, idx, newPct);
+						setLocal(tunedCustom);
+						return;
+					}
 					const changedClass = next.buckets[idx].class as any;
 					const baseline = buildPlan(questionnaire);
 					const tuned = advisorTune(baseline as any, next as any, changedClass, newPct);
@@ -188,6 +228,7 @@ export default function PlanPage() {
 				}}
 				aiViewOn={aiViewOn}
 				onToggleAiView={()=>{
+					if (mode === 'custom') return;
 					const sig = makeAnswersSig(questionnaire);
 					if (!aiViewOn) {
 						if (sig && aiCache[sig]) {
@@ -222,6 +263,8 @@ export default function PlanPage() {
 				aiLoading={aiLoading}
 				aiExplanation={aiInfo?.rationale as any}
 				aiSummary={aiSummary as any}
+				mode={mode}
+				aiDisabled={mode==='custom'}
 			/>
 			{toast && (
 				<div className={`fixed bottom-4 right-4 z-50 rounded-md border px-3 py-2 text-sm shadow-lg ${toast.type==='success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : toast.type==='info' ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
