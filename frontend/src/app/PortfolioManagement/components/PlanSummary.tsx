@@ -21,7 +21,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
 
   const rebalance = useMemo(() => (plan ? computeRebalance(holdings, plan, driftTolerancePct) : { items: [], totalCurrentValue: 0 }), [holdings, plan, driftTolerancePct]);
 
-  function displayRange(range?: [number, number]) { if (!range) return "—"; const [min, max] = range; return `${min}% – ${max}%`; }
+  function displayRange(range?: [number, number]) { if (!range) return "—"; const [min, max] = range; const mi = Math.round(min); const ma = Math.round(max); return `${mi}% – ${ma}%`; }
 
   return (
     <div className="space-y-3">
