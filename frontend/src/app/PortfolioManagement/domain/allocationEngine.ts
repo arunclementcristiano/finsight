@@ -176,24 +176,11 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
   )));
   const riskLevel: RiskLevel = riskScore >= 67 ? "High" : riskScore <= 33 ? "Low" : "Moderate";
 
-  // Per-asset band percentages (relative to baseline)
-  function baseBandPctFor(cls: AssetClass): number {
-    if (cls === "Stocks" || cls === "Mutual Funds") return 0.08; // Equity ±8%
-    if (cls === "Debt") return 0.07; // Debt ±7%
-    if (cls === "Liquid") return 0.03; // Liquid ±3%
-    if (cls === "Gold" || cls === "Real Estate") return 0.02; // Gold/RE ±2%
-    return 0.05;
-  }
-  function adjustFactorByProfile(cls: AssetClass): number {
-    const a = ans;
-    let f = 1.0;
-    if (a.riskAppetite === "Low") f *= 0.85;
-    if (a.riskAppetite === "High") f *= 1.10;
-    if (a.horizon === "Short (<3 yrs)") f *= 0.9;
-    if (a.horizon === "Long (>7 yrs)") f *= 1.1;
-    if (a.ageBand === "46–60") f *= 0.9; else if (a.ageBand === "60+") f *= 0.8;
-    if (cls === "Liquid") f *= 0.9;
-    return Math.max(0.6, Math.min(1.25, f));
+  // Uniform comfort-zone tolerance by profile (relative to baseline pct)
+  function toleranceFor(level: RiskLevel): number {
+    if (level === "Low") return 0.03;      // Conservative ±3%
+    if (level === "High") return 0.10;     // Aggressive ±10%
+    return 0.07;                             // Moderate/Balanced ±7%
   }
 
   // Helper functions for display
@@ -213,10 +200,10 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
     return "";
   }
 
+  const tol = toleranceFor(riskLevel);
   const buckets = (Object.keys(alloc) as AssetClass[]).map(cls => {
     const pct = alloc[cls];
-    const bandPct = baseBandPctFor(cls) * adjustFactorByProfile(cls);
-    const delta = pct * bandPct;
+    const delta = pct * tol;
     const min = +(Math.max(0, pct - delta).toFixed(2));
     const max = +(Math.min(100, pct + delta).toFixed(2));
     return {
