@@ -113,12 +113,14 @@ export default function PlanPage() {
 						setAnswersDrift(false); 
 					}}>Reset</Button>
 					<Button variant="outline" leftIcon={<SaveIcon className="h-4 w-4 text-emerald-600" />} onClick={async ()=>{
-						const prune = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))});
-						const dirty = !!(local && plan && JSON.stringify(prune(local)) !== JSON.stringify(prune(plan)));
+						const pruneAlloc = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))});
+						const snapshot = pruneQuestionnaire(questionnaire);
+						const answersDirty = makeAnswersSig(snapshot) !== (((plan as any)?.answersSig) || "");
+						const allocDirty = !!(local && plan && JSON.stringify(pruneAlloc(local)) !== JSON.stringify(pruneAlloc(plan)));
+						const dirty = answersDirty || allocDirty;
 						if (!dirty) { setToast({ msg: 'No changes to save', type: 'info' }); return; }
 						if (!activePortfolioId || !local) return;
 						const origin = aiViewOn ? 'ai' : 'engine';
-						const snapshot = pruneQuestionnaire(questionnaire);
 						const planToSave = { ...(local||{}), origin, answersSig: makeAnswersSig(snapshot), answersSnapshot: snapshot, policyVersion: 'v1' };
 						await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: activePortfolioId, plan: planToSave }) });
 						setPlan(planToSave);
