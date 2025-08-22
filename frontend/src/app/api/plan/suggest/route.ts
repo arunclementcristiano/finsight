@@ -99,6 +99,45 @@ function clampRefined(
 	return out;
 }
 
+function objFromBuckets(buckets: Array<{ class: AllowedClass; pct: number }>): Record<AllowedClass, number> {
+	const out: Record<AllowedClass, number> = { Stocks: 0, "Mutual Funds": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
+	for (const b of buckets) out[b.class] = b.pct;
+	return out;
+}
+
+function normalizeTo100(obj: Record<AllowedClass, number>): Record<AllowedClass, number> {
+	const sum = (ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).reduce((s, k) => s + (obj[k] || 0), 0) || 1;
+	const out: Record<AllowedClass, number> = { Stocks: 0, "Mutual Funds": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
+	(ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).forEach(k => out[k] = +(obj[k] * 100 / sum).toFixed(2));
+	return out;
+}
+
+function enforceSimpleConstraints(obj: Record<AllowedClass, number>): Record<AllowedClass, number> {
+	const out = { ...obj };
+	// Liquid minimum 5%
+	if (out.Liquid < 5) {
+		const need = 5 - out.Liquid;
+		const takeDebt = Math.min(need, out.Debt);
+		out.Debt -= takeDebt;
+		out.Liquid += takeDebt;
+		let remain = need - takeDebt;
+		if (remain > 0) {
+			const eq = out.Stocks + out["Mutual Funds"]; const totalEq = eq || 1;
+			const fromS = Math.min(remain * (out.Stocks / totalEq), out.Stocks);
+			out.Stocks -= fromS; remain -= fromS;
+			const fromMF = Math.min(remain, out["Mutual Funds"]);
+			out["Mutual Funds"] -= fromMF; remain -= fromMF;
+			out.Liquid += (need - takeDebt);
+		}
+	}
+	// Gold [3,12]
+	if (out.Gold < 3) { const d = 3 - out.Gold; const take = Math.min(d, out.Debt); out.Debt -= take; out.Gold += take; }
+	if (out.Gold > 12) { const d = out.Gold - 12; out.Gold -= d; out.Debt += d; }
+	// Real Estate [0,7]
+	if (out["Real Estate"] > 7) { const d = out["Real Estate"] - 7; out["Real Estate"] -= d; out.Debt += d; }
+	return out;
+}
+
 export async function POST(req: NextRequest) {
 	try {
 		const body = await req.json();
@@ -115,16 +154,49 @@ export async function POST(req: NextRequest) {
 		const ai = await callGroqForAllocation(prompt);
 		if (ai?.diag?.missingKey) return NextResponse.json({ error: "Missing GROQ_API_KEY" }, { status: 400 });
 
+		// Build baseline (advisor) and AI (clamped) maps
+		const advisorBuckets = baseline.buckets.map(b => ({ class: b.class, pct: b.pct }));
+		const advisor = objFromBuckets(advisorBuckets);
 		const baseForClamp = baseline.buckets.map(b => ({ class: b.class, pct: b.pct, min: b.range[0], max: b.range[1] }));
 		const refined = clampRefined(baseForClamp, ai.buckets || []);
+		const aiMap = objFromBuckets(refined.map(r => ({ class: r.class, pct: r.pct })) as any);
+
+		// Debate reconciliation: midpoint within ±5 cap
+		const cap = 5;
+		const final: Record<AllowedClass, number> = { Stocks: 0, "Mutual Funds": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
+		const notes: string[] = [];
+		(ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).forEach(k => {
+			const B = advisor[k] || 0; const A = aiMap[k] || 0;
+			const diff = A - B; const ad = Math.abs(diff);
+			if (ad > cap) {
+				final[k] = +(B + Math.sign(diff) * cap).toFixed(2);
+				notes.push(`${k}: change limited to ±${cap}% (baseline ${B} → ${final[k]}, AI ${A})`);
+			} else {
+				final[k] = +(((A + B) / 2)).toFixed(2);
+				notes.push(`${k}: midpoint of baseline ${B} and AI ${A} → ${final[k]}`);
+			}
+		});
+		// Normalize and enforce simple constraints
+		let finalNorm = normalizeTo100(final);
+		finalNorm = enforceSimpleConstraints(finalNorm);
+		finalNorm = normalizeTo100(finalNorm);
+
+		// Compose response shapes
+		const advisorSafe = normalizeTo100(advisor);
+		const aiSuggestion = normalizeTo100(aiMap);
+		const explanation = `Blended baseline and AI with ±${cap}% cap. Adjustments: ${notes.join("; ")}.`;
 
 		return NextResponse.json({
 			aiPlan: {
 				riskLevel: baseline?.riskLevel || "Moderate",
-				buckets: refined.map(r => ({ class: r.class, pct: r.pct, range: [r.min, r.max], riskCategory: "", notes: "" }))
+				buckets: (ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).map(cls => ({ class: cls, pct: finalNorm[cls], range: [0, 100], riskCategory: "", notes: "" }))
 			},
 			rationale: ai.rationale || "Refined based on your risk and preferences.",
 			confidence: typeof ai.confidence === "number" ? ai.confidence : undefined,
+			advisor_safe_allocation: advisorSafe,
+			ai_suggestion: aiSuggestion,
+			final_recommendation: finalNorm,
+			explanation,
 			...(debug ? { diag: ai.diag || {} } : {})
 		});
 	} catch (err: any) {
