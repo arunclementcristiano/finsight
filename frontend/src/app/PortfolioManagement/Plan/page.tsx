@@ -35,7 +35,7 @@ export default function PlanPage() {
 		try { return JSON.stringify({ q }); } catch { return ""; }
 	}
 
-	useEffect(() => { setLocal(plan || null); }, [plan]);
+	useEffect(() => { setLocal(plan || null); setAiViewOn(!!(plan && (plan as any).origin === 'ai')); }, [plan]);
 
 	if (!plan) {
 		return (
@@ -61,14 +61,16 @@ export default function PlanPage() {
 				<div className="text-sm text-muted-foreground">Allocation Plan</div>
 				<div className="flex items-center gap-2">
 					{(() => { const prune = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))}); const dirty = local && plan && JSON.stringify(prune(local)) !== JSON.stringify(prune(plan)); return dirty ? (<span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200">Unsaved changes</span>) : null; })()}
-					<Button variant="outline" leftIcon={<RotateCcw className="h-4 w-4 text-rose-600" />} onClick={()=> setLocal(plan)}>Reset</Button>
+					<Button variant="outline" leftIcon={<RotateCcw className="h-4 w-4 text-rose-600" />} onClick={()=> { setLocal(plan); setAiViewOn(!!(plan && (plan as any).origin === 'ai')); }}>Reset</Button>
 					<Button variant="outline" leftIcon={<SaveIcon className="h-4 w-4 text-emerald-600" />} onClick={async ()=>{
 						const prune = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))});
 						const dirty = !!(local && plan && JSON.stringify(prune(local)) !== JSON.stringify(prune(plan)));
 						if (!dirty) { setToast({ msg: 'No changes to save', type: 'info' }); return; }
 						if (!activePortfolioId || !local) return;
-						await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: activePortfolioId, plan: local }) });
-						setPlan(local);
+						const origin = aiViewOn ? 'ai' : 'engine';
+						const planToSave = { ...(local||{}), origin, answersSig: makeAnswersSig(questionnaire) };
+						await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: activePortfolioId, plan: planToSave }) });
+						setPlan(planToSave);
 						setToast({ msg: 'Plan saved', type: 'success' });
 					}}>Save Plan</Button>
 				</div>
