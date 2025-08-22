@@ -166,10 +166,22 @@ export default function PlanPage() {
 				</div>
 				<div className="flex items-center gap-2">
 					{(() => { const prune = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))}); const dirty = local && plan && JSON.stringify(prune(local)) !== JSON.stringify(prune(plan)); return dirty ? (<span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200">Unsaved changes</span>) : null; })()}
-					<div className="text-xs mr-2">
-						Mode:
-						<Button variant="outline" onClick={()=>{ setMode('advisor'); setAiViewOn(false); setLocal(buildPlan(questionnaire)); }} disabled={mode==='advisor'} className="ml-1">Advisor</Button>
-						<Button variant="outline" onClick={()=>{ setMode('custom'); setAiViewOn(false); try { if (activePortfolioId) { const draft = getCustomDraft(activePortfolioId); if (draft) setLocal(draft); const locks = getCustomLocks(activePortfolioId); if (locks) setLocalCustomLocks(locks); } } catch {} }} disabled={mode==='custom'} className="ml-1">Custom</Button>
+					<div className="flex items-center gap-2">
+						<div className="inline-flex rounded-md border border-border overflow-hidden">
+							<Button variant="outline" className={`rounded-none ${mode==='advisor' ? 'bg-indigo-600 text-white border-indigo-600' : ''}`} onClick={()=>{ setMode('advisor'); setAiViewOn(false); setLocal(buildPlan(questionnaire)); }}>
+								<div className="flex flex-col items-start leading-tight">
+									<span>Advisor</span>
+									<span className="text-[10px] opacity-80">Recommended</span>
+								</div>
+							</Button>
+							<Button variant="outline" className={`rounded-none ${mode==='custom' ? 'bg-rose-600 text-white border-rose-600' : ''}`} onClick={()=>{ setMode('custom'); setAiViewOn(false); try { if (activePortfolioId) { const draft = getCustomDraft(activePortfolioId); if (draft) setLocal(draft); const locks = getCustomLocks(activePortfolioId); if (locks) setLocalCustomLocks(locks); } } catch {} }}>
+								<div className="flex flex-col items-start leading-tight">
+									<span>Custom</span>
+									<span className="text-[10px] opacity-80">No guardrails</span>
+								</div>
+							</Button>
+						</div>
+						{mode==='custom' ? (<span className="text-xs px-2 py-1 rounded-full bg-rose-100 text-rose-700 border border-rose-200">Off‑policy</span>) : null}
 					</div>
 					<Button variant="outline" leftIcon={<RotateCcw className="h-4 w-4 text-rose-600" />} onClick={()=> { 
 						const snap = (plan as any)?.answersSnapshot || {}; 

@@ -116,11 +116,6 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                 </tbody>
               </table>
             </div>
-            {mode==='custom' ? (
-              <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 text-amber-800 p-3 text-xs">
-                Off‑policy custom mode: advisor guardrails and bands are disabled. Save requires confirmation.
-              </div>
-            ) : null}
             {aiViewOn ? (
               <div className="mt-3 rounded-md border border-border p-3">
                 <div className="text-xs font-semibold mb-1">AI recommendation</div>
