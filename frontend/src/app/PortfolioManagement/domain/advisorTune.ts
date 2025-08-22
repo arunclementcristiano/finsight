@@ -50,7 +50,7 @@ function enforceGuardrails(values: Record<Asset, number>): Record<Asset, number>
 	return v;
 }
 
-export function advisorTune(baseline: { buckets: Bucket[] }, current: { buckets: Bucket[] }, changedClass: Asset, newPct: number): { buckets: Bucket[]; clamped: boolean } {
+export function advisorTune(baseline: { buckets: Bucket[] }, current: { buckets: Bucket[] }, changedClass: Asset, newPct: number, locked: Asset[] = []): { buckets: Bucket[]; clamped: boolean } {
 	const baseMap: Record<Asset, { pct: number; min: number; max: number }> = { Stocks: { pct:0,min:0,max:100 }, "Mutual Funds": { pct:0,min:0,max:100 }, Gold: { pct:0,min:0,max:100 }, "Real Estate": { pct:0,min:0,max:100 }, Debt: { pct:0,min:0,max:100 }, Liquid: { pct:0,min:0,max:100 } } as any;
 	for (const b of baseline.buckets) {
 		const [min, max] = b.range || [0, 100];
@@ -69,12 +69,11 @@ export function advisorTune(baseline: { buckets: Bucket[] }, current: { buckets:
 		clamped = true;
 		tuned[changedClass] = clamp(newPct, base.min, base.max);
 	}
-	// Normalize total by adjusting others proportionally
+	// Keep locked assets fixed; adjust others to sum 100
 	const sumBefore = (Object.keys(tuned) as Asset[]).reduce((s,k)=> s + (tuned[k] || 0), 0);
 	if (Math.abs(sumBefore - 100) > 1e-6) {
 		const delta = 100 - sumBefore;
-		// distribute delta across non-changed assets proportional to their size
-		const pool = (Object.keys(tuned) as Asset[]).filter(k => k !== changedClass);
+		const pool = (Object.keys(tuned) as Asset[]).filter(k => k !== changedClass && !locked.includes(k));
 		const poolSum = pool.reduce((s,k)=> s + (tuned[k] || 0), 0) || 1;
 		for (const k of pool) tuned[k] = tuned[k] + delta * ((tuned[k] || 0) / poolSum);
 	}
@@ -83,7 +82,6 @@ export function advisorTune(baseline: { buckets: Bucket[] }, current: { buckets:
 	norm = normalizeTo100(norm);
 	const rounded = largestRemainderRound(norm);
 	const outBuckets: Bucket[] = (Object.keys(rounded) as Asset[]).map(cls => ({ class: cls, pct: rounded[cls] }));
-	// preserve baseline ranges on output so UI keeps showing bands
 	const rangeMap: Record<Asset, [number, number]> = { Stocks:[0,100], "Mutual Funds":[0,100], Gold:[0,100], "Real Estate":[0,100], Debt:[0,100], Liquid:[0,100] } as any;
 	for (const b of baseline.buckets) if (b.range) rangeMap[b.class as Asset] = b.range;
 	for (const b of outBuckets) (b as any).range = rangeMap[b.class];
