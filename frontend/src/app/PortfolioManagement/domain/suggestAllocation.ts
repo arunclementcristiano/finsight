@@ -201,6 +201,8 @@ export function suggestAllocation(ans: Answers): Allocation {
     const younger = ans.ageBand === "18–30" || ans.ageBand === "31–45";
     const older = ans.ageBand === "46–60" || ans.ageBand === "60+";
     if (younger) {
+      // Do not override risk-lowering signals
+      if (ans.incomeStability !== "Stable" || ans.liabilities !== "None" || ans.dependents !== "None") return;
       let room = Math.max(0, eqCap - (base.Stocks + base["Mutual Funds"]));
       const add = Math.min(3, room);
       if (add > 0) { base.Debt = Math.max(0, base.Debt - add); const eq = base.Stocks + base["Mutual Funds"]; const sFrac = eq > 0 ? (base.Stocks / eq) : 0.5; base.Stocks += add * sFrac; base["Mutual Funds"] += add * (1 - sFrac); }
