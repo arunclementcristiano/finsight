@@ -11,7 +11,6 @@ export const ALLOWED_QUESTION_KEYS = [
 	"emergencyFundSixMonths",
 	"insuranceCoverage",
 	"taxPreference",
-	"geoPreference",
 	"avoidAssets",
 ] as const;
 

@@ -73,12 +73,6 @@ export const questions = [
     helperText: "Guides product selection within buckets."
   },
   {
-    key: "geoPreference",
-    text: "Geographic Preference",
-    options: ["Domestic only", "Global ok"],
-    helperText: "Impacts diversification at product level."
-  },
-  {
     key: "avoidAssets",
     text: "Ethical/Custom Constraints (Optional) — assets to avoid",
     options: ["Stocks", "Mutual Funds", "Gold", "Real Estate"],
