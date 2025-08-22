@@ -119,7 +119,16 @@ export function suggestAllocation(ans: Answers): Allocation {
   const floorByMonths: Record<Answers["emergencyFundMonthsTarget"], number> = { "3": 5, "6": 10, "9": 13, "12": 18 };
   const bumpByLiq: Record<Answers["liquidityPreference"], number> = { High: 4, Medium: 2, Low: 0 } as any;
   const bumpByExpense: Record<Answers["bigExpenseTimeline"], number> = { "<12 months": 5, "12–36 months": 3, ">36 months": 0, None: 0 } as any;
-  const liqMin = floorByMonths[ans.emergencyFundMonthsTarget] + bumpByLiq[ans.liquidityPreference] + bumpByExpense[ans.bigExpenseTimeline];
+  let liqMin = floorByMonths[ans.emergencyFundMonthsTarget] + bumpByLiq[ans.liquidityPreference] + bumpByExpense[ans.bigExpenseTimeline];
+  // Lower Liquid floor for EF present & no near-term withdrawal in high-capacity profiles
+  const hasEF = ans.emergencyFundMonthsTarget === "6";
+  const noNearTerm = ans.bigExpenseTimeline === "None";
+  const ageYoung = ans.ageBand === "18–30" || ans.ageBand === "31–45" || ans.ageBand === "46–60";
+  const longHor = ans.horizon === "Long (>7 yrs)";
+  const highCapacity = ans.riskAppetite === "High" && ageYoung && longHor && ans.liabilities !== "High" && ans.dependents !== "3+";
+  if (hasEF && noNearTerm && highCapacity) {
+    liqMin = Math.min(liqMin, 6);
+  }
   if (base.Liquid < liqMin) {
     const need = liqMin - base.Liquid;
     let moved = 0;
@@ -190,13 +199,39 @@ export function suggestAllocation(ans: Answers): Allocation {
 
   // 9) Avoid / Emphasize
   const avoidSet = new Set(avoidList);
-  // Hard avoid core/satellite
   const avoidables: Asset[] = ["Stocks", "Mutual Funds", "Gold", "Real Estate"];
   avoidables.forEach((k: Asset) => {
     if (avoidSet.has(k as any)) {
       const val = base[k as Asset];
       base[k as Asset] = 0;
-      base.Debt += val; // send to Debt first
+      let remaining = val;
+      if (k === "Real Estate") {
+        // Reallocate RE: Equity up to 60, then Gold up to 12, then Debt
+        let eqNow2 = base.Stocks + base["Mutual Funds"];
+        const eqRoom = Math.max(0, 60 - eqNow2);
+        if (eqRoom > 0 && remaining > 0) {
+          const addEq = Math.min(remaining, eqRoom);
+          const eqTotal = base.Stocks + base["Mutual Funds"];
+          const sFracEq = eqTotal > 0 ? (base.Stocks / eqTotal) : 0.5;
+          base.Stocks += addEq * sFracEq;
+          base["Mutual Funds"] += addEq * (1 - sFracEq);
+          remaining -= addEq;
+          eqNow2 += addEq;
+        }
+        if (remaining > 0) {
+          const goldRoom = Math.max(0, 12 - base.Gold);
+          const addGold = Math.min(remaining, goldRoom);
+          base.Gold += addGold;
+          remaining -= addGold;
+        }
+        if (remaining > 0) {
+          base.Debt += remaining;
+          remaining = 0;
+        }
+      } else {
+        base.Debt += remaining;
+        remaining = 0;
+      }
     }
   });
   // Emphasize: up to +3% each, max +7% combined, from Debt then non-emphasized equity pro-rata
@@ -225,13 +260,11 @@ export function suggestAllocation(ans: Answers): Allocation {
   }
 
   // 10) Advisor-like tilts from new inputs
-  // Income stability: shift toward safety if variable/unstable
   if (ans.incomeStability === "Unstable") {
     let moved = 0; moved += takeFrom(["Stocks", "Mutual Funds"], 3); base.Debt += moved; moved = 0; moved += takeFrom(["Stocks", "Mutual Funds", "Gold"], 2); base.Liquid += moved;
   } else if (ans.incomeStability === "Variable") {
     const moved = takeFrom(["Stocks", "Mutual Funds"], 2); base.Debt += moved;
   }
-  // Dependents: more dependents -> more Debt/Liquid
   if (ans.dependents === "3+") {
     let moved = 0; moved += takeFrom(["Stocks", "Mutual Funds"], 3); base.Debt += moved; moved = 0; moved += takeFrom(["Stocks", "Mutual Funds", "Gold"], 1); base.Liquid += moved;
   } else if (ans.dependents === "2") {
@@ -239,7 +272,6 @@ export function suggestAllocation(ans: Answers): Allocation {
   } else if (ans.dependents === "1") {
     const moved = takeFrom(["Stocks", "Mutual Funds"], 1); base.Debt += moved;
   }
-  // Liabilities: higher -> more Debt/Liquid
   if (ans.liabilities === "High") {
     let moved = 0; moved += takeFrom(["Stocks", "Mutual Funds"], 5); base.Debt += moved; moved = 0; moved += takeFrom(["Stocks", "Mutual Funds", "Gold"], 1); base.Liquid += moved;
   } else if (ans.liabilities === "Moderate") {
@@ -247,9 +279,8 @@ export function suggestAllocation(ans: Answers): Allocation {
   } else if (ans.liabilities === "Low") {
     const moved = takeFrom(["Stocks", "Mutual Funds"], 1); base.Debt += moved;
   }
-  // Goals: growth/preservation/income/purchase/retirement
   if (ans.financialGoal === "Wealth growth") {
-    const moved = takeFrom(["Debt"], 5); // fund from Debt
+    const moved = takeFrom(["Debt"], 5);
     const eq = base.Stocks + base["Mutual Funds"]; const sFrac = eq > 0 ? (base.Stocks / eq) : 0.5; base.Stocks += moved * sFrac; base["Mutual Funds"] += moved * (1 - sFrac);
   } else if (ans.financialGoal === "Capital preservation") {
     let moved = 0; moved += takeFrom(["Stocks", "Mutual Funds"], 3); base.Debt += moved; moved = 0; moved += takeFrom(["Stocks", "Mutual Funds", "Debt"], 2); base.Liquid += moved;
@@ -262,7 +293,6 @@ export function suggestAllocation(ans: Answers): Allocation {
   }
 
   // 11) Global safety caps
-  // Equity cap 60%
   let equityNow = base.Stocks + base["Mutual Funds"];
   if (equityNow > 60) {
     const reduce = equityNow - 60;
@@ -272,18 +302,15 @@ export function suggestAllocation(ans: Answers): Allocation {
     base.Debt += reduce;
     equityNow = 60;
   }
-  // Debt cap 70%
   if (base.Debt > 70) {
     const excess = base.Debt - 70;
     base.Debt -= excess;
-    base.Liquid += excess; // park in Liquid
+    base.Liquid += excess;
   }
 
-  // Re-apply bounds for Gold/RE just in case
   clampAsset("Gold", 3, 12);
   clampAsset("Real Estate", 0, 7);
 
-  // 12) Final clamp/normalize/round
   const sum = Object.values(base).reduce((a, b) => a + b, 0) || 1;
   const normalized: Allocation = {
     Stocks: (base.Stocks * 100) / sum,
