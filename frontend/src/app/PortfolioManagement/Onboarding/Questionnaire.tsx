@@ -7,6 +7,7 @@ import { buildPlan } from "../domain/allocationEngine";
 import { useRouter } from "next/navigation";
 import { useApp } from "../../store";
 import { Button } from "../../components/Button";
+import { pruneQuestionnaire, stableAnswersSig } from "../domain/answersUtil";
 
 export default function Questionnaire() {
 	const router = useRouter();
@@ -31,8 +32,9 @@ export default function Questionnaire() {
 					if (pid) (useApp.getState() as any).setActivePortfolio(pid);
 				}
 				if (pid) {
-					const answersSig = JSON.stringify({ q: questionnaire });
-					const planToSave = { ...allocation, origin: 'engine', answersSig, answersSnapshot: questionnaire, policyVersion: 'v1' };
+					const snapshot = pruneQuestionnaire(questionnaire as any);
+					const answersSig = stableAnswersSig(snapshot);
+					const planToSave = { ...allocation, origin: 'engine', answersSig, answersSnapshot: snapshot, policyVersion: 'v1' };
 					await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: pid, plan: planToSave }) });
 				}
 			} catch {}
