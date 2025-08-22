@@ -94,10 +94,10 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
               </table>
             </div>
             {aiViewOn ? (
-              <div className="mt-3 rounded-md border border-border p-3 bg-gradient-to-r from-indigo-50/60 to-emerald-50/60 dark:from-indigo-900/10 dark:to-emerald-900/10">
+              <div className="mt-3 rounded-md border border-border p-3">
                 <div className="text-xs font-semibold mb-1">AI recommendation</div>
                 {aiSummary ? (
-                  <div className="text-sm leading-5">
+                  <div className="text-xs">
                     {aiSummary}
                   </div>
                 ) : null}
