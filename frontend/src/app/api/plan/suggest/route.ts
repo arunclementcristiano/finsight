@@ -8,19 +8,19 @@ type AllowedClass = typeof ALLOWED_CLASSES[number];
 type AiResult = { buckets: Array<{ class: string; pct: number; min?: number; max?: number; range?: [number, number] }>; rationale?: string; confidence?: number; diag?: { missingKey?: boolean; status?: number; parseError?: string; raw?: string } };
 
 function extractJson(text: string): any {
-  try { return JSON.parse(text); } catch {}
-  try {
-    const cleaned = text.replace(/```json|```/g, "").trim();
-    return JSON.parse(cleaned);
-  } catch {}
-  try {
-    const start = text.indexOf("{");
-    const end = text.lastIndexOf("}");
-    if (start >= 0 && end > start) {
-      return JSON.parse(text.slice(start, end + 1));
-    }
-  } catch {}
-  throw new Error("parse_failed");
+	try { return JSON.parse(text); } catch {}
+	try {
+		const cleaned = text.replace(/```json|```/g, "").trim();
+		return JSON.parse(cleaned);
+	} catch {}
+	try {
+		const start = text.indexOf("{");
+		const end = text.lastIndexOf("}");
+		if (start >= 0 && end > start) {
+			return JSON.parse(text.slice(start, end + 1));
+		}
+	} catch {}
+	throw new Error("parse_failed");
 }
 
 async function callGroqForAllocation(prompt: string): Promise<AiResult> {
@@ -114,7 +114,6 @@ function normalizeTo100(obj: Record<AllowedClass, number>): Record<AllowedClass,
 
 function enforceSimpleConstraints(obj: Record<AllowedClass, number>): Record<AllowedClass, number> {
 	const out = { ...obj };
-	// Liquid minimum 5%
 	if (out.Liquid < 5) {
 		const need = 5 - out.Liquid;
 		const takeDebt = Math.min(need, out.Debt);
@@ -130,12 +129,28 @@ function enforceSimpleConstraints(obj: Record<AllowedClass, number>): Record<All
 			out.Liquid += (need - takeDebt);
 		}
 	}
-	// Gold [3,12]
 	if (out.Gold < 3) { const d = 3 - out.Gold; const take = Math.min(d, out.Debt); out.Debt -= take; out.Gold += take; }
 	if (out.Gold > 12) { const d = out.Gold - 12; out.Gold -= d; out.Debt += d; }
-	// Real Estate [0,7]
 	if (out["Real Estate"] > 7) { const d = out["Real Estate"] - 7; out["Real Estate"] -= d; out.Debt += d; }
 	return out;
+}
+
+function roundWhole(obj: Record<AllowedClass, number>): Record<AllowedClass, number> {
+	const keys = ALLOWED_CLASSES as ReadonlyArray<AllowedClass>;
+	const floors: Record<AllowedClass, number> = { Stocks: 0, "Mutual Funds": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
+	const remainders: Array<{ k: AllowedClass; r: number }> = [];
+	let total = 0;
+	for (const k of keys) {
+		const v = Math.max(0, Math.min(100, obj[k] || 0));
+		const f = Math.floor(v);
+		floors[k] = f;
+		remainders.push({ k, r: v - f });
+		total += f;
+	}
+	let leftover = 100 - total;
+	remainders.sort((a,b)=> b.r - a.r);
+	for (let i=0; i<remainders.length && leftover>0; i++) { floors[remainders[i].k] += 1; leftover--; }
+	return floors;
 }
 
 export async function POST(req: NextRequest) {
@@ -180,6 +195,7 @@ export async function POST(req: NextRequest) {
 		let finalNorm = normalizeTo100(final);
 		finalNorm = enforceSimpleConstraints(finalNorm);
 		finalNorm = normalizeTo100(finalNorm);
+		const finalInt = roundWhole(finalNorm);
 
 		// Compose response shapes
 		const advisorSafe = normalizeTo100(advisor);
@@ -189,13 +205,13 @@ export async function POST(req: NextRequest) {
 		return NextResponse.json({
 			aiPlan: {
 				riskLevel: baseline?.riskLevel || "Moderate",
-				buckets: (ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).map(cls => ({ class: cls, pct: finalNorm[cls], range: [0, 100], riskCategory: "", notes: "" }))
+				buckets: (ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).map(cls => ({ class: cls, pct: finalInt[cls], range: [0, 100], riskCategory: "", notes: "" }))
 			},
 			rationale: ai.rationale || "Refined based on your risk and preferences.",
 			confidence: typeof ai.confidence === "number" ? ai.confidence : undefined,
 			advisor_safe_allocation: advisorSafe,
 			ai_suggestion: aiSuggestion,
-			final_recommendation: finalNorm,
+			final_recommendation: finalInt,
 			explanation,
 			...(debug ? { diag: ai.diag || {} } : {})
 		});
