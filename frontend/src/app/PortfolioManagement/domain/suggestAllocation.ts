@@ -350,6 +350,23 @@ export function suggestAllocation(ans: Answers): Allocation {
     base.Liquid += excess;
   }
 
+  // Debt minimums: ensure safety floor
+  (function enforceDebtMin(){
+    const minDebt = (ans.liabilities === "High" || ans.dependents === "3+") ? 20 : 15;
+    if (base.Debt < minDebt) {
+      let need = minDebt - base.Debt;
+      // take from equity first proportionally
+      const eq = base.Stocks + base["Mutual Funds"]; if (eq > 0 && need > 0) {
+        const sTake = Math.min(need * (base.Stocks / eq), base.Stocks); base.Stocks -= sTake; base.Debt += sTake; need -= sTake;
+        const mfTake = Math.min(need, base["Mutual Funds"]); base["Mutual Funds"] -= mfTake; base.Debt += mfTake; need -= mfTake;
+      }
+      // then from Liquid
+      if (need > 0) { const liqTake = Math.min(need, Math.max(0, base.Liquid - 5)); base.Liquid -= liqTake; base.Debt += liqTake; need -= liqTake; }
+      // then from Gold (respect floor 3)
+      if (need > 0) { const goldTake = Math.min(need, Math.max(0, base.Gold - 3)); base.Gold -= goldTake; base.Debt += goldTake; need -= goldTake; }
+    }
+  })();
+
   clampAsset("Gold", 3, 12);
   clampAsset("Real Estate", 0, 7);
 
