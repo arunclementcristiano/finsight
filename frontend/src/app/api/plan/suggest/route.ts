@@ -153,6 +153,44 @@ function roundWhole(obj: Record<AllowedClass, number>): Record<AllowedClass, num
 	return floors;
 }
 
+// Comfort zone utilities
+function getToleranceFromRiskProfile(risk: string): number {
+	const r = String(risk || "").toLowerCase();
+	if (r.includes("conservative")) return 0.05;
+	if (r.includes("aggressive")) return 0.15;
+	if (r.includes("balanced") || r.includes("moderate")) return 0.10;
+	return 0.10;
+}
+
+function mapFromAnyBuckets(buckets: Array<{ class: string; pct: number }>): Record<AllowedClass, number> {
+	const out: Record<AllowedClass, number> = { Stocks: 0, "Mutual Funds": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
+	for (const b of (buckets || [])) {
+		const cls = (ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).find(a => a.toLowerCase() === String(b.class || "").toLowerCase());
+		if (!cls) continue;
+		const v = Number(b.pct);
+		if (!Number.isFinite(v)) continue;
+		out[cls] = v;
+	}
+	return out;
+}
+
+function apply_comfort_zone(
+	baseline: Record<AllowedClass, number>,
+	aiSuggestion: Record<AllowedClass, number>,
+	riskProfile: string
+): Record<AllowedClass, number> {
+	const tol = getToleranceFromRiskProfile(riskProfile);
+	const out: Record<AllowedClass, number> = { Stocks: 0, "Mutual Funds": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
+	(ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).forEach(k => {
+		const base = baseline[k] || 0;
+		const min = base - base * tol;
+		const max = base + base * tol;
+		const aiv = aiSuggestion[k] || 0;
+		out[k] = Math.max(min, Math.min(max, aiv));
+	});
+	return normalizeTo100(out);
+}
+
 export async function POST(req: NextRequest) {
 	try {
 		const body = await req.json();
@@ -169,19 +207,20 @@ export async function POST(req: NextRequest) {
 		const ai = await callGroqForAllocation(prompt);
 		if (ai?.diag?.missingKey) return NextResponse.json({ error: "Missing GROQ_API_KEY" }, { status: 400 });
 
-		// Build baseline (advisor) and AI (clamped) maps
+		// Build baseline (advisor) and AI maps
 		const advisorBuckets = baseline.buckets.map(b => ({ class: b.class, pct: b.pct }));
 		const advisor = objFromBuckets(advisorBuckets);
-		const baseForClamp = baseline.buckets.map(b => ({ class: b.class, pct: b.pct, min: b.range[0], max: b.range[1] }));
-		const refined = clampRefined(baseForClamp, ai.buckets || []);
-		const aiMap = objFromBuckets(refined.map(r => ({ class: r.class, pct: r.pct })) as any);
+		const rawAiMap = mapFromAnyBuckets(ai.buckets || []);
+		const rawAiNorm = normalizeTo100(rawAiMap);
+		const riskProfile = baseline?.riskLevel || String(questionnaire?.riskAppetite || "");
+		const aiClampedToComfort = apply_comfort_zone(advisor, rawAiNorm, riskProfile);
 
 		// Debate reconciliation: midpoint within ±5 cap
 		const cap = 5;
 		const final: Record<AllowedClass, number> = { Stocks: 0, "Mutual Funds": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
 		const notes: string[] = [];
 		(ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).forEach(k => {
-			const B = advisor[k] || 0; const A = aiMap[k] || 0;
+			const B = advisor[k] || 0; const A = aiClampedToComfort[k] || 0;
 			const diff = A - B; const ad = Math.abs(diff);
 			if (ad > cap) {
 				final[k] = +(B + Math.sign(diff) * cap).toFixed(2);
@@ -199,8 +238,9 @@ export async function POST(req: NextRequest) {
 
 		// Compose response shapes
 		const advisorSafe = normalizeTo100(advisor);
-		const aiSuggestion = normalizeTo100(aiMap);
-		const explanation = `Blended baseline and AI with ±${cap}% cap. Adjustments: ${notes.join("; ")}.`;
+		const aiSuggestion = rawAiNorm;
+		const tolPct = Math.round(getToleranceFromRiskProfile(riskProfile) * 100);
+		const explanation = `Applied comfort zone ±${tolPct}% around baseline, then blended with AI via ±${cap}% cap/midpoint. Adjustments: ${notes.join("; ")}.`;
 
 		return NextResponse.json({
 			aiPlan: {
@@ -209,6 +249,7 @@ export async function POST(req: NextRequest) {
 			},
 			rationale: ai.rationale || "Refined based on your risk and preferences.",
 			confidence: typeof ai.confidence === "number" ? ai.confidence : undefined,
+			baseline_allocation: advisorSafe,
 			advisor_safe_allocation: advisorSafe,
 			ai_suggestion: aiSuggestion,
 			final_recommendation: finalInt,
