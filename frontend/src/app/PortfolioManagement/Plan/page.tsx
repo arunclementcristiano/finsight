@@ -152,7 +152,7 @@ export default function PlanPage() {
 						options={questions[ansStep].options as any}
 						selected={editAnswers[questions[ansStep].key]}
 						onChange={(value: any) => setEditAnswers((prev:any)=> ({ ...(prev||{}), [questions[ansStep].key]: value }))}
-						multiSelect={questions[ansStep].key === 'preferredAssets'}
+						multiSelect={questions[ansStep].key === 'avoidAssets' || questions[ansStep].key === 'emphasizeAssets'}
 						helperText={(questions[ansStep] as any)?.helperText}
 						maxSelect={(questions[ansStep] as any)?.maxSelect}
 						compact
