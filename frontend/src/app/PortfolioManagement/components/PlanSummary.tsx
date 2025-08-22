@@ -6,7 +6,7 @@ import { useApp } from "../../store";
 import { computeRebalance } from "../domain/rebalance";
 import { LineChart, Layers, Banknote, Coins, Home, Droplet, Edit3, RefreshCw } from "lucide-react";
 
-export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, onBuildBaseline, aiViewOn, onToggleAiView, aiLoading, aiExplanation, aiSummary, mode, aiDisabled }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void; onEditAnswers?: () => void; onBuildBaseline?: () => void; aiViewOn?: boolean; onToggleAiView?: () => void; aiLoading?: boolean; aiExplanation?: string; aiSummary?: string; mode?: 'advisor'|'custom'; aiDisabled?: boolean }) {
+export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, onBuildBaseline, aiViewOn, onToggleAiView, aiLoading, aiExplanation, aiSummary, mode, aiDisabled, locks, onToggleLock }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void; onEditAnswers?: () => void; onBuildBaseline?: () => void; aiViewOn?: boolean; onToggleAiView?: () => void; aiLoading?: boolean; aiExplanation?: string; aiSummary?: string; mode?: 'advisor'|'custom'; aiDisabled?: boolean; locks?: Record<string, boolean>; onToggleLock?: (cls: string)=>void }) {
   const { holdings, driftTolerancePct } = useApp();
 
   const kpis = useMemo(() => {
@@ -83,10 +83,18 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                       <td className="py-2 px-3">{b.riskCategory || (b.class === 'Stocks' || b.class === 'Mutual Funds' ? 'Core' : (b.class === 'Gold' || b.class === 'Real Estate' ? 'Satellite' : (b.class === 'Debt' || b.class === 'Liquid' ? 'Defensive' : '')))}</td>
                       <td className="py-2 px-3">{b.notes || (b.class === 'Stocks' ? 'Growth focus' : b.class === 'Mutual Funds' ? 'Diversified equity' : b.class === 'Debt' ? 'Stability & income' : b.class === 'Liquid' ? 'Emergency buffer' : b.class === 'Gold' ? 'Inflation hedge' : b.class === 'Real Estate' ? 'Long-term asset' : '')}</td>
                       <td className="py-2 px-3">
-                        <input type="range" min={0} max={100} value={b.pct} disabled={!!aiViewOn} onChange={(e)=>{
-                          const v = Math.max(0, Math.min(100, Number(e.target.value)||0));
-                          if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
-                        }} />
+                        <div className="flex items-center gap-2">
+                          <input type="range" min={0} max={100} value={b.pct} disabled={!!aiViewOn} onChange={(e)=>{
+                            const v = Math.max(0, Math.min(100, Number(e.target.value)||0));
+                            if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
+                          }} />
+                          {mode==='custom' ? (
+                            <label className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                              <input type="checkbox" checked={!!locks?.[b.class]} onChange={()=> onToggleLock && onToggleLock(b.class)} />
+                              Lock
+                            </label>
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   ))}

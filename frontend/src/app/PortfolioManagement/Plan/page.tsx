@@ -28,6 +28,7 @@ export default function PlanPage() {
 	const [aiSummary, setAiSummary] = useState<string | undefined>(undefined);
 	const [answersDrift, setAnswersDrift] = useState(false);
 	const [mode, setMode] = useState<'advisor'|'custom'>('advisor');
+	const [customLocks, setCustomLocks] = useState<Record<string, boolean>>({});
 
 	useEffect(() => {
 		if (!toast) return;
@@ -76,21 +77,44 @@ export default function PlanPage() {
 	function normalizeCustom(next: any, changedIndex: number, newPct: number) {
 		const buckets = [...(next?.buckets||[])];
 		if (!buckets[changedIndex]) return next;
-		const totalBefore = buckets.reduce((s: number, b: any)=> s + (b.pct||0), 0) || 1;
-		const cls = buckets[changedIndex].class;
-		const old = buckets[changedIndex].pct || 0;
+		const order = buckets.map((b:any)=> b.class as string);
+		// Apply new value to changed bucket
 		buckets[changedIndex] = { ...buckets[changedIndex], pct: newPct };
-		const others = buckets.map((b:any, i:number)=> i===changedIndex ? 0 : b.pct||0);
-		const sumOthers = others.reduce((s:number,v:number)=> s+v, 0) || 1;
-		const targetOthers = Math.max(0, 100 - newPct);
-		const scale = targetOthers / sumOthers;
-		const cont = buckets.map((b:any, i:number)=> ({ class: b.class, v: i===changedIndex ? newPct : (others[i] * scale) }));
-		// largest remainder rounding
-		const order = buckets.map((b:any)=> b.class);
-		const floors = cont.map(x=> ({ class: x.class, f: Math.floor(x.v), r: x.v - Math.floor(x.v) }));
+		// Compute totals
+		const lockedSet = new Set(Object.entries(customLocks).filter(([k,v])=> !!v).map(([k])=> k));
+		const sumLocked = buckets.reduce((s:number,b:any)=> s + (lockedSet.has(b.class) ? (b.pct||0) : 0), 0);
+		const unlockedIdx = buckets.map((b:any, i:number)=> (!lockedSet.has(b.class) && i!==changedIndex) ? i : -1).filter(i=> i>=0);
+		const sumUnlockedOthers = unlockedIdx.reduce((s:number,i:number)=> s + (buckets[i].pct||0), 0);
+		// Target for others
+		const targetOthers = Math.max(0, 100 - newPct - sumLocked);
+		if (unlockedIdx.length === 0 || sumUnlockedOthers <= 0) {
+			// No room to adjust others; clamp changed to keep total 100
+			const allowed = Math.max(0, 100 - sumLocked);
+			buckets[changedIndex] = { ...buckets[changedIndex], pct: allowed };
+			// Build rounded result preserving locked values
+			const rounded = order.map((cls, i)=> ({ class: cls, pct: Math.round(buckets[i].pct||0) }));
+			return { ...(next||{}), buckets: rounded };
+		}
+		// Scale only unlocked others proportionally
+		const scale = targetOthers / sumUnlockedOthers;
+		const cont = buckets.map((b:any, i:number)=> {
+			if (i===changedIndex) return { class: b.class as string, v: newPct };
+			if (lockedSet.has(b.class)) return { class: b.class as string, v: b.pct||0 };
+			return { class: b.class as string, v: (b.pct||0) * scale };
+		});
+		// Largest remainder rounding preserving locked exact integers
+		const floors = cont.map((x:any, i:number)=> {
+			const locked = lockedSet.has(x.class);
+			const fv = locked ? Math.round(x.v) : Math.floor(x.v);
+			const rem = locked ? -1 : (x.v - Math.floor(x.v));
+			return { class: x.class as string, f: fv, r: rem };
+		});
 		let leftover = 100 - floors.reduce((s,c)=> s + c.f, 0);
 		floors.sort((a,b)=> (b.r - a.r) || (order.indexOf(a.class) - order.indexOf(b.class)));
-		for (let i=0;i<floors.length && leftover>0;i++){ floors[i].f += 1; leftover--; }
+		for (let i=0;i<floors.length && leftover>0;i++){
+			if (floors[i].r < 0) continue; // skip locked
+			floors[i].f += 1; leftover--;
+		}
 		floors.sort((a,b)=> order.indexOf(a.class) - order.indexOf(b.class));
 		const rounded = floors.map(x=> ({ class: x.class, pct: x.f }));
 		return { ...(next||{}), buckets: rounded };
@@ -265,6 +289,8 @@ export default function PlanPage() {
 				aiSummary={aiSummary as any}
 				mode={mode}
 				aiDisabled={mode==='custom'}
+				locks={customLocks}
+				onToggleLock={(cls:string)=> setCustomLocks(prev=> ({ ...(prev||{}), [cls]: !prev?.[cls] }))}
 			/>
 			{toast && (
 				<div className={`fixed bottom-4 right-4 z-50 rounded-md border px-3 py-2 text-sm shadow-lg ${toast.type==='success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : toast.type==='info' ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
