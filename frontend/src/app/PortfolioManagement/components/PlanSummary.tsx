@@ -50,9 +50,6 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
             <div className="flex items-center gap-2">
               <Button variant="outline" leftIcon={<Edit3 className="h-4 w-4 text-sky-600" />} onClick={onEditAnswers}>Adjust Profile</Button>
               <Button variant="outline" leftIcon={<RefreshCw className="h-4 w-4 text-indigo-600" />} onClick={onBuildBaseline}>Recalculate Plan</Button>
-              {onRefine ? (
-                <Button variant="outline" leftIcon={<Sparkles className="h-4 w-4 text-amber-500" />} onClick={onRefine}>{aiLoading ? 'Refining…' : 'Refine with AI'}</Button>
-              ) : null}
               <div className="inline-flex items-center gap-2 ml-2">
                 <span className="text-[11px] text-muted-foreground">AI view</span>
                 <button type="button" onClick={onToggleAiView} disabled={!!aiLoading} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${aiViewOn?"bg-indigo-600":"bg-muted"}`}>

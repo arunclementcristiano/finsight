@@ -120,23 +120,6 @@ export default function PlanPage() {
 				plan={local}
 				onEditAnswers={()=>{ setEditAnswers({ ...(questionnaire||{}) }); setAnsStep(0); setAnswersOpen(true); }}
 				onBuildBaseline={()=>{ const allocation = buildPlan(questionnaire); setLocal(allocation); setAiInfo(null); setAiViewOn(false); }}
-				onRefine={async ()=>{
-					try {
-						setAiLoading(true);
-						const baseline = buildPlan(questionnaire);
-						const sig = makeAnswersSig(questionnaire);
-						if (sig && aiCache[sig]) { setLocal((prev:any)=> ({ ...(prev||{}), buckets: aiCache[sig].buckets })); setAiInfo({ rationale: aiCache[sig].explanation, confidence: aiInfo?.confidence }); setLastRefSig(sig); setAiViewOn(true); return; }
-						const res = await fetch('/api/plan/suggest?debug=1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionnaire, baseline }) });
-						const data = await res.json();
-						if (data?.aiPlan?.buckets) {
-							setLocal((prev: any)=> ({ ...(prev||{}), buckets: data.aiPlan.buckets }));
-							setAiInfo({ rationale: data.explanation || data.rationale, confidence: data.confidence });
-							setLastRefSig(sig);
-							setAiCache((prev)=> ({ ...prev, [sig]: { buckets: data.aiPlan.buckets, explanation: data.explanation || data.rationale } }));
-							setAiViewOn(true);
-						}
-					} finally { setAiLoading(false); }
-				}}
 				onChangeBucketPct={(idx: number, newPct: number)=>{
 					const next = { ...(local||{}) } as any;
 					next.buckets = [...(local?.buckets||[])];
@@ -147,9 +130,31 @@ export default function PlanPage() {
 				onToggleAiView={()=>{
 					const sig = makeAnswersSig(questionnaire);
 					if (!aiViewOn) {
-						if (sig && aiCache[sig]) { setLocal((prev:any)=> ({ ...(prev||{}), buckets: aiCache[sig].buckets })); setAiViewOn(true); setAiInfo({ rationale: aiCache[sig].explanation, confidence: aiInfo?.confidence }); return; }
+						if (sig && aiCache[sig]) {
+							setLocal((prev:any)=> ({ ...(prev||{}), buckets: aiCache[sig].buckets }));
+							setAiViewOn(true);
+							setAiInfo({ rationale: aiCache[sig].explanation, confidence: aiInfo?.confidence });
+							return;
+						}
+						(async ()=>{
+							try {
+								setAiLoading(true);
+								const baseline = buildPlan(questionnaire);
+								const res = await fetch('/api/plan/suggest?debug=1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionnaire, baseline }) });
+								const data = await res.json();
+								if (data?.aiPlan?.buckets) {
+									setLocal((prev:any)=> ({ ...(prev||{}), buckets: data.aiPlan.buckets }));
+									setAiInfo({ rationale: data.explanation || data.rationale, confidence: data.confidence });
+									setAiCache((prev)=> ({ ...prev, [sig]: { buckets: data.aiPlan.buckets, explanation: data.explanation || data.rationale } }));
+									setAiViewOn(true);
+								}
+							} finally { setAiLoading(false); }
+						})();
+					} else {
+						const allocation = buildPlan(questionnaire);
+						setLocal(allocation);
+						setAiViewOn(false);
 					}
-					setAiViewOn(v=> !v);
 				}}
 				aiLoading={aiLoading}
 				aiExplanation={aiInfo?.rationale as any}
