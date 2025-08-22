@@ -100,8 +100,19 @@ function normalizeAnswers(q: Record<string, any>): Answers {
     return "5%";
   })();
 
-  const avoidAssets = Array.isArray(q.avoidAssets) ? q.avoidAssets : [];
-  const emphasizeAssets: Answers["emphasizeAssets"] = Array.isArray(q.emphasizeAssets) ? q.emphasizeAssets : [];
+  // Canonicalize asset names for avoid/emphasize (handles inputs like 'RealEstate')
+  const canonicalize = (s: any): any => {
+    const v = String(s || "").toLowerCase().replace(/[\s_-]/g, "");
+    if (v === "stocks" || v === "stock") return "Stocks";
+    if (v === "mutualfunds" || v === "mutualfund") return "Mutual Funds";
+    if (v === "gold") return "Gold";
+    if (v === "realestate" || v === "realty" || v === "re") return "Real Estate";
+    return null;
+  };
+  const avoidAssetsRaw = Array.isArray(q.avoidAssets) ? q.avoidAssets : (typeof q.avoidAssets === 'string' ? [q.avoidAssets] : []);
+  const avoidAssets = avoidAssetsRaw.map(canonicalize).filter(Boolean) as any;
+  const emphasizeRaw = Array.isArray(q.emphasizeAssets) ? q.emphasizeAssets : [];
+  const emphasizeAssets = emphasizeRaw.map(canonicalize).filter(Boolean) as any;
 
   // Build normalized answer object
   const ans: Answers = {
