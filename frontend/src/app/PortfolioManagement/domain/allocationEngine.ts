@@ -38,19 +38,12 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
     0.10 * mapInc[(q as Answers).incomeVsExpenses]
   )));
   const riskLevel: RiskLevel = riskScore >= 67 ? "High" : riskScore <= 33 ? "Low" : "Moderate";
-  const riskNorm = riskScore / 100; // 0..1
-  const ddTol = ((q as Answers).maxDrawdownTolerance);
-  const drawdownTol = ddTol === "30%+" ? 1 : ddTol === "20%" ? 0.6 : ddTol === "10%" ? 0.25 : 0; // align with prior range logic
 
-  // Ranges scale with riskScore and drawdown tolerance (for UI/AI clamping)
-  function bandFor(cls: AssetClass): number {
-    const equityBase = 4 + 6 * riskNorm;
-    const satBase = 3 + 4 * riskNorm;
-    const defBase = 2 + 2 * (1 - riskNorm);
-    const tolFactor = 0.9 + 0.2 * drawdownTol; // 0.9..1.1
-    if (cls === "Stocks" || cls === "Mutual Funds") return equityBase * tolFactor;
-    if (cls === "Gold" || cls === "Real Estate") return satBase * tolFactor;
-    return defBase * (1.05 - 0.1 * drawdownTol);
+  // Simple comfort-zone tolerance by profile (relative to baseline pct)
+  function toleranceFor(level: RiskLevel): number {
+    if (level === "Low") return 0.05;      // Conservative ±5%
+    if (level === "High") return 0.15;     // Aggressive ±15%
+    return 0.10;                             // Moderate/Balanced ±10%
   }
 
   // Helper functions for display
@@ -70,11 +63,12 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
     return "";
   }
 
+  const tol = toleranceFor(riskLevel);
   const buckets = (Object.keys(alloc) as AssetClass[]).map(cls => {
     const pct = alloc[cls];
-    const band = bandFor(cls);
-    const min = +(Math.max(0, pct - band).toFixed(2));
-    const max = +(Math.min(100, pct + band).toFixed(2));
+    const delta = pct * tol;
+    const min = +(Math.max(0, pct - delta).toFixed(2));
+    const max = +(Math.min(100, pct + delta).toFixed(2));
     return {
       class: cls,
       pct,
