@@ -58,7 +58,7 @@ export default function Questionnaire() {
 				/>
 				<div className="flex justify-between w-full mt-8 gap-3">
 					<Button variant="secondary" onClick={prevStep} disabled={step === 0}>Back</Button>
-					<Button onClick={nextStep} disabled={!questionnaire[questions[step].key] && (questions[step].key !== 'avoidAssets' && questions[step].key !== 'emphasizeAssets')}>
+					<Button onClick={nextStep} disabled={!questionnaire[questions[step].key] && (questions[step].key !== 'avoidAssets') && !(questions[step] as any)?.optional}>
 						{step === questions.length - 1 ? "Submit" : "Next"}
 					</Button>
 				</div>

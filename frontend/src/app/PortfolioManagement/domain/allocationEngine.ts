@@ -18,9 +18,121 @@ export interface AllocationPlan {
 
 import { suggestAllocation, Answers } from "./suggestAllocation";
 
+function normalizeAnswers(q: Record<string, any>): Answers {
+  // Helpers
+  const ageBand = (() => {
+    const v = String(q.ageBand || "").trim();
+    if (v === "<30") return "18–30";
+    if (v === "30–45") return "31–45";
+    if (v === "45–60") return "46–60";
+    if (v === "60+") return "60+";
+    // fallback to closest
+    return "31–45";
+  })();
+  const horizon = (() => {
+    const v = String(q.horizon || "");
+    if (v.startsWith("<3")) return "Short (<3 yrs)";
+    if (v.startsWith("3–7")) return "Medium (3–7 yrs)";
+    if (v.startsWith("7+")) return "Long (>7 yrs)";
+    return "Medium (3–7 yrs)";
+  })();
+  const volatilityComfort = (() => {
+    const v = String(q.volatilityComfort || "").toLowerCase();
+    if (v.includes("very")) return "High";
+    if (v.includes("not")) return "Low";
+    return "Medium";
+  })();
+  const investmentKnowledge = (() => {
+    const v = String(q.investmentKnowledge || "Intermediate");
+    if (v === "Experienced") return "Advanced";
+    if (v === "Beginner" || v === "Intermediate" || v === "Advanced") return v as any;
+    return "Intermediate" as any;
+  })();
+  const incomeStability = (() => {
+    const v = String(q.incomeStability || "").toLowerCase();
+    if (v.includes("very")) return "Stable";
+    if (v.includes("not")) return "Unstable";
+    return "Variable";
+  })();
+  const dependents = (() => {
+    const v = String(q.dependents || "None");
+    if (v === "None") return "None";
+    if (v === "Few") return "1";
+    if (v === "Many") return "3+";
+    return "None";
+  })();
+  const liabilities = (() => {
+    const v = String(q.liabilities || "None");
+    if (v === "Heavy") return "High";
+    if (v === "Moderate" || v === "High" || v === "Low" || v === "None") return v as any;
+    return "None" as any;
+  })();
+  const financialGoal = (() => {
+    const v = String(q.financialGoal || "Wealth growth");
+    if (v === "House purchase" || v === "Education") return "Major purchase" as any;
+    if (v === "Retirement" || v === "Wealth growth" || v === "Capital preservation" || v === "Income generation") return v as any;
+    if (v === "Mixed") return horizon === "Long (>7 yrs)" ? "Wealth growth" : "Capital preservation" as any;
+    return "Wealth growth" as any;
+  })();
+  const withdrawYes = String(q.withdrawNext2Yrs || "No").toLowerCase() === "yes";
+  const emergencySix = String(q.emergencyFundSixMonths || "Yes").toLowerCase() === "yes";
+  const insuranceOk = String(q.insuranceCoverage || "Yes").toLowerCase() === "yes";
+
+  // Derived legacy fields
+  const bigExpenseTimeline: Answers["bigExpenseTimeline"] = withdrawYes ? "12–36 months" : "None";
+  const liquidityPreference: Answers["liquidityPreference"] = withdrawYes ? "High" : "Medium";
+  const emergencyFundMonthsTarget: Answers["emergencyFundMonthsTarget"] = emergencySix ? "6" : "9";
+  const incomeVsExpenses: Answers["incomeVsExpenses"] = (incomeStability === "Stable") ? "Surplus" : (incomeStability === "Variable" ? "Break-even" : "Deficit");
+
+  // Risk appetite and drawdown from tolerance signals
+  const riskAppetite: Answers["riskAppetite"] = (() => {
+    const young = ageBand === "18–30" || ageBand === "31–45";
+    const long = horizon === "Long (>7 yrs)";
+    const capacityHigh = young && long && liabilities === "None" && dependents === "None" && incomeStability !== "Unstable";
+    if (volatilityComfort === "High" && capacityHigh) return "High";
+    const capacityLow = ageBand === "60+" || incomeStability === "Unstable" || liabilities === "High" || dependents === "3+";
+    if (volatilityComfort === "Low" || capacityLow) return "Low";
+    return "Moderate";
+  })();
+  const maxDrawdownTolerance: Answers["maxDrawdownTolerance"] = ((): any => {
+    if (volatilityComfort === "High") return "20%";
+    if (volatilityComfort === "Medium") return "10%";
+    return "5%";
+  })();
+
+  const avoidAssets = Array.isArray(q.avoidAssets) ? q.avoidAssets : [];
+  const emphasizeAssets: Answers["emphasizeAssets"] = Array.isArray(q.emphasizeAssets) ? q.emphasizeAssets : [];
+
+  // Build normalized answer object
+  const ans: Answers = {
+    horizon,
+    bigExpenseTimeline,
+    emergencyFundMonthsTarget,
+    liquidityPreference,
+    incomeVsExpenses,
+    ageBand,
+    riskAppetite,
+    volatilityComfort,
+    maxDrawdownTolerance,
+    investmentKnowledge,
+    incomeStability,
+    dependents: dependents as any,
+    liabilities: liabilities as any,
+    financialGoal: financialGoal as any,
+    avoidAssets: avoidAssets as any,
+    emphasizeAssets,
+  };
+
+  // Insurance impact: handled inside engine nudges via new fields
+  // Tax/geo preferences: used at product layer, not top-level mix.
+  return ans;
+}
+
 export function buildPlan(q: Record<string, any>): AllocationPlan {
+  // Normalize UI answers into engine enums
+  const ans = normalizeAnswers(q);
   // Compute whole-number allocation using the spec-driven engine
-  const alloc = suggestAllocation(q as Answers);
+  const alloc = suggestAllocation(ans);
 
   // Risk score for display/ranges
   const mapRA: Record<Answers["riskAppetite"], number> = { Low: 20, Moderate: 50, High: 80 };
@@ -30,12 +142,12 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
   const mapAge: Record<Answers["ageBand"], number> = { "18–30": 80, "31–45": 65, "46–60": 45, "60+": 25 };
   const mapInc: Record<Answers["incomeVsExpenses"], number> = { Deficit: 25, "Break-even": 50, Surplus: 70 };
   const riskScore = Math.max(0, Math.min(100, Math.round(
-    0.30 * mapRA[(q as Answers).riskAppetite] +
-    0.15 * mapVol[(q as Answers).volatilityComfort] +
-    0.15 * mapDD[(q as Answers).maxDrawdownTolerance] +
-    0.15 * mapHor[(q as Answers).horizon] +
-    0.15 * mapAge[(q as Answers).ageBand] +
-    0.10 * mapInc[(q as Answers).incomeVsExpenses]
+    0.30 * mapRA[ans.riskAppetite] +
+    0.15 * mapVol[ans.volatilityComfort] +
+    0.15 * mapDD[ans.maxDrawdownTolerance] +
+    0.15 * mapHor[ans.horizon] +
+    0.15 * mapAge[ans.ageBand] +
+    0.10 * mapInc[ans.incomeVsExpenses]
   )));
   const riskLevel: RiskLevel = riskScore >= 67 ? "High" : riskScore <= 33 ? "Low" : "Moderate";
 
@@ -48,16 +160,14 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
     return 0.05;
   }
   function adjustFactorByProfile(cls: AssetClass): number {
-    const ans = q as Answers;
+    const a = ans;
     let f = 1.0;
-    if (ans.riskAppetite === "Low") f *= 0.85;
-    if (ans.riskAppetite === "High") f *= 1.10;
-    if (ans.horizon === "Short (<3 yrs)") f *= 0.9;
-    if (ans.horizon === "Long (>7 yrs)") f *= 1.1;
-    if (ans.ageBand === "46–60") f *= 0.9; else if (ans.ageBand === "60+") f *= 0.8;
-    // Slightly tighter for Liquid regardless
+    if (a.riskAppetite === "Low") f *= 0.85;
+    if (a.riskAppetite === "High") f *= 1.10;
+    if (a.horizon === "Short (<3 yrs)") f *= 0.9;
+    if (a.horizon === "Long (>7 yrs)") f *= 1.1;
+    if (a.ageBand === "46–60") f *= 0.9; else if (a.ageBand === "60+") f *= 0.8;
     if (cls === "Liquid") f *= 0.9;
-    // Keep bands sensible
     return Math.max(0.6, Math.min(1.25, f));
   }
 
@@ -98,7 +208,7 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
     if (typeof v === 'string') return v;
     return "";
   };
-  const rationale = `Derived from risk (${riskLevel}), horizon (${q.horizon||""}), emergency fund (${q.emergencyFundMonthsTarget||""} months), expense (${q.bigExpenseTimeline||"None"}), liquidity (${q.liquidityPreference||""}), avoid [${toList((q as any).avoidAssets)}], emphasize [${toList((q as any).emphasizeAssets)}].`;
+  const rationale = `Derived from risk (${riskLevel}), horizon (${q.horizon||""}), EF6m=${q.emergencyFundSixMonths||""}, withdraw2y=${q.withdrawNext2Yrs||""}, liabilities (${q.liabilities||"None"}), dependents (${q.dependents||"None"}), avoid [${toList((q as any).avoidAssets)}].`;
 
   return { riskLevel, rationale, buckets };
 }
