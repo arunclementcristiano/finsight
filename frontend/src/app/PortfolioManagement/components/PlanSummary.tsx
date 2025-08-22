@@ -6,7 +6,7 @@ import { useApp } from "../../store";
 import { computeRebalance } from "../domain/rebalance";
 import { LineChart, Layers, Banknote, Coins, Home, Droplet, Edit3, RefreshCw } from "lucide-react";
 
-export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, onBuildBaseline, aiViewOn, onToggleAiView, aiLoading, aiExplanation, aiTips }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void; onEditAnswers?: () => void; onBuildBaseline?: () => void; aiViewOn?: boolean; onToggleAiView?: () => void; aiLoading?: boolean; aiExplanation?: string; aiTips?: string[] }) {
+export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, onBuildBaseline, aiViewOn, onToggleAiView, aiLoading, aiExplanation, aiSummary }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void; onEditAnswers?: () => void; onBuildBaseline?: () => void; aiViewOn?: boolean; onToggleAiView?: () => void; aiLoading?: boolean; aiExplanation?: string; aiSummary?: string }) {
   const { holdings, driftTolerancePct } = useApp();
 
   const kpis = useMemo(() => {
@@ -94,15 +94,15 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
               </table>
             </div>
             {aiViewOn ? (
-              <div className="mt-3 rounded-md border border-border p-3">
+              <div className="mt-3 rounded-md border border-border p-3 bg-gradient-to-r from-indigo-50/60 to-emerald-50/60 dark:from-indigo-900/10 dark:to-emerald-900/10">
                 <div className="text-xs font-semibold mb-1">AI recommendation</div>
-                {Array.isArray(aiTips) && aiTips.length > 0 ? (
-                  <ul className="list-disc pl-5 text-xs space-y-1">
-                    {aiTips.map((t, i) => (<li key={i}>{t}</li>))}
-                  </ul>
+                {aiSummary ? (
+                  <div className="text-sm leading-5">
+                    {aiSummary}
+                  </div>
                 ) : null}
                 {aiExplanation ? (
-                  <div className="mt-2 text-[11px] text-muted-foreground">{aiExplanation}</div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">{aiExplanation}</div>
                 ) : null}
               </div>
             ) : null}

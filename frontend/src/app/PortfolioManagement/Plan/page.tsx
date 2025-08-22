@@ -24,6 +24,7 @@ export default function PlanPage() {
 	const [aiViewOn, setAiViewOn] = useState(false);
 	const [aiCache, setAiCache] = useState<Record<string, { buckets: any[]; explanation?: string }>>({});
 	const [aiTips, setAiTips] = useState<string[] | undefined>(undefined);
+	const [aiSummary, setAiSummary] = useState<string | undefined>(undefined);
 
 	useEffect(() => {
 		if (!toast) return;
@@ -48,6 +49,19 @@ export default function PlanPage() {
 			return tips.slice(0, 5);
 		} catch { return []; }
 	}
+	function makeSummary(baseline: any, aiBuckets: any[]): string {
+		try {
+			const baseMap: Record<string, number> = {};
+			for (const b of (baseline?.buckets||[])) baseMap[b.class] = b.pct;
+			const deltas = aiBuckets.map(b=> ({ cls: b.class as string, d: Math.round((b.pct - (baseMap[b.class]||0))) }));
+			const ups = deltas.filter(x=> x.d>0).sort((a,b)=> b.d - a.d).slice(0,2);
+			const downs = deltas.filter(x=> x.d<0).sort((a,b)=> a.d - b.d).slice(0,2);
+			const parts: string[] = [];
+			if (ups.length) parts.push(`nudges up ${ups.map(x=>`${x.cls} ${x.d}%`).join(", ")}`);
+			if (downs.length) parts.push(`and trims ${downs.map(x=>`${x.cls} ${Math.abs(x.d)}%`).join(", ")}`);
+			return parts.length ? `AI gently ${parts.join(" ")}, keeping your risk in check.` : `AI keeps your mix steady with minor refinements.`;
+		} catch { return "AI refined your mix for balance and resilience."; }
+	}
 
 	useEffect(() => {
 		setLocal(plan || null);
@@ -59,6 +73,7 @@ export default function PlanPage() {
 			setAiCache(prev => ({ ...prev, [sig]: { buckets: (plan as any).buckets, explanation: undefined } }));
 			const baseline = buildPlan(questionnaire);
 			setAiTips(makeTips(baseline, (plan as any).buckets));
+			setAiSummary(makeSummary(baseline, (plan as any).buckets));
 			setAiInfo({ rationale: undefined, confidence: undefined });
 		}
 	}, [plan]);
@@ -118,6 +133,7 @@ export default function PlanPage() {
 							setAiInfo(null);
 							setAiCache({});
 							setAiTips(undefined);
+							setAiSummary(undefined);
 							setAiViewOn(false);
 						}
 						setAnswersOpen(false);
@@ -147,7 +163,7 @@ export default function PlanPage() {
 			<PlanSummary
 				plan={local}
 				onEditAnswers={()=>{ setEditAnswers({ ...(questionnaire||{}) }); setAnsStep(0); setAnswersOpen(true); }}
-				onBuildBaseline={()=>{ const allocation = buildPlan(questionnaire); setLocal(allocation); setAiInfo(null); setAiTips(undefined); setAiViewOn(false); }}
+				onBuildBaseline={()=>{ const allocation = buildPlan(questionnaire); setLocal(allocation); setAiInfo(null); setAiTips(undefined); setAiSummary(undefined); setAiViewOn(false); }}
 				onChangeBucketPct={(idx: number, newPct: number)=>{
 					const next = { ...(local||{}) } as any;
 					next.buckets = [...(local?.buckets||[])];
@@ -161,6 +177,7 @@ export default function PlanPage() {
 						if (sig && aiCache[sig]) {
 							setLocal((prev:any)=> ({ ...(prev||{}), buckets: aiCache[sig].buckets }));
 							setAiTips(makeTips(buildPlan(questionnaire), aiCache[sig].buckets));
+							setAiSummary(makeSummary(buildPlan(questionnaire), aiCache[sig].buckets));
 							setAiViewOn(true);
 							setAiInfo({ rationale: aiCache[sig].explanation, confidence: aiInfo?.confidence });
 							return;
@@ -176,6 +193,7 @@ export default function PlanPage() {
 									setAiInfo({ rationale: data.explanation || data.rationale, confidence: data.confidence });
 									setAiCache((prev)=> ({ ...prev, [sig]: { buckets: data.aiPlan.buckets, explanation: data.explanation || data.rationale } }));
 									setAiTips(makeTips(baseline, data.aiPlan.buckets));
+									setAiSummary(makeSummary(baseline, data.aiPlan.buckets));
 									setAiViewOn(true);
 								}
 							} finally { setAiLoading(false); }
@@ -184,12 +202,13 @@ export default function PlanPage() {
 						const allocation = buildPlan(questionnaire);
 						setLocal(allocation);
 						setAiTips(undefined);
+						setAiSummary(undefined);
 						setAiViewOn(false);
 					}
 				}}
 				aiLoading={aiLoading}
 				aiExplanation={aiInfo?.rationale as any}
-				aiTips={aiTips as any}
+				aiSummary={aiSummary as any}
 			/>
 			{toast && (
 				<div className={`fixed bottom-4 right-4 z-50 rounded-md border px-3 py-2 text-sm shadow-lg ${toast.type==='success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : toast.type==='info' ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
