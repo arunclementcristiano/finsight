@@ -91,30 +91,9 @@ export default function PlanPage() {
 	return (
 		<div className="max-w-4xl mx-auto space-y-4">
 			{answersDrift ? (
-				<div className="rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs flex items-center justify-between">
-					<div className="flex items-center gap-2">
-						<AlertTriangle className="h-4 w-4 text-amber-600" />
-						<span className="text-amber-800">Unsaved answers detected. We recalculated your plan. Save to keep, or reset to revert.</span>
-					</div>
-					<div className="flex items-center gap-2">
-						<Button size="sm" variant="outline" leftIcon={<SaveIcon className="h-3.5 w-3.5" />} onClick={async ()=>{
-							if (!activePortfolioId || !local) return;
-							const origin = aiViewOn ? 'ai' : 'engine';
-							const planToSave = { ...(local||{}), origin, answersSig: makeAnswersSig(questionnaire), answersSnapshot: questionnaire, policyVersion: 'v1' };
-							await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: activePortfolioId, plan: planToSave }) });
-							setPlan(planToSave);
-							setAnswersDrift(false);
-							setToast({ msg: 'Plan saved', type: 'success' });
-						}}>Save Plan</Button>
-						<Button size="sm" variant="outline" leftIcon={<RotateCcw className="h-3.5 w-3.5" />} onClick={()=>{
-							const snap = (plan as any)?.answersSnapshot || {};
-							Object.keys(snap).forEach(k=> setQuestionAnswer(k, (snap as any)[k]));
-							const allocation = buildPlan(snap);
-							setLocal(allocation);
-							setAiViewOn(!!((plan as any)?.origin === 'ai'));
-							setAnswersDrift(false);
-						}}>Reset Answers</Button>
-					</div>
+				<div className="rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs flex items-center gap-2">
+					<AlertTriangle className="h-4 w-4 text-amber-600" />
+					<span className="text-amber-800">Unsaved answers detected. We recalculated your plan. Use Save Plan to keep changes, or Reset if you wish to revert.</span>
 				</div>
 			) : null}
 			<div className="flex items-center justify-between">
