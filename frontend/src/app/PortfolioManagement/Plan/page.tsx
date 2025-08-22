@@ -105,10 +105,10 @@ export default function PlanPage() {
 					<Button variant="outline" leftIcon={<RotateCcw className="h-4 w-4 text-rose-600" />} onClick={()=> { 
 						const snap = (plan as any)?.answersSnapshot || {}; 
 						Object.keys(snap).forEach(k=> setQuestionAnswer(k, (snap as any)[k])); 
-						const allocation = buildPlan(snap); 
-						setLocal(allocation); 
-						setAiViewOn(false); 
-						setAiSummary(undefined); 
+						setLocal(plan); 
+						setAiViewOn(!!((plan as any)?.origin === 'ai')); 
+						// Optional: recompute summary if AI view is on
+						try { if ((plan as any)?.origin === 'ai') { const baseline = buildPlan(snap); setAiSummary(makeSummary(baseline, (plan as any)?.buckets||[])); } else { setAiSummary(undefined); } } catch { setAiSummary(undefined); } 
 						setAnswersDrift(false); 
 					}}>Reset</Button>
 					<Button variant="outline" leftIcon={<SaveIcon className="h-4 w-4 text-emerald-600" />} onClick={async ()=>{
