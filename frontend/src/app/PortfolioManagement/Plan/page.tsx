@@ -22,6 +22,8 @@ export default function PlanPage() {
 	const [editAnswers, setEditAnswers] = useState<any>({});
 	const [lastRefSig, setLastRefSig] = useState<string | null>(null);
 	const [toast, setToast] = useState<{ msg: string; type: 'success'|'info'|'error' } | null>(null);
+	const [aiViewOn, setAiViewOn] = useState(false);
+	const [aiCache, setAiCache] = useState<Record<string, { buckets: any[]; explanation?: string }>>({});
 
 	useEffect(() => {
 		if (!toast) return;
@@ -87,6 +89,8 @@ export default function PlanPage() {
 							setLocal(allocation);
 							setAiInfo(null);
 							setLastRefSig(null);
+							setAiCache({});
+							setAiViewOn(false);
 						}
 						setAnswersOpen(false);
 					}}>Done</Button>
@@ -115,19 +119,21 @@ export default function PlanPage() {
 			<PlanSummary
 				plan={local}
 				onEditAnswers={()=>{ setEditAnswers({ ...(questionnaire||{}) }); setAnsStep(0); setAnswersOpen(true); }}
-				onBuildBaseline={()=>{ const allocation = buildPlan(questionnaire); setLocal(allocation); setAiInfo(null); }}
+				onBuildBaseline={()=>{ const allocation = buildPlan(questionnaire); setLocal(allocation); setAiInfo(null); setAiViewOn(false); }}
 				onRefine={async ()=>{
 					try {
 						setAiLoading(true);
 						const baseline = buildPlan(questionnaire);
 						const sig = makeAnswersSig(questionnaire);
-						if (sig && sig === lastRefSig) { return; }
-						const res = await fetch('/api/plan/suggest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionnaire, baseline }) });
+						if (sig && aiCache[sig]) { setLocal((prev:any)=> ({ ...(prev||{}), buckets: aiCache[sig].buckets })); setAiInfo({ rationale: aiCache[sig].explanation, confidence: aiInfo?.confidence }); setLastRefSig(sig); setAiViewOn(true); return; }
+						const res = await fetch('/api/plan/suggest?debug=1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionnaire, baseline }) });
 						const data = await res.json();
 						if (data?.aiPlan?.buckets) {
 							setLocal((prev: any)=> ({ ...(prev||{}), buckets: data.aiPlan.buckets }));
-							setAiInfo({ rationale: data.rationale, confidence: data.confidence });
+							setAiInfo({ rationale: data.explanation || data.rationale, confidence: data.confidence });
 							setLastRefSig(sig);
+							setAiCache((prev)=> ({ ...prev, [sig]: { buckets: data.aiPlan.buckets, explanation: data.explanation || data.rationale } }));
+							setAiViewOn(true);
 						}
 					} finally { setAiLoading(false); }
 				}}
@@ -137,6 +143,16 @@ export default function PlanPage() {
 					if (next.buckets[idx]) next.buckets[idx] = { ...next.buckets[idx], pct: newPct };
 					setLocal(next);
 				}}
+				aiViewOn={aiViewOn}
+				onToggleAiView={()=>{
+					const sig = makeAnswersSig(questionnaire);
+					if (!aiViewOn) {
+						if (sig && aiCache[sig]) { setLocal((prev:any)=> ({ ...(prev||{}), buckets: aiCache[sig].buckets })); setAiViewOn(true); setAiInfo({ rationale: aiCache[sig].explanation, confidence: aiInfo?.confidence }); return; }
+					}
+					setAiViewOn(v=> !v);
+				}}
+				aiLoading={aiLoading}
+				aiExplanation={aiInfo?.rationale as any}
 			/>
 			{toast && (
 				<div className={`fixed bottom-4 right-4 z-50 rounded-md border px-3 py-2 text-sm shadow-lg ${toast.type==='success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : toast.type==='info' ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
