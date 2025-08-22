@@ -20,10 +20,10 @@ export default function PlanPage() {
 	const [answersOpen, setAnswersOpen] = useState(false);
 	const [ansStep, setAnsStep] = useState(0);
 	const [editAnswers, setEditAnswers] = useState<any>({});
-	const [lastRefSig, setLastRefSig] = useState<string | null>(null);
 	const [toast, setToast] = useState<{ msg: string; type: 'success'|'info'|'error' } | null>(null);
 	const [aiViewOn, setAiViewOn] = useState(false);
 	const [aiCache, setAiCache] = useState<Record<string, { buckets: any[]; explanation?: string }>>({});
+	const [aiTips, setAiTips] = useState<string[] | undefined>(undefined);
 
 	useEffect(() => {
 		if (!toast) return;
@@ -34,8 +34,34 @@ export default function PlanPage() {
 	function makeAnswersSig(q: any): string {
 		try { return JSON.stringify({ q }); } catch { return ""; }
 	}
+	function makeTips(baseline: any, aiBuckets: any[]): string[] {
+		try {
+			const baseMap: Record<string, number> = {};
+			for (const b of (baseline?.buckets||[])) baseMap[b.class] = b.pct;
+			const tips: string[] = [];
+			for (const b of aiBuckets) {
+				const cls = b.class; const aiPct = Math.round(b.pct);
+				const basePct = Math.round(baseMap[cls] || 0);
+				const delta = aiPct - basePct;
+				if (Math.abs(delta) >= 1) tips.push(`${cls}: ${delta>0?'+':''}${delta}% (now ${aiPct}%)`);
+			}
+			return tips.slice(0, 5);
+		} catch { return []; }
+	}
 
-	useEffect(() => { setLocal(plan || null); setAiViewOn(!!(plan && (plan as any).origin === 'ai')); }, [plan]);
+	useEffect(() => {
+		setLocal(plan || null);
+		const on = !!(plan && (plan as any).origin === 'ai');
+		setAiViewOn(on);
+		const sig = makeAnswersSig(questionnaire);
+		// Prewarm cache from saved plan if AI origin and sig matches
+		if (on && sig && (plan as any)?.answersSig === sig && (plan as any)?.buckets) {
+			setAiCache(prev => ({ ...prev, [sig]: { buckets: (plan as any).buckets, explanation: undefined } }));
+			const baseline = buildPlan(questionnaire);
+			setAiTips(makeTips(baseline, (plan as any).buckets));
+			setAiInfo({ rationale: undefined, confidence: undefined });
+		}
+	}, [plan]);
 
 	if (!plan) {
 		return (
@@ -90,8 +116,8 @@ export default function PlanPage() {
 							const allocation = buildPlan(next);
 							setLocal(allocation);
 							setAiInfo(null);
-							setLastRefSig(null);
 							setAiCache({});
+							setAiTips(undefined);
 							setAiViewOn(false);
 						}
 						setAnswersOpen(false);
@@ -121,7 +147,7 @@ export default function PlanPage() {
 			<PlanSummary
 				plan={local}
 				onEditAnswers={()=>{ setEditAnswers({ ...(questionnaire||{}) }); setAnsStep(0); setAnswersOpen(true); }}
-				onBuildBaseline={()=>{ const allocation = buildPlan(questionnaire); setLocal(allocation); setAiInfo(null); setAiViewOn(false); }}
+				onBuildBaseline={()=>{ const allocation = buildPlan(questionnaire); setLocal(allocation); setAiInfo(null); setAiTips(undefined); setAiViewOn(false); }}
 				onChangeBucketPct={(idx: number, newPct: number)=>{
 					const next = { ...(local||{}) } as any;
 					next.buckets = [...(local?.buckets||[])];
@@ -134,6 +160,7 @@ export default function PlanPage() {
 					if (!aiViewOn) {
 						if (sig && aiCache[sig]) {
 							setLocal((prev:any)=> ({ ...(prev||{}), buckets: aiCache[sig].buckets }));
+							setAiTips(makeTips(buildPlan(questionnaire), aiCache[sig].buckets));
 							setAiViewOn(true);
 							setAiInfo({ rationale: aiCache[sig].explanation, confidence: aiInfo?.confidence });
 							return;
@@ -148,6 +175,7 @@ export default function PlanPage() {
 									setLocal((prev:any)=> ({ ...(prev||{}), buckets: data.aiPlan.buckets }));
 									setAiInfo({ rationale: data.explanation || data.rationale, confidence: data.confidence });
 									setAiCache((prev)=> ({ ...prev, [sig]: { buckets: data.aiPlan.buckets, explanation: data.explanation || data.rationale } }));
+									setAiTips(makeTips(baseline, data.aiPlan.buckets));
 									setAiViewOn(true);
 								}
 							} finally { setAiLoading(false); }
@@ -155,11 +183,13 @@ export default function PlanPage() {
 					} else {
 						const allocation = buildPlan(questionnaire);
 						setLocal(allocation);
+						setAiTips(undefined);
 						setAiViewOn(false);
 					}
 				}}
 				aiLoading={aiLoading}
 				aiExplanation={aiInfo?.rationale as any}
+				aiTips={aiTips as any}
 			/>
 			{toast && (
 				<div className={`fixed bottom-4 right-4 z-50 rounded-md border px-3 py-2 text-sm shadow-lg ${toast.type==='success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : toast.type==='info' ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
