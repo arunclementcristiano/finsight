@@ -10,6 +10,7 @@ import { questions } from "../domain/questionnaire";
 import { buildPlan } from "../domain/allocationEngine";
 import { Modal } from "../../components/Modal";
 import { RotateCcw, Save as SaveIcon, AlertTriangle } from "lucide-react";
+import { pruneQuestionnaire, stableAnswersSig } from "../domain/answersUtil";
 
 export default function PlanPage() {
 	const { plan, setPlan, activePortfolioId, questionnaire, setQuestionAnswer } = useApp() as any;
@@ -33,7 +34,7 @@ export default function PlanPage() {
 	}, [toast]);
 
 	function makeAnswersSig(q: any): string {
-		try { return JSON.stringify({ q }); } catch { return ""; }
+		try { return stableAnswersSig(q); } catch { try { return JSON.stringify({ q }); } catch { return ""; } }
 	}
 	function makeSummary(baseline: any, aiBuckets: any[]): string {
 		try {
@@ -117,7 +118,8 @@ export default function PlanPage() {
 						if (!dirty) { setToast({ msg: 'No changes to save', type: 'info' }); return; }
 						if (!activePortfolioId || !local) return;
 						const origin = aiViewOn ? 'ai' : 'engine';
-						const planToSave = { ...(local||{}), origin, answersSig: makeAnswersSig(questionnaire), answersSnapshot: questionnaire, policyVersion: 'v1' };
+						const snapshot = pruneQuestionnaire(questionnaire);
+						const planToSave = { ...(local||{}), origin, answersSig: makeAnswersSig(snapshot), answersSnapshot: snapshot, policyVersion: 'v1' };
 						await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: activePortfolioId, plan: planToSave }) });
 						setPlan(planToSave);
 						setToast({ msg: 'Plan saved', type: 'success' });
