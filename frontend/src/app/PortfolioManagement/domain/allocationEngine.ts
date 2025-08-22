@@ -41,9 +41,9 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
 
   // Simple comfort-zone tolerance by profile (relative to baseline pct)
   function toleranceFor(level: RiskLevel): number {
-    if (level === "Low") return 0.05;      // Conservative ±5%
-    if (level === "High") return 0.15;     // Aggressive ±15%
-    return 0.10;                             // Moderate/Balanced ±10%
+    if (level === "Low") return 0.03;      // Conservative ±3%
+    if (level === "High") return 0.10;     // Aggressive ±10%
+    return 0.07;                             // Moderate/Balanced ±7%
   }
 
   // Helper functions for display
