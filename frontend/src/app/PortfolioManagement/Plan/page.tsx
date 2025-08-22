@@ -11,6 +11,7 @@ import { buildPlan } from "../domain/allocationEngine";
 import { Modal } from "../../components/Modal";
 import { RotateCcw, Save as SaveIcon, AlertTriangle } from "lucide-react";
 import { pruneQuestionnaire, stableAnswersSig } from "../domain/answersUtil";
+import { advisorTune } from "../domain/advisorTune";
 
 export default function PlanPage() {
 	const { plan, setPlan, activePortfolioId, questionnaire, setQuestionAnswer } = useApp() as any;
@@ -177,8 +178,13 @@ export default function PlanPage() {
 				onChangeBucketPct={(idx: number, newPct: number)=>{
 					const next = { ...(local||{}) } as any;
 					next.buckets = [...(local?.buckets||[])];
-					if (next.buckets[idx]) next.buckets[idx] = { ...next.buckets[idx], pct: newPct };
+					if (!next.buckets[idx]) return;
+					const changedClass = next.buckets[idx].class as any;
+					const baseline = buildPlan(questionnaire);
+					const tuned = advisorTune(baseline as any, next as any, changedClass, newPct);
+					next.buckets = tuned.buckets;
 					setLocal(next);
+					if (tuned.clamped) setToast({ msg: 'Adjusted to comfort band', type: 'info' });
 				}}
 				aiViewOn={aiViewOn}
 				onToggleAiView={()=>{
