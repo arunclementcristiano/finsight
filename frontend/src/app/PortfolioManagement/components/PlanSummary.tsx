@@ -7,7 +7,7 @@ import { computeRebalance } from "../domain/rebalance";
 import { LineChart, Layers, Banknote, Coins, Home, Droplet, Edit3, RefreshCw } from "lucide-react";
 
 export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, onBuildBaseline, aiViewOn, onToggleAiView, aiLoading, aiExplanation, aiSummary, mode, aiDisabled, locks, onToggleLock }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void; onEditAnswers?: () => void; onBuildBaseline?: () => void; aiViewOn?: boolean; onToggleAiView?: () => void; aiLoading?: boolean; aiExplanation?: string; aiSummary?: string; mode?: 'advisor'|'custom'; aiDisabled?: boolean; locks?: Record<string, boolean>; onToggleLock?: (cls: string)=>void }) {
-  const { holdings, driftTolerancePct } = useApp();
+  const { holdings, driftTolerancePct, questionnaire } = useApp() as any;
 
   const kpis = useMemo(() => {
     if (!plan) return { equity: 0, defensive: 0, satellite: 0 };
@@ -22,6 +22,14 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
   const rebalance = useMemo(() => (plan ? computeRebalance(holdings, plan, driftTolerancePct) : { items: [], totalCurrentValue: 0 }), [holdings, plan, driftTolerancePct]);
 
   function displayRange(range?: [number, number]) { if (!range) return "—"; const [min, max] = range; const mi = Math.round(min); const ma = Math.round(max); return `${mi}% – ${ma}%`; }
+
+  const avoidSet = useMemo(()=>{
+    const v = (questionnaire?.avoidAssets);
+    const arr = Array.isArray(v) ? v : (typeof v === 'string' && v ? [v] : []);
+    return new Set(arr as string[]);
+  }, [questionnaire]);
+
+  const visibleBuckets = useMemo(()=> (plan?.buckets||[]).filter((b:any)=> !avoidSet.has(b.class)), [plan, avoidSet]);
 
   return (
     <div className="space-y-3">
@@ -75,7 +83,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                   </tr>
                 </thead>
                 <tbody>
-                  {(plan.buckets || []).map((b: any, idx: number) => (
+                  {visibleBuckets.map((b: any, idx: number) => (
                     <tr key={b.class} className="border-t border-border/50">
                       <td className="py-2 px-3 font-medium"><span className="inline-flex items-center">{(() => { const common = "h-4 w-4 mr-2"; if (b.class === "Stocks") return <LineChart className={common} />; if (b.class === "Mutual Funds") return <Layers className={common} />; if (b.class === "Debt") return <Banknote className={common} />; if (b.class === "Gold") return <Coins className={common} />; if (b.class === "Real Estate") return <Home className={common} />; if (b.class === "Liquid") return <Droplet className={common} />; return <LineChart className={common} />; })()}{b.class}</span></td>
                       <td className="py-2 px-3 text-right">{b.pct}%</td>
