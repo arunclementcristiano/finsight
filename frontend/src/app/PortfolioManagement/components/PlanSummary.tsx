@@ -49,7 +49,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" leftIcon={<Edit3 className="h-4 w-4 text-sky-600" />} onClick={onEditAnswers}>Adjust Profile</Button>
-              <Button variant="outline" leftIcon={<RefreshCw className="h-4 w-4 text-indigo-600" />} onClick={onBuildBaseline}>Rebuild Mix</Button>
+              <Button variant="outline" leftIcon={<RefreshCw className="h-4 w-4 text-indigo-600" />} onClick={onBuildBaseline}>Recalculate Plan</Button>
               <Button variant="outline" leftIcon={<Sparkles className="h-4 w-4 text-amber-500" />} onClick={onRefine}>Refine with AI</Button>
             </div>
           </div>
