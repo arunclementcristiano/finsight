@@ -23,8 +23,8 @@ export default function PlanPage() {
 	const [toast, setToast] = useState<{ msg: string; type: 'success'|'info'|'error' } | null>(null);
 	const [aiViewOn, setAiViewOn] = useState(false);
 	const [aiCache, setAiCache] = useState<Record<string, { buckets: any[]; explanation?: string }>>({});
-	const [aiTips, setAiTips] = useState<string[] | undefined>(undefined);
 	const [aiSummary, setAiSummary] = useState<string | undefined>(undefined);
+	const [answersDrift, setAnswersDrift] = useState(false);
 
 	useEffect(() => {
 		if (!toast) return;
@@ -34,20 +34,6 @@ export default function PlanPage() {
 
 	function makeAnswersSig(q: any): string {
 		try { return JSON.stringify({ q }); } catch { return ""; }
-	}
-	function makeTips(baseline: any, aiBuckets: any[]): string[] {
-		try {
-			const baseMap: Record<string, number> = {};
-			for (const b of (baseline?.buckets||[])) baseMap[b.class] = b.pct;
-			const tips: string[] = [];
-			for (const b of aiBuckets) {
-				const cls = b.class; const aiPct = Math.round(b.pct);
-				const basePct = Math.round(baseMap[cls] || 0);
-				const delta = aiPct - basePct;
-				if (Math.abs(delta) >= 1) tips.push(`${cls}: ${delta>0?'+':''}${delta}% (now ${aiPct}%)`);
-			}
-			return tips.slice(0, 5);
-		} catch { return []; }
 	}
 	function makeSummary(baseline: any, aiBuckets: any[]): string {
 		try {
@@ -67,14 +53,12 @@ export default function PlanPage() {
 		setLocal(plan || null);
 		const on = !!(plan && (plan as any).origin === 'ai');
 		setAiViewOn(on);
-		const sig = makeAnswersSig(questionnaire);
-		// Prewarm cache from saved plan if AI origin and sig matches
-		if (on && sig && (plan as any)?.answersSig === sig && (plan as any)?.buckets) {
-			setAiCache(prev => ({ ...prev, [sig]: { buckets: (plan as any).buckets, explanation: undefined } }));
+		const sigSaved = (plan as any)?.answersSig;
+		const sigNow = makeAnswersSig(questionnaire);
+		setAnswersDrift(!!(sigSaved && sigNow && sigSaved !== sigNow));
+		if (on && sigSaved && sigSaved === sigNow && (plan as any)?.buckets) {
 			const baseline = buildPlan(questionnaire);
-			setAiTips(makeTips(baseline, (plan as any).buckets));
 			setAiSummary(makeSummary(baseline, (plan as any).buckets));
-			setAiInfo({ rationale: undefined, confidence: undefined });
 		}
 	}, [plan]);
 
@@ -98,6 +82,22 @@ export default function PlanPage() {
 
 	return (
 		<div className="max-w-4xl mx-auto space-y-4">
+			{answersDrift ? (
+				<div className="rounded-md border border-amber-300 bg-amber-50 text-amber-800 px-3 py-2 text-xs flex items-center justify-between">
+					<div>Answers changed since last save. Recalculate plan to reflect updates or reset answers.</div>
+					<div className="flex items-center gap-2">
+						<Button variant="outline" onClick={()=>{ const allocation = buildPlan(questionnaire); setLocal(allocation); setAiViewOn(false); setAiSummary(undefined); setAnswersDrift(false); }}>Recalculate</Button>
+						<Button variant="outline" onClick={()=>{
+							const snap = (plan as any)?.answersSnapshot || {};
+							Object.keys(snap).forEach(k=> setQuestionAnswer(k, (snap as any)[k]));
+							const allocation = buildPlan(snap);
+							setLocal(allocation);
+							setAiViewOn(!!((plan as any)?.origin === 'ai'));
+							setAnswersDrift(false);
+						}}>Reset Answers</Button>
+					</div>
+				</div>
+			) : null}
 			<div className="flex items-center justify-between">
 				<div className="text-sm text-muted-foreground">Allocation Plan</div>
 				<div className="flex items-center gap-2">
@@ -109,7 +109,7 @@ export default function PlanPage() {
 						if (!dirty) { setToast({ msg: 'No changes to save', type: 'info' }); return; }
 						if (!activePortfolioId || !local) return;
 						const origin = aiViewOn ? 'ai' : 'engine';
-						const planToSave = { ...(local||{}), origin, answersSig: makeAnswersSig(questionnaire) };
+						const planToSave = { ...(local||{}), origin, answersSig: makeAnswersSig(questionnaire), answersSnapshot: questionnaire, policyVersion: 'v1' };
 						await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: activePortfolioId, plan: planToSave }) });
 						setPlan(planToSave);
 						setToast({ msg: 'Plan saved', type: 'success' });
@@ -131,10 +131,8 @@ export default function PlanPage() {
 							const allocation = buildPlan(next);
 							setLocal(allocation);
 							setAiInfo(null);
-							setAiCache({});
-							setAiTips(undefined);
-							setAiSummary(undefined);
 							setAiViewOn(false);
+							setAnswersDrift(true);
 						}
 						setAnswersOpen(false);
 					}}>Done</Button>
@@ -163,7 +161,7 @@ export default function PlanPage() {
 			<PlanSummary
 				plan={local}
 				onEditAnswers={()=>{ setEditAnswers({ ...(questionnaire||{}) }); setAnsStep(0); setAnswersOpen(true); }}
-				onBuildBaseline={()=>{ const allocation = buildPlan(questionnaire); setLocal(allocation); setAiInfo(null); setAiTips(undefined); setAiSummary(undefined); setAiViewOn(false); }}
+				onBuildBaseline={()=>{ const allocation = buildPlan(questionnaire); setLocal(allocation); setAiInfo(null); setAiSummary(undefined); setAiViewOn(false); setAnswersDrift(false); }}
 				onChangeBucketPct={(idx: number, newPct: number)=>{
 					const next = { ...(local||{}) } as any;
 					next.buckets = [...(local?.buckets||[])];
@@ -176,7 +174,6 @@ export default function PlanPage() {
 					if (!aiViewOn) {
 						if (sig && aiCache[sig]) {
 							setLocal((prev:any)=> ({ ...(prev||{}), buckets: aiCache[sig].buckets }));
-							setAiTips(makeTips(buildPlan(questionnaire), aiCache[sig].buckets));
 							setAiSummary(makeSummary(buildPlan(questionnaire), aiCache[sig].buckets));
 							setAiViewOn(true);
 							setAiInfo({ rationale: aiCache[sig].explanation, confidence: aiInfo?.confidence });
@@ -192,7 +189,6 @@ export default function PlanPage() {
 									setLocal((prev:any)=> ({ ...(prev||{}), buckets: data.aiPlan.buckets }));
 									setAiInfo({ rationale: data.explanation || data.rationale, confidence: data.confidence });
 									setAiCache((prev)=> ({ ...prev, [sig]: { buckets: data.aiPlan.buckets, explanation: data.explanation || data.rationale } }));
-									setAiTips(makeTips(baseline, data.aiPlan.buckets));
 									setAiSummary(makeSummary(baseline, data.aiPlan.buckets));
 									setAiViewOn(true);
 								}
@@ -201,7 +197,6 @@ export default function PlanPage() {
 					} else {
 						const allocation = buildPlan(questionnaire);
 						setLocal(allocation);
-						setAiTips(undefined);
 						setAiSummary(undefined);
 						setAiViewOn(false);
 					}
