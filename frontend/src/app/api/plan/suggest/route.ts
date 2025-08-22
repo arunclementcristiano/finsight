@@ -80,11 +80,6 @@ function clampRefined(
 		let min = v.min;
 		let max = v.max;
 		if (aiEntry) {
-			const aiMin = Number.isFinite(aiEntry.min) ? Number(aiEntry.min) : (Array.isArray(aiEntry.range) ? Number(aiEntry.range[0]) : undefined);
-			const aiMax = Number.isFinite(aiEntry.max) ? Number(aiEntry.max) : (Array.isArray(aiEntry.range) ? Number(aiEntry.range[1]) : undefined);
-			if (Number.isFinite(aiMin)) min = Math.max(v.min, Math.min(v.max, aiMin as number));
-			if (Number.isFinite(aiMax)) max = Math.max(v.min, Math.min(v.max, aiMax as number));
-			if (min > max) { const mid = (min + max) / 2; min = Math.max(v.min, Math.min(v.max, Math.floor(mid))); max = Math.max(min, Math.min(v.max, Math.ceil(mid))); }
 			if (Number.isFinite(aiEntry.pct)) {
 				pct = Math.max(min, Math.min(max, Number(aiEntry.pct)));
 			}
@@ -210,24 +205,33 @@ export async function POST(req: NextRequest) {
 		// Build baseline (advisor) and AI maps
 		const advisorBuckets = baseline.buckets.map(b => ({ class: b.class, pct: b.pct }));
 		const advisor = objFromBuckets(advisorBuckets);
-		const rawAiMap = mapFromAnyBuckets(ai.buckets || []);
-		const rawAiNorm = normalizeTo100(rawAiMap);
-		const riskProfile = baseline?.riskLevel || String(questionnaire?.riskAppetite || "");
-		const aiClampedToComfort = apply_comfort_zone(advisor, rawAiNorm, riskProfile);
+		const baseForClamp = baseline.buckets.map(b => ({ class: b.class, pct: b.pct, min: b.range[0], max: b.range[1] }));
+		const refined = clampRefined(baseForClamp, ai.buckets || []);
+		const aiMap = objFromBuckets(refined.map(r => ({ class: r.class, pct: r.pct })) as any);
+
+		// Per-asset explanations (clamp/midpoint/limited)
+		const perAsset: Record<string, string> = {};
+		(ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).forEach(k => {
+			const b = advisor[k] || 0;
+			const aRaw = (()=>{ const e = (ai.buckets||[]).find(x=> (x.class||"").toLowerCase()===k.toLowerCase()); return Number.isFinite(e?.pct) ? Number(e!.pct) : b; })();
+			const [min, max] = (baseline.buckets.find(x=>x.class===k)?.range)||[0,100];
+			if (aRaw < min) perAsset[k] = `AI below comfort; clamped to ${min}%`;
+			else if (aRaw > max) perAsset[k] = `AI above comfort; clamped to ${max}%`;
+			else perAsset[k] = `Within comfort; blended with baseline`;
+		});
 
 		// Debate reconciliation: midpoint within ±5 cap
 		const cap = 5;
 		const final: Record<AllowedClass, number> = { Stocks: 0, "Mutual Funds": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
-		const notes: string[] = [];
 		(ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).forEach(k => {
-			const B = advisor[k] || 0; const A = aiClampedToComfort[k] || 0;
+			const B = advisor[k] || 0; const A = aiMap[k] || 0;
 			const diff = A - B; const ad = Math.abs(diff);
 			if (ad > cap) {
 				final[k] = +(B + Math.sign(diff) * cap).toFixed(2);
-				notes.push(`${k}: change limited to ±${cap}% (baseline ${B} → ${final[k]}, AI ${A})`);
+				perAsset[k] = (perAsset[k] ? perAsset[k]+"; " : "") + `Limited to ±${cap}% from baseline`;
 			} else {
 				final[k] = +(((A + B) / 2)).toFixed(2);
-				notes.push(`${k}: midpoint of baseline ${B} and AI ${A} → ${final[k]}`);
+				perAsset[k] = (perAsset[k] ? perAsset[k]+"; " : "") + `Midpoint of baseline and AI`;
 			}
 		});
 		// Normalize and enforce simple constraints
@@ -238,17 +242,14 @@ export async function POST(req: NextRequest) {
 
 		// Compose response shapes
 		const advisorSafe = normalizeTo100(advisor);
-		const aiSuggestion = rawAiNorm;
-		const tolPct = Math.round(getToleranceFromRiskProfile(riskProfile) * 100);
-		// Build per-asset comfort range around baseline for UI when AI view is ON
+		const aiSuggestion = normalizeTo100(aiMap);
+		// Per-asset comfort ranges sourced from baseline ranges
 		const comfortRanges: Record<AllowedClass, [number, number]> = {} as any;
 		(ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).forEach(k => {
-			const base = advisor[k] || 0;
-			const min = Math.max(0, base - base * (tolPct/100));
-			const max = Math.min(100, base + base * (tolPct/100));
+			const [min, max] = (baseline.buckets.find(x=>x.class===k)?.range)||[0,100];
 			comfortRanges[k] = [Math.round(min), Math.round(max)];
 		});
-		const explanation = `Applied comfort zone ±${tolPct}% around baseline, then blended with AI via ±${cap}% cap/midpoint. Adjustments: ${notes.join("; ")}.`;
+		const explanation = `Applied comfort zones from baseline; blended with AI via ±${cap}% cap/midpoint.`;
 
 		return NextResponse.json({
 			aiPlan: {
@@ -261,6 +262,7 @@ export async function POST(req: NextRequest) {
 			advisor_safe_allocation: advisorSafe,
 			ai_suggestion: aiSuggestion,
 			final_recommendation: finalInt,
+			per_asset_explanations: perAsset,
 			explanation,
 			...(debug ? { diag: ai.diag || {} } : {})
 		});
