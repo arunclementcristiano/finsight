@@ -6,11 +6,13 @@ import { useApp } from "../../store";
 import { computeRebalance } from "../domain/rebalance";
 import { LineChart, Layers, Banknote, Coins, Home, Droplet, Edit3, RefreshCw } from "lucide-react";
 import { Sparkles } from "lucide-react";
+import { Modal } from "../../components/Modal";
 
 export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, onBuildBaseline, aiViewOn, onToggleAiView, aiLoading, aiExplanation, aiSummary, mode, aiDisabled, locks, onToggleLock }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void; onEditAnswers?: () => void; onBuildBaseline?: () => void; aiViewOn?: boolean; onToggleAiView?: () => void; aiLoading?: boolean; aiExplanation?: string; aiSummary?: string; mode?: 'advisor'|'custom'; aiDisabled?: boolean; locks?: Record<string, boolean>; onToggleLock?: (cls: string)=>void }) {
   const { holdings, driftTolerancePct, questionnaire } = useApp() as any;
   const [edgeHit, setEdgeHit] = useState<Record<string, { edge: 'min'|'max'; val: number } | null>>({});
   const [tipFor, setTipFor] = useState<string | null>(null);
+  const [rebalanceOpen, setRebalanceOpen] = useState(false);
 
   const kpis = useMemo(() => {
     if (!plan) return { equity: 0, defensive: 0, satellite: 0 };
@@ -164,8 +166,15 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
 
       <Card>
         <CardHeader className="py-2">
-          <CardTitle className="text-base">Rebalancing Suggestions</CardTitle>
-          <CardDescription className="text-xs">Based on drift tolerance of {driftTolerancePct}%</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base">Rebalancing Suggestions</CardTitle>
+              <CardDescription className="text-xs">Based on drift tolerance of {driftTolerancePct}%</CardDescription>
+            </div>
+            <div>
+              <Button size="sm" variant="outline" onClick={()=> setRebalanceOpen(true)}>Propose Rebalance</Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="pt-0">
           {plan && rebalance.items.length > 0 ? (
@@ -190,6 +199,39 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
           )}
         </CardContent>
       </Card>
+
+      <Modal open={rebalanceOpen} onClose={()=> setRebalanceOpen(false)} title="Rebalance Proposal" footer={(
+        <>
+          <Button variant="outline" onClick={()=> setRebalanceOpen(false)}>Close</Button>
+          <Button onClick={()=>{ setRebalanceOpen(false); /* accept flow to be wired */ }}>Accept</Button>
+        </>
+      )}>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between text-xs">
+            <div className="text-muted-foreground">Mode</div>
+            <div className="inline-flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded border border-border">To band</span>
+              <span className="px-2 py-0.5 rounded border border-border opacity-50">To target</span>
+            </div>
+          </div>
+          {rebalance.items.length ? (
+            <div className="space-y-2">
+              {rebalance.items.map((it:any)=> (
+                <div key={`prop-${it.class}`} className="rounded-md border border-border p-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium">{it.class}</div>
+                    <div className={it.action==='Increase' ? 'text-indigo-600' : 'text-rose-600'}>{it.action} {it.amount.toFixed(0)}</div>
+                  </div>
+                  <div className="mt-1 text-muted-foreground">{it.actualPct}% → {it.targetPct}% · reason: {it.action==='Increase' ? 'under band' : 'over band'}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-muted-foreground text-xs">No actions needed. Portfolio within comfort bands.</div>
+          )}
+          <div className="text-[11px] text-muted-foreground">We propose minimal trades to bring assets back inside their comfort bands. This keeps turnover low and respects your safety floors.</div>
+        </div>
+      </Modal>
       <style jsx>{`
         @keyframes shake { 10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(2px); } 30%, 50%, 70% { transform: translateX(-4px); } 40%, 60% { transform: translateX(4px); } }
         .animate-shake { animation: shake 0.3s linear; }
