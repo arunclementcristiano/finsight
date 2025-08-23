@@ -370,7 +370,6 @@ export default function PlanPage() {
 						}
 						next.buckets[idx] = { ...next.buckets[idx], pct: target };
 						setLocal(next);
-						try { if (activePortfolioId) setCustomDraft(activePortfolioId, next); } catch {}
 						return;
 					}
 					const changedClass = next.buckets[idx].class as any;
