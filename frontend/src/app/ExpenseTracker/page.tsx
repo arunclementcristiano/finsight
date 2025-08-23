@@ -452,150 +452,234 @@ export default function ExpenseTrackerPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-5rem)] overflow-hidden">
-      {/* Mobile-optimized Sticky Command Bar */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border">
-        <div className="space-y-4 xl:grid xl:grid-cols-[1.5fr_1fr] xl:gap-4 xl:space-y-0 p-3 sm:p-4">
-          {/* Mobile-first Chat input */}
-          <div>
-            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2 sm:items-center">
-              <div className="flex gap-2 items-center flex-1">
+      {/* Stunning Mobile Header */}
+      <div className="sticky top-0 z-10 bg-gradient-to-r from-background via-background/95 to-background backdrop-blur-xl supports-[backdrop-filter]:bg-background/90 border-b border-border/50">
+        <div className="space-y-6 xl:grid xl:grid-cols-[1.5fr_1fr] xl:gap-6 xl:space-y-0 p-4 xl:p-6">
+          {/* Beautiful Mobile Input Form */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-500 to-blue-600 flex items-center justify-center">
+                <span className="text-white text-lg">💰</span>
+              </div>
+              <div>
+                <h1 className="text-xl font-bold xl:hidden">Expense Tracker</h1>
+                <p className="text-sm text-muted-foreground xl:hidden">Track your spending effortlessly</p>
+              </div>
+            </div>
+            
+            <form onSubmit={handleSubmit} className="space-y-3 xl:space-y-0 xl:flex xl:gap-3 xl:items-start">
+              {/* Main Input Row */}
+              <div className="relative flex-1">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground z-10">
+                  💸
+                </div>
                 <input 
                   ref={inputRef} 
                   value={input} 
                   onChange={e=>setInput(e.target.value)} 
-                  className="flex-1 h-12 sm:h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] text-base sm:text-sm touch-manipulation" 
-                  placeholder="e.g., Lunch ₹250 at restaurant"
+                  className="w-full h-14 xl:h-12 pl-12 pr-4 rounded-2xl xl:rounded-xl border-2 border-border/50 bg-card/50 backdrop-blur text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base xl:text-sm font-medium transition-all duration-200 shadow-sm hover:shadow-md" 
+                  placeholder="Coffee ₹120 at Starbucks..."
                 />
+              </div>
+              
+              {/* Action Buttons Row */}
+              <div className="flex gap-3 xl:gap-2">
                 <button 
                   type="button" 
                   aria-label="Set date" 
-                  title="Set date" 
                   onClick={()=> setDateOpen(o=>!o)} 
-                  className={`h-12 w-12 sm:h-11 sm:w-11 inline-flex items-center justify-center rounded-xl border touch-manipulation ${dateOpen ? 'border-emerald-400 text-emerald-600' : 'border-border text-muted-foreground'} bg-card hover:bg-muted focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]`}
+                  className={`h-14 w-14 xl:h-12 xl:w-12 rounded-2xl xl:rounded-xl border-2 transition-all duration-200 touch-manipulation shadow-sm hover:shadow-md ${
+                    dateOpen 
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-600 dark:bg-emerald-950' 
+                      : 'border-border/50 bg-card/50 text-muted-foreground hover:bg-muted'
+                  } backdrop-blur flex items-center justify-center`}
                 >
-                  <Calendar className="h-5 w-5 sm:h-4 sm:w-4" />
+                  <Calendar className="h-6 w-6 xl:h-5 xl:w-5" />
                 </button>
+                
+                <Button 
+                  type="submit" 
+                  className="h-14 xl:h-12 px-8 xl:px-6 rounded-2xl xl:rounded-xl bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 border-0 shadow-lg hover:shadow-xl transition-all duration-200 text-white font-semibold"
+                >
+                  <span className="xl:hidden text-base">Add Expense</span>
+                  <span className="hidden xl:inline text-sm">Add Expense</span>
+                </Button>
               </div>
               
-              {/* Date picker and submit button */}
-              <div className="flex gap-2 items-center">
-                {dateOpen && (
+              {/* Date Picker - Slide Down Animation */}
+              {dateOpen && (
+                <div className="xl:hidden animate-in slide-in-from-top-2 duration-200">
                   <input 
                     type="date" 
                     value={selectedDate} 
                     onChange={(e)=> setSelectedDate(e.target.value)} 
-                    className="h-12 sm:h-11 rounded-xl border border-border px-3 bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] touch-manipulation text-base sm:text-sm" 
+                    className="w-full h-12 rounded-xl border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950 px-4 text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 text-base font-medium" 
                   />
-                )}
-                <Button type="submit" className="h-12 sm:h-auto px-6 sm:px-4 text-base sm:text-sm font-medium touch-manipulation">
-                  <span className="sm:hidden">💰 Add</span>
-                  <span className="hidden sm:inline">Add Expense</span>
-                </Button>
-              </div>
+                </div>
+              )}
+              
+              {/* Desktop Date Picker */}
+              {dateOpen && (
+                <div className="hidden xl:block">
+                  <input 
+                    type="date" 
+                    value={selectedDate} 
+                    onChange={(e)=> setSelectedDate(e.target.value)} 
+                    className="h-12 rounded-xl border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950 px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm" 
+                  />
+                </div>
+              )}
             </form>
-            {/* Mobile-optimized AI suggestion */}
+            {/* Beautiful AI Suggestion Panel */}
             {ai && (
-              <div className="mt-3 rounded-xl border border-border p-4 sm:p-3 text-sm space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">🤖</span>
-                  <div>
-                    <span className="text-muted-foreground">Suggested:</span> 
-                    <span className="font-semibold ml-1">{ai.category}</span>
-                    {ai.AIConfidence && (
-                      <span className="text-xs text-muted-foreground ml-2">
-                        {Math.round((ai.AIConfidence||0)*100)}% confident
-                      </span>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr_auto] gap-3 sm:gap-2 sm:items-center">
-                  <div className="flex gap-2 items-center">
-                    <label className="text-xs text-muted-foreground whitespace-nowrap">Amount:</label>
-                    <input 
-                      ref={amountRef} 
-                      type="number" 
-                      step="0.01" 
-                      defaultValue={ai.amount ?? 0} 
-                      className="h-11 sm:h-9 w-32 sm:w-28 rounded-lg sm:rounded-md border border-border px-3 sm:px-2 bg-card text-right text-base sm:text-sm touch-manipulation"
-                    />
+              <Card className="mt-4 overflow-hidden border-0 shadow-lg bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-950/30 dark:via-indigo-950/30 dark:to-purple-950/30">
+                <CardContent className="p-5 space-y-4">
+                  {/* AI Header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center animate-pulse">
+                        <span className="text-white text-lg">🤖</span>
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-base">AI Suggestion</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Detected: <span className="font-semibold text-blue-600 dark:text-blue-400">{ai.category}</span>
+                          {ai.AIConfidence && (
+                            <span className="ml-2 text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">
+                              {Math.round((ai.AIConfidence||0)*100)}% sure
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                   
-                  <div className="space-y-2 sm:space-y-0">
-                    <select 
-                      value={selectedCategory || ai.category || "Other"} 
-                      onChange={(e)=> setSelectedCategory(e.target.value)} 
-                      className="w-full h-11 sm:h-9 rounded-lg sm:rounded-md border border-border px-3 sm:px-2 bg-card text-base sm:text-sm touch-manipulation"
-                    >
-                      {Array.from(new Set<string>((((ai as any).options as string[] | undefined) || []).concat(ai.category || []).filter(Boolean))).map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                    <input 
-                      ref={customRef} 
-                      type="text" 
-                      placeholder="Or enter custom category..." 
-                      className="w-full h-11 sm:h-9 rounded-lg sm:rounded-md border border-border px-3 sm:px-2 bg-card text-base sm:text-sm touch-manipulation"
-                    />
+                  {/* Mobile-First Form */}
+                  <div className="space-y-4 xl:grid xl:grid-cols-[auto_1fr_auto] xl:gap-4 xl:space-y-0 xl:items-end">
+                    {/* Amount Input */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-muted-foreground">Amount</label>
+                      <div className="relative">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</div>
+                        <input 
+                          ref={amountRef} 
+                          type="number" 
+                          step="0.01" 
+                          defaultValue={ai.amount ?? 0} 
+                          className="w-full xl:w-32 h-12 xl:h-10 pl-8 pr-3 rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-white/50 dark:bg-blue-950/50 text-right text-base xl:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Category Selection */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-muted-foreground">Category</label>
+                      <div className="space-y-2 xl:space-y-2">
+                        <select 
+                          value={selectedCategory || ai.category || "Other"} 
+                          onChange={(e)=> setSelectedCategory(e.target.value)} 
+                          className="w-full h-12 xl:h-10 rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-white/50 dark:bg-blue-950/50 px-3 text-base xl:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        >
+                          {Array.from(new Set<string>((((ai as any).options as string[] | undefined) || []).concat(ai.category || []).filter(Boolean))).map((c) => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                        <input 
+                          ref={customRef} 
+                          type="text" 
+                          placeholder="Or type a custom category..." 
+                          className="w-full h-12 xl:h-10 rounded-xl border-2 border-dashed border-blue-200 dark:border-blue-800 bg-white/30 dark:bg-blue-950/30 px-3 text-base xl:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:text-blue-400 dark:placeholder:text-blue-500"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Confirm Button */}
+                    <div className="xl:pb-1">
+                      <Button 
+                        onClick={()=>{
+                          const custom = (customRef.current?.value || "").trim();
+                          const chosen = custom || (selectedCategory || ai.category || "Other");
+                          confirm(chosen, amountRef.current?.value);
+                        }}
+                        className="w-full xl:w-auto h-12 xl:h-10 px-8 xl:px-6 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 border-0 shadow-lg hover:shadow-xl transition-all duration-200 text-white font-semibold text-base xl:text-sm"
+                      >
+                        <span className="flex items-center gap-2">
+                          ✨ Confirm Expense
+                        </span>
+                      </Button>
+                    </div>
                   </div>
-                  
-                  <Button 
-                    onClick={()=>{
-                      const custom = (customRef.current?.value || "").trim();
-                      const chosen = custom || (selectedCategory || ai.category || "Other");
-                      confirm(chosen, amountRef.current?.value);
-                    }}
-                    className="h-11 sm:h-9 px-6 sm:px-4 touch-manipulation"
-                  >
-                    ✅ Confirm
-                  </Button>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             )}
           </div>
-          {/* Mobile-optimized Actions */}
-          <div className="grid grid-cols-3 gap-2 xl:flex xl:items-start xl:justify-end xl:gap-2">
-            <Button 
-              variant="outline" 
+          {/* Beautiful Action Cards */}
+          <div className="grid grid-cols-3 gap-3 xl:flex xl:items-start xl:justify-end xl:gap-3">
+            <button 
               onClick={()=> setShowBudgetsModal(true)}
-              className="h-11 xl:h-auto touch-manipulation text-xs xl:text-sm"
+              className="h-16 xl:h-12 rounded-2xl xl:rounded-xl bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/50 dark:to-pink-950/50 border border-purple-200 dark:border-purple-800 hover:shadow-lg transition-all duration-200 touch-manipulation flex flex-col xl:flex-row items-center justify-center xl:px-4 gap-1 xl:gap-2 group"
             >
-              <Settings2 className="h-4 w-4 xl:mr-2"/>
-              <span className="hidden sm:inline xl:inline">Budgets</span>
-            </Button>
-            <Button 
-              variant="outline" 
+              <Settings2 className="h-5 w-5 xl:h-4 xl:w-4 text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform"/>
+              <span className="text-xs xl:text-sm font-medium text-purple-700 dark:text-purple-300">Budgets</span>
+            </button>
+            
+            <button 
               onClick={()=> setPrivacy(p=>!p)}
-              className="h-11 xl:h-auto touch-manipulation text-xs xl:text-sm"
+              className={`h-16 xl:h-12 rounded-2xl xl:rounded-xl border transition-all duration-200 touch-manipulation flex flex-col xl:flex-row items-center justify-center xl:px-4 gap-1 xl:gap-2 group ${
+                privacy 
+                  ? 'bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/50 dark:to-orange-950/50 border-amber-200 dark:border-amber-800 hover:shadow-lg' 
+                  : 'bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 border-blue-200 dark:border-blue-800 hover:shadow-lg'
+              }`}
             >
-              {privacy ? <EyeOff className="h-4 w-4 xl:mr-2"/> : <Eye className="h-4 w-4 xl:mr-2"/>}
-              <span className="hidden sm:inline xl:inline">{privacy ? "Show" : "Hide"}</span>
-            </Button>
-            <Button 
-              variant="outline" 
+              {privacy ? 
+                <EyeOff className="h-5 w-5 xl:h-4 xl:w-4 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform"/> : 
+                <Eye className="h-5 w-5 xl:h-4 xl:w-4 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform"/>
+              }
+              <span className={`text-xs xl:text-sm font-medium ${
+                privacy ? 'text-amber-700 dark:text-amber-300' : 'text-blue-700 dark:text-blue-300'
+              }`}>
+                {privacy ? "Show" : "Hide"}
+              </span>
+            </button>
+            
+            <button 
               onClick={()=> setExportOpen(true)}
-              className="h-11 xl:h-auto touch-manipulation text-xs xl:text-sm"
+              className="h-16 xl:h-12 rounded-2xl xl:rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/50 dark:to-emerald-950/50 border border-green-200 dark:border-green-800 hover:shadow-lg transition-all duration-200 touch-manipulation flex flex-col xl:flex-row items-center justify-center xl:px-4 gap-1 xl:gap-2 group"
             >
-              <Download className="h-4 w-4 xl:mr-2"/>
-              <span className="hidden sm:inline xl:inline">Export</span>
-            </Button>
+              <Download className="h-5 w-5 xl:h-4 xl:w-4 text-green-600 dark:text-green-400 group-hover:scale-110 transition-transform"/>
+              <span className="text-xs xl:text-sm font-medium text-green-700 dark:text-green-300">Export</span>
+            </button>
           </div>
         </div>
-        {/* Mobile-optimized Tabs */}
-        <div className="px-3 sm:px-4 pb-3">
-          <div className="grid grid-cols-2 rounded-lg border border-border overflow-hidden sm:inline-flex sm:grid-cols-none">
-            <button 
-              onClick={()=> setActiveTab("data")} 
-              className={`px-4 py-3 sm:py-2 text-sm font-medium touch-manipulation transition-colors ${activeTab==='data' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted active:scale-[0.98]'}`}
-            >
-              📊 Data
-            </button>
-            <button 
-              onClick={()=> setActiveTab("insights")} 
-              className={`px-4 py-3 sm:py-2 text-sm font-medium touch-manipulation transition-colors ${activeTab==='insights' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted active:scale-[0.98]'}`}
-            >
-              📈 Insights
-            </button>
+        {/* Beautiful Tabs */}
+        <div className="px-4 xl:px-6 pb-4">
+          <div className="relative bg-muted/30 rounded-2xl p-1">
+            <div className="grid grid-cols-2">
+              <button 
+                onClick={()=> setActiveTab("data")} 
+                className={`relative z-10 px-6 py-4 xl:py-3 text-base xl:text-sm font-semibold rounded-xl transition-all duration-300 touch-manipulation ${
+                  activeTab==='data' 
+                    ? 'bg-white dark:bg-card text-foreground shadow-lg' 
+                    : 'text-muted-foreground hover:text-foreground active:scale-[0.98]'
+                }`}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  📊 <span>Data</span>
+                </span>
+              </button>
+              <button 
+                onClick={()=> setActiveTab("insights")} 
+                className={`relative z-10 px-6 py-4 xl:py-3 text-base xl:text-sm font-semibold rounded-xl transition-all duration-300 touch-manipulation ${
+                  activeTab==='insights' 
+                    ? 'bg-white dark:bg-card text-foreground shadow-lg' 
+                    : 'text-muted-foreground hover:text-foreground active:scale-[0.98]'
+                }`}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  📈 <span>Insights</span>
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -729,67 +813,105 @@ export default function ExpenseTrackerPage() {
               </table>
             </div>
 
-            {/* Mobile Card View */}
-            <div className="xl:hidden flex-1 min-h-0 overflow-y-auto">
+            {/* Beautiful Mobile Cards */}
+            <div className="xl:hidden flex-1 min-h-0 overflow-y-auto px-1">
               {pageRows.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {pageRows.map((e: Expense) => {
-                    const getCategoryEmoji = (category: string) => {
+                    const getCategoryData = (category: string) => {
                       const c = category.toLowerCase();
-                      if (c.includes('food') || c.includes('restaurant') || c.includes('lunch') || c.includes('dinner')) return '🍽️';
-                      if (c.includes('transport') || c.includes('uber') || c.includes('taxi') || c.includes('bus')) return '🚗';
-                      if (c.includes('shopping') || c.includes('clothes') || c.includes('retail')) return '🛍️';
-                      if (c.includes('entertainment') || c.includes('movie') || c.includes('games')) return '🎬';
-                      if (c.includes('health') || c.includes('medical') || c.includes('doctor')) return '🏥';
-                      if (c.includes('utilities') || c.includes('electricity') || c.includes('water')) return '🏠';
-                      if (c.includes('travel') || c.includes('hotel') || c.includes('flight')) return '✈️';
-                      return '💳';
+                      if (c.includes('food') || c.includes('restaurant') || c.includes('lunch') || c.includes('dinner')) 
+                        return { emoji: '🍽️', color: 'from-orange-500 to-red-500', bg: 'from-orange-50 to-red-50', dark: 'dark:from-orange-950/50 dark:to-red-950/50' };
+                      if (c.includes('transport') || c.includes('uber') || c.includes('taxi') || c.includes('bus')) 
+                        return { emoji: '🚗', color: 'from-blue-500 to-indigo-500', bg: 'from-blue-50 to-indigo-50', dark: 'dark:from-blue-950/50 dark:to-indigo-950/50' };
+                      if (c.includes('shopping') || c.includes('clothes') || c.includes('retail')) 
+                        return { emoji: '🛍️', color: 'from-pink-500 to-purple-500', bg: 'from-pink-50 to-purple-50', dark: 'dark:from-pink-950/50 dark:to-purple-950/50' };
+                      if (c.includes('entertainment') || c.includes('movie') || c.includes('games')) 
+                        return { emoji: '🎬', color: 'from-purple-500 to-indigo-500', bg: 'from-purple-50 to-indigo-50', dark: 'dark:from-purple-950/50 dark:to-indigo-950/50' };
+                      if (c.includes('health') || c.includes('medical') || c.includes('doctor')) 
+                        return { emoji: '🏥', color: 'from-green-500 to-emerald-500', bg: 'from-green-50 to-emerald-50', dark: 'dark:from-green-950/50 dark:to-emerald-950/50' };
+                      if (c.includes('utilities') || c.includes('electricity') || c.includes('water')) 
+                        return { emoji: '🏠', color: 'from-yellow-500 to-orange-500', bg: 'from-yellow-50 to-orange-50', dark: 'dark:from-yellow-950/50 dark:to-orange-950/50' };
+                      if (c.includes('travel') || c.includes('hotel') || c.includes('flight')) 
+                        return { emoji: '✈️', color: 'from-sky-500 to-blue-500', bg: 'from-sky-50 to-blue-50', dark: 'dark:from-sky-950/50 dark:to-blue-950/50' };
+                      return { emoji: '💳', color: 'from-gray-500 to-slate-500', bg: 'from-gray-50 to-slate-50', dark: 'dark:from-gray-950/50 dark:to-slate-950/50' };
                     };
                     
+                    const categoryData = getCategoryData(e.category as string);
+                    
                     return (
-                      <Card key={e.id} className="p-4 relative hover:shadow-sm transition-shadow">
-                        {/* Header with amount and delete */}
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl">{getCategoryEmoji(e.category as string)}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {fmtDateYYYYMMDDLocal(e.date as any)}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="text-lg font-bold text-right">
-                              {privacy ? "•••••" : `₹${e.amount.toFixed(2)}`}
+                      <Card key={e.id} className={`relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br ${categoryData.bg} ${categoryData.dark} group`}>
+                        {/* Gradient Background Accent */}
+                        <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${categoryData.color} opacity-10 rounded-bl-full`}></div>
+                        
+                        <CardContent className="p-5 space-y-4">
+                          {/* Header Row */}
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className={`h-12 w-12 rounded-2xl bg-gradient-to-br ${categoryData.color} flex items-center justify-center shadow-lg`}>
+                                <span className="text-white text-xl">{categoryData.emoji}</span>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-muted-foreground">
+                                  {fmtDateYYYYMMDDLocal(e.date as any)}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gradient-to-r ${categoryData.color} text-white shadow-sm`}>
+                                    {e.category as string}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                            <button
-                              aria-label="Delete expense"
-                              onClick={() => handleDelete(e.id)}
-                              className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-transparent text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:border-rose-200 dark:hover:border-rose-800 focus:outline-none focus:ring-2 focus:ring-rose-400 touch-manipulation"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
+                            
+                            <div className="flex items-center gap-3">
+                              <div className="text-right">
+                                <div className="text-2xl font-bold text-foreground">
+                                  {privacy ? "•••••" : `₹${e.amount.toFixed(0)}`}
+                                </div>
+                                {!privacy && (
+                                  <div className="text-xs text-muted-foreground">
+                                    {e.amount.toFixed(2)}
+                                  </div>
+                                )}
+                              </div>
+                              <button
+                                aria-label="Delete expense"
+                                onClick={() => handleDelete(e.id)}
+                                className="h-10 w-10 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-200 dark:border-red-800 text-red-600 hover:text-red-700 dark:hover:text-red-400 transition-all duration-200 touch-manipulation flex items-center justify-center group-hover:scale-105"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                        
-                        {/* Category badge */}
-                        <div className="mb-2">
-                          <span className="inline-flex items-center px-2 py-1 rounded-md bg-muted text-xs font-medium">
-                            {e.category as string}
-                          </span>
-                        </div>
-                        
-                        {/* Description */}
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {e.text}
-                        </p>
+                          
+                          {/* Description */}
+                          <div className="bg-white/50 dark:bg-black/20 rounded-xl p-3 border border-white/20 dark:border-white/10">
+                            <p className="text-sm text-foreground/80 leading-relaxed">
+                              {e.text}
+                            </p>
+                          </div>
+                        </CardContent>
                       </Card>
                     );
                   })}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                  <div className="text-6xl mb-4">💸</div>
-                  <h3 className="text-lg font-semibold mb-2">No expenses found</h3>
-                  <p className="text-sm text-muted-foreground">Add your first expense above to get started!</p>
+                <div className="flex flex-col items-center justify-center h-full text-center py-16">
+                  <div className="relative">
+                    <div className="h-24 w-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center mb-6">
+                      <span className="text-4xl">💸</span>
+                    </div>
+                    <div className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                      <span className="text-white text-sm">+</span>
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">No expenses yet</h3>
+                  <p className="text-sm text-muted-foreground mb-4 max-w-xs">
+                    Start tracking your spending by adding your first expense above
+                  </p>
+                  <div className="text-xs text-muted-foreground">
+                    💡 Try: "Coffee ₹120 at Cafe"
+                  </div>
                 </div>
               )}
             </div>
