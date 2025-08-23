@@ -203,17 +203,22 @@ export default function PlanPage() {
 								setAiSummary(undefined);
 							}
 						} else {
-							// custom: reset to last custom saved if present, else last draft, else current plan
+							// custom: reset to last custom saved; if none, fall back to advisor saved (plan) or recomputed baseline
 							try {
 								if (activePortfolioId) {
 									const saved = getCustomSaved(activePortfolioId);
-									if (saved) setLocal(saved);
-									else {
-										const draft = getCustomDraft(activePortfolioId);
-										if (draft) setLocal(draft); else setLocal(plan);
+									if (saved) {
+										setLocal(saved);
+									} else {
+										const savedOrigin = (plan as any)?.origin;
+										if (savedOrigin === 'engine' || savedOrigin === 'ai') {
+											setLocal(plan);
+										} else {
+											setLocal(buildPlan(snap));
+										}
 									}
 								}
-							} catch { setLocal(plan); }
+							} catch { try { setLocal(buildPlan(snap)); } catch { setLocal(plan); } }
 						}
 						setAnswersDrift(false); 
 						setAdvisorPins({});
