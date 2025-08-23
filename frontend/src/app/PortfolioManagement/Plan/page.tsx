@@ -65,12 +65,10 @@ export default function PlanPage() {
 		const driftNow = !!(sigSaved && sigNow && sigSaved !== sigNow);
 		setAnswersDrift(driftNow);
 		if (driftNow) {
-			const allocation = buildPlan(questionnaire);
-			setLocal(allocation);
+			// Do not override saved plan on initial load; just note drift and disable AI view
 			setAiViewOn(false);
 			setAiSummary(undefined);
 			setAdvisorPins({});
-			return;
 		}
 		if (on && sigSaved && sigSaved === sigNow && (plan as any)?.buckets) {
 			const baseline = buildPlan(questionnaire);
