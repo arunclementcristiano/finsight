@@ -20,34 +20,48 @@ export async function PUT(req: NextRequest) {
 	if (!portfolioId || !plan) return NextResponse.json({ error: "Missing portfolioId or plan" }, { status: 400 });
 	const now = new Date().toISOString();
 	const origin = (plan?.origin || '').toLowerCase();
+
+	// Idempotency: compare against existing canonical; skip if unchanged
+	let existing: any = null;
+	try {
+		const got = await ddb.send(new GetCommand({ TableName: INVEST_TABLE, Key: { pk: `USER#${sub}`, sk: variantKey(portfolioId) } }));
+		existing = (got.Item as any)?.plan || null;
+	} catch {}
+	const hashPlan = (p:any)=> JSON.stringify({ origin: (p||{}).origin, answersSig: (p||{}).answersSig, buckets: ((p||{}).buckets||[]).map((b:any)=>({ class:b.class, pct:b.pct })) });
+	const changed = !existing || (hashPlan(existing) !== hashPlan(plan));
+
 	// 1) Always save the latest selected plan to the canonical key
-	await ddb.send(new PutCommand({
-		TableName: INVEST_TABLE,
-		Item: {
-			pk: `USER#${sub}`,
-			sk: variantKey(portfolioId),
-			entityType: "ALLOCATION",
-			plan,
-			updatedAt: now,
-			GSI1PK: `PORTFOLIO#${portfolioId}`,
-			GSI1SK: `ALLOCATION#${now}`,
-		}
-	}));
-	// 2) Save variant-specific snapshot
-	if (origin === 'custom' || origin === 'engine' || origin === 'ai') {
-		const variant = origin === 'custom' ? 'custom' : 'advisor';
+	if (changed) {
 		await ddb.send(new PutCommand({
 			TableName: INVEST_TABLE,
 			Item: {
 				pk: `USER#${sub}`,
-				sk: variantKey(portfolioId, variant),
+				sk: variantKey(portfolioId),
 				entityType: "ALLOCATION",
 				plan,
 				updatedAt: now,
+				GSI1PK: `PORTFOLIO#${portfolioId}`,
+				GSI1SK: `ALLOCATION#${now}`,
 			}
 		}));
 	}
-	return NextResponse.json({ ok: true });
+	// 2) Save variant-specific snapshot
+	if (origin === 'custom' || origin === 'engine' || origin === 'ai') {
+		const variant = origin === 'custom' ? 'custom' : 'advisor';
+		if (changed) {
+			await ddb.send(new PutCommand({
+				TableName: INVEST_TABLE,
+				Item: {
+					pk: `USER#${sub}`,
+					sk: variantKey(portfolioId, variant),
+					entityType: "ALLOCATION",
+					plan,
+					updatedAt: now,
+				}
+			}));
+		}
+	}
+	return NextResponse.json({ ok: true, changed });
 }
 
 export async function GET(req: NextRequest) {
