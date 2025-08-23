@@ -166,6 +166,12 @@ export default function PlanPage() {
 				</div>
 				<div className="flex items-center gap-2">
 					<div className="inline-flex rounded-md border border-border overflow-hidden text-xs">
+						<Button size="sm" variant="outline" className={`rounded-none ${mode==='advisor' ? 'bg-indigo-600 text-white border-indigo-600' : ''}`} onClick={()=>{ setMode('advisor'); setAiViewOn(false); setLocal(buildPlan(questionnaire)); }}>
+							<div className="flex flex-col items-start leading-tight">
+								<span>Advisor</span>
+								{mode==='advisor' ? <span className="text-[10px] opacity-80">Recommended</span> : null}
+							</div>
+						</Button>
 						<Button size="sm" variant="outline" className={`rounded-none ${mode==='custom' ? 'bg-rose-600 text-white border-rose-600' : ''}`} onClick={()=>{ setMode('custom'); setAiViewOn(false); try { if (activePortfolioId) { const draft = getCustomDraft(activePortfolioId); if (draft) setLocal(draft); const locks = getCustomLocks(activePortfolioId); if (locks) setLocalCustomLocks(locks); } } catch {} }}>
 							<div className="flex flex-col items-start leading-tight">
 								<div className="flex items-center gap-1">
@@ -173,12 +179,6 @@ export default function PlanPage() {
 									{mode==='custom' ? <ShieldOff className="h-3.5 w-3.5" /> : null}
 								</div>
 								{mode==='custom' ? <span className="text-[10px] opacity-80">No guardrails</span> : null}
-							</div>
-						</Button>
-						<Button size="sm" variant="outline" className={`rounded-none ${mode==='advisor' ? 'bg-indigo-600 text-white border-indigo-600' : ''}`} onClick={()=>{ setMode('advisor'); setAiViewOn(false); setLocal(buildPlan(questionnaire)); }}>
-							<div className="flex flex-col items-start leading-tight">
-								<span>Advisor</span>
-								{mode==='advisor' ? <span className="text-[10px] opacity-80">Recommended</span> : null}
 							</div>
 						</Button>
 					</div>
