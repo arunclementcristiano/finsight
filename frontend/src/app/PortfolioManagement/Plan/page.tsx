@@ -55,8 +55,8 @@ export default function PlanPage() {
 	}
 
 	useEffect(() => {
-		setLocal(plan || null);
 		const origin = (plan as any)?.origin;
+		if (plan && origin !== 'custom') setLocal(plan);
 		setMode(origin === 'custom' ? 'custom' : 'advisor');
 		const on = !!(plan && origin === 'ai');
 		setAiViewOn(on);
