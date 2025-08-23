@@ -14,7 +14,7 @@ import { pruneQuestionnaire, stableAnswersSig } from "../domain/answersUtil";
 import { advisorTune } from "../domain/advisorTune";
 
 export default function PlanPage() {
-	const { plan, setPlan, activePortfolioId, questionnaire, setQuestionAnswer, getCustomDraft, setCustomDraft, getCustomLocks, setCustomLocks, getCustomSaved } = useApp() as any;
+	const { plan, setPlan, activePortfolioId, questionnaire, setQuestionAnswer, setQuestionnaire, getCustomDraft, setCustomDraft, getCustomLocks, setCustomLocks, getCustomSaved } = useApp() as any;
 	const router = useRouter();
 	const [local, setLocal] = useState<any | null>(plan || null);
 	const [aiLoading, setAiLoading] = useState(false);
@@ -74,24 +74,26 @@ export default function PlanPage() {
 			const baseline = buildPlan(questionnaire);
 			setAiSummary(makeSummary(baseline, (plan as any).buckets));
 		}
-		// Load persisted custom draft/locks if in custom mode
+		// Load using the same logic as Reset handler
 		try {
-			if (origin === 'custom' && activePortfolioId) {
+			const snap = (plan as any)?.answersSnapshot || {};
+			Object.keys(snap).forEach(k=> setQuestionAnswer(k, (snap as any)[k]));
+			if ((plan as any)?.origin === 'custom' && activePortfolioId) {
 				(async ()=>{
 					try {
 						const r = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}&variant=custom`);
 						const d = await r.json();
-													if (d?.plan?.buckets) { setLocal(d.plan); setCustomDraft(activePortfolioId, null); }
-							else {
-								const r2 = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}&variant=advisor`);
-								const d2 = await r2.json();
-								if (d2?.plan?.buckets) { setLocal(d2.plan); setCustomDraft(activePortfolioId, null); }
-								else { const base = buildPlan(questionnaire); setLocal(base); }
-							}
-							const locks = getCustomLocks(activePortfolioId);
-							if (locks) setLocalCustomLocks(locks);
+						if (d?.plan?.buckets) { setLocal(d.plan); setCustomDraft(activePortfolioId, null); }
+						else {
+							const r2 = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}&variant=advisor`);
+							const d2 = await r2.json();
+							if (d2?.plan?.buckets) { setLocal(d2.plan); setCustomDraft(activePortfolioId, null); }
+							else { const base = buildPlan(snap); setLocal(base); }
+						}
 					} catch { setLocal(plan); }
 				})();
+			} else if (plan) {
+				setLocal(plan);
 			}
 		} catch {}
 		setAdvisorPins({});
