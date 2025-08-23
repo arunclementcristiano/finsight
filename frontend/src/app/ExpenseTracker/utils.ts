@@ -46,7 +46,7 @@ const keywordToCategory: Record<string, ExpenseCategory | string> = {
 
   // ---------------- Utilities ----------------
   utilities: "Utilities", electricity: "Utilities", power: "Utilities", water: "Utilities",
-  gas: "Utilities", pipedgas: "Utilities", internet: "Utilities", broadband: "Utilities",
+  pipedgas: "Utilities", internet: "Utilities", broadband: "Utilities",
   wifi: "Utilities", mobile: "Utilities", recharge: "Utilities", airtel: "Utilities",
   jio: "Utilities", bsnl: "Utilities", vodafone: "Utilities", idea: "Utilities",
   bill: "Utilities", postpaid: "Utilities", prepaid: "Utilities", dth: "Utilities",
@@ -85,7 +85,7 @@ const keywordToCategory: Record<string, ExpenseCategory | string> = {
   // ---------------- Loans ----------------
   loan: "Loans", emi: "Loans", creditcard: "Loans", hdfcbank: "Loans", sbi: "Loans", icici: "Loans",
   axis: "Loans", kotak: "Loans", idfc: "Loans", repayment: "Loans", overdraft: "Loans",
-  personalLoan: "Loans", homeLoan: "Loans", carLoan: "Loans", vehicleLoan: "Loans",
+  personalLoan: "Loans", homeloan: "Loans", carloan: "Loans", vehicleloan: "Loans",
 
   // ---------------- Grooming ----------------
   grooming: "Grooming", haircut: "Grooming", salon: "Grooming", spa: "Grooming",

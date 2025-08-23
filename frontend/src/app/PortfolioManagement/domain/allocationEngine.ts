@@ -16,93 +16,203 @@ export interface AllocationPlan {
   }>;
 }
 
-export function buildPlan(q: Record<string, any>): AllocationPlan {
-  // 1. Map riskScore → RiskLevel
-  let score = 0;
-  if (q.riskAppetite === "High") score += 2;
-  if (q.volatilityComfort === "High") score += 2;
-  if (q.investmentKnowledge === "Advanced") score += 1;
-  if (q.horizon === "Long (>7 yrs)") score += 1;
-  if (q.riskAppetite === "Low") score -= 2;
-  if (q.volatilityComfort === "Low") score -= 2;
-  if (q.investmentKnowledge === "Beginner") score -= 1;
-  if (q.horizon === "Short (<3 yrs)") score -= 1;
+import { suggestAllocation, Answers } from "./suggestAllocation";
 
-  let riskLevel: RiskLevel = "Moderate";
-  if (score >= 3) riskLevel = "High";
-  else if (score <= -2) riskLevel = "Low";
+function normalizeAnswers(q: Record<string, any>): Answers {
+  // Helpers
+  const ageBand = (() => {
+    const v = String(q.ageBand || "").trim();
+    if (v === "<30") return "18–30";
+    if (v === "30–45") return "31–45";
+    if (v === "45–60") return "46–60";
+    if (v === "60+") return "60+";
+    // fallback to closest
+    return "31–45";
+  })();
+  const horizon = (() => {
+    const v = String(q.horizon || "");
+    if (v.startsWith("<3")) return "Short (<3 yrs)";
+    if (v.startsWith("3–7")) return "Medium (3–7 yrs)";
+    if (v.startsWith("7+")) return "Long (>7 yrs)";
+    return "Medium (3–7 yrs)";
+  })();
+  const volatilityComfort = (() => {
+    const v = String(q.volatilityComfort || "").toLowerCase();
+    if (v.includes("very")) return "High";
+    if (v.includes("not")) return "Low";
+    return "Medium";
+  })();
+  const investmentKnowledge = (() => {
+    const v = String(q.investmentKnowledge || "Intermediate");
+    if (v === "Experienced") return "Advanced";
+    if (v === "Beginner" || v === "Intermediate" || v === "Advanced") return v as any;
+    return "Intermediate" as any;
+  })();
+  const incomeStability = (() => {
+    const v = String(q.incomeStability || "").toLowerCase();
+    if (v.includes("very")) return "Stable";
+    if (v.includes("not")) return "Unstable";
+    return "Variable";
+  })();
+  const dependents = (() => {
+    const v = String(q.dependents || "None");
+    if (v === "None") return "None";
+    if (v === "Few") return "1";
+    if (v === "Many") return "3+";
+    return "None";
+  })();
+  const liabilities = (() => {
+    const v = String(q.liabilities || "None");
+    if (v === "Heavy") return "High";
+    if (v === "Moderate" || v === "High" || v === "Low" || v === "None") return v as any;
+    return "None" as any;
+  })();
+  const financialGoal = (() => {
+    const v = String(q.financialGoal || "Wealth growth");
+    if (v === "House purchase" || v === "Education") return "Major purchase" as any;
+    if (v === "Retirement" || v === "Wealth growth" || v === "Capital preservation" || v === "Income generation") return v as any;
+    if (v === "Mixed") return horizon === "Long (>7 yrs)" ? "Wealth growth" : "Capital preservation" as any;
+    return "Wealth growth" as any;
+  })();
+  const withdrawYes = String(q.withdrawNext2Yrs || "No").toLowerCase() === "yes";
+  const emergencySix = String(q.emergencyFundSixMonths || "Yes").toLowerCase() === "yes";
+  const insuranceOk = String(q.insuranceCoverage || "Yes").toLowerCase() === "yes";
 
-  // 2. Base mix per risk
-  const baseMix: Record<AssetClass, number> = {
-    "Stocks": riskLevel === "High" ? 50 : riskLevel === "Low" ? 20 : 35,
-    "Mutual Funds": riskLevel === "High" ? 20 : riskLevel === "Low" ? 25 : 25,
-    "Gold": 10,
-    "Real Estate": 10,
-    "Debt": riskLevel === "High" ? 5 : riskLevel === "Low" ? 30 : 20,
-    "Liquid": 5,
+  // Derived legacy fields
+  const bigExpenseTimeline: Answers["bigExpenseTimeline"] = withdrawYes ? "12–36 months" : "None";
+  const liquidityPreference: Answers["liquidityPreference"] = withdrawYes ? "High" : "Medium";
+  const emergencyFundMonthsTarget: Answers["emergencyFundMonthsTarget"] = emergencySix ? "6" : "9";
+  const incomeVsExpenses: Answers["incomeVsExpenses"] = (incomeStability === "Stable") ? "Surplus" : (incomeStability === "Variable" ? "Break-even" : "Deficit");
+
+  // Risk appetite and drawdown from tolerance signals
+  const riskAppetite: Answers["riskAppetite"] = (() => {
+    const young = ageBand === "18–30" || ageBand === "31–45";
+    const long = horizon === "Long (>7 yrs)";
+    const capacityHigh = young && long && liabilities === "None" && dependents === "None" && incomeStability !== "Unstable";
+    if (volatilityComfort === "High" && capacityHigh) return "High";
+    const capacityLow = ageBand === "60+" || incomeStability === "Unstable" || liabilities === "High" || dependents === "3+";
+    if (volatilityComfort === "Low" || capacityLow) return "Low";
+    return "Moderate";
+  })();
+  const maxDrawdownTolerance: Answers["maxDrawdownTolerance"] = ((): any => {
+    if (volatilityComfort === "High") return "20%";
+    if (volatilityComfort === "Medium") return "10%";
+    return "5%";
+  })();
+
+  // Canonicalize asset names for avoid/emphasize (handles inputs like 'RealEstate')
+  const canonicalize = (s: any): any => {
+    const v = String(s || "").toLowerCase().replace(/[\s_-]/g, "");
+    if (v === "stocks" || v === "stock") return "Stocks";
+    if (v === "mutualfunds" || v === "mutualfund") return "Mutual Funds";
+    if (v === "gold") return "Gold";
+    if (v === "realestate" || v === "realty" || v === "re") return "Real Estate";
+    return null;
+  };
+  const avoidAssetsRaw = Array.isArray(q.avoidAssets) ? q.avoidAssets : (typeof q.avoidAssets === 'string' ? [q.avoidAssets] : []);
+  const avoidAssets = avoidAssetsRaw.map(canonicalize).filter(Boolean) as any;
+  const emphasizeRaw = Array.isArray(q.emphasizeAssets) ? q.emphasizeAssets : [];
+  const emphasizeAssets = emphasizeRaw.map(canonicalize).filter(Boolean) as any;
+
+  // Build normalized answer object
+  const ans: Answers = {
+    horizon,
+    bigExpenseTimeline,
+    emergencyFundMonthsTarget,
+    liquidityPreference,
+    incomeVsExpenses,
+    ageBand,
+    riskAppetite,
+    volatilityComfort,
+    maxDrawdownTolerance,
+    investmentKnowledge,
+    incomeStability,
+    dependents: dependents as any,
+    liabilities: liabilities as any,
+    financialGoal: financialGoal as any,
+    avoidAssets: avoidAssets as any,
+    emphasizeAssets,
   };
 
-  // 3. Prune to user's selected interests
-  const selected: AssetClass[] = q.preferredAssets || [];
-  let prunedMix: Partial<Record<AssetClass, number>> = {};
-  let total = 0;
-  (Object.keys(baseMix) as AssetClass[]).forEach(cls => {
-    if (selected.includes(cls)) {
-      prunedMix[cls] = baseMix[cls];
-      total += baseMix[cls];
+  // Insurance impact: handled inside engine nudges via new fields
+  // Tax/geo preferences: used at product layer, not top-level mix.
+  return ans;
+}
+
+export function buildPlan(q: Record<string, any>): AllocationPlan {
+  // Normalize UI answers into engine enums
+  const ans = normalizeAnswers(q);
+  // Compute whole-number allocation using the spec-driven engine
+  const alloc = suggestAllocation(ans);
+
+  // De-risk if insurance coverage is missing: shift ~4% from equity to safety
+  try {
+    const hasInsurance = String(q?.insuranceCoverage || "Yes").toLowerCase() === "yes";
+    if (!hasInsurance) {
+      const eq = (alloc as any).Stocks + (alloc as any)["Mutual Funds"];
+      const reduce = Math.min(4, Math.max(0, eq));
+      const sFrac = eq > 0 ? ((alloc as any).Stocks / eq) : 0.5;
+      (alloc as any).Stocks = Math.max(0, (alloc as any).Stocks - reduce * sFrac);
+      (alloc as any)["Mutual Funds"] = Math.max(0, (alloc as any)["Mutual Funds"] - reduce * (1 - sFrac));
+      (alloc as any).Debt = Math.min(100, (alloc as any).Debt + 3);
+      (alloc as any).Liquid = Math.min(100, (alloc as any).Liquid + 1);
     }
-  });
+  } catch {}
 
-  // 4. Liquid cash overlay (+3% if dips ≥ some, min 5% overall)
-  if (q.volatilityComfort === "High" || q.buyTheDip === "yes" || q.buyTheDip === "some") {
-    prunedMix["Liquid"] = (prunedMix["Liquid"] || 0) + 3;
-    total += 3;
+  // Risk score for display/ranges
+  const mapRA: Record<Answers["riskAppetite"], number> = { Low: 20, Moderate: 50, High: 80 };
+  const mapVol: Record<Answers["volatilityComfort"], number> = { Low: 20, Medium: 50, High: 80 } as any;
+  const mapDD: Record<Answers["maxDrawdownTolerance"], number> = { "5%": 15, "10%": 35, "20%": 60, "30%+": 85 };
+  const mapHor: Record<Answers["horizon"], number> = { "Short (<3 yrs)": 25, "Medium (3–7 yrs)": 55, "Long (>7 yrs)": 80 };
+  const mapAge: Record<Answers["ageBand"], number> = { "18–30": 80, "31–45": 65, "46–60": 45, "60+": 25 };
+  const mapInc: Record<Answers["incomeVsExpenses"], number> = { Deficit: 25, "Break-even": 50, Surplus: 70 };
+  const riskScore = Math.max(0, Math.min(100, Math.round(
+    0.30 * mapRA[ans.riskAppetite] +
+    0.15 * mapVol[ans.volatilityComfort] +
+    0.15 * mapDD[ans.maxDrawdownTolerance] +
+    0.15 * mapHor[ans.horizon] +
+    0.15 * mapAge[ans.ageBand] +
+    0.10 * mapInc[ans.incomeVsExpenses]
+  )));
+  const riskLevel: RiskLevel = riskScore >= 67 ? "High" : riskScore <= 33 ? "Low" : "Moderate";
+
+  // Per-asset corridors with profile modifiers
+  function baseBandPctFor(cls: AssetClass): number {
+    if (cls === "Stocks" || cls === "Mutual Funds") return 0.10; // Equity ±10%
+    if (cls === "Debt") return 0.07; // Debt ±7%
+    if (cls === "Liquid") return 0.03; // Liquid ±3%
+    if (cls === "Gold" || cls === "Real Estate") return 0.025; // Gold/RE ±2.5%
+    return 0.06;
   }
-  if (!prunedMix["Liquid"] || prunedMix["Liquid"] < 5) {
-    total += 5 - (prunedMix["Liquid"] || 0);
-    prunedMix["Liquid"] = 5;
+  function adjustFactorByProfile(cls: AssetClass): number {
+    let f = 1.0;
+    // Risk appetite
+    if (riskLevel === "Low") f *= 0.8; else if (riskLevel === "High") f *= 1.2;
+    // Horizon
+    if ((q as Answers).horizon === "Long (>7 yrs)") f *= 1.1; else if ((q as Answers).horizon === "Short (<3 yrs)") f *= 0.8;
+    // Age
+    if ((q as Answers).ageBand === "60+") f *= 0.8;
+    // Keep liquid slightly tighter
+    if (cls === "Liquid") f *= 0.9;
+    return Math.max(0.6, Math.min(1.2, f));
+  }
+  function minWidthFor(cls: AssetClass): number {
+    if (cls === "Stocks" || cls === "Mutual Funds") return 0.05;
+    if (cls === "Debt") return 0.04;
+    if (cls === "Liquid") return 0.02;
+    if (cls === "Gold" || cls === "Real Estate") return 0.02;
+    return 0.03;
   }
 
-  // 5. Normalize to exactly 100.00
-  let normMix: Partial<Record<AssetClass, number>> = {};
-  let normTotal = Object.values(prunedMix).reduce((a, b) => a + b, 0);
-  (Object.keys(prunedMix) as AssetClass[]).forEach(cls => {
-    normMix[cls] = +(prunedMix[cls]! * 100 / normTotal).toFixed(2);
-  });
-
-  // 6. Rationale and per-class ranges
-  let rationale = `Based on your risk profile (${riskLevel}), selected assets, and liquidity preference.`;
-  // Dynamic range logic based on risk level and asset class
-  function getRange(cls: AssetClass, pct: number, riskLevel: RiskLevel): [number, number] {
-    let band = 5; // default
-    if (riskLevel === "High") {
-      if (cls === "Stocks" || cls === "Mutual Funds") band = 10;
-      else if (cls === "Gold" || cls === "Real Estate") band = 7;
-      else if (cls === "Debt" || cls === "Liquid") band = 4;
-    } else if (riskLevel === "Low") {
-      if (cls === "Stocks" || cls === "Mutual Funds") band = 4;
-      else if (cls === "Gold" || cls === "Real Estate") band = 3;
-      else if (cls === "Debt" || cls === "Liquid") band = 2;
-    } else {
-      if (cls === "Stocks" || cls === "Mutual Funds") band = 7;
-      else if (cls === "Gold" || cls === "Real Estate") band = 5;
-      else if (cls === "Debt" || cls === "Liquid") band = 3;
-    }
-    return [
-      +(Math.max(0, pct - band).toFixed(2)),
-      +(Math.min(100, pct + band).toFixed(2))
-    ];
-  }
-
-  // Helper functions for new columns
+  // Helper functions for display
   function getRiskCategory(cls: AssetClass): string {
     if (cls === "Stocks" || cls === "Mutual Funds") return "Core";
     if (cls === "Gold" || cls === "Real Estate") return "Satellite";
     if (cls === "Debt" || cls === "Liquid") return "Defensive";
     return "Other";
   }
-  function getNotes(cls: AssetClass, riskLevel: RiskLevel): string {
-    if (cls === "Stocks") return riskLevel === "High" ? "Growth focus" : "Balanced equity";
+  function getNotes(cls: AssetClass, level: RiskLevel): string {
+    if (cls === "Stocks") return level === "High" ? "Growth focus" : "Balanced equity";
     if (cls === "Mutual Funds") return "Diversified exposure";
     if (cls === "Gold") return "Inflation hedge";
     if (cls === "Real Estate") return "Long-term asset";
@@ -110,42 +220,28 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
     if (cls === "Liquid") return "Emergency buffer";
     return "";
   }
-  // Realistic min/max logic
-  function getMinMax(cls: AssetClass, pct: number, riskLevel: RiskLevel): [number, number] {
-    let min = pct, max = pct;
-    if (riskLevel === "High") {
-      if (cls === "Stocks" || cls === "Mutual Funds") { min = +(pct - 2).toFixed(2); max = +(pct + 5).toFixed(2); }
-      else if (cls === "Gold" || cls === "Real Estate") { min = +(pct - 1).toFixed(2); max = +(pct + 3).toFixed(2); }
-      else { min = +(pct - 1).toFixed(2); max = +(pct + 2).toFixed(2); }
-    } else if (riskLevel === "Low") {
-      if (cls === "Stocks" || cls === "Mutual Funds") { min = +(pct - 1).toFixed(2); max = +(pct + 2).toFixed(2); }
-      else if (cls === "Gold" || cls === "Real Estate") { min = +(pct - 0.5).toFixed(2); max = +(pct + 1).toFixed(2); }
-      else { min = +(pct - 0.5).toFixed(2); max = +(pct + 1).toFixed(2); }
-    } else {
-      if (cls === "Stocks" || cls === "Mutual Funds") { min = +(pct - 1.5).toFixed(2); max = +(pct + 3).toFixed(2); }
-      else if (cls === "Gold" || cls === "Real Estate") { min = +(pct - 0.75).toFixed(2); max = +(pct + 1.5).toFixed(2); }
-      else { min = +(pct - 0.75).toFixed(2); max = +(pct + 1.5).toFixed(2); }
-    }
-    min = Math.max(0, min); max = Math.min(100, max);
-    return [min, max];
-  }
 
-  let buckets = (Object.keys(normMix) as AssetClass[]).map(cls => {
-    const pct = normMix[cls]!;
-    const min = Math.max(0, pct - 2);
-    const max = Math.min(100, pct + 5);
+  const buckets = (Object.keys(alloc) as AssetClass[]).map(cls => {
+    const pct = alloc[cls];
+    const band = Math.max(minWidthFor(cls), baseBandPctFor(cls) * adjustFactorByProfile(cls));
+    const delta = pct * band;
+    const min = +(Math.max(0, pct - delta).toFixed(2));
+    const max = +(Math.min(100, pct + delta).toFixed(2));
     return {
       class: cls,
       pct,
-      range: [+(min.toFixed(2)), +(max.toFixed(2))] as [number, number],
+      range: [min, max] as [number, number],
       riskCategory: getRiskCategory(cls),
       notes: getNotes(cls, riskLevel)
     };
   });
 
-  return {
-    riskLevel,
-    rationale,
-    buckets,
+  const toList = (v: any): string => {
+    if (Array.isArray(v)) return v.join(", ");
+    if (typeof v === 'string') return v;
+    return "";
   };
+  const rationale = `Derived from risk (${riskLevel}), horizon (${q.horizon||""}), EF6m=${q.emergencyFundSixMonths||""}, withdraw2y=${q.withdrawNext2Yrs||""}, liabilities (${q.liabilities||"None"}), dependents (${q.dependents||"None"}), avoid [${toList((q as any).avoidAssets)}].`;
+
+  return { riskLevel, rationale, buckets };
 }

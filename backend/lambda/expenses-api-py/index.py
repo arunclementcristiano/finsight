@@ -16,11 +16,13 @@ CATEGORY_RULES_TABLE = os.environ.get("CATEGORY_RULES_TABLE", "CategoryRules")
 USER_BUDGETS_TABLE = os.environ.get("USER_BUDGETS_TABLE", "UserBudgets")
 GROQ_API_KEY = (os.environ.get("GROQ_API_KEY") or "").strip()
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-70b-versatile")
+INVEST_TABLE = os.environ.get("INVEST_TABLE", "InvestApp")
 
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
 expenses_table = dynamodb.Table(EXPENSES_TABLE)
 category_rules_table = dynamodb.Table(CATEGORY_RULES_TABLE)
 user_budgets_table = dynamodb.Table(USER_BUDGETS_TABLE)
+invest_table = dynamodb.Table(INVEST_TABLE)
 
 
 def _cors_headers():
@@ -444,6 +446,177 @@ def handler(event, context):
             items = [x for x in items if x.get("userId") == user_id and x.get("category") == category]
             total = sum(float(x.get("amount", 0)) for x in items)
             return _response(200, {"items": items, "total": total})
+
+        # ----------------------- PORTFOLIO APIs (JWT-protected via API Gateway) -----------------------
+        def _user_from_jwt(evt):
+            try:
+                claims = (((evt.get("requestContext") or {}).get("authorizer") or {}).get("jwt") or {}).get("claims") or {}
+                sub = claims.get("sub")
+                return sub
+            except Exception:
+                return None
+
+        # Create portfolio (POST /portfolio) — body: { name }
+        if route_key == "POST /portfolio":
+            user_sub = _user_from_jwt(event)
+            if not user_sub:
+                return _response(401, {"error": "Unauthorized"})
+            name = (body.get("name") or "").strip()
+            if not name:
+                return _response(400, {"error": "Missing name"})
+            portfolio_id = str(uuid.uuid4())
+            now = datetime.utcnow().isoformat()
+            invest_table.put_item(Item={
+                "pk": f"USER#{user_sub}",
+                "sk": f"PORTFOLIO#{portfolio_id}",
+                "entityType": "PORTFOLIO",
+                "name": name,
+                "createdAt": now,
+                "updatedAt": now,
+                "GSI1PK": f"PORTFOLIO#{portfolio_id}",
+                "GSI1SK": now,
+            })
+            return _response(200, {"portfolioId": portfolio_id, "name": name})
+
+        # Read portfolios (GET /portfolio) — list user's portfolios
+        if route_key == "GET /portfolio":
+            user_sub = _user_from_jwt(event)
+            if not user_sub:
+                return _response(401, {"error": "Unauthorized"})
+            res = invest_table.query(
+                KeyConditionExpression=Key("pk").eq(f"USER#{user_sub}") & Key("sk").begins_with("PORTFOLIO#")
+            )
+            items = res.get("Items", [])
+            portfolios = [{"portfolioId": it["sk"].split("#",1)[1], "name": it.get("name"), "createdAt": it.get("createdAt") } for it in items]
+            return _response(200, {"items": portfolios})
+
+        # Save allocation plan (PUT /portfolio/plan) — body: { portfolioId, plan }
+        if route_key == "PUT /portfolio/plan":
+            user_sub = _user_from_jwt(event)
+            if not user_sub:
+                return _response(401, {"error": "Unauthorized"})
+            portfolio_id = body.get("portfolioId")
+            plan = body.get("plan")
+            if not portfolio_id or not plan:
+                return _response(400, {"error": "Missing portfolioId or plan"})
+            now = datetime.utcnow().isoformat()
+            invest_table.put_item(Item={
+                "pk": f"USER#{user_sub}",
+                "sk": f"ALLOCATION#{portfolio_id}",
+                "entityType": "ALLOCATION",
+                "plan": plan,
+                "updatedAt": now,
+                "GSI1PK": f"PORTFOLIO#{portfolio_id}",
+                "GSI1SK": f"ALLOCATION#{now}",
+            })
+            return _response(200, {"ok": True})
+
+        # Fetch allocation plan (GET /portfolio/plan?portfolioId=...)
+        if route_key == "GET /portfolio/plan":
+            user_sub = _user_from_jwt(event)
+            if not user_sub:
+                return _response(401, {"error": "Unauthorized"})
+            portfolio_id = (qs or {}).get("portfolioId")
+            if not portfolio_id:
+                return _response(400, {"error": "Missing portfolioId"})
+            res = invest_table.get_item(Key={"pk": f"USER#{user_sub}", "sk": f"ALLOCATION#{portfolio_id}"})
+            item = res.get("Item") or {}
+            return _response(200, {"plan": item.get("plan")})
+
+        # Create holding (POST /holdings) — body: { portfolioId, holding }
+        if route_key == "POST /holdings":
+            user_sub = _user_from_jwt(event)
+            if not user_sub:
+                return _response(401, {"error": "Unauthorized"})
+            portfolio_id = body.get("portfolioId")
+            holding = body.get("holding") or {}
+            if not portfolio_id or not isinstance(holding, dict):
+                return _response(400, {"error": "Missing portfolioId or holding"})
+            holding_id = holding.get("id") or str(uuid.uuid4())
+            now = datetime.utcnow().isoformat()
+            item = {
+                "pk": f"USER#{user_sub}",
+                "sk": f"HOLDING#{portfolio_id}#{holding_id}",
+                "entityType": "HOLDING",
+                "portfolioId": portfolio_id,
+                "holdingId": holding_id,
+                "data": holding,
+                "updatedAt": now,
+                "GSI1PK": f"PORTFOLIO#{portfolio_id}",
+                "GSI1SK": f"HOLDING#{holding_id}",
+            }
+            invest_table.put_item(Item=item)
+            return _response(200, {"holdingId": holding_id})
+
+        # List holdings (GET /holdings?portfolioId=...)
+        if route_key == "GET /holdings":
+            user_sub = _user_from_jwt(event)
+            if not user_sub:
+                return _response(401, {"error": "Unauthorized"})
+            portfolio_id = (qs or {}).get("portfolioId")
+            if not portfolio_id:
+                return _response(400, {"error": "Missing portfolioId"})
+            res = invest_table.query(
+                KeyConditionExpression=Key("pk").eq(f"USER#{user_sub}") & Key("sk").begins_with(f"HOLDING#{portfolio_id}#")
+            )
+            items = res.get("Items", [])
+            holdings = [{"id": it.get("holdingId"), **(it.get("data") or {})} for it in items]
+            return _response(200, {"items": holdings})
+
+        # Create transaction (POST /transactions) — body: { portfolioId, txn }
+        if route_key == "POST /transactions":
+            user_sub = _user_from_jwt(event)
+            if not user_sub:
+                return _response(401, {"error": "Unauthorized"})
+            portfolio_id = body.get("portfolioId")
+            txn = body.get("txn") or {}
+            if not portfolio_id or not isinstance(txn, dict):
+                return _response(400, {"error": "Missing portfolioId or txn"})
+            txn_id = txn.get("id") or str(uuid.uuid4())
+            now = datetime.utcnow().isoformat()
+            date = txn.get("date") or now[:10]
+            item = {
+                "pk": f"USER#{user_sub}",
+                "sk": f"TRANSACTION#{portfolio_id}#{date}#{txn_id}",
+                "entityType": "TRANSACTION",
+                "portfolioId": portfolio_id,
+                "transactionId": txn_id,
+                "data": txn,
+                "createdAt": now,
+                "GSI1PK": f"PORTFOLIO#{portfolio_id}",
+                "GSI1SK": f"TRANSACTION#{date}#{txn_id}",
+            }
+            invest_table.put_item(Item=item)
+            return _response(200, {"transactionId": txn_id})
+
+        # List transactions (GET /transactions?portfolioId=...&start=YYYY-MM-DD&end=YYYY-MM-DD)
+        if route_key == "GET /transactions":
+            user_sub = _user_from_jwt(event)
+            if not user_sub:
+                return _response(401, {"error": "Unauthorized"})
+            portfolio_id = (qs or {}).get("portfolioId")
+            start = (qs or {}).get("start")
+            end = (qs or {}).get("end")
+            if not portfolio_id:
+                return _response(400, {"error": "Missing portfolioId"})
+            # Query by PK and filter SK prefix for TRANSACTION#PORTFOLIOID#
+            res = invest_table.query(
+                KeyConditionExpression=Key("pk").eq(f"USER#{user_sub}") & Key("sk").begins_with(f"TRANSACTION#{portfolio_id}#")
+            )
+            items = res.get("Items", [])
+            def in_range(sk: str) -> bool:
+                try:
+                    parts = sk.split("#")
+                    date_str = parts[2]
+                    if start and date_str < start:
+                        return False
+                    if end and date_str > end:
+                        return False
+                    return True
+                except Exception:
+                    return True
+            txns = [{"id": it.get("transactionId"), **(it.get("data") or {})} for it in items if in_range(it.get("sk",""))]
+            return _response(200, {"items": txns})
 
         return _response(404, {"error": "Not found", "routeKey": route_key})
     except Exception as e:
