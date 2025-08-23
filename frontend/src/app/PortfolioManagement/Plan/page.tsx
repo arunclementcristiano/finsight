@@ -66,6 +66,109 @@ export default function PlanPage() {
 		} catch { return "AI refined your mix for balance and resilience."; }
 	}
 
+	function handleAdvisorClick() {
+		setMode('advisor');
+		try {
+			const savedOrigin = (plan as any)?.origin;
+			if (savedOrigin === 'engine' || savedOrigin === 'ai') {
+				setLocal(plan);
+				setAiViewOn(savedOrigin === 'ai');
+				if (savedOrigin === 'ai') {
+					try { const baseline = buildPlan((plan as any)?.answersSnapshot || questionnaire); setAiSummary(makeSummary(baseline, (plan as any)?.buckets||[])); } catch {}
+				} else {
+					setAiSummary(undefined);
+				}
+			} else {
+				setAiViewOn(false);
+				setAiSummary(undefined);
+				setLocal(buildPlan(questionnaire));
+			}
+		} catch {
+			setAiViewOn(false);
+			setAiSummary(undefined);
+			setLocal(buildPlan(questionnaire));
+		}
+	}
+
+	async function handleCustomClick() {
+		setMode('custom');
+		setAiViewOn(false);
+		try {
+			if (activePortfolioId) {
+				const rc = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}&variant=custom`);
+				const dc = await rc.json();
+				if (dc?.plan?.buckets) {
+					setLocal(dc.plan);
+				} else {
+					const ra = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}`);
+					const da = await ra.json();
+					if (da?.plan?.buckets) setLocal(da.plan); else setLocal(buildPlan(questionnaire));
+				}
+				const locks = getCustomLocks(activePortfolioId);
+				if (locks) setLocalCustomLocks(locks);
+			}
+		} catch {}
+	}
+
+	function handleResetClick() {
+		const snap = (plan as any)?.answersSnapshot || {};
+		Object.keys(snap).forEach(k=> setQuestionAnswer(k, (snap as any)[k]));
+		const savedOrigin = (plan as any)?.origin;
+		if (mode === 'advisor') {
+			if (savedOrigin === 'engine' || savedOrigin === 'ai') {
+				setLocal(plan);
+				setAiViewOn(savedOrigin === 'ai');
+				try { if (savedOrigin === 'ai') { const baseline = buildPlan((plan as any)?.answersSnapshot || snap); setAiSummary(makeSummary(baseline, (plan as any)?.buckets||[])); } else { setAiSummary(undefined); } } catch { setAiSummary(undefined); }
+			} else {
+				setLocal(buildPlan(snap));
+				setAiViewOn(false);
+				setAiSummary(undefined);
+			}
+		} else {
+			try {
+				if (activePortfolioId) {
+					const saved = getCustomSaved(activePortfolioId);
+					if (saved) {
+						setLocal(saved);
+					} else {
+						const savedOrigin = (plan as any)?.origin;
+						if (savedOrigin === 'engine' || savedOrigin === 'ai') {
+							setLocal(plan);
+						} else {
+							setLocal(buildPlan(snap));
+						}
+					}
+				}
+			} catch { try { setLocal(buildPlan(snap)); } catch { setLocal(plan); } }
+		}
+		setAnswersDrift(false);
+		setAdvisorPins({});
+	}
+
+	async function handleSaveClick() {
+		const pruneAlloc = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))});
+		const snapshot = pruneQuestionnaire(questionnaire);
+		const answersDirty = makeAnswersSig(snapshot) !== (((plan as any)?.answersSig) || "");
+		const allocDirty = !!(local && plan && JSON.stringify(pruneAlloc(local)) !== JSON.stringify(pruneAlloc(plan)));
+		const originDirty = (mode === 'custom' && ((plan as any)?.origin !== 'custom'));
+		const dirty = answersDirty || allocDirty || originDirty;
+		if (!dirty) { setToast({ msg: 'No changes to save', type: 'info' }); return; }
+		if (!activePortfolioId || !local) return;
+		const origin = mode === 'custom' ? 'custom' : (aiViewOn ? 'ai' : 'engine');
+		if (mode === 'custom') {
+			const typed = window.prompt("Custom mode: type CONFIRM to save off‑policy allocation.", "");
+			if ((typed||"").toUpperCase() !== 'CONFIRM') { setToast({ msg: 'Save cancelled', type: 'info' }); return; }
+		}
+		const planToSave = { ...(local||{}), origin, offPolicy: mode==='custom', mode, answersSig: makeAnswersSig(snapshot), answersSnapshot: snapshot, policyVersion: 'v1' };
+		await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: activePortfolioId, plan: planToSave }) });
+		setPlan(planToSave);
+		try { if (activePortfolioId) {
+			if (mode==='custom') { setCustomDraft(activePortfolioId, planToSave); setCustomLocks(activePortfolioId, customLocks || {}); (useApp.getState() as any).setCustomSaved(activePortfolioId, planToSave); }
+			else { (useApp.getState() as any).setAdvisorSaved(activePortfolioId, planToSave); }
+		} } catch {}
+		setToast({ msg: 'Plan saved', type: 'success' });
+	}
+
 	// Handlers extracted from JSX
 	const handleToggleAiView = () => {
 		if (mode === 'custom') return;
@@ -332,13 +435,13 @@ export default function PlanPage() {
 				</div>
 				<div className="flex items-center gap-2">
 					<div className="inline-flex rounded-md border border-border overflow-hidden text-xs">
-						<Button size="sm" variant="outline" className={`rounded-none ${mode==='advisor' ? 'bg-indigo-600 text-white border-indigo-600' : ''}`} onClick={()=>{ setMode('advisor'); try { const savedOrigin = (plan as any)?.origin; if (savedOrigin === 'engine' || savedOrigin === 'ai') { setLocal(plan); setAiViewOn(savedOrigin === 'ai'); if (savedOrigin === 'ai') { try { const baseline = buildPlan((plan as any)?.answersSnapshot || questionnaire); setAiSummary(makeSummary(baseline, (plan as any)?.buckets||[])); } catch {} } else { setAiSummary(undefined); } } else { setAiViewOn(false); setAiSummary(undefined); setLocal(buildPlan(questionnaire)); } } catch { setAiViewOn(false); setAiSummary(undefined); setLocal(buildPlan(questionnaire)); } }}>
+						<Button size="sm" variant="outline" className={`rounded-none ${mode==='advisor' ? 'bg-indigo-600 text-white border-indigo-600' : ''}`} onClick={handleAdvisorClick}>
 							<div className="flex flex-col items-start leading-tight">
 								<span>Advisor</span>
 								{mode==='advisor' ? <span className="text-[10px] opacity-80">Recommended</span> : null}
 							</div>
 						</Button>
-						<Button size="sm" variant="outline" className={`rounded-none ${mode==='custom' ? 'bg-rose-600 text-white border-rose-600' : ''}`} onClick={()=>{ setMode('custom'); setAiViewOn(false); (async ()=>{ try { if (activePortfolioId) { const rc = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}&variant=custom`); const dc = await rc.json(); if (dc?.plan?.buckets) { setLocal(dc.plan); } else { const ra = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}`); const da = await ra.json(); if (da?.plan?.buckets) setLocal(da.plan); else setLocal(buildPlan(questionnaire)); } const locks = getCustomLocks(activePortfolioId); if (locks) setLocalCustomLocks(locks); } } catch {} })(); }}>
+						<Button size="sm" variant="outline" className={`rounded-none ${mode==='custom' ? 'bg-rose-600 text-white border-rose-600' : ''}`} onClick={handleCustomClick}>
 							<div className="flex flex-col items-start leading-tight">
 								<div className="flex items-center gap-1">
 									<span>Custom</span>
@@ -348,69 +451,11 @@ export default function PlanPage() {
 							</div>
 						</Button>
 					</div>
-					<Button variant="ghost" size="sm" aria-label="Reset" onClick={()=> { 
-						const snap = (plan as any)?.answersSnapshot || {}; 
-						Object.keys(snap).forEach(k=> setQuestionAnswer(k, (snap as any)[k])); 
-						const savedOrigin = (plan as any)?.origin;
-						if (mode === 'advisor') {
-							// reset to last advisor save (engine or ai) else recompute
-							if (savedOrigin === 'engine' || savedOrigin === 'ai') {
-								setLocal(plan);
-								setAiViewOn(savedOrigin === 'ai');
-								try { if (savedOrigin === 'ai') { const baseline = buildPlan((plan as any)?.answersSnapshot || snap); setAiSummary(makeSummary(baseline, (plan as any)?.buckets||[])); } else { setAiSummary(undefined); } } catch { setAiSummary(undefined); }
-							} else {
-								setLocal(buildPlan(snap));
-								setAiViewOn(false);
-								setAiSummary(undefined);
-							}
-						} else {
-							// custom: reset to last custom saved; if none, fall back to advisor saved (plan) or recomputed baseline
-							try {
-								if (activePortfolioId) {
-									const saved = getCustomSaved(activePortfolioId);
-									if (saved) {
-										setLocal(saved);
-									} else {
-										const savedOrigin = (plan as any)?.origin;
-										if (savedOrigin === 'engine' || savedOrigin === 'ai') {
-											setLocal(plan);
-										} else {
-											setLocal(buildPlan(snap));
-										}
-									}
-								}
-							} catch { try { setLocal(buildPlan(snap)); } catch { setLocal(plan); } }
-						}
-						setAnswersDrift(false); 
-						setAdvisorPins({});
-					}}>
+					<Button variant="ghost" size="sm" aria-label="Reset" onClick={handleResetClick}>
 						<RotateCcw className="h-4 w-4 text-rose-600" />
 					</Button>
 					<div>
-						<Button variant="outline" size="sm" leftIcon={<SaveIcon className="h-4 w-4" />} onClick={async ()=>{
-							const pruneAlloc = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))});
-							const snapshot = pruneQuestionnaire(questionnaire);
-							const answersDirty = makeAnswersSig(snapshot) !== (((plan as any)?.answersSig) || "");
-							const allocDirty = !!(local && plan && JSON.stringify(pruneAlloc(local)) !== JSON.stringify(pruneAlloc(plan)));
-							const originDirty = (mode === 'custom' && ((plan as any)?.origin !== 'custom'));
-							const dirty = answersDirty || allocDirty || originDirty;
-							if (!dirty) { setToast({ msg: 'No changes to save', type: 'info' }); return; }
-							if (!activePortfolioId || !local) return;
-							const origin = mode === 'custom' ? 'custom' : (aiViewOn ? 'ai' : 'engine');
-							if (mode === 'custom') {
-								const typed = window.prompt("Custom mode: type CONFIRM to save off‑policy allocation.", "");
-								if ((typed||"").toUpperCase() !== 'CONFIRM') { setToast({ msg: 'Save cancelled', type: 'info' }); return; }
-							}
-													const planToSave = { ...(local||{}), origin, offPolicy: mode==='custom', mode, answersSig: makeAnswersSig(snapshot), answersSnapshot: snapshot, policyVersion: 'v1' };
-						await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: activePortfolioId, plan: planToSave }) });
-						setPlan(planToSave);
-						// remember last saved per-mode locally
-						try { if (activePortfolioId) {
-							if (mode==='custom') { setCustomDraft(activePortfolioId, planToSave); setCustomLocks(activePortfolioId, customLocks || {}); (useApp.getState() as any).setCustomSaved(activePortfolioId, planToSave); }
-							else { (useApp.getState() as any).setAdvisorSaved(activePortfolioId, planToSave); }
-						} } catch {}
-						setToast({ msg: 'Plan saved', type: 'success' });
-					}}>
+						<Button variant="outline" size="sm" leftIcon={<SaveIcon className="h-4 w-4" />} onClick={handleSaveClick}>
 						<span className="inline-flex items-center gap-2">
 							<span>Save Plan</span>
 							{saveChip}
