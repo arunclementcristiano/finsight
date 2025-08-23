@@ -5,6 +5,7 @@ import { Button } from "../../components/Button";
 import { useApp } from "../../store";
 import { computeRebalance } from "../domain/rebalance";
 import { LineChart, Layers, Banknote, Coins, Home, Droplet, Edit3, RefreshCw } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, onBuildBaseline, aiViewOn, onToggleAiView, aiLoading, aiExplanation, aiSummary, mode, aiDisabled, locks, onToggleLock }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void; onEditAnswers?: () => void; onBuildBaseline?: () => void; aiViewOn?: boolean; onToggleAiView?: () => void; aiLoading?: boolean; aiExplanation?: string; aiSummary?: string; mode?: 'advisor'|'custom'; aiDisabled?: boolean; locks?: Record<string, boolean>; onToggleLock?: (cls: string)=>void }) {
   const { holdings, driftTolerancePct, questionnaire } = useApp() as any;
@@ -60,15 +61,13 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                 <Button variant="outline" leftIcon={<Edit3 className="h-4 w-4 text-sky-600" />} onClick={onEditAnswers}>Adjust Risk Profile</Button>
               ) : null}
               {mode !== 'custom' ? (
-                <>
-                  <Button variant="outline" leftIcon={<RefreshCw className="h-4 w-4 text-indigo-600" />} onClick={onBuildBaseline}>Recalculate Plan</Button>
-                  <div className="inline-flex items-center gap-2 ml-2">
-                    <span className="text-[11px] text-muted-foreground">AI view</span>
-                    <button type="button" onClick={onToggleAiView} disabled={!!aiLoading || !!aiDisabled} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${aiViewOn?"bg-indigo-600":"bg-muted"}`}>
-                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white dark:bg-zinc-900 shadow transition-transform ${aiViewOn?"translate-x-5":"translate-x-1"}`}></span>
-                    </button>
-                  </div>
-                </>
+                <div className="inline-flex items-center gap-2 ml-2">
+                  <Sparkles className="h-4 w-4 text-amber-500" />
+                  <span className="text-[11px] text-muted-foreground">AI Assist</span>
+                  <button type="button" onClick={onToggleAiView} disabled={!!aiLoading || !!aiDisabled} className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${aiViewOn?"bg-gradient-to-r from-amber-500 via-fuchsia-500 to-indigo-600":"bg-muted"}`}>
+                    <span className={`inline-block h-5 w-5 transform rounded-full bg-white dark:bg-zinc-900 shadow transition-transform ${aiViewOn?"translate-x-6":"translate-x-1"}`}></span>
+                  </button>
+                </div>
               ) : null}
             </div>
           </div>
