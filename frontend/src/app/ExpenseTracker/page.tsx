@@ -452,155 +452,372 @@ export default function ExpenseTrackerPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-5rem)] overflow-hidden">
-      {/* Sticky Command Bar */}
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
-        <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-4 p-4">
-          {/* Chat input */}
+      {/* Mobile-optimized Sticky Command Bar */}
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border">
+        <div className="space-y-4 xl:grid xl:grid-cols-[1.5fr_1fr] xl:gap-4 xl:space-y-0 p-3 sm:p-4">
+          {/* Mobile-first Chat input */}
           <div>
-            <form onSubmit={handleSubmit} className="flex gap-2 items-center">
-              <input ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} className="flex-1 h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]" placeholder="e.g., Lunch 250 at restaurant"/>
-              <button type="button" aria-label="Set date" title="Set date" onClick={()=> setDateOpen(o=>!o)} className={`h-11 w-11 inline-flex items-center justify-center rounded-xl border ${dateOpen ? 'border-emerald-400 text-emerald-600' : 'border-border text-muted-foreground'} bg-card hover:bg-muted focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]`}>
-                <Calendar className="h-4 w-4" />
-              </button>
-              {dateOpen && (
-                <input type="date" value={selectedDate} onChange={(e)=> setSelectedDate(e.target.value)} className="h-11 rounded-xl border border-border px-3 bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]" />
-              )}
-              <Button type="submit">Add Expense</Button>
+            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2 sm:items-center">
+              <div className="flex gap-2 items-center flex-1">
+                <input 
+                  ref={inputRef} 
+                  value={input} 
+                  onChange={e=>setInput(e.target.value)} 
+                  className="flex-1 h-12 sm:h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] text-base sm:text-sm touch-manipulation" 
+                  placeholder="e.g., Lunch ₹250 at restaurant"
+                />
+                <button 
+                  type="button" 
+                  aria-label="Set date" 
+                  title="Set date" 
+                  onClick={()=> setDateOpen(o=>!o)} 
+                  className={`h-12 w-12 sm:h-11 sm:w-11 inline-flex items-center justify-center rounded-xl border touch-manipulation ${dateOpen ? 'border-emerald-400 text-emerald-600' : 'border-border text-muted-foreground'} bg-card hover:bg-muted focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]`}
+                >
+                  <Calendar className="h-5 w-5 sm:h-4 sm:w-4" />
+                </button>
+              </div>
+              
+              {/* Date picker and submit button */}
+              <div className="flex gap-2 items-center">
+                {dateOpen && (
+                  <input 
+                    type="date" 
+                    value={selectedDate} 
+                    onChange={(e)=> setSelectedDate(e.target.value)} 
+                    className="h-12 sm:h-11 rounded-xl border border-border px-3 bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] touch-manipulation text-base sm:text-sm" 
+                  />
+                )}
+                <Button type="submit" className="h-12 sm:h-auto px-6 sm:px-4 text-base sm:text-sm font-medium touch-manipulation">
+                  <span className="sm:hidden">💰 Add</span>
+                  <span className="hidden sm:inline">Add Expense</span>
+                </Button>
+              </div>
             </form>
+            {/* Mobile-optimized AI suggestion */}
             {ai && (
-              <div className="mt-3 rounded-xl border border-border p-3 text-sm space-y-2">
-                <div>Suggested: <span className="font-semibold">{ai.category}</span> {ai.AIConfidence ? `(conf ${Math.round((ai.AIConfidence||0)*100)}%)` : ""}</div>
-                <div className="flex flex-wrap gap-2 items-center">
-                  <input ref={amountRef} type="number" step="0.01" defaultValue={ai.amount ?? 0} className="h-9 w-28 rounded-md border border-border px-2 bg-card text-right"/>
-                  <select value={selectedCategory || ai.category || "Other"} onChange={(e)=> setSelectedCategory(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card">
-                    {Array.from(new Set<string>((((ai as any).options as string[] | undefined) || []).concat(ai.category || []).filter(Boolean))).map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                  <input ref={customRef} type="text" placeholder="Custom category (optional)" className="h-9 rounded-md border border-border px-2 bg-card"/>
-                  <Button onClick={()=>{
-                    const custom = (customRef.current?.value || "").trim();
-                    const chosen = custom || (selectedCategory || ai.category || "Other");
-                    confirm(chosen, amountRef.current?.value);
-                  }}>Confirm</Button>
+              <div className="mt-3 rounded-xl border border-border p-4 sm:p-3 text-sm space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🤖</span>
+                  <div>
+                    <span className="text-muted-foreground">Suggested:</span> 
+                    <span className="font-semibold ml-1">{ai.category}</span>
+                    {ai.AIConfidence && (
+                      <span className="text-xs text-muted-foreground ml-2">
+                        {Math.round((ai.AIConfidence||0)*100)}% confident
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr_auto] gap-3 sm:gap-2 sm:items-center">
+                  <div className="flex gap-2 items-center">
+                    <label className="text-xs text-muted-foreground whitespace-nowrap">Amount:</label>
+                    <input 
+                      ref={amountRef} 
+                      type="number" 
+                      step="0.01" 
+                      defaultValue={ai.amount ?? 0} 
+                      className="h-11 sm:h-9 w-32 sm:w-28 rounded-lg sm:rounded-md border border-border px-3 sm:px-2 bg-card text-right text-base sm:text-sm touch-manipulation"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2 sm:space-y-0">
+                    <select 
+                      value={selectedCategory || ai.category || "Other"} 
+                      onChange={(e)=> setSelectedCategory(e.target.value)} 
+                      className="w-full h-11 sm:h-9 rounded-lg sm:rounded-md border border-border px-3 sm:px-2 bg-card text-base sm:text-sm touch-manipulation"
+                    >
+                      {Array.from(new Set<string>((((ai as any).options as string[] | undefined) || []).concat(ai.category || []).filter(Boolean))).map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                    <input 
+                      ref={customRef} 
+                      type="text" 
+                      placeholder="Or enter custom category..." 
+                      className="w-full h-11 sm:h-9 rounded-lg sm:rounded-md border border-border px-3 sm:px-2 bg-card text-base sm:text-sm touch-manipulation"
+                    />
+                  </div>
+                  
+                  <Button 
+                    onClick={()=>{
+                      const custom = (customRef.current?.value || "").trim();
+                      const chosen = custom || (selectedCategory || ai.category || "Other");
+                      confirm(chosen, amountRef.current?.value);
+                    }}
+                    className="h-11 sm:h-9 px-6 sm:px-4 touch-manipulation"
+                  >
+                    ✅ Confirm
+                  </Button>
                 </div>
               </div>
             )}
           </div>
-          {/* Actions */}
-          <div className="flex items-start justify-end gap-2">
-            <Button variant="outline" onClick={()=> setShowBudgetsModal(true)}>
-              <Settings2 className="h-4 w-4 mr-2"/>
-              Set Budgets
+          {/* Mobile-optimized Actions */}
+          <div className="grid grid-cols-3 gap-2 xl:flex xl:items-start xl:justify-end xl:gap-2">
+            <Button 
+              variant="outline" 
+              onClick={()=> setShowBudgetsModal(true)}
+              className="h-11 xl:h-auto touch-manipulation text-xs xl:text-sm"
+            >
+              <Settings2 className="h-4 w-4 xl:mr-2"/>
+              <span className="hidden sm:inline xl:inline">Budgets</span>
             </Button>
-            <Button variant="outline" onClick={()=> setPrivacy(p=>!p)}>
-              {privacy ? <EyeOff className="h-4 w-4 mr-2"/> : <Eye className="h-4 w-4 mr-2"/>}
-              {privacy ? "Unmask" : "Privacy"}
+            <Button 
+              variant="outline" 
+              onClick={()=> setPrivacy(p=>!p)}
+              className="h-11 xl:h-auto touch-manipulation text-xs xl:text-sm"
+            >
+              {privacy ? <EyeOff className="h-4 w-4 xl:mr-2"/> : <Eye className="h-4 w-4 xl:mr-2"/>}
+              <span className="hidden sm:inline xl:inline">{privacy ? "Show" : "Hide"}</span>
             </Button>
-            <Button variant="outline" onClick={()=> setExportOpen(true)}>
-              <Download className="h-4 w-4 mr-2"/>
-              Export CSV
+            <Button 
+              variant="outline" 
+              onClick={()=> setExportOpen(true)}
+              className="h-11 xl:h-auto touch-manipulation text-xs xl:text-sm"
+            >
+              <Download className="h-4 w-4 xl:mr-2"/>
+              <span className="hidden sm:inline xl:inline">Export</span>
             </Button>
           </div>
         </div>
-        {/* Tabs */}
-        <div className="px-4 pb-3">
-          <div className="inline-flex rounded-lg border border-border overflow-hidden">
-            <button onClick={()=> setActiveTab("data")} className={`px-4 py-2 text-sm ${activeTab==='data' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>Data</button>
-            <button onClick={()=> setActiveTab("insights")} className={`px-4 py-2 text-sm ${activeTab==='insights' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>Insights</button>
+        {/* Mobile-optimized Tabs */}
+        <div className="px-3 sm:px-4 pb-3">
+          <div className="grid grid-cols-2 rounded-lg border border-border overflow-hidden sm:inline-flex sm:grid-cols-none">
+            <button 
+              onClick={()=> setActiveTab("data")} 
+              className={`px-4 py-3 sm:py-2 text-sm font-medium touch-manipulation transition-colors ${activeTab==='data' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted active:scale-[0.98]'}`}
+            >
+              📊 Data
+            </button>
+            <button 
+              onClick={()=> setActiveTab("insights")} 
+              className={`px-4 py-3 sm:py-2 text-sm font-medium touch-manipulation transition-colors ${activeTab==='insights' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted active:scale-[0.98]'}`}
+            >
+              📈 Insights
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Main panels */}
+      {/* Mobile-optimized Main panels */}
       {activeTab === "data" ? (
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 p-4 flex-1 min-h-0 overflow-auto">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 xl:gap-6 p-3 sm:p-4 flex-1 min-h-0 overflow-auto">
         {/* Recent Expenses (full width on xl span 2) */}
         <Card className="xl:col-span-2 h-full flex flex-col overflow-hidden">
-          <CardHeader>
-            <CardTitle>Recent Expenses</CardTitle>
-            <CardDescription>Synced with backend</CardDescription>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg xl:text-xl">💰 Recent Expenses</CardTitle>
+            <CardDescription>Real-time expense tracking</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 min-h-0 flex flex-col pb-0">
-            <div className="mb-3 flex flex-wrap gap-2 items-center">
-              <label className="text-sm text-muted-foreground">Range</label>
-              <select value={preset} onChange={(e)=> setPreset(e.target.value as any)} className="h-9 rounded-md border border-border px-2 bg-card">
-                <option value="all">All</option>
+            {/* Mobile-optimized filters */}
+            <div className="mb-3 space-y-2 sm:space-y-0 sm:flex sm:flex-wrap sm:gap-2 sm:items-center">
+              <label className="text-sm text-muted-foreground font-medium">📅 Range:</label>
+              <select 
+                value={preset} 
+                onChange={(e)=> setPreset(e.target.value as any)} 
+                className="w-full sm:w-auto h-11 sm:h-9 rounded-lg sm:rounded-md border border-border px-3 sm:px-2 bg-card text-base sm:text-sm touch-manipulation"
+              >
+                <option value="all">All time</option>
                 <option value="today">Today</option>
                 <option value="week">This week</option>
                 <option value="month">This month</option>
                 <option value="lastMonth">Last month</option>
-                <option value="custom">Custom</option>
+                <option value="custom">Custom range</option>
               </select>
               {preset === "custom" && (
-                <>
-                  <input type="date" value={customStart} onChange={(e)=> setCustomStart(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card" />
+                <div className="flex gap-2 items-center">
+                  <input 
+                    type="date" 
+                    value={customStart} 
+                    onChange={(e)=> setCustomStart(e.target.value)} 
+                    className="h-11 sm:h-9 rounded-lg sm:rounded-md border border-border px-3 sm:px-2 bg-card text-base sm:text-sm touch-manipulation" 
+                  />
                   <span className="text-sm text-muted-foreground">to</span>
-                  <input type="date" value={customEnd} onChange={(e)=> setCustomEnd(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card" />
-                </>
+                  <input 
+                    type="date" 
+                    value={customEnd} 
+                    onChange={(e)=> setCustomEnd(e.target.value)} 
+                    className="h-11 sm:h-9 rounded-lg sm:rounded-md border border-border px-3 sm:px-2 bg-card text-base sm:text-sm touch-manipulation" 
+                  />
+                </div>
               )}
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-border">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-card">
-                <tr>
-                  <th className="px-3 py-2 border-b">
-                    <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => toggleSort("date")} className="inline-flex items-center gap-1 cursor-pointer select-none">
-                        Date
-                        {sortField !== "date" ? <ArrowUpDown className="h-3.5 w-3.5" /> : (sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
+            {/* Mobile sorting controls */}
+            <div className="mb-3 xl:hidden">
+              <div className="flex flex-wrap gap-2">
+                <button 
+                  type="button" 
+                  onClick={() => toggleSort("date")} 
+                  className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg border text-xs font-medium touch-manipulation ${sortField === "date" ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-border bg-card hover:bg-muted'}`}
+                >
+                  📅 Date
+                  {sortField !== "date" ? <ArrowUpDown className="h-3.5 w-3.5" /> : (sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => toggleSort("amount")} 
+                  className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg border text-xs font-medium touch-manipulation ${sortField === "amount" ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-border bg-card hover:bg-muted'}`}
+                >
+                  💰 Amount
+                  {sortField !== "amount" ? <ArrowUpDown className="h-3.5 w-3.5" /> : (sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => toggleSort("category")} 
+                  className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg border text-xs font-medium touch-manipulation ${sortField === "category" ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-border bg-card hover:bg-muted'}`}
+                >
+                  🏷️ Category
+                  {sortField !== "category" ? <ArrowUpDown className="h-3.5 w-3.5" /> : (sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
+                </button>
+              </div>
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden xl:block flex-1 min-h-0 overflow-y-auto rounded-xl border border-border">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-card">
+                  <tr>
+                    <th className="px-3 py-2 border-b">
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={() => toggleSort("date")} className="inline-flex items-center gap-1 cursor-pointer select-none">
+                          Date
+                          {sortField !== "date" ? <ArrowUpDown className="h-3.5 w-3.5" /> : (sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
+                        </button>
+                        <button type="button" onClick={() => toggleSort("createdAt")} title="Sort by added time" className={`inline-flex items-center gap-1 cursor-pointer select-none text-xs px-1.5 py-0.5 rounded border ${sortField==='createdAt' ? 'border-foreground text-foreground' : 'border-border text-muted-foreground hover:text-foreground'}`}>
+                          Newest
+                          {sortField !== "createdAt" ? <ArrowUpDown className="h-3 w-3" /> : (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
+                        </button>
+                      </div>
+                    </th>
+                    <th className="px-3 py-2 border-b">Text</th>
+                    <th className="px-3 py-2 border-b">
+                      <button type="button" onClick={() => toggleSort("category")} className="inline-flex items-center gap-1 cursor-pointer select-none">
+                        Category
+                        {sortField !== "category" ? <ArrowUpDown className="h-3.5 w-3.5" /> : (sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
                       </button>
-                      <button type="button" onClick={() => toggleSort("createdAt")} title="Sort by added time" className={`inline-flex items-center gap-1 cursor-pointer select-none text-xs px-1.5 py-0.5 rounded border ${sortField==='createdAt' ? 'border-foreground text-foreground' : 'border-border text-muted-foreground hover:text-foreground'}`}>
-                        Newest
-                        {sortField !== "createdAt" ? <ArrowUpDown className="h-3 w-3" /> : (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
+                    </th>
+                    <th className="px-3 py-2 border-b text-right">
+                      <button type="button" onClick={() => toggleSort("amount")} className="inline-flex items-center gap-1 cursor-pointer select-none">
+                        Amount
+                        {sortField !== "amount" ? <ArrowUpDown className="h-3.5 w-3.5" /> : (sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
                       </button>
-                    </div>
-                  </th>
-                  <th className="px-3 py-2 border-b">Text</th>
-                  <th className="px-3 py-2 border-b">
-                    <button type="button" onClick={() => toggleSort("category")} className="inline-flex items-center gap-1 cursor-pointer select-none">
-                      Category
-                      {sortField !== "category" ? <ArrowUpDown className="h-3.5 w-3.5" /> : (sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
-                    </button>
-                  </th>
-                  <th className="px-3 py-2 border-b text-right">
-                    <button type="button" onClick={() => toggleSort("amount")} className="inline-flex items-center gap-1 cursor-pointer select-none">
-                      Amount
-                      {sortField !== "amount" ? <ArrowUpDown className="h-3.5 w-3.5" /> : (sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
-                    </button>
-                  </th>
-                  <th className="px-3 py-2 border-b text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pageRows.map((e: Expense) => (
-                  <tr key={e.id} className="border-b align-top">
-                    <td className="px-3 py-2">{fmtDateYYYYMMDDLocal(e.date as any)}</td>
-                    <td className="px-3 py-2">{e.text}</td>
-                    <td className="px-3 py-2">{e.category as string}</td>
-                    <td className="px-3 py-2 text-right">{privacy ? "•••" : e.amount.toFixed(2)}</td>
-                    <td className="px-3 py-2 text-right">
-                      <button
-                        aria-label="Delete"
-                        title="Delete"
-                        onClick={() => handleDelete(e.id)}
-                        className="h-7 w-7 inline-flex items-center justify-center rounded-full border border-transparent text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:border-rose-200 dark:hover:border-rose-800 focus:outline-none focus:ring-2 focus:ring-rose-400"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </td>
+                    </th>
+                    <th className="px-3 py-2 border-b text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {pageRows.map((e: Expense) => (
+                    <tr key={e.id} className="border-b align-top">
+                      <td className="px-3 py-2">{fmtDateYYYYMMDDLocal(e.date as any)}</td>
+                      <td className="px-3 py-2">{e.text}</td>
+                      <td className="px-3 py-2">{e.category as string}</td>
+                      <td className="px-3 py-2 text-right">{privacy ? "•••" : e.amount.toFixed(2)}</td>
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          aria-label="Delete"
+                          title="Delete"
+                          onClick={() => handleDelete(e.id)}
+                          className="h-7 w-7 inline-flex items-center justify-center rounded-full border border-transparent text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:border-rose-200 dark:hover:border-rose-800 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="xl:hidden flex-1 min-h-0 overflow-y-auto">
+              {pageRows.length > 0 ? (
+                <div className="space-y-3">
+                  {pageRows.map((e: Expense) => {
+                    const getCategoryEmoji = (category: string) => {
+                      const c = category.toLowerCase();
+                      if (c.includes('food') || c.includes('restaurant') || c.includes('lunch') || c.includes('dinner')) return '🍽️';
+                      if (c.includes('transport') || c.includes('uber') || c.includes('taxi') || c.includes('bus')) return '🚗';
+                      if (c.includes('shopping') || c.includes('clothes') || c.includes('retail')) return '🛍️';
+                      if (c.includes('entertainment') || c.includes('movie') || c.includes('games')) return '🎬';
+                      if (c.includes('health') || c.includes('medical') || c.includes('doctor')) return '🏥';
+                      if (c.includes('utilities') || c.includes('electricity') || c.includes('water')) return '🏠';
+                      if (c.includes('travel') || c.includes('hotel') || c.includes('flight')) return '✈️';
+                      return '💳';
+                    };
+                    
+                    return (
+                      <Card key={e.id} className="p-4 relative hover:shadow-sm transition-shadow">
+                        {/* Header with amount and delete */}
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">{getCategoryEmoji(e.category as string)}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {fmtDateYYYYMMDDLocal(e.date as any)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-lg font-bold text-right">
+                              {privacy ? "•••••" : `₹${e.amount.toFixed(2)}`}
+                            </div>
+                            <button
+                              aria-label="Delete expense"
+                              onClick={() => handleDelete(e.id)}
+                              className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-transparent text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:border-rose-200 dark:hover:border-rose-800 focus:outline-none focus:ring-2 focus:ring-rose-400 touch-manipulation"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        {/* Category badge */}
+                        <div className="mb-2">
+                          <span className="inline-flex items-center px-2 py-1 rounded-md bg-muted text-xs font-medium">
+                            {e.category as string}
+                          </span>
+                        </div>
+                        
+                        {/* Description */}
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {e.text}
+                        </p>
+                      </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                  <div className="text-6xl mb-4">💸</div>
+                  <h3 className="text-lg font-semibold mb-2">No expenses found</h3>
+                  <p className="text-sm text-muted-foreground">Add your first expense above to get started!</p>
+                </div>
+              )}
             </div>
           </CardContent>
           <CardFooter className="pt-3 border-t border-border">
             <div className="w-full flex-none flex items-center justify-between text-sm">
-              <div>Page {page} of {totalPages}</div>
+              <div className="text-xs sm:text-sm text-muted-foreground">
+                Page {page} of {totalPages} • {pageRows.length} items
+              </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={prev} disabled={page === 1}>Prev</Button>
-                <Button variant="outline" size="sm" onClick={next} disabled={page === totalPages}>Next</Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={prev} 
+                  disabled={page === 1}
+                  className="h-9 px-3 touch-manipulation"
+                >
+                  ← Prev
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={next} 
+                  disabled={page === totalPages}
+                  className="h-9 px-3 touch-manipulation"
+                >
+                  Next →
+                </Button>
               </div>
             </div>
           </CardFooter>
