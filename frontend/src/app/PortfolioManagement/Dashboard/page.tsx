@@ -58,10 +58,40 @@ export default function DashboardPage() {
 		],
 	};
 	const barOptions = {
-		plugins: { legend: { position: "bottom" as const, labels: { font: { size: 12 } } } },
+		plugins: { 
+			legend: { 
+				position: "bottom" as const, 
+				labels: { 
+					font: { 
+						size: typeof window !== 'undefined' && window.innerWidth < 640 ? 10 : 12 
+					},
+					padding: typeof window !== 'undefined' && window.innerWidth < 640 ? 8 : 16,
+					usePointStyle: true,
+				} 
+			},
+			tooltip: {
+				titleFont: { size: typeof window !== 'undefined' && window.innerWidth < 640 ? 12 : 14 },
+				bodyFont: { size: typeof window !== 'undefined' && window.innerWidth < 640 ? 11 : 13 },
+				cornerRadius: 8,
+			}
+		},
 		responsive: true,
 		maintainAspectRatio: false,
-		scales: { y: { beginAtZero: true, max: 100 } },
+		scales: { 
+			y: { 
+				beginAtZero: true, 
+				max: 100,
+				ticks: {
+					font: { size: typeof window !== 'undefined' && window.innerWidth < 640 ? 9 : 11 }
+				}
+			},
+			x: {
+				ticks: {
+					font: { size: typeof window !== 'undefined' && window.innerWidth < 640 ? 9 : 11 },
+					maxRotation: typeof window !== 'undefined' && window.innerWidth < 640 ? 45 : 0,
+				}
+			}
+		},
 	};
 
 	const rebalance = useMemo(() => plan ? computeRebalance(holdings, plan, driftTolerancePct) : { items: [], totalCurrentValue: 0 }, [holdings, plan, driftTolerancePct]);
@@ -100,13 +130,33 @@ export default function DashboardPage() {
 											legend: { 
 												position: "bottom" as const, 
 												labels: { 
-													font: { size: window.innerWidth < 640 ? 10 : 12 },
-													padding: window.innerWidth < 640 ? 10 : 16
+													font: { 
+														size: typeof window !== 'undefined' && window.innerWidth < 640 ? 10 : 12 
+													},
+													padding: typeof window !== 'undefined' && window.innerWidth < 640 ? 8 : 16,
+													usePointStyle: true,
+													boxWidth: typeof window !== 'undefined' && window.innerWidth < 640 ? 8 : 12,
 												} 
-											} 
+											},
+											tooltip: {
+												titleFont: { size: typeof window !== 'undefined' && window.innerWidth < 640 ? 12 : 14 },
+												bodyFont: { size: typeof window !== 'undefined' && window.innerWidth < 640 ? 11 : 13 },
+												cornerRadius: 8,
+												displayColors: true,
+												callbacks: {
+													label: function(context: any) {
+														const label = context.label || '';
+														const value = context.parsed || 0;
+														return `${label}: ${value}%`;
+													}
+												}
+											}
 										}, 
 										cutout: "70%",
-										maintainAspectRatio: false 
+										maintainAspectRatio: false,
+										layout: {
+											padding: typeof window !== 'undefined' && window.innerWidth < 640 ? 10 : 20
+										}
 									}} 
 								/>
 							</div>

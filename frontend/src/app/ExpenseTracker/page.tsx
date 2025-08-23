@@ -946,8 +946,51 @@ export default function ExpenseTrackerPage() {
               const entries = Array.from(map.entries()).sort((a,b)=> b[1]-a[1]);
               if (entries.length === 0) return <div className="text-muted-foreground text-sm">No data yet</div>;
               return (
-                <div className="mx-auto max-w-xs">
-                  <Doughnut data={{ labels: entries.map(([c])=>c), datasets: [{ data: entries.map(([,v])=>v), backgroundColor: ["#6366f1", "#10b981", "#f59e42", "#fbbf24", "#3b82f6", "#ef4444", "#a3e635"] }] }} options={{ plugins: { legend: { position: "bottom" as const } }, cutout: "70%" }} />
+                <div className="mx-auto max-w-xs h-64 sm:h-72">
+                  <Doughnut 
+                    data={{ 
+                      labels: entries.map(([c])=>c), 
+                      datasets: [{ 
+                        data: entries.map(([,v])=>v), 
+                        backgroundColor: ["#6366f1", "#10b981", "#f59e42", "#fbbf24", "#3b82f6", "#ef4444", "#a3e635"],
+                        borderWidth: 2,
+                        borderColor: "#fff",
+                      }] 
+                    }} 
+                    options={{ 
+                      plugins: { 
+                        legend: { 
+                          position: "bottom" as const,
+                          labels: {
+                            font: { 
+                              size: typeof window !== 'undefined' && window.innerWidth < 640 ? 10 : 12 
+                            },
+                            padding: typeof window !== 'undefined' && window.innerWidth < 640 ? 8 : 16,
+                            usePointStyle: true,
+                            boxWidth: typeof window !== 'undefined' && window.innerWidth < 640 ? 8 : 12,
+                          }
+                        },
+                        tooltip: {
+                          titleFont: { size: typeof window !== 'undefined' && window.innerWidth < 640 ? 12 : 14 },
+                          bodyFont: { size: typeof window !== 'undefined' && window.innerWidth < 640 ? 11 : 13 },
+                          cornerRadius: 8,
+                          displayColors: true,
+                          callbacks: {
+                            label: function(context: any) {
+                              const label = context.label || '';
+                              const value = context.parsed || 0;
+                              return `${label}: ${fmtMoney(value)}`;
+                            }
+                          }
+                        }
+                      }, 
+                      cutout: "70%",
+                      maintainAspectRatio: false,
+                      layout: {
+                        padding: typeof window !== 'undefined' && window.innerWidth < 640 ? 10 : 20
+                      }
+                    }} 
+                  />
                 </div>
               );
             })()}
@@ -1056,8 +1099,53 @@ export default function ExpenseTrackerPage() {
               };
               return (
                 <div className="space-y-4">
-                  <div className="h-56">
-                    <Bar data={chart} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" as const } }, scales: { y: { beginAtZero: true } } }} />
+                  <div className="h-64 sm:h-72">
+                    <Bar 
+                      data={chart} 
+                      options={{ 
+                        responsive: true, 
+                        maintainAspectRatio: false, 
+                        plugins: { 
+                          legend: { 
+                            position: "bottom" as const,
+                            labels: {
+                              font: { 
+                                size: typeof window !== 'undefined' && window.innerWidth < 640 ? 10 : 12 
+                              },
+                              padding: typeof window !== 'undefined' && window.innerWidth < 640 ? 8 : 16,
+                              usePointStyle: true,
+                            }
+                          },
+                          tooltip: {
+                            titleFont: { size: typeof window !== 'undefined' && window.innerWidth < 640 ? 12 : 14 },
+                            bodyFont: { size: typeof window !== 'undefined' && window.innerWidth < 640 ? 11 : 13 },
+                            cornerRadius: 8,
+                            displayColors: true,
+                            callbacks: {
+                              label: function(context: any) {
+                                const label = context.dataset.label || '';
+                                const value = context.parsed.y || 0;
+                                return `${label}: ${fmtMoney(value)}`;
+                              }
+                            }
+                          }
+                        }, 
+                        scales: { 
+                          y: { 
+                            beginAtZero: true,
+                            ticks: {
+                              font: { size: typeof window !== 'undefined' && window.innerWidth < 640 ? 9 : 11 }
+                            }
+                          },
+                          x: {
+                            ticks: {
+                              font: { size: typeof window !== 'undefined' && window.innerWidth < 640 ? 9 : 11 },
+                              maxRotation: typeof window !== 'undefined' && window.innerWidth < 640 ? 45 : 0,
+                            }
+                          }
+                        } 
+                      }} 
+                    />
                   </div>
                   {/* Totals summary */}
                   {(() => {
