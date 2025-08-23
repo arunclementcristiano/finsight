@@ -281,7 +281,8 @@ export default function PlanPage() {
 					}
 					const changedClass = next.buckets[idx].class as any;
 					const baseline = buildPlan(questionnaire);
-					const tuned = advisorTune(baseline as any, next as any, changedClass, newPct);
+					const locked = Object.entries(customLocks||{}).filter(([_,v])=> !!v).map(([k])=> k as any);
+					const tuned = advisorTune(baseline as any, next as any, changedClass, newPct, locked as any);
 					next.buckets = tuned.buckets;
 					setLocal(next);
 					if (tuned.clamped) setToast({ msg: 'Adjusted to comfort band', type: 'info' });
