@@ -56,21 +56,41 @@ export default function Home() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background text-foreground relative overflow-hidden">
       {open && (
-        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: "rgba(0,0,0,0.15)", zIndex: 10 }}>
-          <div className="bg-card text-foreground rounded-2xl shadow-2xl w-full max-w-md mx-2 sm:mx-0 p-6 sm:p-8 relative transition-colors duration-300 flex flex-col border border-border">
-            <button className="absolute top-4 right-4 text-muted-foreground hover:text-foreground text-2xl" onClick={() => setOpen(false)} aria-label="Close">&times;</button>
-            <div className="flex flex-col items-center mb-6">
-              <img src="/finsight-logo.png" alt="FinSight Logo" className="w-20 h-20 mb-4" />
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: "rgba(0,0,0,0.15)", zIndex: 10 }}>
+          <div className="bg-card text-foreground rounded-2xl shadow-2xl w-full max-w-md p-6 sm:p-8 relative transition-colors duration-300 flex flex-col border border-border">
+            <button 
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground text-2xl touch-manipulation h-8 w-8 flex items-center justify-center rounded-lg hover:bg-muted transition-colors" 
+              onClick={() => setOpen(false)} 
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            
+            {/* Enhanced branding */}
+            <div className="flex flex-col items-center mb-8">
+              <div className="text-4xl mb-3">💰</div>
+              <h1 className="text-2xl font-bold text-center mb-2">Welcome to FinSight</h1>
+              <p className="text-muted-foreground text-center text-sm">Your personal finance companion</p>
             </div>
-            <div className="flex justify-center gap-8 mb-6 text-lg">
+            
+            {/* Mobile-optimized tabs */}
+            <div className="grid grid-cols-2 rounded-xl border border-border bg-muted/20 p-1 mb-6">
               <button
-                className={`pb-2 text-lg font-semibold border-b-2 transition-colors ${tab === "login" ? "border-indigo-500 text-indigo-600" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+                className={`py-3 px-4 rounded-lg text-base font-medium transition-all touch-manipulation ${
+                  tab === "login" 
+                    ? "bg-background text-indigo-600 shadow-sm" 
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
                 onClick={() => setTab("login")}
               >
                 Login
               </button>
               <button
-                className={`pb-2 text-lg font-semibold border-b-2 transition-colors ${tab === "signup" ? "border-indigo-500 text-indigo-600" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+                className={`py-3 px-4 rounded-lg text-base font-medium transition-all touch-manipulation ${
+                  tab === "signup" 
+                    ? "bg-background text-indigo-600 shadow-sm" 
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
                 onClick={() => setTab("signup")}
               >
                 Sign Up
