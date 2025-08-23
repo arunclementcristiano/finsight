@@ -66,6 +66,104 @@ export default function PlanPage() {
 		} catch { return "AI refined your mix for balance and resilience."; }
 	}
 
+	// Handlers extracted from JSX
+	const handleToggleAiView = () => {
+		if (mode === 'custom') return;
+		const sig = makeAnswersSig(questionnaire);
+		if (!aiViewOn) {
+			if (sig && aiCache[sig]) {
+				setLocal((prev:any)=> ({ ...(prev||{}), buckets: aiCache[sig].buckets }));
+				setAiSummary(makeSummary(buildPlan(questionnaire), aiCache[sig].buckets));
+				setAiViewOn(true);
+				setAiInfo({ rationale: aiCache[sig].explanation, confidence: aiInfo?.confidence });
+				return;
+			}
+			(async ()=>{
+				try {
+					setAiLoading(true);
+					const baseline = buildPlan(questionnaire);
+					const res = await fetch('/api/plan/suggest?debug=1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionnaire, baseline }) });
+					const data = await res.json();
+					if (data?.aiPlan?.buckets) {
+						setLocal((prev:any)=> ({ ...(prev||{}), buckets: data.aiPlan.buckets }));
+						setAiInfo({ rationale: data.explanation || data.rationale, confidence: data.confidence });
+						setAiCache((prev)=> ({ ...prev, [sig]: { buckets: data.aiPlan.buckets, explanation: data.explanation || data.rationale } }));
+						setAiSummary(makeSummary(baseline, data.aiPlan.buckets));
+						setAiViewOn(true);
+					}
+				} finally { setAiLoading(false); }
+			})();
+		} else {
+			const allocation = buildPlan(questionnaire);
+			setLocal(allocation);
+			setAiSummary(undefined);
+			setAiViewOn(false);
+		}
+	};
+
+	const handleChangeBucketPct = (idx: number, newPct: number) => {
+		const next = { ...(local||{}) } as any;
+		next.buckets = [...(local?.buckets||[])];
+		if (!next.buckets[idx]) return;
+		if (mode === 'custom') {
+			const currentVal = Math.round(Number(next.buckets[idx].pct) || 0);
+			const sumOthers = Math.round(((next.buckets||[]) as any[]).reduce((s:number,b:any,i:number)=> i===idx ? s : s + (Number(b.pct)||0), 0));
+			const capValue = Math.max(0, Math.floor(100 - sumOthers));
+			let target = Math.round(Number(newPct) || 0);
+			if (target > currentVal) {
+				const incAllowed = Math.max(0, capValue - currentVal);
+				target = Math.min(target, currentVal + incAllowed);
+				if (target < Math.round(Number(newPct)||0)) setToast({ msg: 'No free capacity left', type: 'info' });
+			} else {
+				target = Math.max(0, target);
+			}
+			next.buckets[idx] = { ...next.buckets[idx], pct: target };
+			setLocal(next);
+			return;
+		}
+		const changedClass = next.buckets[idx].class as any;
+		const baseline = buildPlan(questionnaire);
+		const baseBucket = (baseline?.buckets||[]).find((b:any)=> b.class === changedClass);
+		const rawBand: [number, number] = (baseBucket?.range as [number,number]) || [0,100];
+		const band: [number, number] = [Math.round(rawBand[0]||0), Math.round(rawBand[1]||100)];
+		const currentVal = Math.round(Number(next.buckets[idx].pct) || 0);
+		const sumOthers = Math.round(((next.buckets||[]) as any[]).reduce((s:number,b:any,i:number)=> i===idx ? s : s + (Number(b.pct)||0), 0));
+		const capValue = Math.max(0, Math.floor(100 - sumOthers));
+		const incBand = Math.max(0, band[1] - currentVal);
+		const incByTotal = Math.max(0, capValue - currentVal);
+		const incAllowed = Math.max(0, Math.min(incBand, incByTotal));
+		let target = Math.round(Number(newPct) || 0);
+		const increasing = target > currentVal;
+		if (increasing) {
+			target = Math.min(target, currentVal + incAllowed);
+		} else {
+			target = Math.max(target, band[0]);
+		}
+		target = Math.round(Math.max(band[0], Math.min(band[1], target)));
+		if (increasing && target < Math.round(Number(newPct)||0)) setToast({ msg: 'No free capacity left', type: 'info' });
+		next.buckets[idx] = { ...next.buckets[idx], pct: target };
+		setLocal(next);
+		setAdvisorPins(prev => ({ ...(prev||{}), [changedClass]: true }));
+	};
+
+	const handleModalDone = () => {
+		const prev = questionnaire || {};
+		const next = editAnswers || {};
+		const changed = JSON.stringify(prev) !== JSON.stringify(next);
+		if (changed) {
+			const keys = Object.keys(next);
+			for (const k of keys) setQuestionAnswer(k, next[k]);
+			if (mode === 'advisor') {
+				const allocation = buildPlan(next);
+				setLocal(allocation);
+				setAiInfo(null);
+				setAiViewOn(false);
+				setAnswersDrift(true);
+			}
+		}
+		setAnswersOpen(false);
+	};
+
 	useEffect(() => {
 		const origin = (plan as any)?.origin;
 		if (plan && origin !== 'custom') setLocal(plan);
@@ -325,23 +423,7 @@ export default function PlanPage() {
 			<Modal open={answersOpen} onClose={()=> setAnswersOpen(false)} title="Edit Answers" footer={(
 				<>
 					<Button variant="outline" onClick={()=> setAnswersOpen(false)}>Cancel</Button>
-					<Button variant="outline" onClick={()=>{
-						const prev = questionnaire || {};
-						const next = editAnswers || {};
-						const changed = JSON.stringify(prev) !== JSON.stringify(next);
-						if (changed) {
-							const keys = Object.keys(next);
-							for (const k of keys) setQuestionAnswer(k, next[k]);
-							if (mode === 'advisor') {
-								const allocation = buildPlan(next);
-								setLocal(allocation);
-								setAiInfo(null);
-								setAiViewOn(false);
-								setAnswersDrift(true);
-							}
-						}
-						setAnswersOpen(false);
-					}}>Done</Button>
+					<Button variant="outline" onClick={handleModalDone}>Done</Button>
 				</>
 			)}>
 				<div className="space-y-3">
@@ -368,85 +450,9 @@ export default function PlanPage() {
 				plan={local}
 				onEditAnswers={()=>{ setEditAnswers({ ...(questionnaire||{}) }); setAnsStep(0); setAnswersOpen(true); }}
 				onBuildBaseline={()=>{ const allocation = buildPlan(questionnaire); setLocal(allocation); setAiInfo(null); setAiSummary(undefined); setAiViewOn(false); setAnswersDrift(false); setAdvisorPins({}); }}
-				onChangeBucketPct={(idx: number, newPct: number)=>{
-					const next = { ...(local||{}) } as any;
-					next.buckets = [...(local?.buckets||[])];
-					if (!next.buckets[idx]) return;
-					if (mode === 'custom') {
-						const currentVal = Math.round(Number(next.buckets[idx].pct) || 0);
-						const sumOthers = Math.round(((next.buckets||[]) as any[]).reduce((s:number,b:any,i:number)=> i===idx ? s : s + (Number(b.pct)||0), 0));
-						const capValue = Math.max(0, Math.floor(100 - sumOthers));
-						let target = Math.round(Number(newPct) || 0);
-						if (target > currentVal) {
-							const incAllowed = Math.max(0, capValue - currentVal);
-							target = Math.min(target, currentVal + incAllowed);
-							if (target < Math.round(Number(newPct)||0)) setToast({ msg: 'No free capacity left', type: 'info' });
-						} else {
-							target = Math.max(0, target);
-						}
-						next.buckets[idx] = { ...next.buckets[idx], pct: target };
-						setLocal(next);
-						return;
-					}
-					const changedClass = next.buckets[idx].class as any;
-					const baseline = buildPlan(questionnaire);
-					const baseBucket = (baseline?.buckets||[]).find((b:any)=> b.class === changedClass);
-					const rawBand: [number, number] = (baseBucket?.range as [number,number]) || [0,100];
-					const band: [number, number] = [Math.round(rawBand[0]||0), Math.round(rawBand[1]||100)];
-					const currentVal = Math.round(Number(next.buckets[idx].pct) || 0);
-					const sumOthers = Math.round(((next.buckets||[]) as any[]).reduce((s:number,b:any,i:number)=> i===idx ? s : s + (Number(b.pct)||0), 0));
-					const capValue = Math.max(0, Math.floor(100 - sumOthers));
-					const incBand = Math.max(0, band[1] - currentVal);
-					const incByTotal = Math.max(0, capValue - currentVal);
-					const incAllowed = Math.max(0, Math.min(incBand, incByTotal));
-					let target = Math.round(Number(newPct) || 0);
-					const increasing = target > currentVal;
-					if (increasing) {
-						target = Math.min(target, currentVal + incAllowed);
-					} else {
-						target = Math.max(target, band[0]);
-					}
-					// final integer clamp to band
-					target = Math.round(Math.max(band[0], Math.min(band[1], target)));
-					if (increasing && target < Math.round(Number(newPct)||0)) setToast({ msg: 'No free capacity left', type: 'info' });
-					next.buckets[idx] = { ...next.buckets[idx], pct: target };
-					setLocal(next);
-					setAdvisorPins(prev => ({ ...(prev||{}), [changedClass]: true }));
-				}}
+				onChangeBucketPct={handleChangeBucketPct}
 				aiViewOn={aiViewOn}
-				onToggleAiView={()=>{
-					if (mode === 'custom') return;
-					const sig = makeAnswersSig(questionnaire);
-					if (!aiViewOn) {
-						if (sig && aiCache[sig]) {
-							setLocal((prev:any)=> ({ ...(prev||{}), buckets: aiCache[sig].buckets }));
-							setAiSummary(makeSummary(buildPlan(questionnaire), aiCache[sig].buckets));
-							setAiViewOn(true);
-							setAiInfo({ rationale: aiCache[sig].explanation, confidence: aiInfo?.confidence });
-							return;
-						}
-						(async ()=>{
-							try {
-								setAiLoading(true);
-								const baseline = buildPlan(questionnaire);
-								const res = await fetch('/api/plan/suggest?debug=1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionnaire, baseline }) });
-								const data = await res.json();
-								if (data?.aiPlan?.buckets) {
-									setLocal((prev:any)=> ({ ...(prev||{}), buckets: data.aiPlan.buckets }));
-									setAiInfo({ rationale: data.explanation || data.rationale, confidence: data.confidence });
-									setAiCache((prev)=> ({ ...prev, [sig]: { buckets: data.aiPlan.buckets, explanation: data.explanation || data.rationale } }));
-									setAiSummary(makeSummary(baseline, data.aiPlan.buckets));
-									setAiViewOn(true);
-								}
-							} finally { setAiLoading(false); }
-						})();
-					} else {
-						const allocation = buildPlan(questionnaire);
-						setLocal(allocation);
-						setAiSummary(undefined);
-						setAiViewOn(false);
-					}
-				}}
+				onToggleAiView={handleToggleAiView}
 				aiLoading={aiLoading}
 				aiExplanation={aiInfo?.rationale as any}
 				aiSummary={aiSummary as any}
@@ -455,7 +461,11 @@ export default function PlanPage() {
 				locks={customLocks}
 				onToggleLock={(cls)=> { setLocalCustomLocks(prev=> ({ ...(prev||{}), [cls]: !prev?.[cls] })); try { if (activePortfolioId) setCustomLocks(activePortfolioId, { [cls]: !customLocks?.[cls] }); } catch {} }}
 			/>
-			{/* toast temporarily disabled */}
+			{toast && (
+				<div className={`fixed bottom-4 right-4 z-50 rounded-md border px-3 py-2 text-sm shadow-lg ${toast.type==='success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : toast.type==='info' ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
+					{toast.msg}
+				</div>
+			)}
 		</div>
 	);
 }
