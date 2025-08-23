@@ -57,13 +57,17 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" leftIcon={<Edit3 className="h-4 w-4 text-sky-600" />} onClick={onEditAnswers}>Adjust Risk Profile</Button>
-              <Button variant="outline" leftIcon={<RefreshCw className="h-4 w-4 text-indigo-600" />} onClick={onBuildBaseline} disabled={mode==='custom'}>Recalculate Plan</Button>
-              <div className="inline-flex items-center gap-2 ml-2">
-                <span className="text-[11px] text-muted-foreground">AI view</span>
-                <button type="button" onClick={onToggleAiView} disabled={!!aiLoading || !!aiDisabled || mode==='custom'} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${aiViewOn?"bg-indigo-600":"bg-muted"}`}>
-                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white dark:bg-zinc-900 shadow transition-transform ${aiViewOn?"translate-x-5":"translate-x-1"}`}></span>
-                </button>
-              </div>
+              {mode !== 'custom' ? (
+                <>
+                  <Button variant="outline" leftIcon={<RefreshCw className="h-4 w-4 text-indigo-600" />} onClick={onBuildBaseline}>Recalculate Plan</Button>
+                  <div className="inline-flex items-center gap-2 ml-2">
+                    <span className="text-[11px] text-muted-foreground">AI view</span>
+                    <button type="button" onClick={onToggleAiView} disabled={!!aiLoading || !!aiDisabled} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${aiViewOn?"bg-indigo-600":"bg-muted"}`}>
+                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white dark:bg-zinc-900 shadow transition-transform ${aiViewOn?"translate-x-5":"translate-x-1"}`}></span>
+                    </button>
+                  </div>
+                </>
+              ) : null}
             </div>
           </div>
         </CardHeader>
