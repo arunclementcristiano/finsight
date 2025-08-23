@@ -98,45 +98,38 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                           {(() => { const maxAllowed = 100; return (
                             <>
                               {(() => { const rawBand = (Array.isArray(b.range) ? b.range as [number,number] : [0,100]); const minBound = 0; const maxBound = mode==='custom' ? maxAllowed : 100; const bandMin = Math.round(rawBand[0]||0); const bandMax = Math.round(rawBand[1]||100); const valueNow = Math.round(b.pct||0); const bandStart = Math.max(0, Math.min(100, bandMin)); const bandEnd = Math.max(0, Math.min(100, bandMax)); const cls = b.class; const isEdge = !!edgeHit?.[cls]; return (
-                                <div className="relative w-full md:w-56">
-                                   <input
-                                    className={`w-full appearance-none ${isEdge ? 'animate-shake' : ''}`}
-                                     type="range"
-                                     step={1}
-                                     min={minBound}
-                                     max={maxBound}
-                                     value={valueNow}
-                                     aria-label={`${b.class} allocation`}
-                                     disabled={!!aiViewOn}
-                                    style={mode!=='custom' ? ({ background: `linear-gradient(to right, rgba(120,120,120,0.18) 0%, rgba(120,120,120,0.18) ${bandStart}%, rgba(99,102,241,0.25) ${bandStart}%, rgba(99,102,241,0.25) ${bandEnd}%, rgba(120,120,120,0.18) ${bandEnd}%, rgba(120,120,120,0.18) 100%)` } as any) : undefined}
-                                     onMouseEnter={()=> setTipFor(cls)}
-                                     onMouseLeave={()=> setTipFor(prev => (prev===cls? null : prev))}
-                                     onFocus={()=> setTipFor(cls)}
-                                     onBlur={()=> setTipFor(prev => (prev===cls? null : prev))}
-                                     onChange={(e)=>{
-                                       const v = Math.round(Math.max(0, Math.min(mode==='custom' ? maxAllowed : 100, Number(e.target.value)||0)));
-                                       if (mode !== 'custom' && (v < bandMin || v > bandMax)) {
-                                         const edge = v < bandMin ? 'min' : 'max'; const val = v < bandMin ? bandMin : bandMax; setEdgeHit(prev => ({ ...(prev||{}), [cls]: { edge, val } })); setTimeout(()=> setEdgeHit(prev => ({ ...(prev||{}), [cls]: null }) ), 2000);
-                                       }
-                                       if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
-                                     }}
-                                   />
-                                  {mode!=='custom' && tipFor===cls ? (
-                                    <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 text-[10px] px-2 py-0.5 rounded bg-zinc-900 text-white shadow z-50">
-                                      Safe range: {bandMin}–{bandMax}%
-                                    </div>
-                                  ) : null}
-                                  {mode!=='custom' && edgeHit?.[cls] ? (
-                                    <div className="absolute -bottom-5 right-0 text-[10px] px-2 py-0.5 rounded bg-rose-500 text-white shadow z-50">
-                                      {edgeHit[cls]?.edge === 'max' ? `Max reached (${edgeHit[cls]?.val}%)` : `Min reached (${edgeHit[cls]?.val}%)`}
-                                    </div>
-                                  ) : null}
+                                <>
+                                  <div className="relative w-full md:w-56">
+                                    <input
+                                      className={`w-full appearance-none range-line ${isEdge ? 'animate-shake' : ''}`}
+                                      type="range"
+                                      step={1}
+                                      min={minBound}
+                                      max={maxBound}
+                                      value={valueNow}
+                                      aria-label={`${b.class} allocation`}
+                                      disabled={!!aiViewOn}
+                                      style={mode!=='custom' ? ({ background: `linear-gradient(to right, rgba(120,120,120,0.18) 0%, rgba(120,120,120,0.18) ${bandStart}%, rgba(99,102,241,0.25) ${bandStart}%, rgba(99,102,241,0.25) ${bandEnd}%, rgba(120,120,120,0.18) ${bandEnd}%, rgba(120,120,120,0.18) 100%)` } as any) : undefined}
+                                      onChange={(e)=>{
+                                        const v = Math.round(Math.max(0, Math.min(mode==='custom' ? maxAllowed : 100, Number(e.target.value)||0)));
+                                        if (mode !== 'custom' && (v < bandMin || v > bandMax)) {
+                                          const edge = v < bandMin ? 'min' : 'max'; const val = v < bandMin ? bandMin : bandMax; setEdgeHit(prev => ({ ...(prev||{}), [cls]: { edge, val } })); setTimeout(()=> setEdgeHit(prev => ({ ...(prev||{}), [cls]: null }) ), 2000);
+                                        }
+                                        if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
+                                      }}
+                                    />
+                                    {mode!=='custom' && edgeHit?.[cls] ? (
+                                      <div className="absolute -bottom-5 right-0 text-[10px] px-2 py-0.5 rounded bg-rose-500 text-white shadow z-50">
+                                        {edgeHit[cls]?.edge === 'max' ? `Max reached (${edgeHit[cls]?.val}%)` : `Min reached (${edgeHit[cls]?.val}%)`}
+                                      </div>
+                                    ) : null}
+                                  </div>
                                   {mode==='custom' ? (
-                                    (()=>{ const current = Math.round(Number(b.pct)||0); const sumOthersAll = ((plan?.buckets||[]) as any[]).reduce((s:any, x:any)=> s + (x.class !== b.class ? (Number(x.pct)||0) : 0), 0); const capValue = Math.max(0, Math.floor(100 - sumOthersAll)); const incAllowed = Math.max(0, capValue - current); return (<div className="mt-1 text-[10px] text-muted-foreground">free {Math.round(incAllowed)}%</div>); })()
+                                    (()=>{ const current = Math.round(Number(b.pct)||0); const sumOthersAll = ((plan?.buckets||[]) as any[]).reduce((s:any, x:any)=> s + (x.class !== b.class ? (Number(x.pct)||0) : 0), 0); const capValue = Math.max(0, Math.floor(100 - sumOthersAll)); const incAllowed = Math.max(0, capValue - current); return (<span className="text-[10px] text-muted-foreground whitespace-nowrap">free {Math.round(incAllowed)}%</span>); })()
                                   ) : (
-                                    (()=>{ const current = Math.round(Number(b.pct)||0); const sumOthersAll = ((plan?.buckets||[]) as any[]).reduce((s:any, x:any)=> s + (x.class !== b.class ? (Number(x.pct)||0) : 0), 0); const capValue = Math.max(0, Math.floor(100 - sumOthersAll)); const incBand = Math.max(0, bandMax - current); const incByTotal = Math.max(0, capValue - current); const incAllowed = Math.max(0, Math.min(incBand, incByTotal)); return (<div className="mt-1 text-[10px] text-muted-foreground">free {Math.round(incAllowed)}% · safe {bandMin}–{bandMax}%</div>); })()
+                                    (()=>{ const current = Math.round(Number(b.pct)||0); const sumOthersAll = ((plan?.buckets||[]) as any[]).reduce((s:any, x:any)=> s + (x.class !== b.class ? (Number(x.pct)||0) : 0), 0); const capValue = Math.max(0, Math.floor(100 - sumOthersAll)); const incBand = Math.max(0, bandMax - current); const incByTotal = Math.max(0, capValue - current); const incAllowed = Math.max(0, Math.min(incBand, incByTotal)); return (<span className="text-[10px] text-muted-foreground whitespace-nowrap">free {Math.round(incAllowed)}% · safe {bandMin}–{bandMax}%</span>); })()
                                   )}
-                                </div>
+                                </>
                               ); })()}
                             </>
                           ); })()}
