@@ -192,8 +192,8 @@ export default function PlanPage() {
 					}}>
 						<RotateCcw className="h-4 w-4 text-rose-600" />
 					</Button>
-					<div className="relative">
-						<Button variant="primary" size="sm" leftIcon={<SaveIcon className="h-4 w-4" />} onClick={async ()=>{
+					<div>
+						<Button variant="outline" size="sm" leftIcon={<SaveIcon className="h-4 w-4" />} onClick={async ()=>{
 							const pruneAlloc = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))});
 							const snapshot = pruneQuestionnaire(questionnaire);
 							const answersDirty = makeAnswersSig(snapshot) !== (((plan as any)?.answersSig) || "");
@@ -212,8 +212,12 @@ export default function PlanPage() {
 							// persist custom draft/locks if custom
 							try { if (mode==='custom' && activePortfolioId) { setCustomDraft(activePortfolioId, planToSave); setCustomLocks(activePortfolioId, customLocks || {}); } } catch {}
 							setToast({ msg: 'Plan saved', type: 'success' });
-						}}>Save Plan</Button>
-						{(() => { const pruneAlloc = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))}); const snapshot = pruneQuestionnaire(questionnaire); const answersDirty = makeAnswersSig(snapshot) !== (((plan as any)?.answersSig) || ""); const allocDirty = !!(local && plan && JSON.stringify(pruneAlloc(local)) !== JSON.stringify(pruneAlloc(plan))); const originDirty = (mode === 'custom' && ((plan as any)?.origin !== 'custom')); const dirty = answersDirty || allocDirty || originDirty; return dirty ? (<span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-white dark:ring-zinc-950 animate-pulse"></span>) : null; })()}
+						}}>
+							<span className="inline-flex items-center gap-2">
+								<span>Save Plan</span>
+								{(() => { const pruneAlloc = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))}); const snapshot = pruneQuestionnaire(questionnaire); const answersDirty = makeAnswersSig(snapshot) !== (((plan as any)?.answersSig) || ""); const allocDirty = !!(local && plan && JSON.stringify(pruneAlloc(local)) !== JSON.stringify(pruneAlloc(plan))); const originDirty = (mode === 'custom' && ((plan as any)?.origin !== 'custom')); const dirty = answersDirty || allocDirty || originDirty; return dirty ? (<span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">changes</span>) : null; })()}
+							</span>
+						</Button>
 					</div>
 				</div>
 			</div>
