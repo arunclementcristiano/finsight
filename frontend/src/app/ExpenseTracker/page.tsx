@@ -631,11 +631,10 @@ export default function ExpenseTrackerPage() {
                   : 'bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 border-blue-200 dark:border-blue-800 hover:shadow-lg'
               }`}
             >
-              {privacy ? (
-                <EyeOff className="h-5 w-5 xl:h-4 xl:w-4 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform"/>
-              ) : (
+              {privacy ? 
+                <EyeOff className="h-5 w-5 xl:h-4 xl:w-4 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform"/> : 
                 <Eye className="h-5 w-5 xl:h-4 xl:w-4 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform"/>
-              )}
+              }
               <span className={`text-xs xl:text-sm font-medium ${
                 privacy ? 'text-amber-700 dark:text-amber-300' : 'text-blue-700 dark:text-blue-300'
               }`}>
@@ -1694,7 +1693,7 @@ export default function ExpenseTrackerPage() {
             </div>
             <div className="px-4 py-3 border-t border-border flex items-center justify-end gap-2">
               <Button variant="outline" onClick={()=> setExportOpen(false)}>Cancel</Button>
-              <Button onClick={() => {
+              <Button onClick={()=>{
                 const sod = (dt: Date) => { const x = new Date(dt); x.setHours(0,0,0,0); return x; };
                 const startOfWeek = (dt: Date) => { const x = sod(dt); const day = x.getDay(); const diff = (day === 0 ? 6 : day - 1); x.setDate(x.getDate() - diff); return x; };
                 const endExclusive = (dt: Date) => { const x = sod(dt); x.setDate(x.getDate() + 1); return x; };
