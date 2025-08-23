@@ -285,14 +285,29 @@ export default function PlanPage() {
 					}
 					const changedClass = next.buckets[idx].class as any;
 					const baseline = buildPlan(questionnaire);
-					const lockedFromCustom = Object.entries(customLocks||{}).filter(([_,v])=> !!v).map(([k])=> k as any);
-					const pinnedKeys = Object.keys(advisorPins||{}).filter(k => k !== changedClass);
-					const lockedUnion = Array.from(new Set([ ...lockedFromCustom, ...pinnedKeys ]));
-					const tuned = advisorTune(baseline as any, next as any, changedClass, newPct, lockedUnion as any);
-					next.buckets = tuned.buckets;
+					const baseBucket = (baseline?.buckets||[]).find((b:any)=> b.class === changedClass);
+					const band: [number, number] = (baseBucket?.range as [number,number]) || [0,100];
+					const currentVal = Number(next.buckets[idx].pct) || 0;
+					const sumOthers = (next.buckets||[]).reduce((s:number,b:any,i:number)=> i===idx ? s : s + (Number(b.pct)||0), 0);
+					const maxByTotal = Math.max(0, 100 - sumOthers);
+					let target = Math.round(Number(newPct) || 0);
+					const increasing = target > currentVal;
+					if (increasing) {
+						if (maxByTotal <= currentVal) {
+							// no free capacity to increase beyond current
+							target = Math.min(currentVal, band[1]);
+						} else {
+							target = Math.min(target, band[1], maxByTotal);
+						}
+					} else {
+						target = Math.max(target, band[0]);
+					}
+					// final clamp to band
+					target = Math.max(band[0], Math.min(band[1], target));
+					if (increasing && target < Math.round(Number(newPct)||0)) setToast({ msg: 'No free capacity left', type: 'info' });
+					next.buckets[idx] = { ...next.buckets[idx], pct: target };
 					setLocal(next);
 					setAdvisorPins(prev => ({ ...(prev||{}), [changedClass]: true }));
-					if (tuned.clamped) setToast({ msg: 'Adjusted to comfort band', type: 'info' });
 				}}
 				aiViewOn={aiViewOn}
 				onToggleAiView={()=>{
