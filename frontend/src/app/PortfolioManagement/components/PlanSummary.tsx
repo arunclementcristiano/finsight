@@ -29,7 +29,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
     return new Set(arr as string[]);
   }, [questionnaire]);
 
-  const visibleBuckets = useMemo(()=> (plan?.buckets||[]).filter((b:any)=> !avoidSet.has(b.class)), [plan, avoidSet]);
+  const visibleBuckets = useMemo(()=> (mode==='custom' ? (plan?.buckets||[]) : (plan?.buckets||[]).filter((b:any)=> !avoidSet.has(b.class))), [plan, avoidSet, mode]);
 
   return (
     <div className="space-y-3">
@@ -56,7 +56,9 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
               <CardDescription className="text-xs">Target mix and details</CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" leftIcon={<Edit3 className="h-4 w-4 text-sky-600" />} onClick={onEditAnswers}>Adjust Risk Profile</Button>
+              {mode !== 'custom' ? (
+                <Button variant="outline" leftIcon={<Edit3 className="h-4 w-4 text-sky-600" />} onClick={onEditAnswers}>Adjust Risk Profile</Button>
+              ) : null}
               {mode !== 'custom' ? (
                 <>
                   <Button variant="outline" leftIcon={<RefreshCw className="h-4 w-4 text-indigo-600" />} onClick={onBuildBaseline}>Recalculate Plan</Button>
@@ -81,7 +83,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                     <th className="py-2 px-3 text-muted-foreground">Asset Class</th>
                     <th className="py-2 px-3 text-muted-foreground text-right">Allocation</th>
                     <th className="py-2 px-3 text-muted-foreground">Adjust</th>
-                    <th className="py-2 px-3 text-muted-foreground text-right">Comfort Zone</th>
+                    {mode !== 'custom' ? (<th className="py-2 px-3 text-muted-foreground text-right">Comfort Zone</th>) : null}
                     <th className="py-2 px-3 text-muted-foreground">Role</th>
                     <th className="py-2 px-3 text-muted-foreground">Remarks</th>
                   </tr>
@@ -96,12 +98,10 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                           {(() => { const maxAllowed = 100; return (
                             <>
                               {(() => { const rawBand = (Array.isArray(b.range) ? b.range as [number,number] : [0,100]); const minBound = 0; const maxBound = mode==='custom' ? maxAllowed : 100; return (
-                                <>
-                                                                    <input className="w-40 md:w-56" type="range" step={1} min={minBound} max={maxBound} value={Math.round(b.pct)} disabled={!!aiViewOn} onChange={(e)=>{
-                                    const v = Math.round(Math.max(0, Math.min(mode==='custom' ? maxAllowed : 100, Number(e.target.value)||0)));
-                                    if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
-                                  }} />
-                                </>
+                                <input className="w-40 md:w-56" type="range" step={1} min={minBound} max={maxBound} value={Math.round(b.pct)} disabled={!!aiViewOn} onChange={(e)=>{
+                                   const v = Math.round(Math.max(0, Math.min(mode==='custom' ? maxAllowed : 100, Number(e.target.value)||0)));
+                                   if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
+                                 }} />
                               ); })()}
                               {mode==='custom' ? (
                                 (()=>{ const current = Math.round(Number(b.pct)||0); const sumOthersAll = ((plan?.buckets||[]) as any[]).reduce((s:any, x:any)=> s + (x.class !== b.class ? (Number(x.pct)||0) : 0), 0); const capValue = Math.max(0, Math.floor(100 - sumOthersAll)); const incAllowed = Math.max(0, capValue - current); return (<span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border border-border text-muted-foreground">+{Math.round(incAllowed)}% free</span>); })()
@@ -112,7 +112,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                           ); })()}
                         </div>
                       </td>
-                      <td className="py-2 px-3 text-right">{mode==='custom' ? '—' : displayRange(b.range)}</td>
+                      {mode !== 'custom' ? (<td className="py-2 px-3 text-right">{displayRange(b.range)}</td>) : null}
                       <td className="py-2 px-3">{b.riskCategory || (b.class === 'Stocks' || b.class === 'Mutual Funds' ? 'Core' : (b.class === 'Gold' || b.class === 'Real Estate' ? 'Satellite' : (b.class === 'Debt' || b.class === 'Liquid' ? 'Defensive' : '')))}</td>
                       <td className="py-2 px-3">{b.notes || (b.class === 'Stocks' ? 'Growth focus' : b.class === 'Mutual Funds' ? 'Diversified equity' : b.class === 'Debt' ? 'Stability & income' : b.class === 'Liquid' ? 'Emergency buffer' : b.class === 'Gold' ? 'Inflation hedge' : b.class === 'Real Estate' ? 'Long-term asset' : '')}</td>
                     </tr>
