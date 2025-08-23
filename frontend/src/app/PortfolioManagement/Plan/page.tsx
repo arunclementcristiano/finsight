@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useApp } from "../../store";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/Card";
 import { Button } from "../../components/Button";
@@ -30,6 +30,18 @@ export default function PlanPage() {
 	const [mode, setMode] = useState<'advisor'|'custom'>('advisor');
 	const [customLocks, setLocalCustomLocks] = useState<Record<string, boolean>>({});
 	const [advisorPins, setAdvisorPins] = useState<Record<string, boolean>>({});
+
+	const saveChip = useMemo(() => {
+		try {
+			const pruneAlloc = (p:any)=> ({ riskLevel: p?.riskLevel, buckets: (p?.buckets||[]).map((b:any)=>({ class: b.class, pct: b.pct })) });
+			const snapshot = pruneQuestionnaire(questionnaire);
+			const answersDirty = makeAnswersSig(snapshot) !== (((plan as any)?.answersSig) || "");
+			const allocDirty = !!(local && plan && JSON.stringify(pruneAlloc(local)) !== JSON.stringify(pruneAlloc(plan)));
+			const originDirty = (mode === 'custom' && ((plan as any)?.origin !== 'custom'));
+			const dirty = answersDirty || allocDirty || originDirty;
+			return dirty ? (<span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">changes</span>) : null;
+		} catch { return null; }
+	}, [plan, local, mode, questionnaire]);
 
 	useEffect(() => {
 		if (!toast) return;
@@ -303,7 +315,7 @@ export default function PlanPage() {
 					}}>
 						<span className="inline-flex items-center gap-2">
 							<span>Save Plan</span>
-							{(() => { const pruneAlloc = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))}); const snapshot = pruneQuestionnaire(questionnaire); const answersDirty = makeAnswersSig(snapshot) !== (((plan as any)?.answersSig) || ""); const allocDirty = !!(local && plan && JSON.stringify(pruneAlloc(local)) !== JSON.stringify(pruneAlloc(plan))); const originDirty = (mode === 'custom' && ((plan as any)?.origin !== 'custom')); const dirty = answersDirty || allocDirty || originDirty; return dirty ? (<span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">changes</span>) : null; })()}
+							{saveChip}
 						</span>
 					</Button>
 				</div>
