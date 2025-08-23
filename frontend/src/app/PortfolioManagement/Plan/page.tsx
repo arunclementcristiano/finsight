@@ -454,8 +454,7 @@ export default function PlanPage() {
 					<Button variant="ghost" size="sm" aria-label="Reset" onClick={handleResetClick}>
 						<RotateCcw className="h-4 w-4 text-rose-600" />
 					</Button>
-					<div>
-						<Button variant="outline" size="sm" leftIcon={<SaveIcon className="h-4 w-4" />} onClick={handleSaveClick}>
+					<Button variant="outline" size="sm" leftIcon={<SaveIcon className="h-4 w-4" />} onClick={handleSaveClick}>
 						<span className="inline-flex items-center gap-2">
 							<span>Save Plan</span>
 							{saveChip}
