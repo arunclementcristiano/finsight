@@ -26,19 +26,31 @@ export default function QuestionCard({ questionText, options, selected, onChange
 
 	return (
 		<Card className="w-full">
-			<CardContent>
-				<div className="mb-4 text-lg font-semibold">{questionText}</div>
-				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+			<CardContent className="p-6">
+				<div className="mb-6 text-xl font-semibold leading-tight text-center sm:text-left">{questionText}</div>
+				<div className="space-y-3 sm:grid sm:grid-cols-2 sm:gap-4 sm:space-y-0">
 					{options.map(option => (
 						<button
 							key={option}
-							className={`rounded-xl p-4 border transition-colors font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] ${isSelected(option) ? "border-[var(--color-ring)] bg-muted/40 text-foreground" : "border-border bg-card text-foreground hover:bg-muted"}`}
+							className={`w-full rounded-xl p-4 sm:p-3 border transition-all font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] touch-manipulation min-h-[3rem] sm:min-h-[2.5rem] ${
+								isSelected(option) 
+									? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 scale-[0.98] shadow-lg" 
+									: "border-border bg-card text-foreground hover:bg-muted hover:border-muted-foreground/20 active:scale-[0.99]"
+							}`}
 							onClick={() => handleClick(option)}
 						>
-							{option}
+							<span className="flex items-center justify-center gap-2">
+								{isSelected(option) && <span className="text-emerald-600">✓</span>}
+								{option}
+							</span>
 						</button>
 					))}
 				</div>
+				{multiSelect && (
+					<div className="mt-4 text-center text-sm text-muted-foreground">
+						💡 You can select multiple options
+					</div>
+				)}
 			</CardContent>
 		</Card>
 	);

@@ -46,12 +46,24 @@ export default function Questionnaire() {
 						onChange={(value) => handleAnswer(questions[step].key, value)}
 						multiSelect={questions[step].key === "preferredAssets"}
 					/>
-					<div className="flex justify-between w-full mt-8 gap-3">
-						<Button variant="secondary" onClick={prevStep} disabled={step === 0}>Back</Button>
-						<Button onClick={nextStep} disabled={questions[step].key === "preferredAssets"
-							? !questionnaire["preferredAssets"] || (Array.isArray(questionnaire["preferredAssets"]) && questionnaire["preferredAssets"].length === 0)
-							: !questionnaire[questions[step].key]}>
-							{step === questions.length - 1 ? "Submit" : "Next"}
+					{/* Mobile-optimized navigation */}
+					<div className="flex flex-col sm:flex-row justify-between w-full mt-8 gap-3">
+						<Button 
+							variant="secondary" 
+							onClick={prevStep} 
+							disabled={step === 0}
+							className="w-full sm:w-auto h-12 order-2 sm:order-1"
+						>
+							← Back
+						</Button>
+						<Button 
+							onClick={nextStep} 
+							disabled={questions[step].key === "preferredAssets"
+								? !questionnaire["preferredAssets"] || (Array.isArray(questionnaire["preferredAssets"]) && questionnaire["preferredAssets"].length === 0)
+								: !questionnaire[questions[step].key]}
+							className="w-full sm:w-auto h-12 order-1 sm:order-2"
+						>
+							{step === questions.length - 1 ? "🎯 Generate Plan" : "Next →"}
 						</Button>
 					</div>
 				</>
