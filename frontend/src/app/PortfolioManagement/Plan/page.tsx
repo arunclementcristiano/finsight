@@ -456,55 +456,95 @@ export default function PlanPage() {
 	}
 
 	return (
-		<div className="max-w-4xl mx-auto space-y-4">
-			<div className="flex items-center justify-between">
-				<div className="flex items-center gap-2">
-					<div className="text-sm text-muted-foreground">Allocation Plan</div>
+		<div className="max-w-4xl mx-auto space-y-4 px-3 sm:px-0">
+			{/* Mobile-optimized header */}
+			<div className="space-y-4 sm:flex sm:items-center sm:justify-between sm:space-y-0">
+				<div className="space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-2">
+					<div className="text-lg font-semibold sm:text-sm sm:font-normal sm:text-muted-foreground">
+						📊 Allocation Plan
+					</div>
 					{answersDrift ? (
-						<span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-1 text-[11px]">
+						<span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-xs sm:text-[11px] sm:px-2 sm:py-1">
 							<span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
 							<span className="text-amber-600">Profile edits not saved — plan recalculated</span>
 						</span>
 					) : null}
 				</div>
-				<div className="flex items-center gap-2">
-					<div className="inline-flex rounded-md border border-border overflow-hidden text-xs">
-						<Button size="sm" variant="outline" className={`rounded-none ${mode==='advisor' ? 'bg-indigo-600 text-white border-indigo-600' : ''}`} onClick={handleAdvisorClick}>
-							<div className="flex flex-col items-start leading-tight">
-								<span>Advisor</span>
-								{mode==='advisor' ? <span className="text-[10px] opacity-80">Recommended</span> : null}
+				
+				{/* Mobile-first control panel */}
+				<div className="space-y-3 sm:space-y-0 sm:flex sm:items-center sm:gap-2">
+					{/* Mode selector - full width on mobile */}
+					<div className="grid grid-cols-2 rounded-lg border border-border overflow-hidden text-xs sm:inline-flex">
+						<Button 
+							size="sm" 
+							variant="outline" 
+							className={`rounded-none touch-manipulation h-12 sm:h-auto ${mode==='advisor' ? 'bg-indigo-600 text-white border-indigo-600' : ''}`} 
+							onClick={handleAdvisorClick}
+						>
+							<div className="flex flex-col items-center sm:items-start leading-tight">
+								<span className="font-medium">🎯 Advisor</span>
+								{mode==='advisor' ? <span className="text-[10px] opacity-80">Recommended</span> : <span className="text-[10px] opacity-60">AI-guided</span>}
 							</div>
 						</Button>
-						<Button size="sm" variant="outline" className={`rounded-none ${mode==='custom' ? 'bg-rose-600 text-white border-rose-600' : ''}`} onClick={handleCustomClick}>
-							<div className="flex flex-col items-start leading-tight">
+						<Button 
+							size="sm" 
+							variant="outline" 
+							className={`rounded-none touch-manipulation h-12 sm:h-auto ${mode==='custom' ? 'bg-rose-600 text-white border-rose-600' : ''}`} 
+							onClick={handleCustomClick}
+						>
+							<div className="flex flex-col items-center sm:items-start leading-tight">
 								<div className="flex items-center gap-1">
-									<span>Custom</span>
-									{mode==='custom' ? <ShieldOff className="h-3.5 w-3.5" /> : null}
+									<span className="font-medium">⚙️ Custom</span>
+									{mode==='custom' ? <ShieldOff className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> : null}
 								</div>
-								{mode==='custom' ? <span className="text-[10px] opacity-80">No guardrails</span> : null}
+								{mode==='custom' ? <span className="text-[10px] opacity-80">No guardrails</span> : <span className="text-[10px] opacity-60">Manual control</span>}
 							</div>
 						</Button>
 					</div>
-					<Button variant="ghost" size="sm" aria-label="Reset" onClick={handleResetClick}>
-						<RotateCcw className="h-4 w-4 text-rose-600" />
-					</Button>
-					<Button variant="outline" size="sm" leftIcon={<SaveIcon className="h-4 w-4" />} onClick={handleSaveClick}>
-						<span className="inline-flex items-center gap-2">
-							<span>Save Plan</span>
-							{saveChip}
-						</span>
-					</Button>
+					
+					{/* Action buttons - responsive layout */}
+					<div className="flex items-center justify-between sm:gap-2">
+						<Button 
+							variant="ghost" 
+							size="sm" 
+							aria-label="Reset" 
+							onClick={handleResetClick}
+							className="h-11 w-11 sm:h-auto sm:w-auto touch-manipulation"
+						>
+							<RotateCcw className="h-5 w-5 sm:h-4 sm:w-4 text-rose-600" />
+						</Button>
+						<Button 
+							variant="outline" 
+							size="sm" 
+							leftIcon={<SaveIcon className="h-4 w-4" />} 
+							onClick={handleSaveClick}
+							className="flex-1 sm:flex-none h-11 sm:h-auto touch-manipulation"
+						>
+							<span className="inline-flex items-center gap-2">
+								<span className="hidden sm:inline">Save Plan</span>
+								<span className="sm:hidden">Save</span>
+								{saveChip}
+							</span>
+						</Button>
+					</div>
 				</div>
 			</div>
 
-			{/* Edit Answers Modal */}
-			<Modal open={answersOpen} onClose={()=> setAnswersOpen(false)} title="Edit Answers" footer={(
-				<>
-					<Button variant="outline" onClick={()=> setAnswersOpen(false)}>Cancel</Button>
-					<Button variant="outline" onClick={handleModalDone}>Done</Button>
-				</>
+			{/* Mobile-optimized Edit Answers Modal */}
+			<Modal open={answersOpen} onClose={()=> setAnswersOpen(false)} title="✏️ Edit Answers" footer={(
+				<div className="flex flex-col sm:flex-row gap-3 sm:gap-2 w-full">
+					<Button variant="outline" onClick={()=> setAnswersOpen(false)} className="w-full sm:w-auto order-2 sm:order-1">
+						Cancel
+					</Button>
+					<Button onClick={handleModalDone} className="w-full sm:w-auto order-1 sm:order-2">
+						✅ Save Changes
+					</Button>
+				</div>
 			)}>
-				<div className="space-y-3">
+				<div className="space-y-4">
+					<div className="text-center text-sm text-muted-foreground">
+						Question {ansStep + 1} of {questions.length}
+					</div>
 					<QuestionCard
 						questionText={questions[ansStep].text}
 						options={questions[ansStep].options as any}
@@ -515,10 +555,24 @@ export default function PlanPage() {
 						maxSelect={(questions[ansStep] as any)?.maxSelect}
 						compact
 					/>
-					<div className="flex items-center justify-between">
-						<Button variant="outline" onClick={()=> setAnsStep(s=> Math.max(0, s-1))} disabled={ansStep===0}>Back</Button>
+					<div className="flex items-center justify-between pt-2">
+						<Button 
+							variant="outline" 
+							onClick={()=> setAnsStep(s=> Math.max(0, s-1))} 
+							disabled={ansStep===0}
+							className="touch-manipulation"
+						>
+							← Back
+						</Button>
 						<div className="flex items-center gap-2">
-							<Button variant="outline" onClick={()=> setAnsStep(s=> Math.min(questions.length-1, s+1))} disabled={ansStep===questions.length-1}>Next</Button>
+							<Button 
+								variant="outline" 
+								onClick={()=> setAnsStep(s=> Math.min(questions.length-1, s+1))} 
+								disabled={ansStep===questions.length-1}
+								className="touch-manipulation"
+							>
+								Next →
+							</Button>
 						</div>
 					</div>
 				</div>
@@ -539,9 +593,15 @@ export default function PlanPage() {
 				locks={customLocks}
 				onToggleLock={(cls)=> { setLocalCustomLocks(prev=> ({ ...(prev||{}), [cls]: !prev?.[cls] })); try { if (activePortfolioId) setCustomLocks(activePortfolioId, { [cls]: !customLocks?.[cls] }); } catch {} }}
 			/>
+			{/* Mobile-optimized toast notification */}
 			{toast && (
-				<div className={`fixed bottom-4 right-4 z-50 rounded-md border px-3 py-2 text-sm shadow-lg ${toast.type==='success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : toast.type==='info' ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
-					{toast.msg}
+				<div className={`fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-sm z-50 rounded-lg border px-4 py-3 text-sm shadow-lg ${toast.type==='success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : toast.type==='info' ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
+					<div className="flex items-center gap-2">
+						<span className="text-lg">
+							{toast.type === 'success' ? '✅' : toast.type === 'info' ? 'ℹ️' : '⚠️'}
+						</span>
+						<span className="flex-1">{toast.msg}</span>
+					</div>
 				</div>
 			)}
 		</div>
