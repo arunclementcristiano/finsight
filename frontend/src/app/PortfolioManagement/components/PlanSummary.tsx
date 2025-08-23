@@ -94,14 +94,16 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                         <div className="flex items-center gap-2">
                           {(() => { const sumLockedOthers = (visibleBuckets||[]).reduce((s:any, x:any)=> s + ((locks?.[x.class] && x.class !== b.class) ? (x.pct||0) : 0), 0); const maxAllowed = Math.max(0, 100 - sumLockedOthers); return (
                             <>
-                              <input type="range" min={0} max={mode==='custom' ? maxAllowed : 100} value={b.pct} disabled={!!aiViewOn || (mode==='custom' && !!locks?.[b.class])} onChange={(e)=>{
-                                const v = Math.max(0, Math.min(mode==='custom' ? maxAllowed : 100, Number(e.target.value)||0));
-                                if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
-                              }} />
+                              {(() => { const rawBand = (Array.isArray(b.range) ? b.range as [number,number] : [0,100]); const bandMin = Math.round(rawBand[0]||0); const bandMax = Math.round(rawBand[1]||100); const current = Math.round(Number(b.pct)||0); const sumOthersAll = ((plan?.buckets||[]) as any[]).reduce((s:any, x:any)=> s + (x.class !== b.class ? (Number(x.pct)||0) : 0), 0); const capValue = Math.max(0, Math.floor(100 - sumOthersAll)); const incBand = Math.max(0, bandMax - current); const incByTotal = Math.max(0, capValue - current); const incAllowed = Math.max(0, Math.min(incBand, incByTotal)); const minBound = mode==='custom' ? 0 : bandMin; const maxBound = mode==='custom' ? maxAllowed : Math.min(bandMax, current + incAllowed); return (
+                                <input type="range" min={minBound} max={maxBound} value={b.pct} disabled={!!aiViewOn || (mode==='custom' && !!locks?.[b.class])} onChange={(e)=>{
+                                  const v = Math.max(0, Math.min(mode==='custom' ? maxAllowed : 100, Number(e.target.value)||0));
+                                  if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
+                                }} />
+                              ); })()}
                               {mode==='custom' ? (
                                 <span className="text-[10px] text-muted-foreground">max {Math.round(maxAllowed)}%</span>
                               ) : (
-                                (()=>{ const sumOthers = ((plan?.buckets||[]) as any[]).reduce((s:any, x:any)=> s + (x.class !== b.class ? (Number(x.pct)||0) : 0), 0); const current = Math.round(Number(b.pct)||0); const maxForThisByTotal = Math.max(0, Math.floor(100 - sumOthers)); const bandMax = Math.round(Array.isArray(b.range) ? b.range[1] : 100); const deltaByTotal = Math.max(0, maxForThisByTotal - current); const incHead = Math.max(0, Math.min(Math.max(0, bandMax - current), deltaByTotal)); return (<span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border border-border text-muted-foreground">+{Math.round(incHead)}% left</span>); })()
+                                (()=>{ const rawBand = (Array.isArray(b.range) ? b.range as [number,number] : [0,100]); const bandMin = Math.round(rawBand[0]||0); const bandMax = Math.round(rawBand[1]||100); const current = Math.round(Number(b.pct)||0); const sumOthersAll = ((plan?.buckets||[]) as any[]).reduce((s:any, x:any)=> s + (x.class !== b.class ? (Number(x.pct)||0) : 0), 0); const capValue = Math.max(0, Math.floor(100 - sumOthersAll)); const incBand = Math.max(0, bandMax - current); const incByTotal = Math.max(0, capValue - current); const incAllowed = Math.max(0, Math.min(incBand, incByTotal)); return (<span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border border-border text-muted-foreground">+{Math.round(incAllowed)}% free · band +{Math.round(incBand)}%</span>); })()
                               )}
                             </>
                           ); })()}
