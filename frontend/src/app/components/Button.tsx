@@ -41,7 +41,8 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center rounded-xl font-medium shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50 disabled:pointer-events-none",
+        "inline-flex items-center justify-center rounded-xl font-medium shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50 disabled:pointer-events-none touch-manipulation",
+        "active:scale-[0.98] active:shadow-sm", // Mobile press feedback
         variantClasses[variant],
         sizeClasses[size],
         className
