@@ -29,6 +29,7 @@ export default function PlanPage() {
 	const [answersDrift, setAnswersDrift] = useState(false);
 	const [mode, setMode] = useState<'advisor'|'custom'>('advisor');
 	const [customLocks, setLocalCustomLocks] = useState<Record<string, boolean>>({});
+	const [advisorPins, setAdvisorPins] = useState<Record<string, boolean>>({});
 
 	useEffect(() => {
 		if (!toast) return;
@@ -68,6 +69,7 @@ export default function PlanPage() {
 			setLocal(allocation);
 			setAiViewOn(false);
 			setAiSummary(undefined);
+			setAdvisorPins({});
 			return;
 		}
 		if (on && sigSaved && sigSaved === sigNow && (plan as any)?.buckets) {
@@ -83,6 +85,7 @@ export default function PlanPage() {
 				if (locks) setLocalCustomLocks(locks);
 			}
 		} catch {}
+		setAdvisorPins({});
 	}, [plan]);
 
 	function normalizeCustom(next: any, changedIndex: number, newPct: number) {
@@ -189,6 +192,7 @@ export default function PlanPage() {
 						setAiViewOn(!!((plan as any)?.origin === 'ai')); 
 						try { if ((plan as any)?.origin === 'ai') { const baseline = buildPlan(snap); setAiSummary(makeSummary(baseline, (plan as any)?.buckets||[])); } else { setAiSummary(undefined); } } catch { setAiSummary(undefined); } 
 						setAnswersDrift(false); 
+						setAdvisorPins({});
 					}}>
 						<RotateCcw className="h-4 w-4 text-rose-600" />
 					</Button>
@@ -268,7 +272,7 @@ export default function PlanPage() {
 			<PlanSummary
 				plan={local}
 				onEditAnswers={()=>{ setEditAnswers({ ...(questionnaire||{}) }); setAnsStep(0); setAnswersOpen(true); }}
-				onBuildBaseline={()=>{ const allocation = buildPlan(questionnaire); setLocal(allocation); setAiInfo(null); setAiSummary(undefined); setAiViewOn(false); setAnswersDrift(false); }}
+				onBuildBaseline={()=>{ const allocation = buildPlan(questionnaire); setLocal(allocation); setAiInfo(null); setAiSummary(undefined); setAiViewOn(false); setAnswersDrift(false); setAdvisorPins({}); }}
 				onChangeBucketPct={(idx: number, newPct: number)=>{
 					const next = { ...(local||{}) } as any;
 					next.buckets = [...(local?.buckets||[])];
@@ -281,10 +285,13 @@ export default function PlanPage() {
 					}
 					const changedClass = next.buckets[idx].class as any;
 					const baseline = buildPlan(questionnaire);
-					const locked = Object.entries(customLocks||{}).filter(([_,v])=> !!v).map(([k])=> k as any);
-					const tuned = advisorTune(baseline as any, next as any, changedClass, newPct, locked as any);
+					const lockedFromCustom = Object.entries(customLocks||{}).filter(([_,v])=> !!v).map(([k])=> k as any);
+					const pinnedKeys = Object.keys(advisorPins||{}).filter(k => k !== changedClass);
+					const lockedUnion = Array.from(new Set([ ...lockedFromCustom, ...pinnedKeys ]));
+					const tuned = advisorTune(baseline as any, next as any, changedClass, newPct, lockedUnion as any);
 					next.buckets = tuned.buckets;
 					setLocal(next);
+					setAdvisorPins(prev => ({ ...(prev||{}), [changedClass]: true }));
 					if (tuned.clamped) setToast({ msg: 'Adjusted to comfort band', type: 'info' });
 				}}
 				aiViewOn={aiViewOn}
