@@ -84,7 +84,6 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                     <th className="py-2 px-3 text-muted-foreground">Asset Class</th>
                     <th className="py-2 px-3 text-muted-foreground text-right">Allocation</th>
                     <th className="py-2 px-3 text-muted-foreground">Adjust</th>
-                    {mode !== 'custom' ? (<th className="py-2 px-3 text-muted-foreground text-right">Comfort Zone</th>) : null}
                     <th className="py-2 px-3 text-muted-foreground">Role</th>
                     <th className="py-2 px-3 text-muted-foreground">Remarks</th>
                   </tr>
@@ -99,7 +98,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                           {(() => { const maxAllowed = 100; return (
                             <>
                               {(() => { const rawBand = (Array.isArray(b.range) ? b.range as [number,number] : [0,100]); const minBound = 0; const maxBound = mode==='custom' ? maxAllowed : 100; const bandMin = Math.round(rawBand[0]||0); const bandMax = Math.round(rawBand[1]||100); const valueNow = Math.round(b.pct||0); const bandStart = Math.max(0, Math.min(100, bandMin)); const bandEnd = Math.max(0, Math.min(100, bandMax)); const cls = b.class; const isEdge = !!edgeHit?.[cls]; return (
-                                <div className="relative w-40 md:w-56">
+                                <div className="relative w-full md:w-56">
                                    <input
                                     className={`w-full appearance-none ${isEdge ? 'animate-shake' : ''}`}
                                      type="range"
@@ -132,13 +131,17 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                                       {edgeHit[cls]?.edge === 'max' ? `Max reached (${edgeHit[cls]?.val}%)` : `Min reached (${edgeHit[cls]?.val}%)`}
                                     </div>
                                   ) : null}
+                                  {mode==='custom' ? (
+                                    (()=>{ const current = Math.round(Number(b.pct)||0); const sumOthersAll = ((plan?.buckets||[]) as any[]).reduce((s:any, x:any)=> s + (x.class !== b.class ? (Number(x.pct)||0) : 0), 0); const capValue = Math.max(0, Math.floor(100 - sumOthersAll)); const incAllowed = Math.max(0, capValue - current); return (<div className="mt-1 text-[10px] text-muted-foreground">free {Math.round(incAllowed)}%</div>); })()
+                                  ) : (
+                                    (()=>{ const current = Math.round(Number(b.pct)||0); const sumOthersAll = ((plan?.buckets||[]) as any[]).reduce((s:any, x:any)=> s + (x.class !== b.class ? (Number(x.pct)||0) : 0), 0); const capValue = Math.max(0, Math.floor(100 - sumOthersAll)); const incBand = Math.max(0, bandMax - current); const incByTotal = Math.max(0, capValue - current); const incAllowed = Math.max(0, Math.min(incBand, incByTotal)); return (<div className="mt-1 text-[10px] text-muted-foreground">free {Math.round(incAllowed)}% · safe {bandMin}–{bandMax}%</div>); })()
+                                  )}
                                 </div>
                               ); })()}
                             </>
                           ); })()}
                         </div>
                       </td>
-                      {mode !== 'custom' ? (<td className="py-2 px-3 text-right">{displayRange(b.range)}</td>) : null}
                       <td className="py-2 px-3">{b.riskCategory || (b.class === 'Stocks' || b.class === 'Mutual Funds' ? 'Core' : (b.class === 'Gold' || b.class === 'Real Estate' ? 'Satellite' : (b.class === 'Debt' || b.class === 'Liquid' ? 'Defensive' : '')))}</td>
                       <td className="py-2 px-3">{b.notes || (b.class === 'Stocks' ? 'Growth focus' : b.class === 'Mutual Funds' ? 'Diversified equity' : b.class === 'Debt' ? 'Stability & income' : b.class === 'Liquid' ? 'Emergency buffer' : b.class === 'Gold' ? 'Inflation hedge' : b.class === 'Real Estate' ? 'Long-term asset' : '')}</td>
                     </tr>
