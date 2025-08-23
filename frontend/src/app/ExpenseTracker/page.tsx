@@ -684,23 +684,300 @@ export default function ExpenseTrackerPage() {
         </div>
       </div>
 
-      {/* Mobile-optimized Main panels */}
+      {/* Beautiful Mobile-First Main Content */}
       {activeTab === "data" ? (
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 xl:gap-6 p-3 sm:p-4 flex-1 min-h-0 overflow-auto">
-        {/* Recent Expenses (full width on xl span 2) */}
-        <Card className="xl:col-span-2 h-full flex flex-col overflow-hidden">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg xl:text-xl">💰 Recent Expenses</CardTitle>
-            <CardDescription>Real-time expense tracking</CardDescription>
-          </CardHeader>
-          <CardContent className="flex-1 min-h-0 flex flex-col pb-0">
-            {/* Mobile-optimized filters */}
-            <div className="mb-3 space-y-2 sm:space-y-0 sm:flex sm:flex-wrap sm:gap-2 sm:items-center">
+      <div className="space-y-6 xl:grid xl:grid-cols-3 xl:gap-6 xl:space-y-0 p-4 xl:p-6 flex-1 min-h-0 overflow-auto">
+        {/* Stunning Recent Expenses */}
+        <div className="xl:col-span-2 space-y-4 xl:space-y-0 xl:h-full xl:flex xl:flex-col xl:overflow-hidden">
+          {/* Mobile Header */}
+          <div className="flex items-center justify-between xl:hidden">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-blue-600 flex items-center justify-center">
+                <span className="text-white text-lg">💰</span>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">Recent Expenses</h2>
+                <p className="text-sm text-muted-foreground">Your latest transactions</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Card Header */}
+          <Card className="hidden xl:flex xl:flex-col xl:h-full xl:overflow-hidden">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-xl">💰 Recent Expenses</CardTitle>
+              <CardDescription>Real-time expense tracking</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 min-h-0 flex flex-col pb-0">
+              {/* Desktop filters - will be added below */}
+            </CardContent>
+          </Card>
+
+          {/* Beautiful Mobile Filters & Sorting */}
+          <div className="xl:hidden">
+            <Card className="border-0 shadow-md bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-950/50 dark:to-gray-950/50">
+              <CardContent className="p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">🔍</span>
+                  <span className="text-sm font-semibold">Filter & Sort</span>
+                </div>
+                
+                <div className="space-y-4">
+                  {/* Time Range Filter */}
+                  <div>
+                    <label className="text-xs text-muted-foreground font-medium mb-2 block">Time Range</label>
+                    <select 
+                      value={preset} 
+                      onChange={(e)=> setPreset(e.target.value as any)} 
+                      className="w-full h-12 rounded-xl border-2 border-border/50 bg-white/50 dark:bg-black/50 px-4 text-base font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                    >
+                      <option value="all">📅 All time</option>
+                      <option value="today">📅 Today</option>
+                      <option value="week">📅 This week</option>
+                      <option value="month">📅 This month</option>
+                      <option value="lastMonth">📅 Last month</option>
+                      <option value="custom">📅 Custom range</option>
+                    </select>
+                  </div>
+                  
+                  {/* Custom Date Range */}
+                  {preset === "custom" && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-muted-foreground font-medium mb-1 block">From</label>
+                        <input 
+                          type="date" 
+                          value={customStart} 
+                          onChange={(e)=> setCustomStart(e.target.value)} 
+                          className="w-full h-10 rounded-lg border-2 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all" 
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground font-medium mb-1 block">To</label>
+                        <input 
+                          type="date" 
+                          value={customEnd} 
+                          onChange={(e)=> setCustomEnd(e.target.value)} 
+                          className="w-full h-10 rounded-lg border-2 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all" 
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Sort Options */}
+                  <div>
+                    <label className="text-xs text-muted-foreground font-medium mb-2 block">Sort By</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button 
+                        type="button" 
+                        onClick={() => toggleSort("date")} 
+                        className={`h-12 rounded-xl border-2 text-sm font-medium touch-manipulation transition-all ${
+                          sortField === "date" 
+                            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300' 
+                            : 'border-border/50 bg-white/50 dark:bg-black/50 hover:bg-muted'
+                        }`}
+                      >
+                        <div className="flex flex-col items-center gap-1">
+                          📅
+                          <span className="text-xs">Date</span>
+                          {sortField === "date" && (
+                            <div className="flex items-center">
+                              {sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                      
+                      <button 
+                        type="button" 
+                        onClick={() => toggleSort("amount")} 
+                        className={`h-12 rounded-xl border-2 text-sm font-medium touch-manipulation transition-all ${
+                          sortField === "amount" 
+                            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300' 
+                            : 'border-border/50 bg-white/50 dark:bg-black/50 hover:bg-muted'
+                        }`}
+                      >
+                        <div className="flex flex-col items-center gap-1">
+                          💰
+                          <span className="text-xs">Amount</span>
+                          {sortField === "amount" && (
+                            <div className="flex items-center">
+                              {sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                      
+                      <button 
+                        type="button" 
+                        onClick={() => toggleSort("category")} 
+                        className={`h-12 rounded-xl border-2 text-sm font-medium touch-manipulation transition-all ${
+                          sortField === "category" 
+                            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300' 
+                            : 'border-border/50 bg-white/50 dark:bg-black/50 hover:bg-muted'
+                        }`}
+                      >
+                        <div className="flex flex-col items-center gap-1">
+                          🏷️
+                          <span className="text-xs">Category</span>
+                          {sortField === "category" && (
+                            <div className="flex items-center">
+                              {sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Mobile Expense Cards */}
+          <div className="xl:hidden">
+            {pageRows.length > 0 ? (
+              <div className="space-y-4">
+                {pageRows.map((e: Expense) => {
+                  const getCategoryData = (category: string) => {
+                    const c = category.toLowerCase();
+                    if (c.includes('food') || c.includes('restaurant') || c.includes('lunch') || c.includes('dinner')) 
+                      return { emoji: '🍽️', color: 'from-orange-500 to-red-500', bg: 'from-orange-50 to-red-50', dark: 'dark:from-orange-950/50 dark:to-red-950/50' };
+                    if (c.includes('transport') || c.includes('uber') || c.includes('taxi') || c.includes('bus')) 
+                      return { emoji: '🚗', color: 'from-blue-500 to-indigo-500', bg: 'from-blue-50 to-indigo-50', dark: 'dark:from-blue-950/50 dark:to-indigo-950/50' };
+                    if (c.includes('shopping') || c.includes('clothes') || c.includes('retail')) 
+                      return { emoji: '🛍️', color: 'from-pink-500 to-purple-500', bg: 'from-pink-50 to-purple-50', dark: 'dark:from-pink-950/50 dark:to-purple-950/50' };
+                    if (c.includes('entertainment') || c.includes('movie') || c.includes('games')) 
+                      return { emoji: '🎬', color: 'from-purple-500 to-indigo-500', bg: 'from-purple-50 to-indigo-50', dark: 'dark:from-purple-950/50 dark:to-indigo-950/50' };
+                    if (c.includes('health') || c.includes('medical') || c.includes('doctor')) 
+                      return { emoji: '🏥', color: 'from-green-500 to-emerald-500', bg: 'from-green-50 to-emerald-50', dark: 'dark:from-green-950/50 dark:to-emerald-950/50' };
+                    if (c.includes('utilities') || c.includes('electricity') || c.includes('water')) 
+                      return { emoji: '🏠', color: 'from-yellow-500 to-orange-500', bg: 'from-yellow-50 to-orange-50', dark: 'dark:from-yellow-950/50 dark:to-orange-950/50' };
+                    if (c.includes('travel') || c.includes('hotel') || c.includes('flight')) 
+                      return { emoji: '✈️', color: 'from-sky-500 to-blue-500', bg: 'from-sky-50 to-blue-50', dark: 'dark:from-sky-950/50 dark:to-blue-950/50' };
+                    return { emoji: '💳', color: 'from-gray-500 to-slate-500', bg: 'from-gray-50 to-slate-50', dark: 'dark:from-gray-950/50 dark:to-slate-950/50' };
+                  };
+                  
+                  const categoryData = getCategoryData(e.category as string);
+                  
+                  return (
+                    <Card key={e.id} className={`relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br ${categoryData.bg} ${categoryData.dark} group`}>
+                      {/* Gradient Background Accent */}
+                      <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${categoryData.color} opacity-10 rounded-bl-full`}></div>
+                      
+                      <CardContent className="p-5 space-y-4">
+                        {/* Header Row */}
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`h-12 w-12 rounded-2xl bg-gradient-to-br ${categoryData.color} flex items-center justify-center shadow-lg`}>
+                              <span className="text-white text-xl">{categoryData.emoji}</span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">
+                                {fmtDateYYYYMMDDLocal(e.date as any)}
+                              </p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gradient-to-r ${categoryData.color} text-white shadow-sm`}>
+                                  {e.category as string}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-foreground">
+                                {privacy ? "•••••" : `₹${e.amount.toFixed(0)}`}
+                              </div>
+                              {!privacy && (
+                                <div className="text-xs text-muted-foreground">
+                                  {e.amount.toFixed(2)}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              aria-label="Delete expense"
+                              onClick={() => handleDelete(e.id)}
+                              className="h-10 w-10 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-200 dark:border-red-800 text-red-600 hover:text-red-700 dark:hover:text-red-400 transition-all duration-200 touch-manipulation flex items-center justify-center group-hover:scale-105"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        {/* Description */}
+                        <div className="bg-white/50 dark:bg-black/20 rounded-xl p-3 border border-white/20 dark:border-white/10">
+                          <p className="text-sm text-foreground/80 leading-relaxed">
+                            {e.text}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center text-center py-16">
+                <div className="relative">
+                  <div className="h-24 w-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center mb-6">
+                    <span className="text-4xl">💸</span>
+                  </div>
+                  <div className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                    <span className="text-white text-sm">+</span>
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold mb-2">No expenses yet</h3>
+                <p className="text-sm text-muted-foreground mb-4 max-w-xs">
+                  Start tracking your spending by adding your first expense above
+                </p>
+                <div className="text-xs text-muted-foreground">
+                  💡 Try: "Coffee ₹120 at Cafe"
+                </div>
+              </div>
+            )}
+            
+            {/* Mobile Pagination */}
+            {pageRows.length > 0 && (
+              <Card className="border-0 shadow-md">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="text-muted-foreground">
+                      Page {page} of {totalPages} • {pageRows.length} items
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={prev} 
+                        disabled={page === 1}
+                        className="h-10 px-4 touch-manipulation"
+                      >
+                        ← Prev
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={next} 
+                        disabled={page === totalPages}
+                        className="h-10 px-4 touch-manipulation"
+                      >
+                        Next →
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Desktop Filters (Hidden on Mobile) */}
+          <div className="hidden xl:block xl:flex-1 xl:min-h-0 xl:flex xl:flex-col">
+            <div className="mb-3 flex flex-wrap gap-2 items-center">
               <label className="text-sm text-muted-foreground font-medium">📅 Range:</label>
               <select 
                 value={preset} 
                 onChange={(e)=> setPreset(e.target.value as any)} 
-                className="w-full sm:w-auto h-11 sm:h-9 rounded-lg sm:rounded-md border border-border px-3 sm:px-2 bg-card text-base sm:text-sm touch-manipulation"
+                className="w-auto h-9 rounded-md border border-border px-2 bg-card text-sm"
               >
                 <option value="all">All time</option>
                 <option value="today">Today</option>
@@ -715,47 +992,19 @@ export default function ExpenseTrackerPage() {
                     type="date" 
                     value={customStart} 
                     onChange={(e)=> setCustomStart(e.target.value)} 
-                    className="h-11 sm:h-9 rounded-lg sm:rounded-md border border-border px-3 sm:px-2 bg-card text-base sm:text-sm touch-manipulation" 
+                    className="h-9 rounded-md border border-border px-2 bg-card text-sm" 
                   />
                   <span className="text-sm text-muted-foreground">to</span>
                   <input 
                     type="date" 
                     value={customEnd} 
                     onChange={(e)=> setCustomEnd(e.target.value)} 
-                    className="h-11 sm:h-9 rounded-lg sm:rounded-md border border-border px-3 sm:px-2 bg-card text-base sm:text-sm touch-manipulation" 
+                    className="h-9 rounded-md border border-border px-2 bg-card text-sm" 
                   />
                 </div>
               )}
             </div>
-            {/* Mobile sorting controls */}
-            <div className="mb-3 xl:hidden">
-              <div className="flex flex-wrap gap-2">
-                <button 
-                  type="button" 
-                  onClick={() => toggleSort("date")} 
-                  className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg border text-xs font-medium touch-manipulation ${sortField === "date" ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-border bg-card hover:bg-muted'}`}
-                >
-                  📅 Date
-                  {sortField !== "date" ? <ArrowUpDown className="h-3.5 w-3.5" /> : (sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => toggleSort("amount")} 
-                  className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg border text-xs font-medium touch-manipulation ${sortField === "amount" ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-border bg-card hover:bg-muted'}`}
-                >
-                  💰 Amount
-                  {sortField !== "amount" ? <ArrowUpDown className="h-3.5 w-3.5" /> : (sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => toggleSort("category")} 
-                  className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg border text-xs font-medium touch-manipulation ${sortField === "category" ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-border bg-card hover:bg-muted'}`}
-                >
-                  🏷️ Category
-                  {sortField !== "category" ? <ArrowUpDown className="h-3.5 w-3.5" /> : (sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
-                </button>
-              </div>
-            </div>
+
 
             {/* Desktop Table View */}
             <div className="hidden xl:block flex-1 min-h-0 overflow-y-auto rounded-xl border border-border">
@@ -813,145 +1062,32 @@ export default function ExpenseTrackerPage() {
               </table>
             </div>
 
-            {/* Beautiful Mobile Cards */}
-            <div className="xl:hidden flex-1 min-h-0 overflow-y-auto px-1">
-              {pageRows.length > 0 ? (
-                <div className="space-y-4">
-                  {pageRows.map((e: Expense) => {
-                    const getCategoryData = (category: string) => {
-                      const c = category.toLowerCase();
-                      if (c.includes('food') || c.includes('restaurant') || c.includes('lunch') || c.includes('dinner')) 
-                        return { emoji: '🍽️', color: 'from-orange-500 to-red-500', bg: 'from-orange-50 to-red-50', dark: 'dark:from-orange-950/50 dark:to-red-950/50' };
-                      if (c.includes('transport') || c.includes('uber') || c.includes('taxi') || c.includes('bus')) 
-                        return { emoji: '🚗', color: 'from-blue-500 to-indigo-500', bg: 'from-blue-50 to-indigo-50', dark: 'dark:from-blue-950/50 dark:to-indigo-950/50' };
-                      if (c.includes('shopping') || c.includes('clothes') || c.includes('retail')) 
-                        return { emoji: '🛍️', color: 'from-pink-500 to-purple-500', bg: 'from-pink-50 to-purple-50', dark: 'dark:from-pink-950/50 dark:to-purple-950/50' };
-                      if (c.includes('entertainment') || c.includes('movie') || c.includes('games')) 
-                        return { emoji: '🎬', color: 'from-purple-500 to-indigo-500', bg: 'from-purple-50 to-indigo-50', dark: 'dark:from-purple-950/50 dark:to-indigo-950/50' };
-                      if (c.includes('health') || c.includes('medical') || c.includes('doctor')) 
-                        return { emoji: '🏥', color: 'from-green-500 to-emerald-500', bg: 'from-green-50 to-emerald-50', dark: 'dark:from-green-950/50 dark:to-emerald-950/50' };
-                      if (c.includes('utilities') || c.includes('electricity') || c.includes('water')) 
-                        return { emoji: '🏠', color: 'from-yellow-500 to-orange-500', bg: 'from-yellow-50 to-orange-50', dark: 'dark:from-yellow-950/50 dark:to-orange-950/50' };
-                      if (c.includes('travel') || c.includes('hotel') || c.includes('flight')) 
-                        return { emoji: '✈️', color: 'from-sky-500 to-blue-500', bg: 'from-sky-50 to-blue-50', dark: 'dark:from-sky-950/50 dark:to-blue-950/50' };
-                      return { emoji: '💳', color: 'from-gray-500 to-slate-500', bg: 'from-gray-50 to-slate-50', dark: 'dark:from-gray-950/50 dark:to-slate-950/50' };
-                    };
-                    
-                    const categoryData = getCategoryData(e.category as string);
-                    
-                    return (
-                      <Card key={e.id} className={`relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br ${categoryData.bg} ${categoryData.dark} group`}>
-                        {/* Gradient Background Accent */}
-                        <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${categoryData.color} opacity-10 rounded-bl-full`}></div>
-                        
-                        <CardContent className="p-5 space-y-4">
-                          {/* Header Row */}
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className={`h-12 w-12 rounded-2xl bg-gradient-to-br ${categoryData.color} flex items-center justify-center shadow-lg`}>
-                                <span className="text-white text-xl">{categoryData.emoji}</span>
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-muted-foreground">
-                                  {fmtDateYYYYMMDDLocal(e.date as any)}
-                                </p>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gradient-to-r ${categoryData.color} text-white shadow-sm`}>
-                                    {e.category as string}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-3">
-                              <div className="text-right">
-                                <div className="text-2xl font-bold text-foreground">
-                                  {privacy ? "•••••" : `₹${e.amount.toFixed(0)}`}
-                                </div>
-                                {!privacy && (
-                                  <div className="text-xs text-muted-foreground">
-                                    {e.amount.toFixed(2)}
-                                  </div>
-                                )}
-                              </div>
-                              <button
-                                aria-label="Delete expense"
-                                onClick={() => handleDelete(e.id)}
-                                className="h-10 w-10 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-200 dark:border-red-800 text-red-600 hover:text-red-700 dark:hover:text-red-400 transition-all duration-200 touch-manipulation flex items-center justify-center group-hover:scale-105"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </div>
-                          
-                          {/* Description */}
-                          <div className="bg-white/50 dark:bg-black/20 rounded-xl p-3 border border-white/20 dark:border-white/10">
-                            <p className="text-sm text-foreground/80 leading-relaxed">
-                              {e.text}
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center py-16">
-                  <div className="relative">
-                    <div className="h-24 w-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center mb-6">
-                      <span className="text-4xl">💸</span>
-                    </div>
-                    <div className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                      <span className="text-white text-sm">+</span>
-                    </div>
-                  </div>
-                  <h3 className="text-xl font-bold mb-2">No expenses yet</h3>
-                  <p className="text-sm text-muted-foreground mb-4 max-w-xs">
-                    Start tracking your spending by adding your first expense above
-                  </p>
-                  <div className="text-xs text-muted-foreground">
-                    💡 Try: "Coffee ₹120 at Cafe"
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-          <CardFooter className="pt-3 border-t border-border">
-            <div className="w-full flex-none flex items-center justify-between text-sm">
-              <div className="text-xs sm:text-sm text-muted-foreground">
-                Page {page} of {totalPages} • {pageRows.length} items
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={prev} 
-                  disabled={page === 1}
-                  className="h-9 px-3 touch-manipulation"
-                >
-                  ← Prev
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={next} 
-                  disabled={page === totalPages}
-                  className="h-9 px-3 touch-manipulation"
-                >
-                  Next →
-                </Button>
-              </div>
-            </div>
-          </CardFooter>
-        </Card>
+          </div>
+        </div>
 
-        {/* Budgets in Data tab */}
-        <Card className="h-full overflow-y-auto">
-          <CardHeader>
-            <CardTitle>Category Budgets</CardTitle>
-            <CardDescription>{currentYm} budgets and usage</CardDescription>
-          </CardHeader>
-          <CardContent>
+        {/* Beautiful Category Budgets */}
+        <div className="space-y-4 xl:space-y-0 xl:h-full xl:overflow-hidden">
+          {/* Mobile Header */}
+          <div className="flex items-center justify-between xl:hidden">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
+                <span className="text-white text-lg">💡</span>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">Budget Insights</h2>
+                <p className="text-sm text-muted-foreground">{currentYm} overview</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Card */}
+          <Card className="hidden xl:block xl:h-full xl:overflow-y-auto">
+            <CardHeader>
+              <CardTitle>Category Budgets</CardTitle>
+              <CardDescription>{currentYm} budgets and usage</CardDescription>
+            </CardHeader>
+            <CardContent>
+            {/* Desktop Budget Content */}
             {(monthlyCategorySpend.arr).length > 0 ? (
               <div className="space-y-3">
                 {(monthlyCategorySpend.arr).map(([cat, spent]) => {
