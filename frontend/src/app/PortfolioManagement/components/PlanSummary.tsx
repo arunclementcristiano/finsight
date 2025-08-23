@@ -93,15 +93,10 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                             <>
                               {(() => { const rawBand = (Array.isArray(b.range) ? b.range as [number,number] : [0,100]); const minBound = 0; const maxBound = mode==='custom' ? maxAllowed : 100; return (
                                 <>
-                                                                    <div className="inline-flex items-center rounded-md border border-border overflow-hidden">
-                                    <button className="px-2 h-7 text-sm disabled:opacity-50" disabled={!!aiViewOn} onClick={()=>{ const current = Math.round(Number(b.pct)||0); const newV = Math.max(0, current - 1); if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), newV); }}>–</button>
-                                    <div className="px-2 text-xs w-10 text-center select-none">{Math.round(b.pct)}%</div>
-                                    <button className="px-2 h-7 text-sm disabled:opacity-50" disabled={!!aiViewOn} onClick={()=>{ const current = Math.round(Number(b.pct)||0); const newV = Math.min(100, current + 1); if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), newV); }}>+</button>
-                                  </div>
-                                  <input type="range" step={1} min={minBound} max={maxBound} value={Math.round(b.pct)} disabled={!!aiViewOn} onChange={(e)=>{
-                                     const v = Math.round(Math.max(0, Math.min(mode==='custom' ? maxAllowed : 100, Number(e.target.value)||0)));
-                                     if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
-                                   }} />
+                                                                    <input type="range" step={1} min={minBound} max={maxBound} value={Math.round(b.pct)} disabled={!!aiViewOn} onChange={(e)=>{
+                                    const v = Math.round(Math.max(0, Math.min(mode==='custom' ? maxAllowed : 100, Number(e.target.value)||0)));
+                                    if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
+                                  }} />
                                 </>
                               ); })()}
                               {mode==='custom' ? (
