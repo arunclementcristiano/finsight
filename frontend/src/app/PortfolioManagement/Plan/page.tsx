@@ -104,28 +104,32 @@ export default function PlanPage() {
 		let cancelled = false;
 		(async ()=>{
 			try {
-				const res = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}`);
-				const data = await res.json();
-				const srv = data?.plan || null;
-				if (cancelled) return;
-				if (srv) {
-					setPlan(srv);
-					const origin = (srv as any)?.origin;
-					setMode(origin === 'custom' ? 'custom' : 'advisor');
-					if (origin === 'custom') {
-						try {
-							const rc = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}&variant=custom`);
-							const dc = await rc.json();
-							if (!cancelled) setLocal(dc?.plan || srv);
-						} catch { if (!cancelled) setLocal(srv); }
-					} else {
-						setLocal(srv);
-					}
-				} else {
-					// no saved plan yet; compute baseline
-					const baseline = buildPlan(questionnaire);
-					if (!cancelled) setLocal(baseline);
+				// 1) Try saved Custom
+				const rc = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}&variant=custom`);
+				const dc = await rc.json();
+				if (!cancelled && dc?.plan?.buckets) {
+					setLocal(dc.plan);
+					setPlan(dc.plan);
+					setMode('custom');
+					setAiViewOn(false);
+					return;
 				}
+				// 2) Try saved Advisor (canonical/variant)
+				const ra = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}`);
+				const da = await ra.json();
+				if (!cancelled && da?.plan?.buckets) {
+					setLocal(da.plan);
+					setPlan(da.plan);
+					setMode(((da.plan as any)?.origin === 'ai') ? 'advisor' : 'advisor');
+					setAiViewOn(((da.plan as any)?.origin === 'ai'));
+					if ((da.plan as any)?.origin === 'ai') {
+						try { const base = buildPlan(((da.plan as any)?.answersSnapshot) || questionnaire); setAiSummary(makeSummary(base, (da.plan as any)?.buckets||[])); } catch {}
+					}
+					return;
+				}
+				// 3) Fallback baseline
+				const baseline = buildPlan(questionnaire);
+				if (!cancelled) { setLocal(baseline); setPlan(baseline as any); setMode('advisor'); setAiViewOn(false); }
 			} catch {}
 		})();
 		return () => { cancelled = true; };
