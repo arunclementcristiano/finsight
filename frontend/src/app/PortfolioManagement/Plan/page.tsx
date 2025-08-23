@@ -95,7 +95,15 @@ export default function PlanPage() {
 		setAiViewOn(false);
 		try {
 			if (activePortfolioId) {
-				// Prefer locally cached saved custom snapshot
+				// 1) Prefer locally cached draft (unsaved) for instant toggles
+				const draft = getCustomDraft(activePortfolioId);
+				if (draft && draft.buckets) {
+					setLocal(draft);
+					const locks0 = getCustomLocks(activePortfolioId);
+					if (locks0) setLocalCustomLocks(locks0);
+					return;
+				}
+				// 2) Prefer locally cached saved custom snapshot
 				const cached = getCustomSaved(activePortfolioId);
 				if (cached && cached.buckets) {
 					setLocal(cached);
@@ -103,22 +111,30 @@ export default function PlanPage() {
 					if (locks0) setLocalCustomLocks(locks0);
 					return;
 				}
-				const rc = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}&variant=custom`);
-				const dc = await rc.json();
-				if (dc?.plan?.buckets) {
-					setLocal(dc.plan);
-					// Cache for subsequent toggles
-					try { setCustomSaved(activePortfolioId, dc.plan); } catch {}
-				} else {
-					// Prefer in-memory canonical plan without network when available
-					const savedOrigin = (plan as any)?.origin;
-					if (savedOrigin === 'engine' || savedOrigin === 'ai') {
-						setLocal(plan);
+				// 3) Use in-memory advisor plan (engine/ai) as seed without network
+				const savedOrigin = (plan as any)?.origin;
+				if (savedOrigin === 'engine' || savedOrigin === 'ai') {
+					setLocal(plan);
+					try { setCustomDraft(activePortfolioId, plan); } catch {}
+					const locks0 = getCustomLocks(activePortfolioId);
+					if (locks0) setLocalCustomLocks(locks0);
+					return;
+				}
+				// 4) As last resort, try server snapshots; else baseline
+				try {
+					const rc = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}&variant=custom`);
+					const dc = await rc.json();
+					if (dc?.plan?.buckets) {
+						setLocal(dc.plan);
+						try { setCustomSaved(activePortfolioId, dc.plan); setCustomDraft(activePortfolioId, dc.plan); } catch {}
 					} else {
 						const ra = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}`);
 						const da = await ra.json();
-						if (da?.plan?.buckets) setLocal(da.plan); else setLocal(buildPlan(questionnaire));
+						if (da?.plan?.buckets) { setLocal(da.plan); try { setCustomDraft(activePortfolioId, da.plan); } catch {} }
+						else { const base = buildPlan(questionnaire); setLocal(base); try { setCustomDraft(activePortfolioId, base); } catch {} }
 					}
+				} catch {
+					const base = buildPlan(questionnaire); setLocal(base); try { setCustomDraft(activePortfolioId, base); } catch {}
 				}
 				const locks = getCustomLocks(activePortfolioId);
 				if (locks) setLocalCustomLocks(locks);
