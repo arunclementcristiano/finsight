@@ -95,10 +95,10 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                           {(() => { const sumLockedOthers = (visibleBuckets||[]).reduce((s:any, x:any)=> s + ((locks?.[x.class] && x.class !== b.class) ? (x.pct||0) : 0), 0); const maxAllowed = Math.max(0, 100 - sumLockedOthers); return (
                             <>
                               {(() => { const rawBand = (Array.isArray(b.range) ? b.range as [number,number] : [0,100]); const bandMin = Math.round(rawBand[0]||0); const bandMax = Math.round(rawBand[1]||100); const current = Math.round(Number(b.pct)||0); const sumOthersAll = ((plan?.buckets||[]) as any[]).reduce((s:any, x:any)=> s + (x.class !== b.class ? (Number(x.pct)||0) : 0), 0); const capValue = Math.max(0, Math.floor(100 - sumOthersAll)); const incBand = Math.max(0, bandMax - current); const incByTotal = Math.max(0, capValue - current); const incAllowed = Math.max(0, Math.min(incBand, incByTotal)); const minBound = mode==='custom' ? 0 : bandMin; const maxBound = mode==='custom' ? maxAllowed : Math.min(bandMax, current + incAllowed); return (
-                                <input type="range" min={minBound} max={maxBound} value={b.pct} disabled={!!aiViewOn || (mode==='custom' && !!locks?.[b.class])} onChange={(e)=>{
-                                  const v = Math.max(0, Math.min(mode==='custom' ? maxAllowed : 100, Number(e.target.value)||0));
-                                  if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
-                                }} />
+                                <input type="range" step={1} min={minBound} max={maxBound} value={Math.round(b.pct)} disabled={!!aiViewOn || (mode==='custom' && !!locks?.[b.class])} onChange={(e)=>{
+                                   const v = Math.round(Math.max(0, Math.min(mode==='custom' ? maxAllowed : 100, Number(e.target.value)||0)));
+                                   if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
+                                 }} />
                               ); })()}
                               {mode==='custom' ? (
                                 <span className="text-[10px] text-muted-foreground">max {Math.round(maxAllowed)}%</span>

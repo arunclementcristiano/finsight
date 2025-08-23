@@ -289,17 +289,15 @@ export default function PlanPage() {
 					const rawBand: [number, number] = (baseBucket?.range as [number,number]) || [0,100];
 					const band: [number, number] = [Math.round(rawBand[0]||0), Math.round(rawBand[1]||100)];
 					const currentVal = Math.round(Number(next.buckets[idx].pct) || 0);
-					const sumOthers = Math.round((next.buckets||[]).reduce((s:number,b:any,i:number)=> i===idx ? s : s + (Number(b.pct)||0), 0));
-					const maxByTotal = Math.max(0, Math.floor(100 - sumOthers));
+					const sumOthers = Math.round(((next.buckets||[]) as any[]).reduce((s:number,b:any,i:number)=> i===idx ? s : s + (Number(b.pct)||0), 0));
+					const capValue = Math.max(0, Math.floor(100 - sumOthers));
+					const incBand = Math.max(0, band[1] - currentVal);
+					const incByTotal = Math.max(0, capValue - currentVal);
+					const incAllowed = Math.max(0, Math.min(incBand, incByTotal));
 					let target = Math.round(Number(newPct) || 0);
 					const increasing = target > currentVal;
 					if (increasing) {
-						if (maxByTotal <= currentVal) {
-							// no free capacity to increase beyond current
-							target = Math.min(currentVal, band[1]);
-						} else {
-							target = Math.min(target, band[1], maxByTotal);
-						}
+						target = Math.min(target, currentVal + incAllowed);
 					} else {
 						target = Math.max(target, band[0]);
 					}
