@@ -3,6 +3,9 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { AllocationPlan, AssetClass } from "./PortfolioManagement/domain/allocationEngine";
 
+// One-time cleanup of older persisted keys that may carry stale drafts
+try { if (typeof window !== "undefined") { localStorage.removeItem("finsight-v1"); localStorage.removeItem("finsight-v2"); } } catch {}
+
 export interface UserProfile {
 	name?: string;
 	currency?: string;
@@ -162,7 +165,7 @@ export const useApp = create<AppState>()(
 			getCustomSaved: (portfolioId: string) => (get().customSavedByPortfolio?.[portfolioId] || null),
 		}),
 		{
-			name: "finsight-v2",
+			name: "finsight-v3",
 			storage: createJSONStorage(() => localStorage),
 			partialize: (state: any) => {
 				const { plan, ...rest } = state || {};
