@@ -120,7 +120,8 @@ export default function PlanPage() {
 				setAiViewOn(savedOrigin === 'ai');
 				try { if (savedOrigin === 'ai') { const baseline = buildPlan((plan as any)?.answersSnapshot || snap); setAiSummary(makeSummary(baseline, (plan as any)?.buckets||[])); } else { setAiSummary(undefined); } } catch { setAiSummary(undefined); }
 			} else {
-				setLocal(buildPlan(snap));
+				const src = (snap && Object.keys(snap).length>0) ? snap : questionnaire;
+				setLocal(buildPlan(src));
 				setAiViewOn(false);
 				setAiSummary(undefined);
 			}
@@ -135,11 +136,12 @@ export default function PlanPage() {
 						if (savedOrigin === 'engine' || savedOrigin === 'ai') {
 							setLocal(plan);
 						} else {
-							setLocal(buildPlan(snap));
+							const src = (snap && Object.keys(snap).length>0) ? snap : questionnaire;
+							setLocal(buildPlan(src));
 						}
 					}
 				}
-			} catch { try { setLocal(buildPlan(snap)); } catch { setLocal(plan); } }
+			} catch { try { const src = (snap && Object.keys(snap).length>0) ? snap : questionnaire; setLocal(buildPlan(src)); } catch { setLocal(plan); } }
 		}
 		setAnswersDrift(false);
 		setAdvisorPins({});
