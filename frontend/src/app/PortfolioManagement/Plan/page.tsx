@@ -225,12 +225,15 @@ export default function PlanPage() {
 								const typed = window.prompt("Custom mode: type CONFIRM to save off‑policy allocation.", "");
 								if ((typed||"").toUpperCase() !== 'CONFIRM') { setToast({ msg: 'Save cancelled', type: 'info' }); return; }
 							}
-							const planToSave = { ...(local||{}), origin, offPolicy: mode==='custom', mode, answersSig: makeAnswersSig(snapshot), answersSnapshot: snapshot, policyVersion: 'v1' };
-							await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: activePortfolioId, plan: planToSave }) });
-							setPlan(planToSave);
-							// persist custom draft/locks if custom
-							try { if (mode==='custom' && activePortfolioId) { setCustomDraft(activePortfolioId, planToSave); setCustomLocks(activePortfolioId, customLocks || {}); } } catch {}
-							setToast({ msg: 'Plan saved', type: 'success' });
+													const planToSave = { ...(local||{}), origin, offPolicy: mode==='custom', mode, answersSig: makeAnswersSig(snapshot), answersSnapshot: snapshot, policyVersion: 'v1' };
+						await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: activePortfolioId, plan: planToSave }) });
+						setPlan(planToSave);
+						// remember last saved per-mode locally
+						try { if (activePortfolioId) {
+							if (mode==='custom') { setCustomDraft(activePortfolioId, planToSave); setCustomLocks(activePortfolioId, customLocks || {}); (useApp.getState() as any).setCustomSaved(activePortfolioId, planToSave); }
+							else { (useApp.getState() as any).setAdvisorSaved(activePortfolioId, planToSave); }
+						} } catch {}
+						setToast({ msg: 'Plan saved', type: 'success' });
 						}}>
 							<span className="inline-flex items-center gap-2">
 								<span>Save Plan</span>
