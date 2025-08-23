@@ -14,7 +14,7 @@ import { pruneQuestionnaire, stableAnswersSig } from "../domain/answersUtil";
 import { advisorTune } from "../domain/advisorTune";
 
 export default function PlanPage() {
-	const { plan, setPlan, activePortfolioId, questionnaire, setQuestionAnswer, setQuestionnaire, getCustomDraft, setCustomDraft, getCustomLocks, setCustomLocks, getCustomSaved } = useApp() as any;
+	const { plan, setPlan, activePortfolioId, questionnaire, setQuestionAnswer, setQuestionnaire, getCustomDraft, setCustomDraft, getCustomLocks, setCustomLocks, getCustomSaved, setCustomSaved } = useApp() as any;
 	const router = useRouter();
 	const [local, setLocal] = useState<any | null>(plan || null);
 	const [aiLoading, setAiLoading] = useState(false);
@@ -95,14 +95,30 @@ export default function PlanPage() {
 		setAiViewOn(false);
 		try {
 			if (activePortfolioId) {
+				// Prefer locally cached saved custom snapshot
+				const cached = getCustomSaved(activePortfolioId);
+				if (cached && cached.buckets) {
+					setLocal(cached);
+					const locks0 = getCustomLocks(activePortfolioId);
+					if (locks0) setLocalCustomLocks(locks0);
+					return;
+				}
 				const rc = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}&variant=custom`);
 				const dc = await rc.json();
 				if (dc?.plan?.buckets) {
 					setLocal(dc.plan);
+					// Cache for subsequent toggles
+					try { setCustomSaved(activePortfolioId, dc.plan); } catch {}
 				} else {
-					const ra = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}`);
-					const da = await ra.json();
-					if (da?.plan?.buckets) setLocal(da.plan); else setLocal(buildPlan(questionnaire));
+					// Prefer in-memory canonical plan without network when available
+					const savedOrigin = (plan as any)?.origin;
+					if (savedOrigin === 'engine' || savedOrigin === 'ai') {
+						setLocal(plan);
+					} else {
+						const ra = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}`);
+						const da = await ra.json();
+						if (da?.plan?.buckets) setLocal(da.plan); else setLocal(buildPlan(questionnaire));
+					}
 				}
 				const locks = getCustomLocks(activePortfolioId);
 				if (locks) setLocalCustomLocks(locks);
