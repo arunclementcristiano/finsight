@@ -549,12 +549,8 @@ export default function ExpenseTrackerPage() {
                 <button 
                   type="button" 
                   aria-label="Set date" 
-                  onClick={()=> setDateOpen(o=>!o)} 
-                  className={`h-14 w-14 xl:h-12 xl:w-12 rounded-2xl xl:rounded-xl border-2 transition-all duration-200 touch-manipulation shadow-sm hover:shadow-md ${
-                    dateOpen 
-                      ? 'border-emerald-500 bg-emerald-50 text-emerald-600 dark:bg-emerald-950' 
-                      : 'border-border/50 bg-card/50 text-muted-foreground hover:bg-muted'
-                  } backdrop-blur flex items-center justify-center`}
+                  onClick={handleToggleDatePicker} 
+                  className={getDatePickerButtonClasses()}
                 >
                   <Calendar className="h-6 w-6 xl:h-5 xl:w-5" />
                 </button>
@@ -686,21 +682,15 @@ export default function ExpenseTrackerPage() {
             </button>
             
             <button 
-              onClick={()=> setPrivacy(p=>!p)}
-              className={`h-16 xl:h-12 rounded-2xl xl:rounded-xl border transition-all duration-200 touch-manipulation flex flex-col xl:flex-row items-center justify-center xl:px-4 gap-1 xl:gap-2 group ${
-                privacy 
-                  ? 'bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/50 dark:to-orange-950/50 border-amber-200 dark:border-amber-800 hover:shadow-lg' 
-                  : 'bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 border-blue-200 dark:border-blue-800 hover:shadow-lg'
-              }`}
+              onClick={handleTogglePrivacy}
+              className={getPrivacyToggleClasses()}
             >
               {privacy ? (
                 <EyeOff className="h-5 w-5 xl:h-4 xl:w-4 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform"/>
               ) : (
                 <Eye className="h-5 w-5 xl:h-4 xl:w-4 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform"/>
               )}
-              <span className={`text-xs xl:text-sm font-medium ${
-                privacy ? 'text-amber-700 dark:text-amber-300' : 'text-blue-700 dark:text-blue-300'
-              }`}>
+              <span className={getPrivacyToggleTextClasses()}>
                 {privacy ? "Show" : "Hide"}
               </span>
             </button>
