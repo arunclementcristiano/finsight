@@ -79,10 +79,13 @@ export default function PlanPage() {
 		// Load persisted custom draft/locks if in custom mode
 		try {
 			if (origin === 'custom' && activePortfolioId) {
-				const draft = getCustomDraft(activePortfolioId);
-				if (draft) setLocal(draft);
-				const locks = getCustomLocks(activePortfolioId);
-				if (locks) setLocalCustomLocks(locks);
+				try {
+					const saved = getCustomSaved(activePortfolioId);
+					if (saved) setLocal(saved);
+					else setLocal(plan);
+					const locks = getCustomLocks(activePortfolioId);
+					if (locks) setLocalCustomLocks(locks);
+				} catch {}
 			}
 		} catch {}
 		setAdvisorPins({});
