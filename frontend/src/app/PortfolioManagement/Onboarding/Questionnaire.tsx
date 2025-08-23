@@ -31,12 +31,6 @@ export default function Questionnaire() {
 					pid = created?.portfolioId;
 					if (pid) (useApp.getState() as any).setActivePortfolio(pid);
 				}
-				if (pid) {
-					const snapshot = pruneQuestionnaire(questionnaire as any);
-					const answersSig = stableAnswersSig(snapshot);
-					const planToSave = { ...allocation, origin: 'engine', answersSig, answersSnapshot: snapshot, policyVersion: 'v1' };
-					await fetch('/api/portfolio/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portfolioId: pid, plan: planToSave }) });
-				}
 			} catch {}
 			router.push("/PortfolioManagement/Plan");
 		} else {
