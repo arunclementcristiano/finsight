@@ -101,7 +101,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                                  }} />
                               ); })()}
                               {mode==='custom' ? (
-                                <span className="text-[10px] text-muted-foreground">max {Math.round(maxAllowed)}%</span>
+                                (()=>{ const current = Math.round(Number(b.pct)||0); const sumOthersAll = ((plan?.buckets||[]) as any[]).reduce((s:any, x:any)=> s + (x.class !== b.class ? (Number(x.pct)||0) : 0), 0); const capValue = Math.max(0, Math.floor(100 - sumOthersAll)); const incAllowed = Math.max(0, capValue - current); return (<span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border border-border text-muted-foreground">+{Math.round(incAllowed)}% free</span>); })()
                               ) : (
                                 (()=>{ const rawBand = (Array.isArray(b.range) ? b.range as [number,number] : [0,100]); const bandMin = Math.round(rawBand[0]||0); const bandMax = Math.round(rawBand[1]||100); const current = Math.round(Number(b.pct)||0); const sumOthersAll = ((plan?.buckets||[]) as any[]).reduce((s:any, x:any)=> s + (x.class !== b.class ? (Number(x.pct)||0) : 0), 0); const capValue = Math.max(0, Math.floor(100 - sumOthersAll)); const incBand = Math.max(0, bandMax - current); const incByTotal = Math.max(0, capValue - current); const incAllowed = Math.max(0, Math.min(incBand, incByTotal)); return (<span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border border-border text-muted-foreground">+{Math.round(incAllowed)}% free · band +{Math.round(incBand)}%</span>); })()
                               )}

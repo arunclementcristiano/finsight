@@ -278,9 +278,20 @@ export default function PlanPage() {
 					next.buckets = [...(local?.buckets||[])];
 					if (!next.buckets[idx]) return;
 					if (mode === 'custom') {
-						const tunedCustom = normalizeCustom(next, idx, newPct);
-						setLocal(tunedCustom);
-						try { if (activePortfolioId) setCustomDraft(activePortfolioId, tunedCustom); } catch {}
+						const currentVal = Math.round(Number(next.buckets[idx].pct) || 0);
+						const sumOthers = Math.round(((next.buckets||[]) as any[]).reduce((s:number,b:any,i:number)=> i===idx ? s : s + (Number(b.pct)||0), 0));
+						const capValue = Math.max(0, Math.floor(100 - sumOthers));
+						let target = Math.round(Number(newPct) || 0);
+						if (target > currentVal) {
+							const incAllowed = Math.max(0, capValue - currentVal);
+							target = Math.min(target, currentVal + incAllowed);
+							if (target < Math.round(Number(newPct)||0)) setToast({ msg: 'No free capacity left', type: 'info' });
+						} else {
+							target = Math.max(0, target);
+						}
+						next.buckets[idx] = { ...next.buckets[idx], pct: target };
+						setLocal(next);
+						try { if (activePortfolioId) setCustomDraft(activePortfolioId, next); } catch {}
 						return;
 					}
 					const changedClass = next.buckets[idx].class as any;
