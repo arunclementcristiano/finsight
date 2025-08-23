@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../..
 import { Button } from "../../components/Button";
 import { useApp } from "../../store";
 import { computeRebalance } from "../domain/rebalance";
-import { LineChart, Layers, Banknote, Coins, Home, Droplet, Edit3, RefreshCw, Plus, Minus } from "lucide-react";
+import { LineChart, Layers, Banknote, Coins, Home, Droplet, Edit3, RefreshCw } from "lucide-react";
 
 export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, onBuildBaseline, aiViewOn, onToggleAiView, aiLoading, aiExplanation, aiSummary, mode, aiDisabled, locks, onToggleLock }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void; onEditAnswers?: () => void; onBuildBaseline?: () => void; aiViewOn?: boolean; onToggleAiView?: () => void; aiLoading?: boolean; aiExplanation?: string; aiSummary?: string; mode?: 'advisor'|'custom'; aiDisabled?: boolean; locks?: Record<string, boolean>; onToggleLock?: (cls: string)=>void }) {
   const { holdings, driftTolerancePct, questionnaire } = useApp() as any;
@@ -93,12 +93,15 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                             <>
                               {(() => { const rawBand = (Array.isArray(b.range) ? b.range as [number,number] : [0,100]); const minBound = 0; const maxBound = mode==='custom' ? maxAllowed : 100; return (
                                 <>
-                                  <button className="h-6 w-6 rounded border border-border text-xs disabled:opacity-50" disabled={!!aiViewOn} onClick={()=>{ const current = Math.round(Number(b.pct)||0); const newV = Math.max(0, current - 1); if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), newV); }}>-</button>
+                                                                    <div className="inline-flex items-center rounded-md border border-border overflow-hidden">
+                                    <button className="px-2 h-7 text-sm disabled:opacity-50" disabled={!!aiViewOn} onClick={()=>{ const current = Math.round(Number(b.pct)||0); const newV = Math.max(0, current - 1); if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), newV); }}>–</button>
+                                    <div className="px-2 text-xs w-10 text-center select-none">{Math.round(b.pct)}%</div>
+                                    <button className="px-2 h-7 text-sm disabled:opacity-50" disabled={!!aiViewOn} onClick={()=>{ const current = Math.round(Number(b.pct)||0); const newV = Math.min(100, current + 1); if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), newV); }}>+</button>
+                                  </div>
                                   <input type="range" step={1} min={minBound} max={maxBound} value={Math.round(b.pct)} disabled={!!aiViewOn} onChange={(e)=>{
-                                    const v = Math.round(Math.max(0, Math.min(mode==='custom' ? maxAllowed : 100, Number(e.target.value)||0)));
-                                    if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
-                                  }} />
-                                  <button className="h-6 w-6 rounded border border-border text-xs disabled:opacity-50" disabled={!!aiViewOn} onClick={()=>{ const current = Math.round(Number(b.pct)||0); const newV = Math.min(100, current + 1); if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), newV); }}>+</button>
+                                     const v = Math.round(Math.max(0, Math.min(mode==='custom' ? maxAllowed : 100, Number(e.target.value)||0)));
+                                     if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
+                                   }} />
                                 </>
                               ); })()}
                               {mode==='custom' ? (
