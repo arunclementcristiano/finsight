@@ -63,6 +63,68 @@ export default function ExpenseTrackerPage() {
 
   // Helpers: money + local date handling
   function fmtMoney(v: number) { return privacy ? "•••" : formatCurrency(v); }
+
+  // UI Helper Functions
+  const getDatePickerButtonClasses = () => {
+    const baseClasses = "h-14 w-14 xl:h-12 xl:w-12 rounded-2xl xl:rounded-xl border-2 transition-all duration-200 touch-manipulation shadow-sm hover:shadow-md";
+    const conditionalClasses = dateOpen 
+      ? 'border-emerald-500 bg-emerald-50 text-emerald-600 dark:bg-emerald-950' 
+      : 'border-border/50 bg-card/50 text-muted-foreground hover:bg-muted';
+    return `${baseClasses} ${conditionalClasses} backdrop-blur flex items-center justify-center`;
+  };
+
+  const getPrivacyToggleClasses = () => {
+    const baseClasses = "h-16 xl:h-12 rounded-2xl xl:rounded-xl border transition-all duration-200 touch-manipulation flex flex-col xl:flex-row items-center justify-center xl:px-4 gap-1 xl:gap-2 group";
+    const conditionalClasses = privacy 
+      ? 'bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/50 dark:to-orange-950/50 border-amber-200 dark:border-amber-800 hover:shadow-lg' 
+      : 'bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 border-blue-200 dark:border-blue-800 hover:shadow-lg';
+    return `${baseClasses} ${conditionalClasses}`;
+  };
+
+  const getPrivacyToggleTextClasses = () => {
+    return `text-xs xl:text-sm font-medium ${privacy ? 'text-amber-700 dark:text-amber-300' : 'text-blue-700 dark:text-blue-300'}`;
+  };
+
+  const getTabButtonClasses = (isActive: boolean) => {
+    const baseClasses = "relative z-10 px-6 py-4 xl:py-3 text-base xl:text-sm font-semibold rounded-xl transition-all duration-300 touch-manipulation";
+    const conditionalClasses = isActive 
+      ? 'bg-white dark:bg-card text-foreground shadow-lg' 
+      : 'text-muted-foreground hover:text-foreground';
+    return `${baseClasses} ${conditionalClasses}`;
+  };
+
+  const getSortButtonClasses = (field: string, isActive: boolean) => {
+    const baseClasses = "h-12 rounded-xl border-2 text-sm font-medium touch-manipulation transition-all";
+    const conditionalClasses = isActive
+      ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300'
+      : 'border-border/50 bg-card/50 text-muted-foreground hover:bg-muted hover:text-foreground';
+    return `${baseClasses} ${conditionalClasses}`;
+  };
+
+  // Event Handler Functions
+  const handleToggleDatePicker = () => {
+    setDateOpen(prev => !prev);
+  };
+
+  const handleTogglePrivacy = () => {
+    setPrivacy(prev => !prev);
+  };
+
+  const handleOpenBudgetsModal = () => {
+    setShowBudgetsModal(true);
+  };
+
+  const handleOpenExportModal = () => {
+    setExportOpen(true);
+  };
+
+  const handleTabSwitch = (tab: "data" | "insights") => {
+    setActiveTab(tab);
+  };
+
+  const handleSortFieldToggle = (field: "date" | "amount" | "category") => {
+    toggleSort(field);
+  };
   function toLocalDateOnly(dateStr: string) {
     try {
       const s = String(dateStr || "").slice(0, 10);
