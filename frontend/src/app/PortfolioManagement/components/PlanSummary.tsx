@@ -10,6 +10,7 @@ import { Sparkles } from "lucide-react";
 export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, onBuildBaseline, aiViewOn, onToggleAiView, aiLoading, aiExplanation, aiSummary, mode, aiDisabled, locks, onToggleLock }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void; onEditAnswers?: () => void; onBuildBaseline?: () => void; aiViewOn?: boolean; onToggleAiView?: () => void; aiLoading?: boolean; aiExplanation?: string; aiSummary?: string; mode?: 'advisor'|'custom'; aiDisabled?: boolean; locks?: Record<string, boolean>; onToggleLock?: (cls: string)=>void }) {
   const { holdings, driftTolerancePct, questionnaire } = useApp() as any;
   const [edgeHit, setEdgeHit] = useState<Record<string, { edge: 'min'|'max'; val: number } | null>>({});
+  const [tipFor, setTipFor] = useState<string | null>(null);
 
   const kpis = useMemo(() => {
     if (!plan) return { equity: 0, defensive: 0, satellite: 0 };
@@ -97,19 +98,26 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                         <div className="group flex items-center gap-2">
                           {(() => { const maxAllowed = 100; return (
                             <>
-                              {(() => { const rawBand = (Array.isArray(b.range) ? b.range as [number,number] : [0,100]); const minBound = 0; const maxBound = mode==='custom' ? maxAllowed : 100; const bandMin = Math.round(rawBand[0]||0); const bandMax = Math.round(rawBand[1]||100); const valueNow = Math.round(b.pct||0); const bandStart = Math.max(0, Math.min(100, bandMin)); const bandEnd = Math.max(0, Math.min(100, bandMax)); const gradient = mode==='custom' ? undefined : `linear-gradient(to right, rgba(120,120,120,0.18) 0%, rgba(120,120,120,0.18) ${bandStart}%, rgba(99,102,241,0.25) ${bandStart}%, rgba(99,102,241,0.25) ${bandEnd}%, rgba(120,120,120,0.18) ${bandEnd}%, rgba(120,120,120,0.18) 100%)`; const cls = b.class; const isEdge = !!edgeHit?.[cls]; return (
-                                <>
+                              {(() => { const rawBand = (Array.isArray(b.range) ? b.range as [number,number] : [0,100]); const minBound = 0; const maxBound = mode==='custom' ? maxAllowed : 100; const bandMin = Math.round(rawBand[0]||0); const bandMax = Math.round(rawBand[1]||100); const valueNow = Math.round(b.pct||0); const bandStart = Math.max(0, Math.min(100, bandMin)); const bandEnd = Math.max(0, Math.min(100, bandMax)); const cls = b.class; const isEdge = !!edgeHit?.[cls]; return (
+                                <div className="relative w-40 md:w-56">
+                                  {mode!=='custom' ? (
+                                    <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1.5 pointer-events-none">
+                                      <div className="absolute h-1.5 rounded bg-indigo-500/30" style={{ left: `${bandStart}%`, width: `${Math.max(0, bandEnd - bandStart)}%` }} />
+                                    </div>
+                                  ) : null}
                                   <input
-                                    className={`w-40 md:w-56 ${isEdge ? 'animate-shake' : ''}`}
+                                    className={`w-full appearance-none bg-transparent ${isEdge ? 'animate-shake' : ''}`}
                                     type="range"
                                     step={1}
                                     min={minBound}
                                     max={maxBound}
                                     value={valueNow}
-                                    title={mode==='custom' ? undefined : `Safe range: ${bandMin}–${bandMax}% (comfort zone)`}
                                     aria-label={`${b.class} allocation`}
-                                    style={gradient ? ({ background: gradient } as any) : undefined}
                                     disabled={!!aiViewOn}
+                                    onMouseEnter={()=> setTipFor(cls)}
+                                    onMouseLeave={()=> setTipFor(prev => (prev===cls? null : prev))}
+                                    onFocus={()=> setTipFor(cls)}
+                                    onBlur={()=> setTipFor(prev => (prev===cls? null : prev))}
                                     onChange={(e)=>{
                                       const v = Math.round(Math.max(0, Math.min(mode==='custom' ? maxAllowed : 100, Number(e.target.value)||0)));
                                       if (mode !== 'custom' && (v < bandMin || v > bandMax)) {
@@ -118,18 +126,18 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                                       if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
                                     }}
                                   />
-                                  {mode!=='custom' && edgeHit?.[cls] ? (
-                                    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border border-border text-rose-600">
-                                      {edgeHit[cls]?.edge === 'max' ? `Max reached (${edgeHit[cls]?.val}%)` : `Min reached (${edgeHit[cls]?.val}%)`}
-                                    </span>
+                                  {mode!=='custom' && tipFor===cls ? (
+                                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] px-2 py-0.5 rounded bg-zinc-900 text-white shadow">
+                                      Safe range: {bandMin}–{bandMax}%
+                                    </div>
                                   ) : null}
-                                </>
+                                  {mode!=='custom' && edgeHit?.[cls] ? (
+                                    <div className="absolute -bottom-5 right-0 text-[10px] px-2 py-0.5 rounded bg-rose-500 text-white shadow">
+                                      {edgeHit[cls]?.edge === 'max' ? `Max reached (${edgeHit[cls]?.val}%)` : `Min reached (${edgeHit[cls]?.val}%)`}
+                                    </div>
+                                  ) : null}
+                                </div>
                               ); })()}
-                              {mode==='custom' ? (
-                                (()=>{ const current = Math.round(Number(b.pct)||0); const sumOthersAll = ((plan?.buckets||[]) as any[]).reduce((s:any, x:any)=> s + (x.class !== b.class ? (Number(x.pct)||0) : 0), 0); const capValue = Math.max(0, Math.floor(100 - sumOthersAll)); const incAllowed = Math.max(0, capValue - current); return (<span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border border-border text-muted-foreground">+{Math.round(incAllowed)}% free</span>); })()
-                              ) : (
-                                (()=>{ const rawBand = (Array.isArray(b.range) ? b.range as [number,number] : [0,100]); const bandMin = Math.round(rawBand[0]||0); const bandMax = Math.round(rawBand[1]||100); const current = Math.round(Number(b.pct)||0); const sumOthersAll = ((plan?.buckets||[]) as any[]).reduce((s:any, x:any)=> s + (x.class !== b.class ? (Number(x.pct)||0) : 0), 0); const capValue = Math.max(0, Math.floor(100 - sumOthersAll)); const incBand = Math.max(0, bandMax - current); const incByTotal = Math.max(0, capValue - current); const incAllowed = Math.max(0, Math.min(incBand, incByTotal)); return (<span className="text-[10px] text-muted-foreground">free {Math.round(incAllowed)} · band {Math.round(incBand)}</span>); })()
-                              )}
                             </>
                           ); })()}
                         </div>
