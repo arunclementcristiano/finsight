@@ -9,7 +9,7 @@ import QuestionCard from "../components/QuestionCard";
 import { questions } from "../domain/questionnaire";
 import { buildPlan } from "../domain/allocationEngine";
 import { Modal } from "../../components/Modal";
-import { RotateCcw, Save as SaveIcon, AlertTriangle } from "lucide-react";
+import { RotateCcw, Save as SaveIcon, AlertTriangle, ShieldOff } from "lucide-react";
 import { pruneQuestionnaire, stableAnswersSig } from "../domain/answersUtil";
 import { advisorTune } from "../domain/advisorTune";
 
@@ -165,34 +165,32 @@ export default function PlanPage() {
 					) : null}
 				</div>
 				<div className="flex items-center gap-2">
-					{(() => { const prune = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))}); const dirty = local && plan && JSON.stringify(prune(local)) !== JSON.stringify(prune(plan)); return dirty ? (<span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200">Unsaved changes</span>) : null; })()}
-					<div className="flex items-center gap-2">
-						<div className="inline-flex rounded-md border border-border overflow-hidden">
-							<Button variant="outline" className={`rounded-none ${mode==='advisor' ? 'bg-indigo-600 text-white border-indigo-600' : ''}`} onClick={()=>{ setMode('advisor'); setAiViewOn(false); setLocal(buildPlan(questionnaire)); }}>
-								<div className="flex flex-col items-start leading-tight">
-									<span>Advisor</span>
-									<span className="text-[10px] opacity-80">Recommended</span>
-								</div>
-							</Button>
-							<Button variant="outline" className={`rounded-none ${mode==='custom' ? 'bg-rose-600 text-white border-rose-600' : ''}`} onClick={()=>{ setMode('custom'); setAiViewOn(false); try { if (activePortfolioId) { const draft = getCustomDraft(activePortfolioId); if (draft) setLocal(draft); const locks = getCustomLocks(activePortfolioId); if (locks) setLocalCustomLocks(locks); } } catch {} }}>
-								<div className="flex flex-col items-start leading-tight">
-									<span>Custom</span>
-									<span className="text-[10px] opacity-80">No guardrails</span>
-								</div>
-							</Button>
-						</div>
-						{mode==='custom' ? (<span className="text-xs px-2 py-1 rounded-full bg-rose-100 text-rose-700 border border-rose-200">Off‑policy</span>) : null}
+					<div className="inline-flex rounded-md border border-border overflow-hidden text-xs">
+						<Button size="sm" variant="outline" className={`rounded-none ${mode==='advisor' ? 'bg-indigo-600 text-white border-indigo-600' : ''}`} onClick={()=>{ setMode('advisor'); setAiViewOn(false); setLocal(buildPlan(questionnaire)); }}>
+							<div className="flex flex-col items-start leading-tight">
+								<span>Advisor</span>
+								<span className="text-[10px] opacity-80">Recommended</span>
+							</div>
+						</Button>
+						<Button size="sm" variant="outline" className={`rounded-none ${mode==='custom' ? 'bg-rose-600 text-white border-rose-600' : ''}`} onClick={()=>{ setMode('custom'); setAiViewOn(false); try { if (activePortfolioId) { const draft = getCustomDraft(activePortfolioId); if (draft) setLocal(draft); const locks = getCustomLocks(activePortfolioId); if (locks) setLocalCustomLocks(locks); } } catch {} }}>
+							<div className="flex items-center gap-1 leading-tight">
+								<span>Custom</span>
+								{mode==='custom' ? <ShieldOff className="h-3.5 w-3.5" /> : null}
+							</div>
+							<span className="text-[10px] opacity-80">No guardrails</span>
+						</Button>
 					</div>
-					<Button variant="outline" leftIcon={<RotateCcw className="h-4 w-4 text-rose-600" />} onClick={()=> { 
+					<Button variant="ghost" size="sm" aria-label="Reset" onClick={()=> { 
 						const snap = (plan as any)?.answersSnapshot || {}; 
 						Object.keys(snap).forEach(k=> setQuestionAnswer(k, (snap as any)[k])); 
 						setLocal(plan); 
 						setAiViewOn(!!((plan as any)?.origin === 'ai')); 
-						// Optional: recompute summary if AI view is on
 						try { if ((plan as any)?.origin === 'ai') { const baseline = buildPlan(snap); setAiSummary(makeSummary(baseline, (plan as any)?.buckets||[])); } else { setAiSummary(undefined); } } catch { setAiSummary(undefined); } 
 						setAnswersDrift(false); 
-					}}>Reset</Button>
-					<Button variant="outline" leftIcon={<SaveIcon className="h-4 w-4 text-emerald-600" />} onClick={async ()=>{
+					}}>
+						<RotateCcw className="h-4 w-4 text-rose-600" />
+					</Button>
+					<Button variant="primary" size="sm" leftIcon={<SaveIcon className="h-4 w-4" />} onClick={async ()=>{
 						const pruneAlloc = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))});
 						const snapshot = pruneQuestionnaire(questionnaire);
 						const answersDirty = makeAnswersSig(snapshot) !== (((plan as any)?.answersSig) || "");
