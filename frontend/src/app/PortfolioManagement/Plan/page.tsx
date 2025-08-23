@@ -99,6 +99,38 @@ export default function PlanPage() {
 		setAdvisorPins({});
 	}, [plan]);
 
+	useEffect(() => {
+		if (!activePortfolioId) return;
+		let cancelled = false;
+		(async ()=>{
+			try {
+				const res = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}`);
+				const data = await res.json();
+				const srv = data?.plan || null;
+				if (cancelled) return;
+				if (srv) {
+					setPlan(srv);
+					const origin = (srv as any)?.origin;
+					setMode(origin === 'custom' ? 'custom' : 'advisor');
+					if (origin === 'custom') {
+						try {
+							const rc = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}&variant=custom`);
+							const dc = await rc.json();
+							if (!cancelled) setLocal(dc?.plan || srv);
+						} catch { if (!cancelled) setLocal(srv); }
+					} else {
+						setLocal(srv);
+					}
+				} else {
+					// no saved plan yet; compute baseline
+					const baseline = buildPlan(questionnaire);
+					if (!cancelled) setLocal(baseline);
+				}
+			} catch {}
+		})();
+		return () => { cancelled = true; };
+	}, [activePortfolioId]);
+
 	function normalizeCustom(next: any, changedIndex: number, newPct: number) {
 		const buckets = [...(next?.buckets||[])];
 		if (!buckets[changedIndex]) return next;
