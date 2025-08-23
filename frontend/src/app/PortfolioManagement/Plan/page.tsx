@@ -169,13 +169,15 @@ export default function PlanPage() {
 				</div>
 				<div className="flex items-center gap-2">
 					<div className="inline-flex rounded-md border border-border overflow-hidden text-xs">
-						<Button size="sm" variant="outline" className={`rounded-none ${mode==='advisor' ? 'bg-indigo-600 text-white border-indigo-600' : ''}`} onClick={()=>{ setMode('advisor'); setAiViewOn(false); setLocal(buildPlan(questionnaire)); }}>
+						<Button size="sm" variant="outline" className={`rounded-none ${mode==='advisor' ? 'bg-indigo-600 text-white border-indigo-600' : ''}`} onClick={()=>{ setMode('advisor'); try { const savedOrigin = (plan as any)?.origin; if (savedOrigin === 'engine' || savedOrigin === 'ai') { setLocal(plan); setAiViewOn(savedOrigin === 'ai'); if (savedOrigin === 'ai') { try { const baseline = buildPlan((plan as any)?.answersSnapshot || questionnaire); setAiSummary(makeSummary(baseline, (plan as any)?.buckets||[])); } catch {} } else { setAiSummary(undefined); } } else { setAiViewOn(false); setAiSummary(undefined); setLocal(buildPlan(questionnaire)); } } catch { setAiViewOn(false); setAiSummary(undefined); setLocal(buildPlan(questionnaire)); } }}>
 							<div className="flex flex-col items-start leading-tight">
 								<span>Advisor</span>
 								{mode==='advisor' ? <span className="text-[10px] opacity-80">Recommended</span> : null}
 							</div>
 						</Button>
-						<Button size="sm" variant="outline" className={`rounded-none ${mode==='custom' ? 'bg-rose-600 text-white border-rose-600' : ''}`} onClick={()=>{ setMode('custom'); setAiViewOn(false); try { if (activePortfolioId) { const draft = getCustomDraft(activePortfolioId); if (draft) setLocal(draft); const locks = getCustomLocks(activePortfolioId); if (locks) setLocalCustomLocks(locks); } } catch {} }}>
+						<Button size="sm" variant="outline" className={`rounded-none ${mode==='custom' ? 'bg-rose-600 text-white border-rose-600' : ''}`} onClick={()=>{ setMode('custom'); setAiViewOn(false); try { if (activePortfolioId) { const draft = getCustomDraft(activePortfolioId); if (draft) { setLocal(draft); const locks = getCustomLocks(activePortfolioId); if (locks) setLocalCustomLocks(locks); } else { // seed once from current advisor mix
+								const seed = local || buildPlan(questionnaire); setLocal(seed); }
+							} } catch {} }}>
 							<div className="flex flex-col items-start leading-tight">
 								<div className="flex items-center gap-1">
 									<span>Custom</span>
@@ -188,9 +190,22 @@ export default function PlanPage() {
 					<Button variant="ghost" size="sm" aria-label="Reset" onClick={()=> { 
 						const snap = (plan as any)?.answersSnapshot || {}; 
 						Object.keys(snap).forEach(k=> setQuestionAnswer(k, (snap as any)[k])); 
-						setLocal(plan); 
-						setAiViewOn(!!((plan as any)?.origin === 'ai')); 
-						try { if ((plan as any)?.origin === 'ai') { const baseline = buildPlan(snap); setAiSummary(makeSummary(baseline, (plan as any)?.buckets||[])); } else { setAiSummary(undefined); } } catch { setAiSummary(undefined); } 
+						const savedOrigin = (plan as any)?.origin;
+						if (mode === 'advisor') {
+							// reset to last advisor save (engine or ai) else recompute
+							if (savedOrigin === 'engine' || savedOrigin === 'ai') {
+								setLocal(plan);
+								setAiViewOn(savedOrigin === 'ai');
+								try { if (savedOrigin === 'ai') { const baseline = buildPlan((plan as any)?.answersSnapshot || snap); setAiSummary(makeSummary(baseline, (plan as any)?.buckets||[])); } else { setAiSummary(undefined); } } catch { setAiSummary(undefined); }
+							} else {
+								setLocal(buildPlan(snap));
+								setAiViewOn(false);
+								setAiSummary(undefined);
+							}
+						} else {
+							// custom: reset to last custom draft if present
+							try { if (activePortfolioId) { const draft = getCustomDraft(activePortfolioId); if (draft) setLocal(draft); else setLocal(plan); } } catch { setLocal(plan); }
+						}
 						setAnswersDrift(false); 
 						setAdvisorPins({});
 					}}>
