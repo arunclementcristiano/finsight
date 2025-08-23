@@ -79,13 +79,21 @@ export default function PlanPage() {
 		// Load persisted custom draft/locks if in custom mode
 		try {
 			if (origin === 'custom' && activePortfolioId) {
-				try {
-					const saved = getCustomSaved(activePortfolioId);
-					if (saved) setLocal(saved);
-					else setLocal(plan);
-					const locks = getCustomLocks(activePortfolioId);
-					if (locks) setLocalCustomLocks(locks);
-				} catch {}
+				(async ()=>{
+					try {
+						const r = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}&variant=custom`);
+						const d = await r.json();
+						if (d?.plan?.buckets) setLocal(d.plan);
+						else {
+							const r2 = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}&variant=advisor`);
+							const d2 = await r2.json();
+							if (d2?.plan?.buckets) setLocal(d2.plan);
+							else setLocal(buildPlan(questionnaire));
+						}
+						const locks = getCustomLocks(activePortfolioId);
+						if (locks) setLocalCustomLocks(locks);
+					} catch { setLocal(plan); }
+				})();
 			}
 		} catch {}
 		setAdvisorPins({});
