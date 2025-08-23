@@ -24,7 +24,7 @@ export default function PlanPage() {
 	const [editAnswers, setEditAnswers] = useState<any>({});
 	const [toast, setToast] = useState<{ msg: string; type: 'success'|'info'|'error' } | null>(null);
 	const [aiViewOn, setAiViewOn] = useState(false);
-	const [aiCache, setAiCache] = useState<Record<string, { buckets: any[]; explanation?: string }>>({});
+	const [aiCache, setAiCache] = useState<Record<string, { buckets: any[]; explanation?: string }>>({}); // ephemeral per session
 	const [aiSummary, setAiSummary] = useState<string | undefined>(undefined);
 	const [answersDrift, setAnswersDrift] = useState(false);
 	const [mode, setMode] = useState<'advisor'|'custom'>('advisor');
