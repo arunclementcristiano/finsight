@@ -14,7 +14,7 @@ import { pruneQuestionnaire, stableAnswersSig } from "../domain/answersUtil";
 import { advisorTune } from "../domain/advisorTune";
 
 export default function PlanPage() {
-	const { plan, setPlan, activePortfolioId, questionnaire, setQuestionAnswer, getCustomDraft, setCustomDraft, getCustomLocks, setCustomLocks } = useApp() as any;
+	const { plan, setPlan, activePortfolioId, questionnaire, setQuestionAnswer, getCustomDraft, setCustomDraft, getCustomLocks, setCustomLocks, getCustomSaved } = useApp() as any;
 	const router = useRouter();
 	const [local, setLocal] = useState<any | null>(plan || null);
 	const [aiLoading, setAiLoading] = useState(false);
@@ -203,8 +203,17 @@ export default function PlanPage() {
 								setAiSummary(undefined);
 							}
 						} else {
-							// custom: reset to last custom draft if present
-							try { if (activePortfolioId) { const draft = getCustomDraft(activePortfolioId); if (draft) setLocal(draft); else setLocal(plan); } } catch { setLocal(plan); }
+							// custom: reset to last custom saved if present, else last draft, else current plan
+							try {
+								if (activePortfolioId) {
+									const saved = getCustomSaved(activePortfolioId);
+									if (saved) setLocal(saved);
+									else {
+										const draft = getCustomDraft(activePortfolioId);
+										if (draft) setLocal(draft); else setLocal(plan);
+									}
+								}
+							} catch { setLocal(plan); }
 						}
 						setAnswersDrift(false); 
 						setAdvisorPins({});
