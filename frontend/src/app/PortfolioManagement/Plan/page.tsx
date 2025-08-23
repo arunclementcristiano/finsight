@@ -453,8 +453,8 @@ export default function PlanPage() {
 				mode={mode}
 				aiDisabled={mode==='custom'}
 				locks={customLocks}
-							onToggleLock={(cls)=> { setLocalCustomLocks(prev=> ({ ...(prev||{}), [cls]: !prev?.[cls] })); try { if (activePortfolioId) setCustomLocks(activePortfolioId, { [cls]: !customLocks?.[cls] }); } catch {} }}
-						/>
+				onToggleLock={(cls)=> { setLocalCustomLocks(prev=> ({ ...(prev||{}), [cls]: !prev?.[cls] })); try { if (activePortfolioId) setCustomLocks(activePortfolioId, { [cls]: !customLocks?.[cls] }); } catch {} }}
+			/>
 			{/* toast temporarily disabled */}
 		</div>
 	);
