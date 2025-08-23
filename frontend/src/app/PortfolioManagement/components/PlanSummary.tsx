@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../..
 import { Button } from "../../components/Button";
 import { useApp } from "../../store";
 import { computeRebalance } from "../domain/rebalance";
-import { LineChart, Layers, Banknote, Coins, Home, Droplet, Edit3, RefreshCw } from "lucide-react";
+import { LineChart, Layers, Banknote, Coins, Home, Droplet, Edit3, RefreshCw, Plus, Minus } from "lucide-react";
 
 export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, onBuildBaseline, aiViewOn, onToggleAiView, aiLoading, aiExplanation, aiSummary, mode, aiDisabled, locks, onToggleLock }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void; onEditAnswers?: () => void; onBuildBaseline?: () => void; aiViewOn?: boolean; onToggleAiView?: () => void; aiLoading?: boolean; aiExplanation?: string; aiSummary?: string; mode?: 'advisor'|'custom'; aiDisabled?: boolean; locks?: Record<string, boolean>; onToggleLock?: (cls: string)=>void }) {
   const { holdings, driftTolerancePct, questionnaire } = useApp() as any;
@@ -76,10 +76,10 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                   <tr>
                     <th className="py-2 px-3 text-muted-foreground">Asset Class</th>
                     <th className="py-2 px-3 text-muted-foreground text-right">Allocation</th>
+                    <th className="py-2 px-3 text-muted-foreground">Adjust</th>
                     <th className="py-2 px-3 text-muted-foreground text-right">Comfort Zone</th>
                     <th className="py-2 px-3 text-muted-foreground">Role</th>
                     <th className="py-2 px-3 text-muted-foreground">Remarks</th>
-                    <th className="py-2 px-3 text-muted-foreground">Adjust</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -87,18 +87,19 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                     <tr key={b.class} className="border-t border-border/50">
                       <td className="py-2 px-3 font-medium"><span className="inline-flex items-center">{(() => { const common = "h-4 w-4 mr-2"; if (b.class === "Stocks") return <LineChart className={common} />; if (b.class === "Mutual Funds") return <Layers className={common} />; if (b.class === "Debt") return <Banknote className={common} />; if (b.class === "Gold") return <Coins className={common} />; if (b.class === "Real Estate") return <Home className={common} />; if (b.class === "Liquid") return <Droplet className={common} />; return <LineChart className={common} />; })()}{b.class}</span></td>
                       <td className="py-2 px-3 text-right">{b.pct}%</td>
-                      <td className="py-2 px-3 text-right">{mode==='custom' ? '—' : displayRange(b.range)}</td>
-                      <td className="py-2 px-3">{b.riskCategory || (b.class === 'Stocks' || b.class === 'Mutual Funds' ? 'Core' : (b.class === 'Gold' || b.class === 'Real Estate' ? 'Satellite' : (b.class === 'Debt' || b.class === 'Liquid' ? 'Defensive' : '')))}</td>
-                      <td className="py-2 px-3">{b.notes || (b.class === 'Stocks' ? 'Growth focus' : b.class === 'Mutual Funds' ? 'Diversified equity' : b.class === 'Debt' ? 'Stability & income' : b.class === 'Liquid' ? 'Emergency buffer' : b.class === 'Gold' ? 'Inflation hedge' : b.class === 'Real Estate' ? 'Long-term asset' : '')}</td>
                       <td className="py-2 px-3">
                         <div className="flex items-center gap-2">
-                          {(() => { const sumLockedOthers = (visibleBuckets||[]).reduce((s:any, x:any)=> s + ((locks?.[x.class] && x.class !== b.class) ? (x.pct||0) : 0), 0); const maxAllowed = Math.max(0, 100 - sumLockedOthers); return (
+                          {(() => { const maxAllowed = 100; return (
                             <>
                               {(() => { const rawBand = (Array.isArray(b.range) ? b.range as [number,number] : [0,100]); const minBound = 0; const maxBound = mode==='custom' ? maxAllowed : 100; return (
-                                <input type="range" step={1} min={minBound} max={maxBound} value={Math.round(b.pct)} disabled={!!aiViewOn || (mode==='custom' && !!locks?.[b.class])} onChange={(e)=>{
-                                   const v = Math.round(Math.max(0, Math.min(mode==='custom' ? maxAllowed : 100, Number(e.target.value)||0)));
-                                   if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
-                                 }} />
+                                <>
+                                  <button className="h-6 w-6 rounded border border-border text-xs disabled:opacity-50" disabled={!!aiViewOn} onClick={()=>{ const current = Math.round(Number(b.pct)||0); const newV = Math.max(0, current - 1); if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), newV); }}>-</button>
+                                  <input type="range" step={1} min={minBound} max={maxBound} value={Math.round(b.pct)} disabled={!!aiViewOn} onChange={(e)=>{
+                                    const v = Math.round(Math.max(0, Math.min(mode==='custom' ? maxAllowed : 100, Number(e.target.value)||0)));
+                                    if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
+                                  }} />
+                                  <button className="h-6 w-6 rounded border border-border text-xs disabled:opacity-50" disabled={!!aiViewOn} onClick={()=>{ const current = Math.round(Number(b.pct)||0); const newV = Math.min(100, current + 1); if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), newV); }}>+</button>
+                                </>
                               ); })()}
                               {mode==='custom' ? (
                                 (()=>{ const current = Math.round(Number(b.pct)||0); const sumOthersAll = ((plan?.buckets||[]) as any[]).reduce((s:any, x:any)=> s + (x.class !== b.class ? (Number(x.pct)||0) : 0), 0); const capValue = Math.max(0, Math.floor(100 - sumOthersAll)); const incAllowed = Math.max(0, capValue - current); return (<span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border border-border text-muted-foreground">+{Math.round(incAllowed)}% free</span>); })()
@@ -107,14 +108,11 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                               )}
                             </>
                           ); })()}
-                          {mode==='custom' ? (
-                            <label className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-                              <input type="checkbox" checked={!!locks?.[b.class]} onChange={()=> onToggleLock && onToggleLock(b.class)} />
-                              Lock
-                            </label>
-                          ) : null}
                         </div>
                       </td>
+                      <td className="py-2 px-3 text-right">{mode==='custom' ? '—' : displayRange(b.range)}</td>
+                      <td className="py-2 px-3">{b.riskCategory || (b.class === 'Stocks' || b.class === 'Mutual Funds' ? 'Core' : (b.class === 'Gold' || b.class === 'Real Estate' ? 'Satellite' : (b.class === 'Debt' || b.class === 'Liquid' ? 'Defensive' : '')))}</td>
+                      <td className="py-2 px-3">{b.notes || (b.class === 'Stocks' ? 'Growth focus' : b.class === 'Mutual Funds' ? 'Diversified equity' : b.class === 'Debt' ? 'Stability & income' : b.class === 'Liquid' ? 'Emergency buffer' : b.class === 'Gold' ? 'Inflation hedge' : b.class === 'Real Estate' ? 'Long-term asset' : '')}</td>
                     </tr>
                   ))}
                 </tbody>
