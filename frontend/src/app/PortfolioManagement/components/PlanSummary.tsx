@@ -100,7 +100,9 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                               }} />
                               {mode==='custom' ? (
                                 <span className="text-[10px] text-muted-foreground">max {Math.round(maxAllowed)}%</span>
-                              ) : null}
+                              ) : (
+                                (()=>{ const sumOthers = (visibleBuckets||[]).reduce((s:any, x:any)=> s + (x.class !== b.class ? (x.pct||0) : 0), 0); const globalHead = Math.max(0, 100 - sumOthers); const bandMax = Math.round(Array.isArray(b.range) ? b.range[1] : 100); const incHead = Math.max(0, Math.min(bandMax - (b.pct||0), globalHead)); return (<span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border border-border text-muted-foreground">+{Math.round(incHead)}% left</span>); })()
+                              )}
                             </>
                           ); })()}
                           {mode==='custom' ? (
