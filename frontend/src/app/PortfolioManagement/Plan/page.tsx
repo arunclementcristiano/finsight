@@ -30,6 +30,7 @@ export default function PlanPage() {
 	const [mode, setMode] = useState<'advisor'|'custom'>('advisor');
 	const [customLocks, setLocalCustomLocks] = useState<Record<string, boolean>>({});
 	const [advisorPins, setAdvisorPins] = useState<Record<string, boolean>>({});
+	const [unsavedHint, setUnsavedHint] = useState(false);
 
 	useEffect(() => {
 		if (!toast) return;
@@ -111,6 +112,7 @@ export default function PlanPage() {
 				if (cancelled) return;
 				if (srv) {
 					setPlan(srv);
+					setUnsavedHint(false);
 					const origin = (srv as any)?.origin;
 					if (origin === 'custom') {
 						// Prefer saved custom snapshot; fallback to canonical
@@ -135,7 +137,7 @@ export default function PlanPage() {
 				}
 				// No saved plan yet; compute baseline
 				const baseline = buildPlan(questionnaire);
-				if (!cancelled) { setLocal(baseline); setPlan(baseline as any); setMode('advisor'); setAiViewOn(false); }
+				if (!cancelled) { setLocal(baseline); setPlan(baseline as any); setMode('advisor'); setAiViewOn(false); setUnsavedHint(true); }
 			} catch {}
 		})();
 		return () => { cancelled = true; };
@@ -299,13 +301,13 @@ export default function PlanPage() {
 							else { (useApp.getState() as any).setAdvisorSaved(activePortfolioId, planToSave); }
 						} } catch {}
 						setToast({ msg: 'Plan saved', type: 'success' });
-						}}>
-							<span className="inline-flex items-center gap-2">
-								<span>Save Plan</span>
-								{(() => { const pruneAlloc = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))}); const snapshot = pruneQuestionnaire(questionnaire); const answersDirty = makeAnswersSig(snapshot) !== (((plan as any)?.answersSig) || ""); const allocDirty = !!(local && plan && JSON.stringify(pruneAlloc(local)) !== JSON.stringify(pruneAlloc(plan))); const originDirty = (mode === 'custom' && ((plan as any)?.origin !== 'custom')); const dirty = answersDirty || allocDirty || originDirty; return dirty ? (<span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">changes</span>) : null; })()}
-							</span>
-						</Button>
-					</div>
+						setUnsavedHint(false);
+					}}>
+						<span className="inline-flex items-center gap-2">
+							<span>Save Plan</span>
+							{(() => { const pruneAlloc = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))}); const snapshot = pruneQuestionnaire(questionnaire); const answersDirty = makeAnswersSig(snapshot) !== (((plan as any)?.answersSig) || ""); const allocDirty = !!(local && plan && JSON.stringify(pruneAlloc(local)) !== JSON.stringify(pruneAlloc(plan))); const originDirty = (mode === 'custom' && ((plan as any)?.origin !== 'custom')); const dirty = answersDirty || allocDirty || originDirty; return dirty ? (<span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">changes</span>) : null; })()}
+						</span>
+					</Button>
 				</div>
 			</div>
 
