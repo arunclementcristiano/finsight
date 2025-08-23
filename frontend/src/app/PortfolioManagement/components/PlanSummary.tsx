@@ -94,7 +94,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                         <div className="flex items-center gap-2">
                           {(() => { const sumLockedOthers = (visibleBuckets||[]).reduce((s:any, x:any)=> s + ((locks?.[x.class] && x.class !== b.class) ? (x.pct||0) : 0), 0); const maxAllowed = Math.max(0, 100 - sumLockedOthers); return (
                             <>
-                              {(() => { const rawBand = (Array.isArray(b.range) ? b.range as [number,number] : [0,100]); const bandMin = Math.round(rawBand[0]||0); const bandMax = Math.round(rawBand[1]||100); const minBound = mode==='custom' ? 0 : bandMin; const maxBound = mode==='custom' ? maxAllowed : bandMax; return (
+                              {(() => { const rawBand = (Array.isArray(b.range) ? b.range as [number,number] : [0,100]); const minBound = 0; const maxBound = mode==='custom' ? maxAllowed : 100; return (
                                 <input type="range" step={1} min={minBound} max={maxBound} value={Math.round(b.pct)} disabled={!!aiViewOn || (mode==='custom' && !!locks?.[b.class])} onChange={(e)=>{
                                    const v = Math.round(Math.max(0, Math.min(mode==='custom' ? maxAllowed : 100, Number(e.target.value)||0)));
                                    if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
