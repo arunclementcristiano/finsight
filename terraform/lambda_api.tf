@@ -11,6 +11,18 @@ variable "groq_api_key" {
   sensitive   = true
 }
 
+variable "cognito_user_pool_id" {
+  type        = string
+  description = "Existing Cognito User Pool ID for JWT authorizer (leave blank to disable auth on protected routes)"
+  default     = ""
+}
+
+variable "cognito_audience" {
+  type        = list(string)
+  description = "JWT audiences (e.g., app client IDs)"
+  default     = []
+}
+
 data "archive_file" "lambda_zip" {
   type        = "zip"
   source_dir  = "${path.root}/../backend/lambda/expenses-api-py"
@@ -47,7 +59,9 @@ resource "aws_iam_role_policy" "lambda_ddb_access" {
       Resource: [
         aws_dynamodb_table.expenses.arn,
         aws_dynamodb_table.category_rules.arn,
-        aws_dynamodb_table.user_budgets.arn
+        aws_dynamodb_table.user_budgets.arn,
+        aws_dynamodb_table.invest.arn,
+        "${aws_dynamodb_table.invest.arn}/index/*"
       ]
     }]
   })
@@ -69,6 +83,7 @@ resource "aws_lambda_function" "expenses" {
       CATEGORY_RULES_TABLE     = aws_dynamodb_table.category_rules.name
       USER_BUDGETS_TABLE       = aws_dynamodb_table.user_budgets.name
       GROQ_MODEL               = "llama-3.1-8b-instant"
+      INVEST_TABLE             = aws_dynamodb_table.invest.name
     }
   }
 }
@@ -83,6 +98,18 @@ resource "aws_apigatewayv2_api" "http" {
   }
 }
 
+resource "aws_apigatewayv2_authorizer" "jwt" {
+  count              = length(var.cognito_user_pool_id) > 0 && length(var.cognito_audience) > 0 ? 1 : 0
+  api_id             = aws_apigatewayv2_api.http.id
+  name               = "jwt-authorizer"
+  authorizer_type    = "JWT"
+  identity_sources   = ["$request.header.Authorization"]
+  jwt_configuration {
+    audience = var.cognito_audience
+    issuer   = "https://cognito-idp.${var.aws_region}.amazonaws.com/${var.cognito_user_pool_id}"
+  }
+}
+
 resource "aws_apigatewayv2_integration" "lambda" {
   api_id                 = aws_apigatewayv2_api.http.id
   integration_type       = "AWS_PROXY"
@@ -90,7 +117,7 @@ resource "aws_apigatewayv2_integration" "lambda" {
   payload_format_version = "2.0"
 }
 
-resource "aws_apigatewayv2_route" "routes" {
+resource "aws_apigatewayv2_route" "routes_public" {
   for_each = toset([
     "POST /add",
     "PUT /add",
@@ -105,6 +132,24 @@ resource "aws_apigatewayv2_route" "routes" {
   api_id    = aws_apigatewayv2_api.http.id
   route_key = each.value
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "routes_protected" {
+  for_each = toset([
+    "POST /portfolio",
+    "GET /portfolio",
+    "PUT /portfolio/plan",
+    "GET /portfolio/plan",
+    "POST /holdings",
+    "GET /holdings",
+    "POST /transactions",
+    "GET /transactions"
+  ])
+  api_id             = aws_apigatewayv2_api.http.id
+  route_key          = each.value
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = length(var.cognito_user_pool_id) > 0 && length(var.cognito_audience) > 0 ? "JWT" : "NONE"
+  authorizer_id      = length(var.cognito_user_pool_id) > 0 && length(var.cognito_audience) > 0 ? aws_apigatewayv2_authorizer.jwt[0].id : null
 }
 
 resource "aws_lambda_permission" "apigw_invoke" {

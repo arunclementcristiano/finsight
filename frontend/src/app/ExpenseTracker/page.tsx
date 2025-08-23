@@ -46,7 +46,7 @@ export default function ExpenseTrackerPage() {
   const [allCategories, setAllCategories] = useState<string[]>([]);
   const [overridesByMonth, setOverridesByMonth] = useState<Record<string, Record<string, number>>>({});
   // Insights controls
-  const [insightsPreset, setInsightsPreset] = useState<"today"|"week"|"month"|"custom">("month");
+  const [insightsPreset, setInsightsPreset] = useState<"today"|"week"|"month"|"lastMonth"|"custom">("month");
   const [insightsStart, setInsightsStart] = useState<string>("");
   const [insightsEnd, setInsightsEnd] = useState<string>("");
   const [insightsOverOnly, setInsightsOverOnly] = useState(false);
@@ -114,11 +114,12 @@ export default function ExpenseTrackerPage() {
     (async () => {
       try {
         const base = await (await fetch(`/api/categories`)).json();
-        const fromExpenses = Array.from(new Set(expenses.map(e=> String(e.category || "Other"))));
+        const fromExpenses = Array.from(new Set(expenses.map((e: Expense)=> String(e.category || "Other"))));
         const union = Array.from(new Set<string>([...(base.categories||[]), ...fromExpenses])).sort((a,b)=> a.localeCompare(b));
         setAllCategories(union);
       } catch {
-        const fromExpenses = Array.from(new Set(expenses.map(e=> String(e.category || "Other")))).sort((a,b)=> a.localeCompare(b));
+        const fromExpenses: string[] = Array.from(new Set(expenses.map((e: Expense)=> String(e.category || "Other"))));
+        fromExpenses.sort((a, b) => a.localeCompare(b));
         setAllCategories(fromExpenses);
       }
     })();
@@ -127,7 +128,7 @@ export default function ExpenseTrackerPage() {
     (async () => {
       try {
         const base = await (await fetch(`/api/categories`)).json();
-        const fromExpenses = Array.from(new Set(expenses.map(e=> String(e.category || "Other"))));
+        const fromExpenses = Array.from(new Set(expenses.map((e: Expense)=> String(e.category || "Other"))));
         const union = Array.from(new Set<string>([...(base.categories||[]), ...fromExpenses])).sort((a,b)=> a.localeCompare(b));
         (useApp.getState() as any);
       } catch {}
@@ -343,7 +344,7 @@ export default function ExpenseTrackerPage() {
   }, [monthlySummary, monthFilter]);
 
   const sortedExpenses = useMemo(() => {
-    const rows = expenses.slice().filter(e => {
+    const rows = expenses.slice().filter((e: Expense) => {
       if (preset === "all") return true;
       const d = toLocalDateOnly(e.date as any);
       const sod = (dt: Date) => { const x = new Date(dt); x.setHours(0,0,0,0); return x; };
@@ -363,7 +364,7 @@ export default function ExpenseTrackerPage() {
       if (end && d >= endExclusive(end)) return false;
       return true;
     });
-    rows.sort((a, b) => {
+    rows.sort((a: Expense, b: Expense) => {
       let cmp = 0;
       if (sortField === "createdAt") {
         const aKey = (a as any).createdAt ? new Date((a as any).createdAt as string).getTime() : toLocalDateOnly(a.date as any).getTime();
@@ -572,7 +573,7 @@ export default function ExpenseTrackerPage() {
                 </tr>
               </thead>
               <tbody>
-                {pageRows.map(e => (
+                {pageRows.map((e: Expense) => (
                   <tr key={e.id} className="border-b align-top">
                     <td className="px-3 py-2">{fmtDateYYYYMMDDLocal(e.date as any)}</td>
                     <td className="px-3 py-2">{e.text}</td>
@@ -1143,7 +1144,7 @@ export default function ExpenseTrackerPage() {
                 else if (exportPreset === 'custom') { start = exportStart ? new Date(exportStart) : undefined; end = exportEnd ? new Date(exportEnd) : undefined; }
                 const startS = start ? sod(start) : undefined;
                 const endE = end ? endExclusive(end) : undefined;
-                const filtered = expenses.filter(e => {
+                const filtered = expenses.filter((e: Expense) => {
                   const d0 = new Date(e.date as any);
                   const d = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate());
                   if (startS && d < startS) return false;
