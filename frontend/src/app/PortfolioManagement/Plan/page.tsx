@@ -222,9 +222,7 @@ export default function PlanPage() {
 								{mode==='advisor' ? <span className="text-[10px] opacity-80">Recommended</span> : null}
 							</div>
 						</Button>
-						<Button size="sm" variant="outline" className={`rounded-none ${mode==='custom' ? 'bg-rose-600 text-white border-rose-600' : ''}`} onClick={()=>{ setMode('custom'); setAiViewOn(false); try { if (activePortfolioId) { const draft = getCustomDraft(activePortfolioId); if (draft) { setLocal(draft); const locks = getCustomLocks(activePortfolioId); if (locks) setLocalCustomLocks(locks); } else { // seed once from current advisor mix
-								const seed = local || buildPlan(questionnaire); setLocal(seed); }
-							} } catch {} }}>
+						<Button size="sm" variant="outline" className={`rounded-none ${mode==='custom' ? 'bg-rose-600 text-white border-rose-600' : ''}`} onClick={()=>{ setMode('custom'); setAiViewOn(false); (async ()=>{ try { if (activePortfolioId) { const rc = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}&variant=custom`); const dc = await rc.json(); if (dc?.plan?.buckets) { setLocal(dc.plan); } else { const ra = await fetch(`/api/portfolio/plan?portfolioId=${activePortfolioId}`); const da = await ra.json(); if (da?.plan?.buckets) setLocal(da.plan); else setLocal(buildPlan(questionnaire)); } const locks = getCustomLocks(activePortfolioId); if (locks) setLocalCustomLocks(locks); } } catch {} })(); }}>
 							<div className="flex flex-col items-start leading-tight">
 								<div className="flex items-center gap-1">
 									<span>Custom</span>
