@@ -30,7 +30,6 @@ export default function PlanPage() {
 	const [mode, setMode] = useState<'advisor'|'custom'>('advisor');
 	const [customLocks, setLocalCustomLocks] = useState<Record<string, boolean>>({});
 	const [advisorPins, setAdvisorPins] = useState<Record<string, boolean>>({});
-	const [unsavedHint, setUnsavedHint] = useState(false);
 
 	useEffect(() => {
 		if (!toast) return;
@@ -112,7 +111,6 @@ export default function PlanPage() {
 				if (cancelled) return;
 				if (srv) {
 					setPlan(srv);
-					setUnsavedHint(false);
 					const origin = (srv as any)?.origin;
 					if (origin === 'custom') {
 						// Prefer saved custom snapshot; fallback to canonical
@@ -137,7 +135,7 @@ export default function PlanPage() {
 				}
 				// No saved plan yet; compute baseline
 				const baseline = buildPlan(questionnaire);
-				if (!cancelled) { setLocal(baseline); setPlan(baseline as any); setMode('advisor'); setAiViewOn(false); setUnsavedHint(true); }
+				if (!cancelled) { setLocal(baseline); setPlan(baseline as any); setMode('advisor'); setAiViewOn(false); }
 			} catch {}
 		})();
 		return () => { cancelled = true; };
@@ -284,7 +282,8 @@ export default function PlanPage() {
 							const snapshot = pruneQuestionnaire(questionnaire);
 							const answersDirty = makeAnswersSig(snapshot) !== (((plan as any)?.answersSig) || "");
 							const allocDirty = !!(local && plan && JSON.stringify(pruneAlloc(local)) !== JSON.stringify(pruneAlloc(plan)));
-							const dirty = answersDirty || allocDirty || (mode === 'custom' && ((plan as any)?.origin !== 'custom'));
+							const originDirty = (mode === 'custom' && ((plan as any)?.origin !== 'custom'));
+							const dirty = answersDirty || allocDirty || originDirty;
 							if (!dirty) { setToast({ msg: 'No changes to save', type: 'info' }); return; }
 							if (!activePortfolioId || !local) return;
 							const origin = mode === 'custom' ? 'custom' : (aiViewOn ? 'ai' : 'engine');
@@ -301,7 +300,6 @@ export default function PlanPage() {
 							else { (useApp.getState() as any).setAdvisorSaved(activePortfolioId, planToSave); }
 						} } catch {}
 						setToast({ msg: 'Plan saved', type: 'success' });
-						setUnsavedHint(false);
 					}}>
 						<span className="inline-flex items-center gap-2">
 							<span>Save Plan</span>
