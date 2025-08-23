@@ -193,6 +193,16 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
       <style jsx>{`
         @keyframes shake { 10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(2px); } 30%, 50%, 70% { transform: translateX(-4px); } 40%, 60% { transform: translateX(4px); } }
         .animate-shake { animation: shake 0.3s linear; }
+        .range-line { -webkit-appearance: none; appearance: none; height: 6px; background: transparent; outline: none; }
+        .range-line:focus { outline: none; }
+        .range-line::-webkit-slider-runnable-track { height: 6px; background: var(--muted, rgba(120,120,120,0.18)); border-radius: 9999px; }
+        .range-line::-moz-range-track { height: 6px; background: var(--muted, rgba(120,120,120,0.18)); border-radius: 9999px; }
+        .range-line::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: #4f46e5; border-radius: 9999px; border: 2px solid white; margin-top: -5px; box-shadow: 0 0 0 1px rgba(0,0,0,0.06); }
+        .range-line:disabled::-webkit-slider-thumb { background: #a1a1aa; }
+        .range-line::-moz-range-thumb { width: 16px; height: 16px; background: #4f46e5; border: 2px solid white; border-radius: 9999px; box-shadow: 0 0 0 1px rgba(0,0,0,0.06); }
+        .range-line:disabled::-moz-range-thumb { background: #a1a1aa; }
+        .range-line:hover::-webkit-slider-thumb { background: #6366f1; }
+        .range-line:hover::-moz-range-thumb { background: #6366f1; }
       `}</style>
     </div>
   );
