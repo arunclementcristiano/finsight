@@ -631,10 +631,11 @@ export default function ExpenseTrackerPage() {
                   : 'bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 border-blue-200 dark:border-blue-800 hover:shadow-lg'
               }`}
             >
-              {privacy ? 
-                <EyeOff className="h-5 w-5 xl:h-4 xl:w-4 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform"/> : 
+              {privacy ? (
+                <EyeOff className="h-5 w-5 xl:h-4 xl:w-4 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform"/>
+              ) : (
                 <Eye className="h-5 w-5 xl:h-4 xl:w-4 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform"/>
-              }
+              )}
               <span className={`text-xs xl:text-sm font-medium ${
                 privacy ? 'text-amber-700 dark:text-amber-300' : 'text-blue-700 dark:text-blue-300'
               }`}>
