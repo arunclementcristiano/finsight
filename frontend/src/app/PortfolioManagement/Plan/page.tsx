@@ -286,10 +286,11 @@ export default function PlanPage() {
 					const changedClass = next.buckets[idx].class as any;
 					const baseline = buildPlan(questionnaire);
 					const baseBucket = (baseline?.buckets||[]).find((b:any)=> b.class === changedClass);
-					const band: [number, number] = (baseBucket?.range as [number,number]) || [0,100];
-					const currentVal = Number(next.buckets[idx].pct) || 0;
-					const sumOthers = (next.buckets||[]).reduce((s:number,b:any,i:number)=> i===idx ? s : s + (Number(b.pct)||0), 0);
-					const maxByTotal = Math.max(0, 100 - sumOthers);
+					const rawBand: [number, number] = (baseBucket?.range as [number,number]) || [0,100];
+					const band: [number, number] = [Math.round(rawBand[0]||0), Math.round(rawBand[1]||100)];
+					const currentVal = Math.round(Number(next.buckets[idx].pct) || 0);
+					const sumOthers = Math.round((next.buckets||[]).reduce((s:number,b:any,i:number)=> i===idx ? s : s + (Number(b.pct)||0), 0));
+					const maxByTotal = Math.max(0, Math.floor(100 - sumOthers));
 					let target = Math.round(Number(newPct) || 0);
 					const increasing = target > currentVal;
 					if (increasing) {
@@ -302,8 +303,8 @@ export default function PlanPage() {
 					} else {
 						target = Math.max(target, band[0]);
 					}
-					// final clamp to band
-					target = Math.max(band[0], Math.min(band[1], target));
+					// final integer clamp to band
+					target = Math.round(Math.max(band[0], Math.min(band[1], target)));
 					if (increasing && target < Math.round(Number(newPct)||0)) setToast({ msg: 'No free capacity left', type: 'info' });
 					next.buckets[idx] = { ...next.buckets[idx], pct: target };
 					setLocal(next);
