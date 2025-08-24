@@ -256,13 +256,20 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
 
   // Structured explainability (lightweight)
   const explainPer: Record<string, Array<{ driver: string; effectPct: number }>> = {};
-  const push = (k: string, d: string, e: number)=> { if (!explainPer[k]) explainPer[k] = []; if (e !== 0) explainPer[k].push({ driver: d, effectPct: Math.round(e) }); };
+  const push = (k: string, d: string, e: number)=> { if (!explainPer[k]) explainPer[k] = []; if (Number.isFinite(e) && e !== 0) explainPer[k].push({ driver: d, effectPct: Math.round(e) }); };
   // Example drivers (illustrative from ans)
   try {
     const eqNow = (alloc as any).Stocks + (alloc as any)["Mutual Funds"]; const baseEq = 55; push('Stocks', 'Risk profile composite', eqNow - baseEq); push('Mutual Funds', 'Risk profile composite', 0);
     if ((q as any).horizon === 'Short (<3 yrs)') { push('Debt', 'Short horizon safety', +5); push('Liquid', 'Short horizon liquidity', +5); }
     if ((q as any).liabilities === 'High') { push('Debt', 'High liabilities safety', +3); }
     if ((q as any).avoidAssets && ((q as any).avoidAssets||[]).includes('Gold')) { push('Gold', 'Avoided asset', -((alloc as any).Gold||0)); }
+    // Ingest internal engine _drivers if present
+    const internal = (alloc as any)._drivers || [];
+    for (const d of internal) {
+      const tgt = String(d.to||'').includes('Equity') ? 'Stocks' : (String(d.to||'Mutual Funds'));
+      const val = Number(d.effectPct);
+      if (Number.isFinite(val)) push(tgt, String(d.factor||'engine'), val);
+    }
   } catch {}
   const topDrivers = Object.values(explainPer).flat().sort((a,b)=> Math.abs(b.effectPct) - Math.abs(a.effectPct)).slice(0, 5);
 

@@ -485,15 +485,6 @@ export function suggestAllocation(ans: Answers): Allocation {
     Liquid: (base.Liquid * 100) / sum,
   };
   const rounded = largestRemainderRound(normalized);
-  try {
-    const scale = 100 / (sum || 1);
-    const driversFinal = (drivers||[]).map(d => {
-      const v = Number(d.effectPct);
-      const safe = Number.isFinite(v) ? Math.round(v * scale) : 0;
-      return { ...d, effectPct: safe };
-    });
-    (rounded as any)._drivers = driversFinal;
-  } catch { (rounded as any)._drivers = []; }
   return rounded;
 }
 
