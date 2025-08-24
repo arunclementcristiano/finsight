@@ -180,6 +180,11 @@ export function suggestAllocation(ans: Answers): Allocation {
   const ageYoung = ans.ageBand === "18–30" || ans.ageBand === "31–45" || ans.ageBand === "46–60";
   const longHor = ans.horizon === "Long (>7 yrs)";
   const highCapacity = ans.riskAppetite === "High" && ageYoung && longHor && ans.liabilities !== "High" && ans.dependents !== "3+";
+  // Extra liquid for near-term expense when liabilities are moderate/high (term-based effect)
+  const nearExpense = ans.bigExpenseTimeline === "<12 months" || ans.bigExpenseTimeline === "12–36 months";
+  if (nearExpense && (ans.liabilities === "Moderate" || ans.liabilities === "High")) {
+    liqMin += (ans.liabilities === "High" ? 3 : 2);
+  }
   if (hasEF && noNearTerm && highCapacity) {
     liqMin = Math.min(liqMin, 6);
   }
@@ -205,9 +210,13 @@ export function suggestAllocation(ans: Answers): Allocation {
   const capByDD: Record<Answers["maxDrawdownTolerance"], number> = { "5%": 30, "10%": 45, "20%": 65, "30%+": 90 };
   const capByAge: Record<Answers["ageBand"], number> = { "18–30": 60, "31–45": 58, "46–60": 55, "60+": 50 };
   const strictCap = (ans.horizon === "Short (<3 yrs)" || ans.bigExpenseTimeline === "<12 months" || ans.bigExpenseTimeline === "12–36 months" || ans.financialGoal === "Major purchase") ? 30 : 100;
+  // Capacity caps by liabilities/dependents (term-aware capacity dampener)
+  const capByLiab: Record<Answers["liabilities"], number> = { None: 75, Low: 70, Moderate: 60, High: 55 };
+  const capByDeps: Record<Answers["dependents"], number> = { "None": 100, "1": 95, "2": 90, "3+": 85 };
   const eqCapDD = capByDD[ans.maxDrawdownTolerance];
   const eqCapAge = capByAge[ans.ageBand];
-  const eqCap = Math.min(eqCapDD, eqCapAge, strictCap);
+  const eqCapCapac = Math.min(capByLiab[ans.liabilities], capByDeps[ans.dependents]);
+  const eqCap = Math.min(eqCapDD, eqCapAge, strictCap, eqCapCapac);
   let eqNow = base.Stocks + base["Mutual Funds"];
   if (eqNow > eqCap) {
     const reduce = eqNow - eqCap;
