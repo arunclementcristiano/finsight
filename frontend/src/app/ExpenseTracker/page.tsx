@@ -38,6 +38,9 @@ export default function ExpenseTrackerPage() {
   const [privacy, setPrivacy] = useState(false);
   const [activeTab, setActiveTab] = useState<"data" | "insights">("data");
   const [showBudgetsModal, setShowBudgetsModal] = useState(false);
+  const [expandedExpenses, setExpandedExpenses] = useState<Set<string>>(new Set());
+  const [expandedBudgets, setExpandedBudgets] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(false);
   const [tempDefaultBudgets, setTempDefaultBudgets] = useState<Record<string, number>>({});
   const [tempOverrideBudgets, setTempOverrideBudgets] = useState<Record<string, number>>({});
   const [draftBudgets, setDraftBudgets] = useState<Record<string, number>>({});
@@ -451,22 +454,51 @@ export default function ExpenseTrackerPage() {
   function next() { setPage(p => Math.min(totalPages, p + 1)); }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-5rem)] overflow-hidden">
-      {/* Sticky Command Bar */}
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
-        <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-4 p-4">
-          {/* Chat input */}
-          <div>
-            <form onSubmit={handleSubmit} className="flex gap-2 items-center">
-              <input ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} className="flex-1 h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]" placeholder="e.g., Lunch 250 at restaurant"/>
-              <button type="button" aria-label="Set date" title="Set date" onClick={()=> setDateOpen(o=>!o)} className={`h-11 w-11 inline-flex items-center justify-center rounded-xl border ${dateOpen ? 'border-emerald-400 text-emerald-600' : 'border-border text-muted-foreground'} bg-card hover:bg-muted focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]`}>
-                <Calendar className="h-4 w-4" />
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Clean Modern Header */}
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-4 py-4">
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+            <span className="text-2xl mr-2">💰</span>
+            Expense Tracker
+          </h1>
+          
+          {/* Simple Add Form */}
+          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 mb-4">
+            <div className="flex-1">
+              <input 
+                ref={inputRef} 
+                value={input} 
+                onChange={e=>setInput(e.target.value)} 
+                className="w-full h-12 px-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Type: Coffee 150, Groceries 2500"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button 
+                type="button" 
+                onClick={()=> setDateOpen(!dateOpen)} 
+                className={`h-12 px-4 border rounded-lg transition-colors ${dateOpen ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'border-gray-300 dark:border-gray-600 text-gray-500 hover:border-gray-400'}`}
+              >
+                <Calendar className="h-5 w-5" />
               </button>
               {dateOpen && (
-                <input type="date" value={selectedDate} onChange={(e)=> setSelectedDate(e.target.value)} className="h-11 rounded-xl border border-border px-3 bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]" />
+                <input 
+                  type="date" 
+                  value={selectedDate} 
+                  onChange={(e)=> setSelectedDate(e.target.value)} 
+                  className="h-12 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
               )}
-              <Button type="submit">Add Expense</Button>
-            </form>
+              <Button 
+                type="submit"
+                disabled={loading || !input.trim()}
+                className="h-12 px-6 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg disabled:opacity-50"
+              >
+                {loading ? "Adding..." : "Add"}
+              </Button>
+            </div>
+          </form>
             {ai && (
               <div className="mt-3 rounded-xl border border-border p-3 text-sm space-y-2">
                 <div>Suggested: <span className="font-semibold">{ai.category}</span> {ai.AIConfidence ? `(conf ${Math.round((ai.AIConfidence||0)*100)}%)` : ""}</div>
