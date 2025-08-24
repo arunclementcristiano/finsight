@@ -368,7 +368,7 @@ export function suggestAllocation(ans: Answers): Allocation {
     base.Gold -= reduce;
     // Prefer adding to equity up to cap, else to Debt
     let eqNow2 = base.Stocks + base["Mutual Funds"];
-    const eqRoom = Math.max(0, 60 - eqNow2);
+    const eqRoom = Math.max(0, eqCap - eqNow2);
     if (eqRoom > 0) {
       const addEq = Math.min(reduce, eqRoom);
       const eqTotal = base.Stocks + base["Mutual Funds"];
