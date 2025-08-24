@@ -28,6 +28,7 @@ export default function ExpenseTrackerPage() {
   const [customStart, setCustomStart] = useState<string>("");
   const [customEnd, setCustomEnd] = useState<string>("");
 
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [dateOpen, setDateOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     const d = new Date();
@@ -1303,8 +1304,8 @@ export default function ExpenseTrackerPage() {
         <div className="flex-1 overflow-auto">
           {activeTab === "data" ? (
             <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-4 p-4 h-full">
-            {/* Data Table */}
-            <Card className="flex flex-col">
+              {/* Data Table */}
+              <Card className="flex flex-col">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
@@ -1451,7 +1452,7 @@ export default function ExpenseTrackerPage() {
             </Card>
 
             {/* Sidebar */}
-            <div className="space-y-4">
+              <div className="space-y-4">
               {/* Quick Stats */}
               <Card>
                 <CardHeader>
@@ -1545,8 +1546,9 @@ export default function ExpenseTrackerPage() {
                 </Card>
               )}
             </div>
+            </div>
           ) : (
-            {/* Desktop Insights Tab */}
+            
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 p-4">
               {/* Category Share */}
               <Card>
