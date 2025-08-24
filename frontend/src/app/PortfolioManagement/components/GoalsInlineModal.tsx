@@ -4,7 +4,7 @@ import { Button } from "../../components/Button";
 import { useApp } from "../../store";
 import { CalendarDays, Shield, AlertCircle, Trash2 } from "lucide-react";
 
-export default function GoalsInlineModal({ open, onClose }: { open: boolean; onClose: ()=>void }) {
+export default function GoalsInlineModal({ open, onClose, onChanged }: { open: boolean; onClose: ()=>void; onChanged?: ()=>void }) {
 	const { activePortfolioId, getConstraints, setConstraints } = useApp() as any;
 	const c = getConstraints?.(activePortfolioId || "") || {};
 	const [goals, setGoals] = useState<any[]>([]);
@@ -41,6 +41,7 @@ export default function GoalsInlineModal({ open, onClose }: { open: boolean; onC
 			if (!res.ok) throw new Error('Failed to save');
 			setGName(""); setGAmount(""); setGDate(""); setGPriority("Medium"); setGStatus("Active");
 			await loadGoals();
+			onChanged?.();
 		} catch (e:any) { setError(String(e?.message||e)); } finally { setLoading(false); }
 	}
 
@@ -48,6 +49,7 @@ export default function GoalsInlineModal({ open, onClose }: { open: boolean; onC
 		if (!activePortfolioId) return;
 		await fetch(`/api/portfolio/goals?portfolioId=${activePortfolioId}&goalId=${id}`, { method: 'DELETE' });
 		await loadGoals();
+		onChanged?.();
 	}
 
 	async function updateGoalStatus(id: string, status: string) {
@@ -56,6 +58,7 @@ export default function GoalsInlineModal({ open, onClose }: { open: boolean; onC
 		const body = { portfolioId: activePortfolioId, goal: { ...g, status } };
 		await fetch('/api/portfolio/goals', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 		await loadGoals();
+		onChanged?.();
 	}
 
 	const kpis = useMemo(()=> ({ efMonths: Number(c.efMonths||0), liquidity: { amount: Number(c.liquidityAmount||0), months: Number(c.liquidityMonths||0) } }), [c]);

@@ -228,9 +228,6 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
               <CardTitle className="text-base">Rebalancing Suggestions</CardTitle>
               <CardDescription className="text-xs">Based on drift tolerance of {driftTolerancePct}%</CardDescription>
             </div>
-            <div>
-              <Button size="sm" variant="outline" onClick={()=> setRebalanceOpen(true)}>Rebalance</Button>
-            </div>
           </div>
         </CardHeader>
         <CardContent className="pt-0">
@@ -312,7 +309,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
           {proposal?.rationale ? <div className="text-[11px] text-muted-foreground">{proposal.rationale}</div> : null}
         </div>
       </Modal>
-      <GoalsInlineModal open={goalsOpen} onClose={()=> setGoalsOpen(false)} />
+      <GoalsInlineModal open={goalsOpen} onClose={()=> setGoalsOpen(false)} onChanged={()=>{ try { const e = new Event('goals-updated'); window.dispatchEvent(e); } catch {} }} />
       <style jsx>{`
         @keyframes shake { 10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(2px); } 30%, 50%, 70% { transform: translateX(-4px); } 40%, 60% { transform: translateX(4px); } }
         .animate-shake { animation: shake 0.3s linear; }

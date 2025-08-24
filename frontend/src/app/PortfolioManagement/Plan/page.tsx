@@ -437,6 +437,21 @@ export default function PlanPage() {
 		return { ...(next||{}), buckets: rounded };
 	}
 
+	useEffect(() => {
+		function onGoalsUpdated() {
+			try {
+				if (mode === 'advisor') {
+					const allocation = buildPlan(questionnaire);
+					setLocal(allocation);
+					setAiViewOn(false);
+					setAiSummary(undefined);
+				}
+			} catch {}
+		}
+		try { window.addEventListener('goals-updated', onGoalsUpdated as any); } catch {}
+		return () => { try { window.removeEventListener('goals-updated', onGoalsUpdated as any); } catch {} };
+	}, [mode, questionnaire]);
+
 	if (!plan) {
 		return (
 			<div className="max-w-3xl mx-auto">
