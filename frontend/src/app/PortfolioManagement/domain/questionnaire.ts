@@ -49,12 +49,6 @@ export const questions = [
     optional: true
   },
   {
-    key: "withdrawNext2Yrs",
-    text: "Liquidity Needs: Do you expect to withdraw in the next 1–2 years?",
-    options: ["Yes", "No"],
-    helperText: "Caps illiquid exposure and boosts cash if yes."
-  },
-  {
     key: "emergencyFundSixMonths",
     text: "Emergency Fund: Do you already have at least 6 months saved?",
     options: ["Yes", "No"],

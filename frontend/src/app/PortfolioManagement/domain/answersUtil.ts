@@ -7,7 +7,6 @@ export const ALLOWED_QUESTION_KEYS = [
 	"volatilityComfort",
 	"financialGoal",
 	"investmentKnowledge",
-	"withdrawNext2Yrs",
 	"emergencyFundSixMonths",
 	"insuranceCoverage",
 	"taxPreference",
