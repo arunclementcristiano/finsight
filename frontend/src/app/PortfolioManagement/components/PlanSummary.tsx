@@ -32,6 +32,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
   const [signalsExpanded, setSignalsExpanded] = useState(false);
   const [stressTestExpanded, setStressTestExpanded] = useState(false);
   const [rationaleExpanded, setRationaleExpanded] = useState(false);
+  const [rebalanceExpanded, setRebalanceExpanded] = useState(false);
 
   useEffect(()=>{
     let ignore = false;
@@ -306,37 +307,70 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
         </CardContent>
       </Card>
 
+      {/* Enhanced Why This Mix - Right after allocation table */}
+      {plan?.rationale && typeof plan.rationale === 'string' && plan.rationale.length > 100 && (
+        <Card className="mt-4">
+          <CardHeader 
+            className="cursor-pointer" 
+            onClick={() => setRationaleExpanded(!rationaleExpanded)}
+          >
+            <CardTitle className="text-sm flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <LineChart className="h-4 w-4 text-blue-500" />
+                Why This Mix?
+              </div>
+              {rationaleExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </CardTitle>
+          </CardHeader>
+          {rationaleExpanded && (
+            <CardContent>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {plan.rationale}
+              </p>
+            </CardContent>
+          )}
+        </Card>
+      )}
+
       <Card>
-        <CardHeader className="py-2">
+        <CardHeader 
+          className="py-2 cursor-pointer" 
+          onClick={() => setRebalanceExpanded(!rebalanceExpanded)}
+        >
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-base">Rebalancing Suggestions</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                Rebalancing Suggestions
+                {rebalanceExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </CardTitle>
               <CardDescription className="text-xs">Based on drift tolerance of {driftTolerancePct}%</CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-0">
-          {plan && rebalance.items.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-              {rebalance.items.map((item) => (
-                <div key={item.class} className="rounded-lg border border-border p-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="font-medium">{item.class}</div>
-                    <div className="text-muted-foreground">{item.actualPct}% → {item.targetPct}%</div>
-                  </div>
-                  <div className="mt-1 flex items-center gap-2">
-                    <div className="h-2 rounded bg-muted w-full overflow-hidden">
-                      <div className={`h-2 ${item.action === 'Increase' ? 'bg-indigo-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(100, Math.max(5, Math.round((item.amount / Math.max(1, rebalance.totalCurrentValue)) * 100)))}%` }}></div>
+        {rebalanceExpanded && (
+          <CardContent className="pt-0">
+            {plan && rebalance.items.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                {rebalance.items.map((item) => (
+                  <div key={item.class} className="rounded-lg border border-border p-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="font-medium">{item.class}</div>
+                      <div className="text-muted-foreground">{item.actualPct}% → {item.targetPct}%</div>
                     </div>
-                    <div className={`text-xs ${item.action === 'Increase' ? 'text-indigo-600' : 'text-rose-600'}`}>{item.action} {item.amount.toFixed(0)}</div>
+                    <div className="mt-1 flex items-center gap-2">
+                      <div className="h-2 rounded bg-muted w-full overflow-hidden">
+                        <div className={`h-2 ${item.action === 'Increase' ? 'bg-indigo-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(100, Math.max(5, Math.round((item.amount / Math.max(1, rebalance.totalCurrentValue)) * 100)))}%` }}></div>
+                      </div>
+                      <div className={`text-xs ${item.action === 'Increase' ? 'text-indigo-600' : 'text-rose-600'}`}>{item.action} {item.amount.toFixed(0)}</div>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-muted-foreground text-sm">{!plan ? "No plan yet." : "All good! No rebalancing needed."}</div>
-          )}
-        </CardContent>
+                ))}
+              </div>
+            ) : (
+              <div className="text-muted-foreground text-sm">{!plan ? "No plan yet." : "All good! No rebalancing needed."}</div>
+            )}
+          </CardContent>
+        )}
       </Card>
 
       <Modal open={rebalanceOpen} onClose={()=> setRebalanceOpen(false)} title="Rebalance Proposal" footer={(
@@ -477,30 +511,6 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                   </div>
                 </div>
               ))}
-            </CardContent>
-          )}
-        </Card>
-      )}
-
-      {plan?.rationale && typeof plan.rationale === 'string' && plan.rationale.length > 100 && (
-        <Card className="mt-4">
-          <CardHeader 
-            className="cursor-pointer" 
-            onClick={() => setRationaleExpanded(!rationaleExpanded)}
-          >
-            <CardTitle className="text-sm flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <LineChart className="h-4 w-4 text-blue-500" />
-                Why This Mix?
-              </div>
-              {rationaleExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </CardTitle>
-          </CardHeader>
-          {rationaleExpanded && (
-            <CardContent>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {plan.rationale}
-              </p>
             </CardContent>
           )}
         </Card>
