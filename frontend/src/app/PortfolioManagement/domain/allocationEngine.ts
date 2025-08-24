@@ -74,13 +74,12 @@ function normalizeAnswers(q: Record<string, any>): Answers {
     if (v === "Mixed") return horizon === "Long (>7 yrs)" ? "Wealth growth" : "Capital preservation" as any;
     return "Wealth growth" as any;
   })();
-  const withdrawYes = String(q.withdrawNext2Yrs || "No").toLowerCase() === "yes";
   const emergencySix = String(q.emergencyFundSixMonths || "Yes").toLowerCase() === "yes";
   const insuranceOk = String(q.insuranceCoverage || "Yes").toLowerCase() === "yes";
 
   // Derived legacy fields
-  const bigExpenseTimeline: Answers["bigExpenseTimeline"] = withdrawYes ? "12–36 months" : "None";
-  const liquidityPreference: Answers["liquidityPreference"] = withdrawYes ? "High" : "Medium";
+  const bigExpenseTimeline: Answers["bigExpenseTimeline"] = emergencySix ? "12–36 months" : "None";
+  const liquidityPreference: Answers["liquidityPreference"] = emergencySix ? "High" : "Medium";
   const emergencyFundMonthsTarget: Answers["emergencyFundMonthsTarget"] = emergencySix ? "6" : "9";
   const incomeVsExpenses: Answers["incomeVsExpenses"] = (incomeStability === "Stable") ? "Surplus" : (incomeStability === "Variable" ? "Break-even" : "Deficit");
 
@@ -241,7 +240,7 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
     if (typeof v === 'string') return v;
     return "";
   };
-  const rationale = `Derived from risk (${riskLevel}), horizon (${q.horizon||""}), EF6m=${q.emergencyFundSixMonths||""}, withdraw2y=${q.withdrawNext2Yrs||""}, liabilities (${q.liabilities||"None"}), dependents (${q.dependents||"None"}), avoid [${toList((q as any).avoidAssets)}].`;
+  const rationale = `Derived from risk (${riskLevel}), horizon (${q.horizon||""}), EF6m=${q.emergencyFundSixMonths||""}, liabilities (${q.liabilities||"None"}), dependents (${q.dependents||"None"}), avoid [${toList((q as any).avoidAssets)}].`;
 
   return { riskLevel, rationale, buckets };
 }
