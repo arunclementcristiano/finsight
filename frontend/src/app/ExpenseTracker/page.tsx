@@ -715,100 +715,70 @@ export default function ExpenseTrackerPage() {
             </table>
             </div>
 
-            {/* Beautiful Mobile Cards (Expenses List) */}
-            <div className="xl:hidden flex-1 min-h-0 overflow-y-auto px-1">
-              {/* Debug info - can remove later */}
-              <div className="mb-2 p-2 bg-muted rounded text-xs text-muted-foreground">
-                Debug: {pageRows.length} expenses, {expenses.length} total
+            {/* Clean Mobile Expense List */}
+            <div className="xl:hidden flex-1 min-h-0 overflow-y-auto space-y-3">
+              {/* Debug info */}
+              <div className="px-3 py-2 bg-blue-50 dark:bg-blue-950/20 rounded-lg text-sm">
+                <span className="font-medium">📊 Data: {pageRows.length} expenses shown, {expenses.length} total</span>
               </div>
+              
               {pageRows.length > 0 ? (
                 pageRows.map((e: Expense) => {
-                  // Get category-specific styling
-                  const getCategoryData = (category: string) => {
-                    const mapping: Record<string, {emoji: string, color: string}> = {
-                      "Food": {emoji: "🍽️", color: "from-orange-500 to-red-600"},
-                      "Travel": {emoji: "✈️", color: "from-blue-500 to-cyan-600"},
-                      "Shopping": {emoji: "🛍️", color: "from-pink-500 to-purple-600"},
-                      "Utilities": {emoji: "⚡", color: "from-yellow-500 to-orange-600"},
-                      "Housing": {emoji: "🏠", color: "from-green-500 to-teal-600"},
-                      "Healthcare": {emoji: "🩺", color: "from-red-500 to-pink-600"},
-                      "Entertainment": {emoji: "🎬", color: "from-purple-500 to-indigo-600"},
-                      "Investment": {emoji: "📈", color: "from-emerald-500 to-green-600"},
-                      "Loans": {emoji: "💳", color: "from-slate-500 to-gray-600"},
-                      "Insurance": {emoji: "🛡️", color: "from-blue-600 to-indigo-700"},
-                      "Grooming": {emoji: "💄", color: "from-pink-400 to-rose-500"},
-                      "Subscription": {emoji: "📱", color: "from-violet-500 to-purple-600"},
-                      "Education": {emoji: "📚", color: "from-indigo-500 to-blue-600"},
-                      "Taxes": {emoji: "🧾", color: "from-gray-500 to-slate-600"},
-                      "Gifts": {emoji: "🎁", color: "from-rose-500 to-pink-600"},
-                      "Pet Care": {emoji: "🐕", color: "from-amber-500 to-yellow-600"},
-                      "Other": {emoji: "📦", color: "from-gray-400 to-slate-500"}
+                  // Simple category emoji mapping
+                  const getCategoryEmoji = (category: string) => {
+                    const mapping: Record<string, string> = {
+                      "Food": "🍽️", "Travel": "✈️", "Shopping": "🛍️", "Utilities": "⚡", 
+                      "Housing": "🏠", "Healthcare": "🩺", "Entertainment": "🎬", "Investment": "📈",
+                      "Loans": "💳", "Insurance": "🛡️", "Grooming": "💄", "Subscription": "📱",
+                      "Education": "📚", "Taxes": "🧾", "Gifts": "🎁", "Pet Care": "🐕", "Other": "📦"
                     };
-                    return mapping[category] || {emoji: "💸", color: "from-gray-400 to-slate-500"};
+                    return mapping[category] || "💸";
                   };
                   
-                  const categoryData = getCategoryData(e.category as string);
-                  
                   return (
-                    <Card key={e.id} className="relative overflow-hidden border border-border/20 shadow-lg hover:shadow-xl transition-all duration-300 bg-card mb-3">
-                      {/* Colorful accent bar */}
-                      <div className={`absolute top-0 left-0 w-1 h-full bg-gradient-to-b ${categoryData.color}`}></div>
-                      
-                      <CardContent className="p-4 pl-6 relative">
-                        {/* Header Row */}
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className={`h-12 w-12 rounded-2xl bg-gradient-to-br ${categoryData.color} flex items-center justify-center shadow-lg`}>
-                              <span className="text-xl text-white">{categoryData.emoji}</span>
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full font-medium">
-                                  {fmtDateYYYYMMDDLocal(e.date as any)}
-                                </span>
-                                <span className={`text-xs px-2 py-1 rounded-full font-semibold text-white bg-gradient-to-r ${categoryData.color} shadow-sm`}>
-                                  {e.category as string}
-                                </span>
-                              </div>
-                              <div className="text-lg font-bold text-foreground">
-                                {privacy ? "•••••" : `₹${e.amount.toFixed(0)}`}
-                              </div>
-                            </div>
+                    <div key={e.id} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                            <span className="text-lg">{getCategoryEmoji(e.category as string)}</span>
                           </div>
-                          <button
-                            onClick={() => handleDelete(e.id)}
-                            className="h-10 w-10 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-200 dark:border-red-800 text-red-600 hover:text-red-700 dark:hover:text-red-400 transition-all duration-200 touch-manipulation flex items-center justify-center"
-                            aria-label={`Delete ${e.text}`}
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                              <span>{fmtDateYYYYMMDDLocal(e.date as any)}</span>
+                              <span>•</span>
+                              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-xs">
+                                {e.category as string}
+                              </span>
+                            </div>
+                            <div className="font-semibold text-gray-900 dark:text-gray-100 text-lg">
+                              {privacy ? "•••••" : `₹${e.amount.toFixed(0)}`}
+                            </div>
+                            {e.text && (
+                              <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                                {e.text}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        
-                        {/* Description */}
-                        {e.text && (
-                          <div className="bg-muted/50 rounded-xl p-3 border border-border/30">
-                            <p className="text-sm text-muted-foreground font-medium">{e.text}</p>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
+                        <button
+                          onClick={() => handleDelete(e.id)}
+                          className="w-8 h-8 rounded-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 flex items-center justify-center transition-colors"
+                          aria-label={`Delete ${e.text}`}
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
                   );
                 })
               ) : (
-                <Card className="border-0 shadow-lg bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 mb-3">
-                  <CardContent className="flex flex-col items-center justify-center text-center py-16">
-                    <div className="relative mb-6">
-                      <div className="h-24 w-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-xl">
-                        <span className="text-4xl">💸</span>
-                      </div>
-                      <div className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
-                        <span className="text-white text-lg font-bold">+</span>
-                      </div>
-                    </div>
-                    <h3 className="text-xl font-bold mb-2">No expenses yet</h3>
-                    <p className="text-muted-foreground text-base">Start adding expenses to see them here</p>
-                  </CardContent>
-                </Card>
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                    <span className="text-2xl">💸</span>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No expenses yet</h3>
+                  <p className="text-gray-500 dark:text-gray-400">Add your first expense to get started</p>
+                </div>
               )}
             </div>
           </CardContent>
