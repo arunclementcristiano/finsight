@@ -39,7 +39,7 @@ export function computeRebalance(holdings: Holding[], plan: AllocationPlan, drif
 		const amount = +(totalCurrentValue * (Math.abs(deltaPct) / 100)).toFixed(2);
 		items.push({
 			class: cls,
-			targetPct: +(target.toFixed(2)),
+			targetPct: +((Number(target)||0).toFixed(2)),
 			actualPct: +(actualPct.toFixed(2)),
 			driftPct: drift,
 			action: deltaPct > 0 ? "Increase" : "Reduce",
