@@ -82,8 +82,7 @@ function normalizeAnswers(q: Record<string, any>): Answers {
   const emergencySix = String(q.emergencyFundSixMonths || "Yes").toLowerCase() === "yes";
   const insuranceOk = String(q.insuranceCoverage || "Yes").toLowerCase() === "yes";
 
-  // Derived legacy fields
-  const bigExpenseTimeline: Answers["bigExpenseTimeline"] = "None";
+  // Derived fields
   const liquidityPreference: Answers["liquidityPreference"] = emergencySix ? "High" : "Medium";
   const emergencyFundMonthsTarget: Answers["emergencyFundMonthsTarget"] = emergencySix ? "6" : "9";
   const incomeVsExpenses: Answers["incomeVsExpenses"] = (incomeStability === "Stable") ? "Surplus" : (incomeStability === "Variable" ? "Break-even" : "Deficit");
@@ -121,7 +120,6 @@ function normalizeAnswers(q: Record<string, any>): Answers {
   // Build normalized answer object
   const ans: Answers = {
     horizon,
-    bigExpenseTimeline,
     emergencyFundMonthsTarget,
     liquidityPreference,
     incomeVsExpenses,

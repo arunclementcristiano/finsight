@@ -1,7 +1,6 @@
 export type Asset = "Stocks" | "Mutual Funds" | "Gold" | "Real Estate" | "Debt" | "Liquid";
 export type Answers = {
   horizon: "Short (<3 yrs)" | "Medium (3–7 yrs)" | "Long (>7 yrs)";
-  bigExpenseTimeline: "None" | "<12 months" | "12–36 months" | ">36 months";
   emergencyFundMonthsTarget: "3" | "6" | "9" | "12";
   liquidityPreference: "High" | "Medium" | "Low";
   incomeVsExpenses: "Surplus" | "Break-even" | "Deficit";
@@ -153,22 +152,15 @@ export function suggestAllocation(ans: Answers): Allocation {
 
   // 5) Liquidity: EF progressive mapping + bumps
   const bumpByLiq: Record<Answers["liquidityPreference"], number> = { High: 2, Medium: 1, Low: 0 } as any;
-  const bumpByExpense: Record<Answers["bigExpenseTimeline"], number> = { "<12 months": 5, "12–36 months": 3, ">36 months": 0, None: 0 } as any;
   const efYes = ans.emergencyFundMonthsTarget === '6';
   let efBase = efYes ? 2 : 11; // Yes: 0–3 -> ~2; No: 10–12 -> ~11
-  let liqMin = efBase + bumpByLiq[ans.liquidityPreference] + bumpByExpense[ans.bigExpenseTimeline];
+  let liqMin = efBase + bumpByLiq[ans.liquidityPreference];
   // Lower Liquid floor for EF present & no near-term withdrawal in high-capacity profiles
   const hasEF = ans.emergencyFundMonthsTarget === "6";
-  const noNearTerm = ans.bigExpenseTimeline === "None";
   const ageYoung = ans.ageBand === "18–30" || ans.ageBand === "31–45" || ans.ageBand === "46–60";
   const longHor = ans.horizon === "Long (>7 yrs)";
   const highCapacity = ans.riskAppetite === "High" && ageYoung && longHor && ans.liabilities !== "High" && ans.dependents !== "3+";
-  // Extra liquid for near-term expense when liabilities are moderate/high (term-based effect)
-  const nearExpense = ans.bigExpenseTimeline === "<12 months" || ans.bigExpenseTimeline === "12–36 months";
-  if (nearExpense && (ans.liabilities === "Moderate" || ans.liabilities === "High")) {
-    liqMin += (ans.liabilities === "High" ? 3 : 2);
-  }
-  if (hasEF && noNearTerm && highCapacity) {
+  if (hasEF && highCapacity) {
     liqMin = Math.min(liqMin, 6);
   }
   if (base.Liquid < liqMin) {
@@ -344,8 +336,6 @@ export function suggestAllocation(ans: Answers): Allocation {
 
   // 10b) Gold tilt from Debt under conservative signals (cumulative cap +4%)
   (function goldTilt() {
-    // Skip if near-term expense (keep gold near floor)
-    if (ans.bigExpenseTimeline !== "None") return;
     let desired = 0;
     if (ans.volatilityComfort === "Low" || ans.riskAppetite === "Low") desired += 2;
     if (ans.liabilities === "Moderate") desired += 1; else if (ans.liabilities === "High") desired += 2;
@@ -367,11 +357,10 @@ export function suggestAllocation(ans: Answers): Allocation {
   // 10c) High-capacity growth profiles: gently bias away from Gold
   (function highCapacityGoldReduce() {
     const hasEF = ans.emergencyFundMonthsTarget === "6";
-    const noNearTerm2 = ans.bigExpenseTimeline === "None";
     const ageYoung = ans.ageBand === "18–30" || ans.ageBand === "31–45" || ans.ageBand === "46–60";
     const longHor = ans.horizon === "Long (>7 yrs)";
     const highCapacity = ans.riskAppetite === "High" && ageYoung && longHor && ans.liabilities !== "High" && ans.dependents !== "3+";
-    if (!(hasEF && noNearTerm2 && highCapacity)) return;
+    if (!highCapacity || !hasEF) return;
     const targetFloor = 6;
     const reducible = Math.max(0, base.Gold - targetFloor);
     let reduce = Math.min(2, reducible);

@@ -4,7 +4,6 @@ import { suggestAllocation, Answers } from './suggestAllocation';
 function baseAnswers(overrides: Partial<Answers> = {}): Answers {
   return {
     horizon: "Medium (3–7 yrs)",
-    bigExpenseTimeline: "None",
     emergencyFundMonthsTarget: "6",
     liquidityPreference: "Medium",
     incomeVsExpenses: "Surplus",
