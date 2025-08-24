@@ -1,8 +1,8 @@
-// Allocation Engine for Finsight Portfolio Management
-// Implements buildPlan(q) as per P-04 requirements
+// Enhanced Allocation Engine for Finsight Portfolio Management
+// Implements sophisticated 10-Advisor Council logic with weighted signals
 
 export type AssetClass = "Stocks" | "Mutual Funds" | "Gold" | "Real Estate" | "Debt" | "Liquid";
-export type RiskLevel = "Low" | "Moderate" | "High";
+export type RiskLevel = "Conservative" | "Moderate" | "Aggressive";
 
 export interface AllocationPlan {
   riskLevel: RiskLevel;
@@ -18,9 +18,27 @@ export interface AllocationPlan {
     perAsset: Record<string, Array<{ driver: string; effectPct: number }>>;
     topDrivers: Array<{ driver: string; effectPct: number }>;
   };
+  // Enhanced fields for new engine
+  riskScore?: number;
+  signals?: Array<{
+    factor: string;
+    equitySignal: number;
+    safetySignal: number;
+    weight: number;
+    explanation: string;
+  }>;
+  stressTest?: {
+    scenarios: Record<string, {
+      portfolioImpact: number;
+      monthsCovered: number;
+      recommendation: string;
+    }>;
+  };
 }
 
+// Import both old and new engines for transition
 import { suggestAllocation, Answers, getLastDrivers } from "./suggestAllocation";
+import { AdvisorCouncilEngine, CouncilAnswers, AllocationResult } from "./advisorCouncilEngine";
 
 function normalizeAnswers(q: Record<string, any>): Answers {
   // Helpers
