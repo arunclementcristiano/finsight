@@ -561,16 +561,24 @@ class AllocationCalculator {
   }
   
   handleAvoidedAssets(allocation: Record<AssetClass, number>, avoidAssets: AssetClass[] = []): Record<AssetClass, number> {
-    if (!avoidAssets.length) return allocation;
+    console.log("🔍 handleAvoidedAssets called with:", { allocation, avoidAssets });
+    
+    if (!avoidAssets.length) {
+      console.log("⚠️ No avoided assets provided, returning original allocation");
+      return allocation;
+    }
     
     const adjusted = { ...allocation };
     let redistributeAmount = 0;
     
     // Set avoided assets to 0 and calculate redistribution amount
     avoidAssets.forEach(asset => {
+      console.log(`🚫 Setting ${asset} from ${adjusted[asset]}% to 0%`);
       redistributeAmount += adjusted[asset];
       adjusted[asset] = 0;
     });
+    
+    console.log(`💰 Redistributing ${redistributeAmount}% from avoided assets`);
     
     // Redistribute proportionally to remaining assets
     const remainingAssets = (Object.keys(adjusted) as AssetClass[]).filter(
@@ -906,7 +914,12 @@ export class AdvisorCouncilEngine {
     allocation = this.allocationCalculator.applyGoalAdjustments(allocation, answers);
     
     // Step 7: Handle avoided assets
+    console.log("🚫 AVOIDED ASSETS DEBUG:", {
+      avoidAssets: answers.avoidAssets,
+      allocationBefore: allocation,
+    });
     allocation = this.allocationCalculator.handleAvoidedAssets(allocation, answers.avoidAssets);
+    console.log("🚫 ALLOCATION AFTER AVOIDING:", allocation);
     
     // Step 8: Generate rationale
     const rationale = this.rationaleGenerator.generate(allocation, signals, answers, riskScore);
@@ -951,7 +964,8 @@ export class AdvisorCouncilEngine {
       esgPreference: "no_preference", // Default
       jobStability: oldAnswers.incomeStability || "somewhat_stable",
       withdrawalNext2Years: false, // Default
-      hasInsurance: oldAnswers.adequateInsurance === "Yes" || oldAnswers.insuranceCoverage === "Yes"
+      hasInsurance: oldAnswers.adequateInsurance === "Yes" || oldAnswers.insuranceCoverage === "Yes",
+      avoidAssets: oldAnswers.avoidAssets || []
     };
   }
   
