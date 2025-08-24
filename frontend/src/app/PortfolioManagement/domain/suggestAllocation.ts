@@ -149,39 +149,7 @@ export function suggestAllocation(ans: Answers): Allocation {
 
   // RULE HIERARCHY: Goals (near-term) overrides first → Liabilities/Capacity → Appetite (already in base)
   // Near-term override proxy: horizon short OR big expense within 36 months OR major purchase goal
-  (function nearTermOverride(){
-    const nearByHorizon = ans.horizon === "Short (<3 yrs)";
-    const nearByExpense = ans.bigExpenseTimeline === "<12 months" || ans.bigExpenseTimeline === "12–36 months";
-    const majorPurchase = ans.financialGoal === "Major purchase";
-    if (!(nearByHorizon || nearByExpense || majorPurchase)) return;
-    // Enforce safety floor and strict equity cap
-    const safetyFloor = 70; // Debt + Liquid >= 70%
-    const strictEqCap = 30; // Equity <= 30%
-    // First clamp equity down to cap, move to Debt
-    let eqNow = base.Stocks + base["Mutual Funds"];
-    if (eqNow > strictEqCap) {
-      const reduce = eqNow - strictEqCap;
-      const sFrac = base.Stocks / eqNow || 0.5;
-      base.Stocks = Math.max(0, base.Stocks - reduce * sFrac);
-      base["Mutual Funds"] = Math.max(0, base["Mutual Funds"] - reduce * (1 - sFrac));
-      base.Debt += reduce; log('Near-term cap', -Math.round(reduce), 'Equity');
-      eqNow = strictEqCap;
-    }
-    // Then raise safety (Debt+Liquid) to floor, preferring Debt
-    let safetyNow = base.Debt + base.Liquid;
-    if (safetyNow < safetyFloor) {
-      const need = safetyFloor - safetyNow;
-      // Pull from equity proportionally
-      const eqTotal = base.Stocks + base["Mutual Funds"]; if (eqTotal > 0) {
-        const sTake = Math.min(need * (base.Stocks / eqTotal), base.Stocks); base.Stocks -= sTake; base.Debt += sTake; log('Near-term safety', +Math.round(sTake), 'Debt');
-        const mfTake = Math.min(need - sTake, base["Mutual Funds"]); base["Mutual Funds"] -= mfTake; base.Debt += mfTake; log('Near-term safety', +Math.round(mfTake), 'Debt');
-      }
-      // If still short, take from Gold then Real Estate
-      let remain = Math.max(0, safetyFloor - (base.Debt + base.Liquid));
-      if (remain > 0) { const goldTake = Math.min(remain, Math.max(0, base.Gold - 3)); base.Gold -= goldTake; base.Debt += goldTake; log('Near-term safety', +Math.round(goldTake), 'Debt'); remain -= goldTake; }
-      if (remain > 0) { const reTake = Math.min(remain, Math.max(0, base["Real Estate"])); base["Real Estate"] -= reTake; base.Debt += reTake; log('Near-term safety', +Math.round(reTake), 'Debt'); remain -= reTake; }
-    }
-  })();
+  (function nearTermOverride(){ return; })();
 
   // 5) Liquidity: EF progressive mapping + bumps
   const bumpByLiq: Record<Answers["liquidityPreference"], number> = { High: 2, Medium: 1, Low: 0 } as any;
