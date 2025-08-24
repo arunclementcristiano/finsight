@@ -1281,9 +1281,28 @@ export default function ExpenseTrackerPage() {
           </div>
         </div>
 
+        {/* Desktop Tabs */}
+        <div className="px-4 pb-3 border-b border-border">
+          <div className="inline-flex rounded-lg border border-border overflow-hidden">
+            <button 
+              onClick={()=> setActiveTab("data")} 
+              className={`px-4 py-2 text-sm ${activeTab==='data' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+            >
+              Data
+            </button>
+            <button 
+              onClick={()=> setActiveTab("insights")} 
+              className={`px-4 py-2 text-sm ${activeTab==='insights' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+            >
+              Insights
+            </button>
+          </div>
+        </div>
+
         {/* Desktop Content */}
         <div className="flex-1 overflow-auto">
-          <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-4 p-4 h-full">
+          {activeTab === "data" ? (
+            <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-4 p-4 h-full">
             {/* Data Table */}
             <Card className="flex flex-col">
               <CardHeader>
@@ -1526,7 +1545,160 @@ export default function ExpenseTrackerPage() {
                 </Card>
               )}
             </div>
-          </div>
+            </div>
+          ) : (
+            {/* Desktop Insights Tab */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 p-4">
+              {/* Category Share */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Category Share</CardTitle>
+                  <CardDescription>Spending distribution for selected period</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {monthlyCategorySpend.arr.length > 0 ? (
+                    <div className="mx-auto max-w-xs">
+                      <Doughnut 
+                        data={{
+                          labels: monthlyCategorySpend.arr.map(([cat]) => cat),
+                          datasets: [{
+                            data: monthlyCategorySpend.arr.map(([_, spent]) => spent),
+                            backgroundColor: [
+                              "#6366f1", "#10b981", "#f59e42", "#fbbf24", 
+                              "#3b82f6", "#ef4444", "#a3e635", "#f97316",
+                              "#ec4899", "#8b5cf6", "#06b6d4", "#84cc16"
+                            ]
+                          }]
+                        }} 
+                        options={{
+                          plugins: { 
+                            legend: { position: "bottom" as const } 
+                          }, 
+                          cutout: "70%" 
+                        }} 
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-muted-foreground text-sm text-center py-8">
+                      No data yet
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Budget Analysis */}
+              <Card className="xl:col-span-2">
+                <CardHeader>
+                  <CardTitle>Budget Analysis</CardTitle>
+                  <CardDescription>Compare spending vs budgets for this month</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* Overall Budget Progress */}
+                    <div className="p-4 bg-muted/50 rounded-lg">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-medium">Overall Budget</span>
+                        <span className="text-lg font-bold">
+                          {privacy ? "•••" : `${budgetUsedPct}%`}
+                        </span>
+                      </div>
+                      <Progress 
+                        value={Math.min(100, budgetUsedPct)} 
+                        className="h-3"
+                        barClassName={
+                          budgetUsedPct >= 100 ? "bg-red-500" : 
+                          budgetUsedPct >= 80 ? "bg-amber-500" : "bg-green-500"
+                        }
+                      />
+                      <div className="flex justify-between text-sm text-muted-foreground mt-2">
+                        <span>{privacy ? "•••" : `₹${monthSpend.toLocaleString('en-IN')} spent`}</span>
+                        <span>{privacy ? "•••" : `₹${totalBudget.toLocaleString('en-IN')} total`}</span>
+                      </div>
+                    </div>
+
+                    {/* Category Budget Details */}
+                    <div className="space-y-3">
+                      <h4 className="font-medium">Category Breakdown</h4>
+                      {monthlyCategorySpend.arr.map(([cat, spent]) => {
+                        const budget = (defaultCategoryBudgets?.[cat]) || 0;
+                        const pct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
+                        const isOver = pct >= 100;
+                        const isWarning = pct >= 80 && pct < 100;
+                        
+                        return (
+                          <div key={cat} className="border border-border rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{cat}</span>
+                                {isOver && <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">Over Budget</span>}
+                                {isWarning && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded">Warning</span>}
+                              </div>
+                              <div className="text-right">
+                                <div className="font-medium">
+                                  {privacy ? "•••" : `₹${spent.toLocaleString('en-IN')}`}
+                                </div>
+                                {budget > 0 && (
+                                  <div className="text-sm text-muted-foreground">
+                                    of {privacy ? "•••" : `₹${budget.toLocaleString('en-IN')}`} ({pct}%)
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {budget > 0 && (
+                              <div className="space-y-2">
+                                <Progress 
+                                  value={Math.min(100, pct)} 
+                                  className="h-2"
+                                  barClassName={
+                                    isOver ? "bg-red-500" : 
+                                    isWarning ? "bg-amber-500" : "bg-green-500"
+                                  }
+                                />
+                                <div className="text-sm">
+                                  {isOver ? (
+                                    <span className="text-red-600">
+                                      Over by {privacy ? "•••" : `₹${(spent - budget).toLocaleString('en-IN')}`}
+                                    </span>
+                                  ) : (
+                                    <span className="text-green-600">
+                                      {privacy ? "•••" : `₹${(budget - spent).toLocaleString('en-IN')}`} remaining
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Quick Stats */}
+                    <div className="grid grid-cols-3 gap-4 pt-4 border-t">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-blue-600">
+                          {privacy ? "•••" : sortedExpenses.length}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Transactions</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">
+                          {privacy ? "•••" : sortedExpenses.length > 0 ? `₹${Math.round(monthSpend / sortedExpenses.length).toLocaleString('en-IN')}` : "₹0"}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Avg Transaction</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-purple-600">
+                          {privacy ? "•••" : monthlyCategorySpend.arr.length > 0 ? monthlyCategorySpend.arr[0][0] : "None"}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Top Category</div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
       </div>
 
