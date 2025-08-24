@@ -993,9 +993,9 @@ export default function ExpenseTrackerPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-orange-100 text-xs font-medium opacity-90">Transactions</p>
-                    <p className="text-xl font-bold mt-1">
-                      {filteredExpenses.length}
-                    </p>
+                                      <p className="text-xl font-bold mt-1">
+                    {sortedExpenses.length}
+                  </p>
                   </div>
                   <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
                     <span className="text-lg">📝</span>
@@ -1091,7 +1091,7 @@ export default function ExpenseTrackerPage() {
                     </div>
                   </div>
                   <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                    {privacy ? "•••" : filteredExpenses.length > 0 ? `₹${Math.round(monthSpend / filteredExpenses.length).toLocaleString('en-IN')}` : "₹0"}
+                    {privacy ? "•••" : sortedExpenses.length > 0 ? `₹${Math.round(monthSpend / sortedExpenses.length).toLocaleString('en-IN')}` : "₹0"}
                   </p>
                 </div>
 
@@ -1112,7 +1112,7 @@ export default function ExpenseTrackerPage() {
                 </div>
 
                 {/* Most Expensive */}
-                {filteredExpenses.length > 0 && (
+                {sortedExpenses.length > 0 && (
                   <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
@@ -1124,7 +1124,7 @@ export default function ExpenseTrackerPage() {
                       </div>
                     </div>
                     <p className="text-lg font-bold text-purple-600 dark:text-purple-400">
-                      {privacy ? "•••" : `₹${Math.max(...filteredExpenses.map(e => e.amount)).toLocaleString('en-IN')}`}
+                      {privacy ? "•••" : `₹${Math.max(...sortedExpenses.map(e => e.amount)).toLocaleString('en-IN')}`}
                     </p>
                   </div>
                 )}
@@ -1203,7 +1203,7 @@ export default function ExpenseTrackerPage() {
             )}
 
             {/* Empty State for New Users */}
-            {filteredExpenses.length === 0 && (
+            {sortedExpenses.length === 0 && (
               <div className="text-center py-12">
                 <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-full flex items-center justify-center">
                   <span className="text-3xl">📊</span>
