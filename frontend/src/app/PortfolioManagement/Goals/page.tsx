@@ -7,9 +7,10 @@ import { useApp } from "../../store";
 import { Target, Plus, CalendarDays, Shield, AlertCircle } from "lucide-react";
 
 export default function GoalsPage() {
-	const { activePortfolioId } = useApp() as any;
+	const { activePortfolioId, getConstraints, setConstraints } = useApp() as any;
 	const [addOpen, setAddOpen] = useState(false);
 	const [filter, setFilter] = useState<"all"|"0-2"|"3-5"|"6-10"|"10+">("all");
+  const c = getConstraints?.(activePortfolioId || "") || {};
 
 	// Placeholder data (to be wired)
 	const kpis = useMemo(()=> ({ efMonths: 6, liquidity: { amount: 0, months: 0 }, monthlySip: 0, coveragePct: 0 }), []);
@@ -105,19 +106,21 @@ export default function GoalsPage() {
 							<div className="text-[11px] text-muted-foreground">Emergency fund coverage</div>
 							<div className="mt-1 flex items-center gap-2">
 								<Shield className="h-4 w-4" />
-								<span>Target: 6 months</span>
+								<input type="number" min={0} max={24} className="w-24 rounded border border-border bg-background px-2 py-1" value={Number(c.efMonths||0)} onChange={e=> setConstraints?.(activePortfolioId||"", { efMonths: Math.max(0, Math.min(24, Math.round(Number(e.target.value)||0))) })} />
+								<span className="text-muted-foreground">months</span>
 							</div>
 						</div>
 						<div className="rounded-md border border-border p-2">
 							<div className="text-[11px] text-muted-foreground">Near-term liquidity</div>
 							<div className="mt-1 flex items-center gap-2">
 								<AlertCircle className="h-4 w-4" />
-								<span>Amount: — · Months: —</span>
+								<input type="number" min={0} className="w-28 rounded border border-border bg-background px-2 py-1" placeholder="₹ amount" value={Number(c.liquidityAmount||0)} onChange={e=> setConstraints?.(activePortfolioId||"", { liquidityAmount: Math.max(0, Math.round(Number(e.target.value)||0)) })} />
+								<input type="number" min={0} max={36} className="w-20 rounded border border-border bg-background px-2 py-1" placeholder="months" value={Number(c.liquidityMonths||0)} onChange={e=> setConstraints?.(activePortfolioId||"", { liquidityMonths: Math.max(0, Math.min(36, Math.round(Number(e.target.value)||0))) })} />
 							</div>
 						</div>
 						<div className="rounded-md border border-border p-2">
 							<div className="text-[11px] text-muted-foreground">Notes</div>
-							<div className="mt-1 text-muted-foreground">—</div>
+							<textarea className="mt-1 w-full rounded border border-border bg-background px-2 py-1" rows={2} placeholder="Any special constraints" value={c.notes||""} onChange={e=> setConstraints?.(activePortfolioId||"", { notes: e.target.value })} />
 						</div>
 					</div>
 				</CardContent>
