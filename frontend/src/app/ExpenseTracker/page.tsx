@@ -166,7 +166,9 @@ export default function ExpenseTrackerPage() {
     setAi(null);
     try {
       // Instant local rules path for zero-lag UX
+      console.log("AI Debug: Parsing input:", rawText);
       const parsed = parseExpenseInput(rawText);
+      console.log("AI Debug: Parsed result:", parsed);
       if (parsed.category && typeof parsed.amount === "number") {
         const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: parsed.category, amount: parsed.amount, date: dateOpen ? selectedDate : undefined }) });
         const saved = await put.json();
@@ -179,7 +181,9 @@ export default function ExpenseTrackerPage() {
         }
       }
       // Local memory fallback (from previous acknowledgments)
+      console.log("AI Debug: Attempting category suggestion for:", rawText);
       const memCat = suggestCategory(rawText, categoryMemory as any);
+      console.log("AI Debug: Suggested category:", memCat);
       if (!parsed.category && memCat && typeof parsed.amount === "number") {
         const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: memCat, amount: parsed.amount, date: dateOpen ? selectedDate : undefined }) });
         const saved = await put.json();
@@ -1623,8 +1627,52 @@ export default function ExpenseTrackerPage() {
             </div>
             </div>
           ) : (
-            
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 p-4">
+            <div className="space-y-6 p-4">
+              {/* Desktop Quick Stats - Today, This Month, Budget Used, Top Category */}
+              <div className="grid grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {privacy ? "•••••" : `₹${todaySpend.toLocaleString('en-IN')}`}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Today</div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">
+                        {privacy ? "•••••" : `₹${monthSpend.toLocaleString('en-IN')}`}
+                      </div>
+                      <div className="text-sm text-muted-foreground">This Month</div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-purple-600">
+                        {privacy ? "•••" : `${budgetUsedPct}%`}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Budget Used</div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-orange-600">
+                        {privacy ? "•••" : monthlyCategorySpend.arr.length > 0 ? monthlyCategorySpend.arr[0][0] : "None"}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Top Category</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
               {/* Category Share */}
               <Card>
                 <CardHeader>
@@ -1796,41 +1844,64 @@ export default function ExpenseTrackerPage() {
 
                     return (
                       <div className="space-y-4">
-                        <div className="h-56">
-                          <Bar 
-                            data={chart} 
-                            options={{ 
-                              responsive: true, 
-                              maintainAspectRatio: false, 
-                              plugins: { legend: { position: "bottom" as const } }, 
-                              scales: { y: { beginAtZero: true } } 
-                            }} 
-                          />
-                        </div>
-                        
-                        {/* Totals Summary */}
-                        <div className="rounded-lg border border-border p-3">
-                          <div className="flex items-center justify-between mb-2 text-sm">
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center gap-1">
-                                <span className="inline-block h-2.5 w-2.5 rounded-sm bg-rose-500"></span>
-                                <span className="text-muted-foreground">Actual</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <span className="inline-block h-2.5 w-2.5 rounded-sm bg-indigo-500"></span>
-                                <span className="text-muted-foreground">Expected</span>
-                              </div>
-                            </div>
-                            <div className="text-xs text-muted-foreground">Totals</div>
-                          </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <div className="font-medium text-rose-600">
-                              {privacy ? "•••" : `₹${totalActual.toLocaleString('en-IN')}`}
-                            </div>
-                            <div className="font-medium text-indigo-600">
-                              {privacy ? "•••" : `₹${totalExpected.toLocaleString('en-IN')}`}
-                            </div>
-                          </div>
+                        {/* Actual vs Expected Table */}
+                        <div className="rounded-lg border border-border overflow-hidden">
+                          <table className="w-full text-sm">
+                            <thead className="bg-muted/50">
+                              <tr>
+                                <th className="px-4 py-3 text-left font-medium">Category</th>
+                                <th className="px-4 py-3 text-right font-medium">Actual</th>
+                                <th className="px-4 py-3 text-right font-medium">Expected</th>
+                                <th className="px-4 py-3 text-right font-medium">Variance</th>
+                                <th className="px-4 py-3 text-center font-medium">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {rows.sort((a,b)=> (b.actual - b.expected) - (a.actual - a.expected)).map((row, idx) => {
+                                const pct = row.expected > 0 ? (row.actual / row.expected) * 100 : 0;
+                                const isOver = row.actual > row.expected;
+                                const isUnder = row.actual < row.expected * 0.8;
+                                
+                                return (
+                                  <tr key={row.cat} className={`border-b border-border ${idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}>
+                                    <td className="px-4 py-3 font-medium">{row.cat}</td>
+                                    <td className="px-4 py-3 text-right font-medium text-rose-600">
+                                      {privacy ? "•••" : `₹${row.actual.toLocaleString('en-IN')}`}
+                                    </td>
+                                    <td className="px-4 py-3 text-right font-medium text-indigo-600">
+                                      {privacy ? "•••" : `₹${row.expected.toLocaleString('en-IN')}`}
+                                    </td>
+                                    <td className={`px-4 py-3 text-right font-medium ${row.variance >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                      {privacy ? "•••" : `${row.variance >= 0 ? '+' : ''}₹${row.variance.toLocaleString('en-IN')}`}
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      {isOver && <span className="inline-block bg-red-100 text-red-700 text-xs px-2 py-1 rounded">OVER</span>}
+                                      {isUnder && <span className="inline-block bg-green-100 text-green-700 text-xs px-2 py-1 rounded">UNDER</span>}
+                                      {!isOver && !isUnder && <span className="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded">OK</span>}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                            <tfoot className="bg-muted/80">
+                              <tr>
+                                <td className="px-4 py-3 font-bold">TOTAL</td>
+                                <td className="px-4 py-3 text-right font-bold text-rose-600">
+                                  {privacy ? "•••" : `₹${totalActual.toLocaleString('en-IN')}`}
+                                </td>
+                                <td className="px-4 py-3 text-right font-bold text-indigo-600">
+                                  {privacy ? "•••" : `₹${totalExpected.toLocaleString('en-IN')}`}
+                                </td>
+                                <td className={`px-4 py-3 text-right font-bold ${(totalActual - totalExpected) >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                  {privacy ? "•••" : `${(totalActual - totalExpected) >= 0 ? '+' : ''}₹${(totalActual - totalExpected).toLocaleString('en-IN')}`}
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  {totalActual > totalExpected && <span className="inline-block bg-red-100 text-red-700 text-xs px-2 py-1 rounded font-medium">OVER BUDGET</span>}
+                                  {totalActual <= totalExpected && <span className="inline-block bg-green-100 text-green-700 text-xs px-2 py-1 rounded font-medium">ON TRACK</span>}
+                                </td>
+                              </tr>
+                            </tfoot>
+                          </table>
                         </div>
                       </div>
                     );
@@ -1940,6 +2011,7 @@ export default function ExpenseTrackerPage() {
                   </div>
                 </CardContent>
               </Card>
+            </div>
             </div>
           )}
         </div>
