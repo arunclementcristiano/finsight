@@ -20,6 +20,9 @@ export type Answers = {
 
 export type Allocation = Record<Asset, number>;
 
+let LAST_DRIVERS: Array<{ factor: string; to?: string; effectPct: number }> = [];
+export function getLastDrivers() { return Array.isArray(LAST_DRIVERS) ? [...LAST_DRIVERS] : []; }
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -485,6 +488,8 @@ export function suggestAllocation(ans: Answers): Allocation {
     Liquid: (base.Liquid * 100) / sum,
   };
   const rounded = largestRemainderRound(normalized);
+  // Store drivers for external explainability
+  try { LAST_DRIVERS = (drivers||[]).map(d=> ({ factor: String(d.factor||'engine'), to: d.to, effectPct: Number.isFinite(Number(d.effectPct)) ? Math.round(Number(d.effectPct)) : 0 })); } catch { LAST_DRIVERS = []; }
   return rounded;
 }
 

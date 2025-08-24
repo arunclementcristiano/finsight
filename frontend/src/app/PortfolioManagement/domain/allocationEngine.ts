@@ -20,7 +20,7 @@ export interface AllocationPlan {
   };
 }
 
-import { suggestAllocation, Answers } from "./suggestAllocation";
+import { suggestAllocation, Answers, getLastDrivers } from "./suggestAllocation";
 
 function normalizeAnswers(q: Record<string, any>): Answers {
   // Helpers
@@ -263,10 +263,11 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
     if ((q as any).horizon === 'Short (<3 yrs)') { push('Debt', 'Short horizon safety', +5); push('Liquid', 'Short horizon liquidity', +5); }
     if ((q as any).liabilities === 'High') { push('Debt', 'High liabilities safety', +3); }
     if ((q as any).avoidAssets && ((q as any).avoidAssets||[]).includes('Gold')) { push('Gold', 'Avoided asset', -((alloc as any).Gold||0)); }
-    // Ingest internal engine _drivers if present
-    const internal = (alloc as any)._drivers || [];
+    // Ingest internal engine drivers
+    const internal = getLastDrivers();
     for (const d of internal) {
-      const tgt = String(d.to||'').includes('Equity') ? 'Stocks' : (String(d.to||'Mutual Funds'));
+      const t = String(d.to||'');
+      const tgt = t.includes('Debt') ? 'Debt' : t.includes('Gold') ? 'Gold' : t.includes('Liquid') ? 'Liquid' : t.includes('Stocks') ? 'Stocks' : 'Mutual Funds';
       const val = Number(d.effectPct);
       if (Number.isFinite(val)) push(tgt, String(d.factor||'engine'), val);
     }
