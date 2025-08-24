@@ -17,13 +17,16 @@ export async function POST(req: NextRequest) {
 	const sub = await getUserSubFromJwt(req);
 	if (!sub) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	try {
-		const { plan, holdings, mode, options } = await req.json();
+		const { plan, holdings, mode, options, constraints } = await req.json();
 		if (!plan || !Array.isArray(plan?.buckets) || !Array.isArray(holdings)) {
 			return NextResponse.json({ error: "Missing or invalid plan/holdings" }, { status: 400 });
 		}
 		const modeKind = (mode === 'to-target') ? 'to-target' : 'to-band';
 		const cashOnly = !!(options?.cashOnly);
 		const turnoverLimitPct = Math.max(0, Math.min(10, Number(options?.turnoverLimitPct) || 1));
+    const efMonths = Math.max(0, Math.min(24, Number(constraints?.efMonths)||0));
+    const liqAmt = Math.max(0, Number(constraints?.liquidityAmount)||0);
+    const liqMonths = Math.max(0, Math.min(36, Number(constraints?.liquidityMonths)||0));
 
 		const total = holdings.reduce((s: number, h: Holding) => s + valueOfHolding(h), 0) || 0;
 		const classToValue = new Map<string, number>();
@@ -90,9 +93,12 @@ export async function POST(req: NextRequest) {
 
 		const trades = [...filteredSells, ...filteredBuys];
 		const turnoverPct = total > 0 ? +((trades.reduce((s,t)=> s + t.amount, 0) / total) * 100).toFixed(2) : 0;
+		const constraintNote = (efMonths || liqAmt)
+			? ` while respecting ${efMonths? efMonths+ ' months EF':''}${efMonths&&liqAmt?' and ':''}${liqAmt? ('₹'+liqAmt+' over '+(liqMonths||0)+' months'):''}`
+			: '';
 		const rationale = modeKind === 'to-band'
-			? `We bring assets back inside comfort bands using ${cashOnly? 'new contributions':'minimal sells and buys'}, within a turnover cap of ${turnoverLimitPct}%.`
-			: `We realign to exact targets${cashOnly? ' using contributions only':''}, keeping turnover under ${turnoverLimitPct}%.`;
+			? `We bring assets back inside comfort bands using ${cashOnly? 'new contributions':'minimal sells and buys'}, within a turnover cap of ${turnoverLimitPct}%${constraintNote}.`
+			: `We realign to exact targets${cashOnly? ' using contributions only':''}, keeping turnover under ${turnoverLimitPct}%${constraintNote}.`;
 
 		// After-mix (approx): apply targetPct where trades exist; else keep current
 		const afterMix: Record<string, number> = {};
