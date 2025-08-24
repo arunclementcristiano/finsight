@@ -479,6 +479,7 @@ export default function ExpenseTrackerPage() {
                   className="w-full h-14 pl-12 pr-4 rounded-2xl border-2 border-blue-200/50 dark:border-blue-800/50 bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-0 shadow-lg backdrop-blur-sm transition-all duration-200 text-base font-medium"
                   placeholder="e.g., Lunch 250 at restaurant"
                 />
+              </div>
               <button type="button" aria-label="Set date" title="Set date" onClick={()=> setDateOpen(o=>!o)} className={`h-11 w-11 inline-flex items-center justify-center rounded-xl border ${dateOpen ? 'border-emerald-400 text-emerald-600' : 'border-border text-muted-foreground'} bg-card hover:bg-muted focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]`}>
                 <Calendar className="h-4 w-4" />
               </button>
