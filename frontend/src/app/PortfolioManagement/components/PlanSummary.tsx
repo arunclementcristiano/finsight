@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/Card";
 import { Button } from "../../components/Button";
@@ -11,11 +11,45 @@ import { Sparkles } from "lucide-react";
 import { Modal } from "../../components/Modal";
 
 export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, onBuildBaseline, aiViewOn, onToggleAiView, aiLoading, aiExplanation, aiSummary, mode, aiDisabled, locks, onToggleLock }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void; onEditAnswers?: () => void; onBuildBaseline?: () => void; aiViewOn?: boolean; onToggleAiView?: () => void; aiLoading?: boolean; aiExplanation?: string; aiSummary?: string; mode?: 'advisor'|'custom'; aiDisabled?: boolean; locks?: Record<string, boolean>; onToggleLock?: (cls: string)=>void }) {
-  const { holdings, driftTolerancePct, questionnaire } = useApp() as any;
+  const { holdings, driftTolerancePct, questionnaire, activePortfolioId } = useApp() as any;
   const [edgeHit, setEdgeHit] = useState<Record<string, { edge: 'min'|'max'; val: number } | null>>({});
   const [tipFor, setTipFor] = useState<string | null>(null);
   const [rebalanceOpen, setRebalanceOpen] = useState(false);
   const router = useRouter();
+
+  const [proposeMode, setProposeMode] = useState<'to-band'|'to-target'>("to-band");
+  const [optCashOnly, setOptCashOnly] = useState(false);
+  const [optTurnoverPct, setOptTurnoverPct] = useState(1);
+  const [proposal, setProposal] = useState<any | null>(null);
+  const [proposeLoading, setProposeLoading] = useState(false);
+  const [proposeError, setProposeError] = useState<string | null>(null);
+
+  useEffect(()=>{
+    let ignore = false;
+    async function run() {
+      if (!rebalanceOpen || !plan || !Array.isArray(plan?.buckets)) return;
+      try {
+        setProposeLoading(true); setProposeError(null);
+        const res = await fetch('/api/portfolio/rebalance/propose', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            portfolioId: activePortfolioId,
+            plan,
+            holdings,
+            mode: proposeMode,
+            options: { cashOnly: optCashOnly, turnoverLimitPct: optTurnoverPct },
+          })
+        });
+        const data = await res.json();
+        if (!ignore) setProposal(data);
+      } catch (e:any) {
+        if (!ignore) setProposeError(String(e?.message||e));
+      } finally { if (!ignore) setProposeLoading(false); }
+    }
+    run();
+    return ()=> { ignore = true; };
+  }, [rebalanceOpen, proposeMode, optCashOnly, optTurnoverPct, plan, holdings, activePortfolioId]);
 
   const kpis = useMemo(() => {
     if (!plan) return { equity: 0, defensive: 0, satellite: 0 };
@@ -38,6 +72,20 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
   }, [questionnaire]);
 
   const visibleBuckets = useMemo(()=> (mode==='custom' ? (plan?.buckets||[]) : (plan?.buckets||[]).filter((b:any)=> !avoidSet.has(b.class))), [plan, avoidSet, mode]);
+
+  async function handleAcceptProposal() {
+    try {
+      if (!activePortfolioId || !proposal) { setRebalanceOpen(false); return; }
+      await fetch('/api/portfolio/rebalance/accept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ portfolioId: activePortfolioId, proposal })
+      });
+      setRebalanceOpen(false);
+    } catch {
+      setRebalanceOpen(false);
+    }
+  }
 
   return (
     <div className="space-y-3">
@@ -207,33 +255,45 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
       <Modal open={rebalanceOpen} onClose={()=> setRebalanceOpen(false)} title="Rebalance Proposal" footer={(
         <>
           <Button variant="outline" onClick={()=> setRebalanceOpen(false)}>Close</Button>
-          <Button onClick={()=>{ setRebalanceOpen(false); /* accept flow to be wired */ }}>Accept</Button>
+          <Button disabled={proposeLoading || !(proposal?.trades||[]).length} onClick={handleAcceptProposal}>Accept</Button>
         </>
       )}>
         <div className="space-y-3">
           <div className="flex items-center justify-between text-xs">
             <div className="text-muted-foreground">Mode</div>
             <div className="inline-flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded border border-border">To band</span>
-              <span className="px-2 py-0.5 rounded border border-border opacity-50">To target</span>
+              <button className={`px-2 py-0.5 rounded border border-border ${proposeMode==='to-band'?'bg-muted':''}`} onClick={()=> setProposeMode('to-band')}>To band</button>
+              <button className={`px-2 py-0.5 rounded border border-border ${proposeMode==='to-target'?'bg-muted':''}`} onClick={()=> setProposeMode('to-target')}>To target</button>
             </div>
           </div>
-          {rebalance.items.length ? (
+          <div className="flex items-center justify-between text-xs">
+            <div className="text-muted-foreground">Options</div>
+            <div className="inline-flex items-center gap-3">
+              <label className="inline-flex items-center gap-1"><input type="checkbox" checked={optCashOnly} onChange={e=> setOptCashOnly(e.target.checked)} /> <span>Contributions only</span></label>
+              <label className="inline-flex items-center gap-1">Turnover cap <input type="number" min={0} max={10} className="w-14 rounded border border-border bg-background px-1 py-0.5" value={optTurnoverPct} onChange={e=> setOptTurnoverPct(Math.max(0, Math.min(10, Math.round(Number(e.target.value)||0))))} />%</label>
+            </div>
+          </div>
+          {proposeError ? <div className="text-[11px] text-rose-600">{proposeError}</div> : null}
+          {proposeLoading ? <div className="text-xs text-muted-foreground">Computing proposal…</div> : null}
+          {proposal?.constraints ? (
+            <div className="text-[11px] text-muted-foreground">Constraints applied: EF {Number(proposal.constraints.efMonths||0)} months{Number(proposal.constraints.liquidityAmount||0)?`, liquidity ₹${proposal.constraints.liquidityAmount} over ${Number(proposal.constraints.liquidityMonths||0)} months`:''}{proposal.goalsCount?` · goals: ${proposal.goalsCount}`:''}</div>
+          ) : (proposal?.goalsCount? <div className="text-[11px] text-muted-foreground">Goals considered: {proposal.goalsCount}</div> : null)}
+          {proposal?.trades?.length ? (
             <div className="space-y-2">
-              {rebalance.items.map((it:any)=> (
+              {proposal.trades.map((it:any)=> (
                 <div key={`prop-${it.class}`} className="rounded-md border border-border p-2 text-xs">
                   <div className="flex items-center justify-between">
                     <div className="font-medium">{it.class}</div>
                     <div className={it.action==='Increase' ? 'text-indigo-600' : 'text-rose-600'}>{it.action} {it.amount.toFixed(0)}</div>
                   </div>
-                  <div className="mt-1 text-muted-foreground">{it.actualPct}% → {it.targetPct}% · reason: {it.action==='Increase' ? 'under band' : 'over band'}</div>
+                  <div className="mt-1 text-muted-foreground">{it.actualPct}% → {it.targetPct}% · reason: {it.reason}</div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-muted-foreground text-xs">No actions needed. Portfolio within comfort bands.</div>
+            <div className="text-muted-foreground text-xs">{proposeLoading?"" : "No actions needed. Portfolio within comfort bands."}</div>
           )}
-          <div className="text-[11px] text-muted-foreground">We propose minimal trades to bring assets back inside their comfort bands. This keeps turnover low and respects your safety floors.</div>
+          {proposal?.rationale ? <div className="text-[11px] text-muted-foreground">{proposal.rationale}</div> : null}
         </div>
       </Modal>
       <style jsx>{`
