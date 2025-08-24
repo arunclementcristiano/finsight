@@ -69,6 +69,16 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
     const equity = (byClass.get("Stocks") || 0) + (byClass.get("Mutual Funds") || 0);
     const defensive = (byClass.get("Debt") || 0) + (byClass.get("Liquid") || 0);
     const satellite = (byClass.get("Gold") || 0) + (byClass.get("Real Estate") || 0);
+    
+    // Debug logging to understand the satellite calculation issue
+    console.log("KPI Calculation Debug:", {
+      allBuckets: plan?.buckets?.map(b => ({ class: b.class, pct: b.pct })),
+      byClassMap: Object.fromEntries(byClass),
+      gold: byClass.get("Gold") || 0,
+      realEstate: byClass.get("Real Estate") || 0,
+      calculated: { equity, defensive, satellite }
+    });
+    
     return { equity, defensive, satellite };
   }, [plan]);
 
