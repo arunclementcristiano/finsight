@@ -77,6 +77,34 @@ export interface RebalanceAction {
  * Each factor contributes weighted equity/safety signals
  */
 class SignalProcessor {
+  // Helper method to safely get signal with fallback
+  private getSignalSafely(
+    signals: Record<string, { equity: number; safety: number; explanation: string }>,
+    key: string,
+    factor: string,
+    weight: number,
+    fallback: { equity: number; safety: number; explanation: string }
+  ): Signal {
+    const signal = signals[key];
+    if (!signal) {
+      return {
+        factor,
+        equitySignal: fallback.equity,
+        safetySignal: fallback.safety,
+        weight,
+        explanation: fallback.explanation
+      };
+    }
+    
+    return {
+      factor,
+      equitySignal: signal.equity,
+      safetySignal: signal.safety,
+      weight,
+      explanation: signal.explanation
+    };
+  }
+  
   calculateSignals(answers: CouncilAnswers): Signal[] {
     const signals: Signal[] = [];
     
@@ -136,6 +164,17 @@ class SignalProcessor {
     };
     
     const signal = ageSignals[age as keyof typeof ageSignals];
+    if (!signal) {
+      // Fallback for unknown age values
+      return {
+        factor: "age",
+        equitySignal: +5,
+        safetySignal: 0,
+        weight: 0.25,
+        explanation: "Unknown age, applying moderate growth allocation"
+      };
+    }
+    
     return {
       factor: "age",
       equitySignal: signal.equity,
@@ -155,6 +194,17 @@ class SignalProcessor {
     };
     
     const signal = horizonSignals[horizon as keyof typeof horizonSignals];
+    if (!signal) {
+      // Fallback for unknown horizon values
+      return {
+        factor: "investment_horizon",
+        equitySignal: +5,
+        safetySignal: -2,
+        weight: 0.25,
+        explanation: "Unknown investment horizon, applying moderate growth allocation"
+      };
+    }
+    
     return {
       factor: "investment_horizon",
       equitySignal: signal.equity,
@@ -172,6 +222,17 @@ class SignalProcessor {
     };
     
     const signal = stabilitySignals[stability as keyof typeof stabilitySignals];
+    if (!signal) {
+      // Fallback for unknown stability values
+      return {
+        factor: "income_stability",
+        equitySignal: 0,
+        safetySignal: +5,
+        weight: 0.15,
+        explanation: "Unknown income stability, applying moderate safety buffer"
+      };
+    }
+    
     return {
       factor: "income_stability",
       equitySignal: signal.equity,
@@ -189,14 +250,13 @@ class SignalProcessor {
       "5+": { equity: -8, safety: +12, explanation: "Many dependents necessitate conservative, stable approach" }
     };
     
-    const signal = dependentSignals[dependents as keyof typeof dependentSignals];
-    return {
-      factor: "dependents",
-      equitySignal: signal.equity,
-      safetySignal: signal.safety,
-      weight: 0.10,
-      explanation: signal.explanation
-    };
+    return this.getSignalSafely(
+      dependentSignals,
+      dependents,
+      "dependents",
+      0.10,
+      { equity: -2, safety: +5, explanation: "Unknown dependents count, applying moderate safety allocation" }
+    );
   }
   
   private getEmergencyFundSignal(efMonths: string): Signal {
@@ -208,14 +268,13 @@ class SignalProcessor {
       "12+": { equity: +5, safety: -5, explanation: "Excellent emergency fund supports increased equity exposure" }
     };
     
-    const signal = efSignals[efMonths as keyof typeof efSignals];
-    return {
-      factor: "emergency_fund",
-      equitySignal: signal.equity,
-      safetySignal: signal.safety,
-      weight: 0.15,
-      explanation: signal.explanation
-    };
+    return this.getSignalSafely(
+      efSignals,
+      efMonths,
+      "emergency_fund",
+      0.15,
+      { equity: 0, safety: 0, explanation: "Unknown emergency fund amount, applying neutral allocation" }
+    );
   }
   
   private getObligationsSignal(obligations: string): Signal {
@@ -226,14 +285,13 @@ class SignalProcessor {
       "50K+": { equity: -8, safety: +10, explanation: "Very high obligations necessitate conservative positioning" }
     };
     
-    const signal = obligationSignals[obligations as keyof typeof obligationSignals];
-    return {
-      factor: "monthly_obligations",
-      equitySignal: signal.equity,
-      safetySignal: signal.safety,
-      weight: 0.10,
-      explanation: signal.explanation
-    };
+    return this.getSignalSafely(
+      obligationSignals,
+      obligations,
+      "monthly_obligations",
+      0.10,
+      { equity: 0, safety: 0, explanation: "Unknown obligation amount, applying neutral allocation" }
+    );
   }
   
   private getVolatilitySignal(comfort: string): Signal {
@@ -245,14 +303,13 @@ class SignalProcessor {
       "buy_more": { equity: +12, safety: -8, explanation: "Excellent volatility tolerance enables aggressive positioning" }
     };
     
-    const signal = volatilitySignals[comfort as keyof typeof volatilitySignals];
-    return {
-      factor: "volatility_comfort",
-      equitySignal: signal.equity,
-      safetySignal: signal.safety,
-      weight: 0.20,
-      explanation: signal.explanation
-    };
+    return this.getSignalSafely(
+      volatilitySignals,
+      comfort,
+      "volatility_comfort",
+      0.20,
+      { equity: 0, safety: 0, explanation: "Unknown volatility comfort, applying balanced allocation" }
+    );
   }
   
   private getKnowledgeSignal(knowledge: string): Signal {
@@ -263,14 +320,13 @@ class SignalProcessor {
       "expert": { equity: +8, safety: -5, explanation: "Expert knowledge supports sophisticated higher-risk strategies" }
     };
     
-    const signal = knowledgeSignals[knowledge as keyof typeof knowledgeSignals];
-    return {
-      factor: "investment_knowledge",
-      equitySignal: signal.equity,
-      safetySignal: signal.safety,
-      weight: 0.10,
-      explanation: signal.explanation
-    };
+    return this.getSignalSafely(
+      knowledgeSignals,
+      knowledge,
+      "investment_knowledge",
+      0.10,
+      { equity: 0, safety: 0, explanation: "Unknown investment knowledge, applying standard allocation" }
+    );
   }
   
   private getLossToleranceSignal(tolerance: string): Signal {
@@ -282,14 +338,13 @@ class SignalProcessor {
       "40%+": { equity: +10, safety: -5, explanation: "High loss tolerance enables aggressive growth strategy" }
     };
     
-    const signal = toleranceSignals[tolerance as keyof typeof toleranceSignals];
-    return {
-      factor: "loss_tolerance",
-      equitySignal: signal.equity,
-      safetySignal: signal.safety,
-      weight: 0.15,
-      explanation: signal.explanation
-    };
+    return this.getSignalSafely(
+      toleranceSignals,
+      tolerance,
+      "loss_tolerance",
+      0.15,
+      { equity: 0, safety: 0, explanation: "Unknown loss tolerance, applying balanced allocation" }
+    );
   }
   
   private getGoalSignal(goal: string): Signal {
@@ -302,14 +357,13 @@ class SignalProcessor {
       "preservation": { equity: -8, safety: +12, explanation: "Capital preservation prioritizes safety over growth" }
     };
     
-    const signal = goalSignals[goal as keyof typeof goalSignals];
-    return {
-      factor: "primary_goal",
-      equitySignal: signal.equity,
-      safetySignal: signal.safety,
-      weight: 0.15,
-      explanation: signal.explanation
-    };
+    return this.getSignalSafely(
+      goalSignals,
+      goal,
+      "primary_goal",
+      0.15,
+      { equity: +5, safety: +3, explanation: "Unknown goal, applying balanced growth approach" }
+    );
   }
   
   private getLiquiditySignal(liquidity: string): Signal {
@@ -321,14 +375,13 @@ class SignalProcessor {
       "frequently": { equity: -10, safety: +15, explanation: "Frequent liquidity needs prioritize accessible funds" }
     };
     
-    const signal = liquiditySignals[liquidity as keyof typeof liquiditySignals];
-    return {
-      factor: "liquidity_needs",
-      equitySignal: signal.equity,
-      safetySignal: signal.safety,
-      weight: 0.10,
-      explanation: signal.explanation
-    };
+    return this.getSignalSafely(
+      liquiditySignals,
+      liquidity,
+      "liquidity_needs",
+      0.10,
+      { equity: -2, safety: +3, explanation: "Unknown liquidity needs, applying moderate safety buffer" }
+    );
   }
 }
 
