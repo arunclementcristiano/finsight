@@ -84,6 +84,34 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
     } catch { return null; }
   }, [plan, holdings, rebalance]);
 
+  const whyText = useMemo(() => {
+    try {
+      const ds = (plan as any)?.explain?.topDrivers || [];
+      if (!ds.length) return '';
+      const mapDriver = (d: string) => {
+        if (d.includes('Near-term cap')) return 'Because a near-term goal exists, we cap equity and prioritise safety.';
+        if (d.includes('Near-term safety')) return 'We add more to Debt/Liquid to protect near-term needs.';
+        if (d.includes('EF buffer')) return 'Liquid is set to cover emergency needs.';
+        if (d.includes('Equity cap')) return 'Equity is kept within a safe range for your risk tolerance.';
+        if (d.includes('Short horizon')) return 'Shorter horizon shifts a little from equity into safety.';
+        if (d.includes('Long horizon')) return 'Longer horizon allows a small tilt towards growth.';
+        if (d.includes('Retirement glide')) return 'Approaching retirement, we gradually reduce equity (glide path).';
+        if (d.includes('Young capacity')) return 'Younger profile with capacity allows a modest equity tilt.';
+        if (d.includes('Older safety')) return 'Older profile adds a touch more safety.';
+        if (d.includes('Gold tilt')) return 'A small Gold allocation is kept as an inflation and shock hedge.';
+        if (d.includes('Global equity cap')) return 'Equity is limited to stay within policy guardrails.';
+        if (d.includes('Debt clamp->Liquid')) return 'Excess Debt flows into Liquid to keep balance.';
+        if (d.includes('Debt minimum')) return 'We ensure a minimum level of Debt for stability.';
+        if (d.includes('Equity floor')) return 'We maintain a sensible equity floor for long-term growth.';
+        if (d.includes('Beginner MF routing')) return 'As a beginner, equity is routed via diversified mutual funds rather than direct stocks.';
+        return null;
+      };
+      const msgs: string[] = [];
+      for (const d of ds) { const m = mapDriver(String(d.driver||'')); if (m && !msgs.includes(m)) msgs.push(m); if (msgs.length >= 4) break; }
+      return msgs.join(' ');
+    } catch { return ''; }
+  }, [plan]);
+
   const kpiExtras = useMemo(()=>{
     const total = (rebalance as any)?.totalCurrentValue || 0;
     const reValue = (holdings||[]).filter((h:any)=> h.instrumentClass==='Real Estate').reduce((s:number,h:any)=> s + (h.currentValue||0), 0);
@@ -255,9 +283,9 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
             {plan?.explain?.topDrivers?.length ? (
               <div className="mt-3 rounded-md border border-border p-3">
                 <div className="text-xs font-semibold mb-1">Why this mix</div>
-                <div className="text-[11px] text-muted-foreground">
-                  {plan.explain.topDrivers.map((d:any,i:number)=> `${d.driver} ${d.effectPct>0?'+':''}${d.effectPct}%`).join(' · ')}
-                </div>
+                {whyText ? (
+                  <div className="text-[11px] text-muted-foreground">{whyText}</div>
+                ) : null}
               </div>
             ) : null}
             {stress ? (
