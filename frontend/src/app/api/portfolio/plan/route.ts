@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { getUserSubFromJwt } from "../../_utils/auth";
+import { pruneQuestionnaire, stableAnswersSig } from "../../../PortfolioManagement/domain/answersUtil";
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.AWS_REGION || "us-east-1" }));
 const INVEST_TABLE = process.env.INVEST_TABLE || "InvestApp";
@@ -20,6 +21,18 @@ export async function PUT(req: NextRequest) {
 	if (!portfolioId || !plan) return NextResponse.json({ error: "Missing portfolioId or plan" }, { status: 400 });
 	const now = new Date().toISOString();
 	const origin = (plan?.origin || '').toLowerCase();
+	try {
+		const snap = pruneQuestionnaire((plan as any)?.answersSnapshot || {});
+		(plan as any).answersSnapshot = snap;
+		(plan as any).answersSig = stableAnswersSig(snap);
+		(plan as any).policyVersion = (plan as any).policyVersion || 'v1';
+		(plan as any).compliance = {
+			savedAt: now,
+			policyVersion: (plan as any).policyVersion,
+			answers: snap,
+			drivers: (plan as any).explain?.topDrivers || [],
+		};
+	} catch {}
 
 	// Idempotency: compare against existing canonical; skip if unchanged
 	let existing: any = null;
