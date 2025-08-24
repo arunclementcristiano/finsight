@@ -37,6 +37,8 @@ export default function ExpenseTrackerPage() {
   });
   const [privacy, setPrivacy] = useState(false);
   const [activeTab, setActiveTab] = useState<"data" | "insights">("data");
+  const [expandedExpenses, setExpandedExpenses] = useState<Set<string>>(new Set());
+  const [expandedBudgets, setExpandedBudgets] = useState<Set<string>>(new Set());
   const [showBudgetsModal, setShowBudgetsModal] = useState(false);
   const [tempDefaultBudgets, setTempDefaultBudgets] = useState<Record<string, number>>({});
   const [tempOverrideBudgets, setTempOverrideBudgets] = useState<Record<string, number>>({});
@@ -451,14 +453,33 @@ export default function ExpenseTrackerPage() {
   function next() { setPage(p => Math.min(totalPages, p + 1)); }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-5rem)] overflow-hidden">
-      {/* Sticky Command Bar */}
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
-        <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-4 p-4">
-          {/* Chat input */}
+    <div className="flex flex-col h-[calc(100vh-5rem)] overflow-hidden relative">
+      {/* Ultra-Modern Fixed Command Bar */}
+      <div className="sticky top-0 z-20 bg-gradient-to-br from-white/95 via-blue-50/80 to-purple-50/80 dark:from-gray-900/95 dark:via-gray-900/90 dark:to-gray-900/85 backdrop-blur-xl border-b border-blue-200/50 dark:border-blue-800/30 shadow-lg">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-pink-500/5 pointer-events-none"></div>
+        <div className="relative grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-6 p-6">
+          {/* Modern Chat Input */}
           <div>
-            <form onSubmit={handleSubmit} className="flex gap-2 items-center">
-              <input ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} className="flex-1 h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]" placeholder="e.g., Lunch 250 at restaurant"/>
+            <div className="mb-2">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+                <span className="text-2xl">💰</span>
+                <span>Quick Add Expense</span>
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Type naturally: "Coffee 150 at cafe" or "Groceries 2500"</p>
+            </div>
+            <form onSubmit={handleSubmit} className="flex gap-3 items-center">
+              <div className="relative flex-1">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <span className="text-gray-400 dark:text-gray-500 text-lg">💸</span>
+                </div>
+                <input 
+                  ref={inputRef} 
+                  value={input} 
+                  onChange={e=>setInput(e.target.value)} 
+                  className="w-full h-14 pl-12 pr-4 rounded-2xl border-2 border-blue-200/50 dark:border-blue-800/50 bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-0 shadow-lg backdrop-blur-sm transition-all duration-200 text-base font-medium"
+                  placeholder="e.g., Lunch 250 at restaurant"
+                />
+              </div>
               <button type="button" aria-label="Set date" title="Set date" onClick={()=> setDateOpen(o=>!o)} className={`h-11 w-11 inline-flex items-center justify-center rounded-xl border ${dateOpen ? 'border-emerald-400 text-emerald-600' : 'border-border text-muted-foreground'} bg-card hover:bg-muted focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]`}>
                 <Calendar className="h-4 w-4" />
               </button>
@@ -515,157 +536,480 @@ export default function ExpenseTrackerPage() {
       {/* Main panels */}
       {activeTab === "data" ? (
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 p-4 flex-1 min-h-0 overflow-auto">
-        {/* Recent Expenses (full width on xl span 2) */}
-        <Card className="xl:col-span-2 h-full flex flex-col overflow-hidden">
-          <CardHeader>
-            <CardTitle>Recent Expenses</CardTitle>
-            <CardDescription>Synced with backend</CardDescription>
-          </CardHeader>
-          <CardContent className="flex-1 min-h-0 flex flex-col pb-0">
-            <div className="mb-3 flex flex-wrap gap-2 items-center">
-              <label className="text-sm text-muted-foreground">Range</label>
-              <select value={preset} onChange={(e)=> setPreset(e.target.value as any)} className="h-9 rounded-md border border-border px-2 bg-card">
-                <option value="all">All</option>
-                <option value="today">Today</option>
-                <option value="week">This week</option>
-                <option value="month">This month</option>
-                <option value="lastMonth">Last month</option>
-                <option value="custom">Custom</option>
-              </select>
-              {preset === "custom" && (
-                <>
-                  <input type="date" value={customStart} onChange={(e)=> setCustomStart(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card" />
-                  <span className="text-sm text-muted-foreground">to</span>
-                  <input type="date" value={customEnd} onChange={(e)=> setCustomEnd(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card" />
-                </>
-              )}
+        {/* 🎯 Modern Expense Feed with Minimize/Maximize */}
+        <div className="xl:col-span-2 space-y-3">
+          {/* Clean Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Activity Feed</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Latest {pageRows.length} transactions</p>
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-border">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-card">
-                <tr>
-                  <th className="px-3 py-2 border-b">
-                    <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => toggleSort("date")} className="inline-flex items-center gap-1 cursor-pointer select-none">
-                        Date
-                        {sortField !== "date" ? <ArrowUpDown className="h-3.5 w-3.5" /> : (sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
-                      </button>
-                      <button type="button" onClick={() => toggleSort("createdAt")} title="Sort by added time" className={`inline-flex items-center gap-1 cursor-pointer select-none text-xs px-1.5 py-0.5 rounded border ${sortField==='createdAt' ? 'border-foreground text-foreground' : 'border-border text-muted-foreground hover:text-foreground'}`}>
-                        Newest
-                        {sortField !== "createdAt" ? <ArrowUpDown className="h-3 w-3" /> : (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
-                      </button>
-                    </div>
-                  </th>
-                  <th className="px-3 py-2 border-b">Text</th>
-                  <th className="px-3 py-2 border-b">
-                    <button type="button" onClick={() => toggleSort("category")} className="inline-flex items-center gap-1 cursor-pointer select-none">
-                      Category
-                      {sortField !== "category" ? <ArrowUpDown className="h-3.5 w-3.5" /> : (sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
-                    </button>
-                  </th>
-                  <th className="px-3 py-2 border-b text-right">
-                    <button type="button" onClick={() => toggleSort("amount")} className="inline-flex items-center gap-1 cursor-pointer select-none">
-                      Amount
-                      {sortField !== "amount" ? <ArrowUpDown className="h-3.5 w-3.5" /> : (sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
-                    </button>
-                  </th>
-                  <th className="px-3 py-2 border-b text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pageRows.map((e: Expense) => (
-                  <tr key={e.id} className="border-b align-top">
-                    <td className="px-3 py-2">{fmtDateYYYYMMDDLocal(e.date as any)}</td>
-                    <td className="px-3 py-2">{e.text}</td>
-                    <td className="px-3 py-2">{e.category as string}</td>
-                    <td className="px-3 py-2 text-right">{privacy ? "•••" : e.amount.toFixed(2)}</td>
-                    <td className="px-3 py-2 text-right">
-                      <button
-                        aria-label="Delete"
-                        title="Delete"
-                        onClick={() => handleDelete(e.id)}
-                        className="h-7 w-7 inline-flex items-center justify-center rounded-full border border-transparent text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:border-rose-200 dark:hover:border-rose-800 focus:outline-none focus:ring-2 focus:ring-rose-400"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-          </CardContent>
-          <CardFooter className="pt-3 border-t border-border">
-            <div className="w-full flex-none flex items-center justify-between text-sm">
-              <div>Page {page} of {totalPages}</div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={prev} disabled={page === 1}>Prev</Button>
-                <Button variant="outline" size="sm" onClick={next} disabled={page === totalPages}>Next</Button>
-              </div>
-            </div>
-          </CardFooter>
-        </Card>
+            <select 
+              value={preset} 
+              onChange={(e)=> setPreset(e.target.value as any)}
+              className="text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">All</option>
+              <option value="today">Today</option>
+              <option value="week">Week</option>
+              <option value="month">Month</option>
+            </select>
+          </div>
 
-        {/* Budgets in Data tab */}
-        <Card className="h-full overflow-y-auto">
-          <CardHeader>
-            <CardTitle>Category Budgets</CardTitle>
-            <CardDescription>{currentYm} budgets and usage</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {(monthlyCategorySpend.arr).length > 0 ? (
-              <div className="space-y-3">
-                {(monthlyCategorySpend.arr).map(([cat, spent]) => {
-                  const budget = (defaultCategoryBudgets?.[cat]) || 0;
-                  const pct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
-                  const warn = pct >= 80 && pct < 100;
-                  const alert = pct >= 100;
-                  const barClass = alert ? "bg-rose-500" : warn ? "bg-amber-500" : undefined;
-                  return (
-                    <div key={cat} className="rounded-lg border border-border p-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="font-medium">{cat}</div>
-                        <div className="text-muted-foreground">
-                          {privacy ? "•••" : formatCurrency(spent)}
-                          <span className="mx-1">/</span>
-                          {budget > 0 ? (
-                            <span className="font-medium">{privacy ? "•••" : formatCurrency(budget)}</span>
-                          ) : editingCat === cat ? (
-                            <input
-                              autoFocus
-                              type="number"
-                              step="0.01"
-                              value={editingVal}
-                              onChange={(e)=> setEditingVal(e.target.value)}
-                              onBlur={()=> saveBudget(cat)}
-                              onKeyDown={(e)=> {
-                                if (e.key === "Enter") saveBudget(cat);
-                                else if (e.key === "Escape") { setEditingCat(null); setEditingVal(""); }
-                              }}
-                              className="h-7 w-28 ml-1 rounded-md border border-border px-2 bg-card text-right"
-                            />
-                          ) : (
-                            <button className="ml-1 underline decoration-dotted hover:opacity-80" onClick={()=> { setEditingCat(cat); setEditingVal(String(budget || 0)); }}>
-                              {budget > 0 ? (privacy ? "•••" : formatCurrency(budget)) : "Set budget"}
+          {/* Minimalist Transaction Feed */}
+          <div className="space-y-2">
+            {pageRows.length > 0 ? (
+              pageRows.map((expense, index) => {
+                const isExpanded = expandedExpenses.has(expense.id);
+                const toggleExpanded = () => {
+                  const newExpanded = new Set(expandedExpenses);
+                  if (isExpanded) {
+                    newExpanded.delete(expense.id);
+                  } else {
+                    newExpanded.add(expense.id);
+                  }
+                  setExpandedExpenses(newExpanded);
+                };
+                
+                // Category styling
+                const getCategoryIcon = (category: string) => {
+                  const icons: Record<string, string> = {
+                    "Food": "🍽️", "Travel": "✈️", "Shopping": "🛍️", "Utilities": "⚡", 
+                    "Housing": "🏠", "Healthcare": "🩺", "Entertainment": "🎬", 
+                    "Investment": "📈", "Other": "💸"
+                  };
+                  return icons[category] || "💸";
+                };
+
+                const formatChatDate = (dateStr: string) => {
+                  const date = new Date(dateStr);
+                  const today = new Date();
+                  const yesterday = new Date(today);
+                  yesterday.setDate(yesterday.getDate() - 1);
+                  const lastWeek = new Date(today);
+                  lastWeek.setDate(today.getDate() - 7);
+                  
+                  if (date.toDateString() === today.toDateString()) {
+                    return { primary: "Today", secondary: date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) };
+                  }
+                  if (date.toDateString() === yesterday.toDateString()) {
+                    return { primary: "Yesterday", secondary: date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) };
+                  }
+                  if (date > lastWeek) {
+                    return { 
+                      primary: date.toLocaleDateString('en-IN', { weekday: 'long' }), 
+                      secondary: date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })
+                    };
+                  }
+                  return { 
+                    primary: date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }), 
+                    secondary: date.toLocaleDateString('en-IN', { year: 'numeric' })
+                  };
+                };
+
+                const amount = expense.amount || 0;
+                const dateInfo = formatChatDate(expense.date as string);
+                
+                return (
+                  <div key={expense.id} className="group relative">
+                    {/* Modern Chat-Style Row */}
+                    <div 
+                      className="flex items-start space-x-3 p-4 hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/50 dark:hover:from-blue-950/30 dark:hover:to-indigo-950/30 rounded-xl transition-all duration-200 cursor-pointer border border-transparent hover:border-blue-100 dark:hover:border-blue-800/50"
+                      onClick={toggleExpanded}
+                    >
+                      {/* Category Icon with Chat Bubble Style */}
+                      <div className="relative flex-shrink-0">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-lg font-semibold shadow-lg">
+                          {getCategoryIcon(expense.category as string)}
+                        </div>
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"></div>
+                      </div>
+
+                      {/* Content Area */}
+                      <div className="flex-1 min-w-0">
+                        {/* Header Row */}
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-gray-900 dark:text-white truncate text-base">
+                              {expense.text || expense.category}
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                              {expense.category}
+                            </p>
+                          </div>
+                          
+                          {/* Price Badge */}
+                          <div className="ml-3 flex flex-col items-end">
+                            <div className={`px-3 py-1.5 rounded-full text-sm font-bold ${
+                              privacy 
+                                ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400' 
+                                : 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg'
+                            }`}>
+                              {privacy ? "•••••" : `₹${amount.toLocaleString('en-IN')}`}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Chat-Style Date & Time */}
+                        <div className="flex items-center justify-between mt-2">
+                          <div className="flex items-center space-x-2 text-xs">
+                            <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full font-medium">
+                              {dateInfo.primary}
+                            </span>
+                            <span className="text-gray-400 dark:text-gray-500">
+                              {dateInfo.secondary}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <button className="text-xs text-blue-600 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-all duration-200 px-2 py-1 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/30">
+                              {isExpanded ? '↑ Less' : '↓ More'}
                             </button>
-                          )}
+                          </div>
                         </div>
                       </div>
-                      <Progress value={Math.min(100, pct)} barClassName={barClass} className="mt-2" />
-                      {budget > 0 && (
-                        <div className={`mt-1 text-xs ${alert ? "text-rose-600" : warn ? "text-amber-600" : "text-muted-foreground"}`}>
-                          {alert ? `${privacy ? '•••' : formatCurrency(spent - budget)} over` : `${privacy ? '•••' : formatCurrency(budget - spent)} left`}
-                        </div>
-                      )}
                     </div>
-                  );
-                })}
-              </div>
+
+                    {/* Modern Expanded Details */}
+                    {isExpanded && (
+                      <div className="ml-16 mr-4 mt-3 animate-in slide-in-from-top-2 duration-300">
+                        <div className="bg-gradient-to-br from-white via-blue-50/50 to-purple-50/50 dark:from-gray-800 dark:via-gray-800/80 dark:to-gray-800/60 rounded-2xl p-5 border border-blue-100/50 dark:border-blue-800/30 shadow-lg backdrop-blur-sm">
+                          {/* Header */}
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
+                              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                              <span>Transaction Details</span>
+                            </h4>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-gray-700/60 px-2 py-1 rounded-full">
+                              ID: {expense.id.slice(-6)}
+                            </div>
+                          </div>
+
+                          {/* Details Grid */}
+                          <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div className="bg-white/60 dark:bg-gray-700/40 rounded-xl p-3">
+                              <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Category</div>
+                              <div className="font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
+                                <span>{getCategoryIcon(expense.category as string)}</span>
+                                <span>{expense.category}</span>
+                              </div>
+                            </div>
+                            <div className="bg-white/60 dark:bg-gray-700/40 rounded-xl p-3">
+                              <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Amount</div>
+                              <div className="font-bold text-lg text-emerald-600 dark:text-emerald-400">
+                                {privacy ? "•••••" : `₹${amount.toLocaleString('en-IN')}`}
+                              </div>
+                            </div>
+                            <div className="bg-white/60 dark:bg-gray-700/40 rounded-xl p-3">
+                              <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Transaction Date</div>
+                              <div className="font-medium text-gray-900 dark:text-white">
+                                {fmtDateYYYYMMDDLocal(expense.date as any)}
+                              </div>
+                            </div>
+                            <div className="bg-white/60 dark:bg-gray-700/40 rounded-xl p-3">
+                              <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Added</div>
+                              <div className="font-medium text-gray-900 dark:text-white">
+                                {formatChatDate(expense.createdAt || expense.date as string).primary}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Description */}
+                          {expense.text && (
+                            <div className="bg-white/60 dark:bg-gray-700/40 rounded-xl p-3 mb-4">
+                              <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Description</div>
+                              <div className="font-medium text-gray-900 dark:text-white leading-relaxed">
+                                {expense.text}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Actions */}
+                          <div className="flex justify-between items-center pt-2 border-t border-white/20 dark:border-gray-600/20">
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              Click outside to collapse
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(expense.id);
+                              }}
+                              className="px-4 py-2 bg-gradient-to-r from-red-500 to-pink-600 text-white text-sm font-medium rounded-xl hover:from-red-600 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                            >
+                              🗑️ Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
             ) : (
-              <div className="text-muted-foreground text-sm">No data yet</div>
+              <div className="text-center py-12">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                  <span className="text-2xl">💸</span>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No expenses yet</h3>
+                <p className="text-gray-500 dark:text-gray-400">Add your first expense to get started</p>
+              </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+
+          {/* Simple Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-3 text-sm">
+              <span className="text-gray-500 dark:text-gray-400">
+                {pageRows.length} of {sortedExpenses.length} shown
+              </span>
+              <div className="flex space-x-2">
+                <button
+                  onClick={prev}
+                  disabled={page === 1}
+                  className="px-3 py-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  ← Prev
+                </button>
+                <button
+                  onClick={next}
+                  disabled={page === totalPages}
+                  className="px-3 py-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 🎯 Modern Budget Manager */}
+        <div className="space-y-3">
+          {/* Clean Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Budget Control</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{currentYm} spending insights</p>
+            </div>
+            <button 
+              onClick={() => setShowBudgetsModal(true)}
+              className="text-sm bg-gradient-to-r from-purple-500 to-pink-600 text-white px-3 py-1.5 rounded-lg hover:from-purple-600 hover:to-pink-700 transition-all duration-200 shadow-md hover:shadow-lg"
+            >
+              ⚙️ Settings
+            </button>
+          </div>
+
+          {/* Budget Cards */}
+          <div className="space-y-2">
+            {(monthlyCategorySpend.arr).length > 0 ? (
+              (monthlyCategorySpend.arr).map(([cat, spent]) => {
+                const budget = (defaultCategoryBudgets?.[cat]) || 0;
+                const pct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
+                const warn = pct >= 80 && pct < 100;
+                const alert = pct >= 100;
+                const isExpanded = expandedBudgets.has(cat);
+                
+                const toggleExpanded = () => {
+                  const newExpanded = new Set(expandedBudgets);
+                  if (isExpanded) {
+                    newExpanded.delete(cat);
+                  } else {
+                    newExpanded.add(cat);
+                  }
+                  setExpandedBudgets(newExpanded);
+                };
+
+                // Category styling
+                const getCategoryIcon = (category: string) => {
+                  const icons: Record<string, string> = {
+                    "Food": "🍽️", "Travel": "✈️", "Shopping": "🛍️", "Utilities": "⚡", 
+                    "Housing": "🏠", "Healthcare": "🩺", "Entertainment": "🎬", 
+                    "Investment": "📈", "Other": "💸"
+                  };
+                  return icons[category] || "💸";
+                };
+
+                const getStatusColor = () => {
+                  if (alert) return { bg: "from-red-500 to-rose-600", text: "text-red-600", dot: "bg-red-500" };
+                  if (warn) return { bg: "from-amber-500 to-orange-600", text: "text-amber-600", dot: "bg-amber-500" };
+                  return { bg: "from-emerald-500 to-teal-600", text: "text-emerald-600", dot: "bg-emerald-500" };
+                };
+
+                const statusColor = getStatusColor();
+
+                return (
+                  <div key={cat} className="group">
+                    {/* Compact Budget Row */}
+                    <div 
+                      className="flex items-center justify-between p-4 hover:bg-gradient-to-r hover:from-purple-50/50 hover:to-pink-50/50 dark:hover:from-purple-950/30 dark:hover:to-pink-950/30 rounded-xl transition-all duration-200 cursor-pointer border border-transparent hover:border-purple-100 dark:hover:border-purple-800/50"
+                      onClick={toggleExpanded}
+                    >
+                      {/* Left Side */}
+                      <div className="flex items-center space-x-3 flex-1">
+                        <div className="relative flex-shrink-0">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white text-sm font-semibold shadow-md">
+                            {getCategoryIcon(cat)}
+                          </div>
+                          <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 ${statusColor.dot} rounded-full border-2 border-white dark:border-gray-800`}></div>
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-gray-900 dark:text-white text-sm">{cat}</h3>
+                          <div className="flex items-center space-x-2 mt-0.5">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {privacy ? "•••" : `₹${spent.toLocaleString('en-IN')}`} spent
+                            </span>
+                            <span className="text-xs text-gray-300 dark:text-gray-600">•</span>
+                            <span className={`text-xs font-medium ${statusColor.text}`}>
+                              {budget > 0 ? `${pct}%` : 'No budget'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right Side */}
+                      <div className="flex items-center space-x-3">
+                        {budget > 0 && (
+                          <div className="hidden sm:block">
+                            <div className="w-16 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full bg-gradient-to-r ${statusColor.bg} transition-all duration-300`}
+                                style={{ width: `${Math.min(100, pct)}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        )}
+                        <button className="text-xs text-purple-600 dark:text-purple-400 opacity-0 group-hover:opacity-100 transition-all duration-200 px-2 py-1 rounded-md hover:bg-purple-50 dark:hover:bg-purple-900/30">
+                          {isExpanded ? '↑' : '↓'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expanded Budget Details */}
+                    {isExpanded && (
+                      <div className="ml-14 mr-4 mt-3 animate-in slide-in-from-top-2 duration-300">
+                        <div className="bg-gradient-to-br from-white via-purple-50/50 to-pink-50/50 dark:from-gray-800 dark:via-gray-800/80 dark:to-gray-800/60 rounded-2xl p-5 border border-purple-100/50 dark:border-purple-800/30 shadow-lg backdrop-blur-sm">
+                          {/* Header */}
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
+                              <span className={`w-2 h-2 ${statusColor.dot} rounded-full`}></span>
+                              <span>{cat} Budget</span>
+                            </h4>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-gray-700/60 px-2 py-1 rounded-full">
+                              {currentYm}
+                            </div>
+                          </div>
+
+                          {/* Stats */}
+                          <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div className="bg-white/60 dark:bg-gray-700/40 rounded-xl p-3">
+                              <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Spent</div>
+                              <div className="font-bold text-lg text-gray-900 dark:text-white">
+                                {privacy ? "•••••" : `₹${spent.toLocaleString('en-IN')}`}
+                              </div>
+                            </div>
+                            <div className="bg-white/60 dark:bg-gray-700/40 rounded-xl p-3">
+                              <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Budget</div>
+                              <div className="font-bold text-lg text-purple-600 dark:text-purple-400">
+                                {budget > 0 ? (privacy ? "•••••" : `₹${budget.toLocaleString('en-IN')}`) : "Not Set"}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Progress Bar */}
+                          {budget > 0 && (
+                            <div className="bg-white/60 dark:bg-gray-700/40 rounded-xl p-4 mb-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Progress</span>
+                                <span className={`text-sm font-bold ${statusColor.text}`}>{pct}%</span>
+                              </div>
+                              <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full bg-gradient-to-r ${statusColor.bg} transition-all duration-500`}
+                                  style={{ width: `${Math.min(100, pct)}%` }}
+                                ></div>
+                              </div>
+                              <div className="flex justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                <span>₹0</span>
+                                <span>{privacy ? "•••" : `₹${budget.toLocaleString('en-IN')}`}</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Status Message */}
+                          <div className="bg-white/60 dark:bg-gray-700/40 rounded-xl p-3 mb-4">
+                            <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Status</div>
+                            <div className={`font-medium ${statusColor.text}`}>
+                              {!budget ? (
+                                "No budget set for this category"
+                              ) : alert ? (
+                                `Over budget by ${privacy ? '•••' : `₹${(spent - budget).toLocaleString('en-IN')}`}`
+                              ) : warn ? (
+                                `Approaching limit - ${privacy ? '•••' : `₹${(budget - spent).toLocaleString('en-IN')}`} remaining`
+                              ) : (
+                                `On track - ${privacy ? '•••' : `₹${(budget - spent).toLocaleString('en-IN')}`} remaining`
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex justify-between items-center pt-2 border-t border-white/20 dark:border-gray-600/20">
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              Click outside to collapse
+                            </div>
+                            <div className="flex space-x-2">
+                              {editingCat === cat ? (
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    autoFocus
+                                    type="number"
+                                    step="0.01"
+                                    value={editingVal}
+                                    onChange={(e)=> setEditingVal(e.target.value)}
+                                    onBlur={()=> saveBudget(cat)}
+                                    onKeyDown={(e)=> {
+                                      if (e.key === "Enter") saveBudget(cat);
+                                      else if (e.key === "Escape") { setEditingCat(null); setEditingVal(""); }
+                                    }}
+                                    className="w-24 h-8 rounded-lg border border-purple-200 dark:border-purple-600 px-2 bg-white dark:bg-gray-700 text-right text-sm"
+                                    placeholder="Budget"
+                                  />
+                                  <button
+                                    onClick={() => saveBudget(cat)}
+                                    className="px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs font-medium rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-200"
+                                  >
+                                    Save
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingCat(cat);
+                                    setEditingVal(String(budget || 0));
+                                  }}
+                                  className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white text-sm font-medium rounded-xl hover:from-purple-600 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                                >
+                                  {budget > 0 ? '✏️ Edit Budget' : '💰 Set Budget'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-100 dark:bg-purple-800 flex items-center justify-center">
+                  <span className="text-2xl">💰</span>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No spending data</h3>
+                <p className="text-gray-500 dark:text-gray-400">Add some expenses to see budget insights</p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
       ) : (
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 p-4 flex-1 overflow-auto">
