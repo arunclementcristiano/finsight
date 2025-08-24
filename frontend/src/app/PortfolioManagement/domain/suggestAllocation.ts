@@ -313,18 +313,32 @@ export function suggestAllocation(ans: Answers): Allocation {
   let remainingTilt = Math.min(maxTotalTilt, emphasize.length * tiltPer);
   for (const k of emphasize) {
     if (remainingTilt <= 0) break;
-    const wanted = Math.min(tiltPer, remainingTilt);
+    // Per-asset cap by corridor/headroom
+    let wanted = Math.min(tiltPer, remainingTilt);
+    if (k === "Gold") wanted = Math.min(wanted, Math.max(0, 12 - base.Gold));
+    if (k === "Real Estate") wanted = Math.min(wanted, Math.max(0, 7 - base["Real Estate"]));
+    if (k === "Stocks" || k === "Mutual Funds") {
+      const eqCapRoom = Math.max(0, 60 - (base.Stocks + base["Mutual Funds"]));
+      wanted = Math.min(wanted, eqCapRoom);
+    }
+    if (wanted <= 0) continue;
     let moved = 0;
-    // from Debt first
-    moved += takeFrom(["Debt"], wanted - moved);
+    // from Debt first but keep floor
+    const minDebtFloor = (ans.liabilities === "High" || ans.dependents === "3+") ? 20 : 15;
+    const debtAvail = Math.max(0, base.Debt - minDebtFloor);
+    if (debtAvail > 0) {
+      const take = Math.min(wanted - moved, debtAvail);
+      base.Debt -= take; moved += take;
+    }
     if (moved < wanted) {
       // from non-emphasized equity pro-rata
-      const nonEmphEq = ["Stocks", "Mutual Funds"].filter(x => !emphasize.includes(x as Asset)) as Asset[];
+      const nonEmphEq = ["Stocks", "Mutual Funds"].filter(x => (x !== k && !emphasize.includes(x as Asset))) as Asset[];
       const total = nonEmphEq.reduce((s, x) => s + base[x], 0);
       for (const x of nonEmphEq) {
         if (moved >= wanted) break;
         const share = total > 0 ? ((base[x] / total) * (wanted - moved)) : 0;
-        moved += takeFrom([x], share);
+        const got = takeFrom([x], share);
+        moved += got;
       }
     }
     base[k] += moved;
