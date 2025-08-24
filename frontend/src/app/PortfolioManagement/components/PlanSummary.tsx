@@ -25,6 +25,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
   const [proposal, setProposal] = useState<any | null>(null);
   const [proposeLoading, setProposeLoading] = useState(false);
   const [proposeError, setProposeError] = useState<string | null>(null);
+  const [rebalanceOn, setRebalanceOn] = useState(false);
   const [goalsOpen, setGoalsOpen] = useState(false);
 
   useEffect(()=>{
@@ -50,9 +51,10 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
         if (!ignore) setProposeError(String(e?.message||e));
       } finally { if (!ignore) setProposeLoading(false); }
     }
-    run();
+    if (rebalanceOn) run();
+    else setProposal(null);
     return ()=> { ignore = true; };
-  }, [rebalanceOpen, proposeMode, optCashOnly, optTurnoverPct, plan, holdings, activePortfolioId]);
+  }, [rebalanceOn, rebalanceOpen, proposeMode, optCashOnly, optTurnoverPct, plan, holdings, activePortfolioId]);
 
   const kpis = useMemo(() => {
     if (!plan) return { equity: 0, defensive: 0, satellite: 0 };
@@ -227,7 +229,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
               <CardDescription className="text-xs">Based on drift tolerance of {driftTolerancePct}%</CardDescription>
             </div>
             <div>
-              <Button size="sm" variant="outline" onClick={()=> setRebalanceOpen(true)}>Propose Rebalance</Button>
+              <Button size="sm" variant="outline" onClick={()=> setRebalanceOpen(true)}>Rebalance</Button>
             </div>
           </div>
         </CardHeader>
@@ -271,9 +273,10 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
           <div className="flex items-center justify-between text-xs">
             <div className="text-muted-foreground">Options</div>
             <div className="inline-flex items-center gap-3">
+              <label className="inline-flex items-center gap-1"><input type="checkbox" checked={rebalanceOn} onChange={e=> setRebalanceOn(e.target.checked)} /> <span>Propose suggested rebalance</span></label>
+              <label className="inline-flex items-center gap-1"><input type="checkbox" checked={optUseGoals} onChange={e=> setOptUseGoals(e.target.checked)} /> <span>Use goals</span></label>
               <label className="inline-flex items-center gap-1"><input type="checkbox" checked={optCashOnly} onChange={e=> setOptCashOnly(e.target.checked)} /> <span>Contributions only</span></label>
               <label className="inline-flex items-center gap-1">Turnover cap <input type="number" min={0} max={10} className="w-14 rounded border border-border bg-background px-1 py-0.5" value={optTurnoverPct} onChange={e=> setOptTurnoverPct(Math.max(0, Math.min(10, Math.round(Number(e.target.value)||0))))} />%</label>
-              <label className="inline-flex items-center gap-1"><input type="checkbox" checked={optUseGoals} onChange={e=> setOptUseGoals(e.target.checked)} /> <span>Use goals</span></label>
             </div>
           </div>
           {proposeError ? <div className="text-[11px] text-rose-600">{proposeError}</div> : null}
