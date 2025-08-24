@@ -33,6 +33,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
   const [stressTestExpanded, setStressTestExpanded] = useState(false);
   const [rationaleExpanded, setRationaleExpanded] = useState(false);
   const [rebalanceExpanded, setRebalanceExpanded] = useState(false);
+  const [rebalanceOptionsExpanded, setRebalanceOptionsExpanded] = useState(false);
 
   useEffect(()=>{
     let ignore = false;
@@ -294,14 +295,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                 ) : null}
               </div>
             ) : null}
-            {plan?.explain?.topDrivers?.length ? (
-              <div className="mt-3 rounded-md border border-border p-3">
-                <div className="text-xs font-semibold mb-1">Why this mix</div>
-                {whyText ? (
-                  <div className="text-[11px] text-muted-foreground">{whyText}</div>
-                ) : null}
-              </div>
-            ) : null}
+
             {stress ? (
               <div className="mt-3 rounded-md border border-border p-3">
                 <div className="text-xs font-semibold mb-1">Stress check</div>
@@ -523,6 +517,91 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
           )}
         </Card>
       )}
+
+      {/* Rebalance Options Section */}
+      <Card className="mt-4">
+        <CardHeader 
+          className="cursor-pointer" 
+          onClick={() => setRebalanceOptionsExpanded(!rebalanceOptionsExpanded)}
+        >
+          <CardTitle className="text-sm flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4 text-green-500" />
+              Rebalance Options
+            </div>
+            {rebalanceOptionsExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Configure rebalancing preferences and proposals
+          </CardDescription>
+        </CardHeader>
+        {rebalanceOptionsExpanded && (
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between text-xs">
+              <div className="text-muted-foreground">Options</div>
+              <div className="inline-flex items-center gap-3">
+                <label className="inline-flex items-center gap-1">
+                  <input 
+                    type="checkbox" 
+                    checked={rebalanceOn} 
+                    onChange={e=> setRebalanceOn(e.target.checked)} 
+                  /> 
+                  <span>Propose suggested rebalance</span>
+                </label>
+                <label className="inline-flex items-center gap-1">
+                  <input 
+                    type="checkbox" 
+                    checked={optUseGoals} 
+                    onChange={e=> setOptUseGoals(e.target.checked)} 
+                  /> 
+                  <span>Use goals</span>
+                </label>
+                <label className="inline-flex items-center gap-1">
+                  <input 
+                    type="checkbox" 
+                    checked={optCashOnly} 
+                    onChange={e=> setOptCashOnly(e.target.checked)} 
+                  /> 
+                  <span>Contributions only</span>
+                </label>
+                <label className="inline-flex items-center gap-1">
+                  Turnover cap 
+                  <input 
+                    type="number" 
+                    min={0} 
+                    max={10} 
+                    className="w-14 rounded border border-border bg-background px-1 py-0.5" 
+                    value={optTurnoverPct} 
+                    onChange={e=> setOptTurnoverPct(Math.max(0, Math.min(10, Math.round(Number(e.target.value)||0))))} 
+                  />%
+                </label>
+              </div>
+            </div>
+            
+            {proposeError && (
+              <div className="text-[11px] text-rose-600">{proposeError}</div>
+            )}
+            
+            {proposeLoading && (
+              <div className="text-xs text-muted-foreground">Computing proposal…</div>
+            )}
+            
+            {proposal?.constraints && (
+              <div className="text-[11px] text-muted-foreground">
+                Constraints applied: EF {Number(proposal.constraints.efMonths||0)} months
+                {Number(proposal.constraints.liquidityAmount||0) ? 
+                  `, liquidity ₹${proposal.constraints.liquidityAmount} over ${Number(proposal.constraints.liquidityMonths||0)} months` : ''
+                }
+                {proposal.goalsCount ? ` · goals: ${proposal.goalsCount}` : ''}
+              </div>
+            )}
+            
+            {proposal?.goalsCount && !proposal?.constraints && (
+              <div className="text-[11px] text-muted-foreground">Goals considered: {proposal.goalsCount}</div>
+            )}
+          </CardContent>
+        )}
+      </Card>
 
       <GoalsInlineModal open={goalsOpen} onClose={()=> setGoalsOpen(false)} onChanged={()=>{ try { const e = new Event('goals-updated'); window.dispatchEvent(e); } catch {} }} />
       <style jsx>{`
