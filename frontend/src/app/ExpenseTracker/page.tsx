@@ -1014,6 +1014,26 @@ export default function ExpenseTrackerPage() {
               </div>
             </div>
 
+            {/* Compare Months Button - Mobile */}
+            <div className="flex justify-center">
+              <button
+                onClick={() => {
+                  const now = new Date();
+                  const thisMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+                  const last = new Date(now.getFullYear(), now.getMonth()-1, 1);
+                  const lastMonth = `${last.getFullYear()}-${String(last.getMonth()+1).padStart(2,'0')}`;
+                  if (!compareMonthA) setCompareMonthA(lastMonth);
+                  if (!compareMonthB) setCompareMonthB(thisMonth);
+                  setCompareShowAll(false);
+                  setCompareOpen(true);
+                }}
+                className="bg-gradient-to-r from-purple-500 to-blue-500 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center gap-2"
+              >
+                <span className="text-lg">📊</span>
+                Compare Months
+              </button>
+            </div>
+
             {/* Spending by Category Chart */}
             {monthlyCategorySpend.arr.length > 0 && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
