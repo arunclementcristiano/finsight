@@ -164,12 +164,20 @@ function normalizeAnswers(q: Record<string, any>): Answers {
 
 export function buildPlan(q: Record<string, any>): AllocationPlan {
   try {
+    console.log("🏗️ BUILD PLAN DEBUG:", {
+      questionnaire: q,
+      isEnhanced: isEnhancedQuestionnaire(q),
+      avoidAssets: q.avoidAssets
+    });
+    
     // Try to use the new sophisticated engine first
     if (isEnhancedQuestionnaire(q)) {
+      console.log("✨ Using ENHANCED questionnaire → buildPlanWithAdvisorCouncil");
       return buildPlanWithAdvisorCouncil(q);
     }
     
     // Fallback to legacy engine for old questionnaire format
+    console.log("🔄 Using LEGACY questionnaire → buildPlanLegacy");
     return buildPlanLegacy(q);
     
   } catch (err) {
