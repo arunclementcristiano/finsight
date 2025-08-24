@@ -8,7 +8,7 @@ import { Button } from "../components/Button";
 import { Doughnut, Bar } from "react-chartjs-2";
 import { Progress } from "../components/Progress";
 import { formatCurrency } from "../utils/format";
-import { X, Calendar, ArrowUpDown, ArrowUp, ArrowDown, Eye, EyeOff, Download, Settings2 } from "lucide-react";
+import { X, Calendar, ArrowUpDown, ArrowUp, ArrowDown, Eye, EyeOff, Download, Settings2, TrendingUp } from "lucide-react";
 import { Chart, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from "chart.js";
 
 Chart.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
@@ -1401,7 +1401,7 @@ export default function ExpenseTrackerPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {pageRows.map(expense => (
+                        {pageRows.map((expense: Expense) => (
                           <tr key={expense.id} className="hover:bg-muted/50">
                             <td className="px-3 py-2 border-b text-sm">
                               {fmtDateYYYYMMDDLocal(expense.date as any)}
@@ -1953,7 +1953,7 @@ export default function ExpenseTrackerPage() {
                           defaultValue={current}
                           onChange={(e)=> {
                             const val = Number(e.target.value) || 0;
-                            setDefaultCategoryBudgets(prev => ({...prev, [cat]: val}));
+                            setDefaultCategoryBudgets((prev: Record<string, number>) => ({...prev, [cat]: val}));
                           }}
                           className="h-9 w-28 rounded-md border border-border px-2 bg-background text-right"
                         />
@@ -2053,7 +2053,7 @@ export default function ExpenseTrackerPage() {
                     end = new Date(exportEnd);
                   }
                   
-                  filtered = sortedExpenses.filter(expense => {
+                  filtered = sortedExpenses.filter((expense: Expense) => {
                     const expenseDate = new Date(expense.date);
                     return expenseDate >= start && expenseDate <= end;
                   });
@@ -2064,6 +2064,200 @@ export default function ExpenseTrackerPage() {
               }}>
                 Export
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Compare Months Modal - Beautiful Side Drawer */}
+      {compareOpen && (
+        <div className="fixed inset-0 z-30 bg-black/30" onClick={()=> setCompareOpen(false)}>
+          <div className="fixed right-0 top-0 h-full w-full max-w-2xl bg-card border-l border-border shadow-2xl overflow-hidden" onClick={e=> e.stopPropagation()}>
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-border bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-foreground">Compare Months</h3>
+                  <p className="text-sm text-muted-foreground">Analyze spending patterns between different months</p>
+                </div>
+                <button 
+                  className="text-muted-foreground hover:text-foreground" 
+                  onClick={()=> setCompareOpen(false)}
+                >
+                  <X className="h-6 w-6"/>
+                </button>
+              </div>
+            </div>
+
+            {/* Controls */}
+            <div className="p-6 border-b border-border bg-muted/30">
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-muted-foreground mb-2">Month A</label>
+                  <input 
+                    type="month" 
+                    value={compareMonthA} 
+                    onChange={e=> setCompareMonthA(e.target.value)} 
+                    className="w-full h-10 rounded-md border border-border px-3 bg-card"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-muted-foreground mb-2">Month B</label>
+                  <input 
+                    type="month" 
+                    value={compareMonthB} 
+                    onChange={e=> setCompareMonthB(e.target.value)} 
+                    className="w-full h-10 rounded-md border border-border px-3 bg-card"
+                  />
+                </div>
+              </div>
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input 
+                  type="checkbox" 
+                  checked={compareShowAll} 
+                  onChange={e=> setCompareShowAll(e.target.checked)} 
+                />
+                Show all categories (including zero spend)
+              </label>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-auto p-6">
+              {(() => {
+                if (!compareMonthA || !compareMonthB) {
+                  return (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50"/>
+                      <p>Select two months to compare spending patterns</p>
+                    </div>
+                  );
+                }
+
+                // Calculate expenses for both months
+                const getMonthExpenses = (month: string) => {
+                  const [year, monthNum] = month.split('-').map(Number);
+                  const startOfMonth = new Date(year, monthNum - 1, 1);
+                  const endOfMonth = new Date(year, monthNum, 0);
+                  
+                  return expenses.filter((e: Expense) => {
+                    const expenseDate = new Date(e.date as any);
+                    return expenseDate >= startOfMonth && expenseDate <= endOfMonth;
+                  });
+                };
+
+                const monthAExpenses = getMonthExpenses(compareMonthA);
+                const monthBExpenses = getMonthExpenses(compareMonthB);
+
+                // Calculate totals by category
+                const getCategoryTotals = (expenseList: any[]) => {
+                  const totals = new Map<string, number>();
+                  expenseList.forEach(e => {
+                    const cat = String(e.category || "Other");
+                    totals.set(cat, (totals.get(cat) || 0) + Number(e.amount || 0));
+                  });
+                  return totals;
+                };
+
+                const monthATotals = getCategoryTotals(monthAExpenses);
+                const monthBTotals = getCategoryTotals(monthBExpenses);
+
+                const allCats = Array.from(new Set([...monthATotals.keys(), ...monthBTotals.keys()]));
+                let compareRows = allCats.map(cat => ({
+                  category: cat,
+                  monthA: monthATotals.get(cat) || 0,
+                  monthB: monthBTotals.get(cat) || 0,
+                  difference: (monthBTotals.get(cat) || 0) - (monthATotals.get(cat) || 0),
+                  percentChange: monthATotals.get(cat) ? 
+                    (((monthBTotals.get(cat) || 0) - (monthATotals.get(cat) || 0)) / (monthATotals.get(cat) || 0)) * 100 : 
+                    (monthBTotals.get(cat) ? 100 : 0)
+                }));
+
+                if (!compareShowAll) {
+                  compareRows = compareRows.filter(row => row.monthA > 0 || row.monthB > 0);
+                }
+
+                compareRows.sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference));
+
+                const totalA = Array.from(monthATotals.values()).reduce((s, v) => s + v, 0);
+                const totalB = Array.from(monthBTotals.values()).reduce((s, v) => s + v, 0);
+                const totalDiff = totalB - totalA;
+                const totalPercent = totalA ? (totalDiff / totalA) * 100 : (totalB ? 100 : 0);
+
+                const formatMonth = (month: string) => {
+                  const [year, monthNum] = month.split('-');
+                  const date = new Date(parseInt(year), parseInt(monthNum) - 1);
+                  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                };
+
+                return (
+                  <div className="space-y-6">
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
+                        <div className="text-2xl font-bold text-blue-600">
+                          {privacy ? "•••" : `₹${totalA.toLocaleString('en-IN')}`}
+                        </div>
+                        <div className="text-sm text-muted-foreground">{formatMonth(compareMonthA)}</div>
+                      </div>
+                      <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 text-center">
+                        <div className="text-2xl font-bold text-purple-600">
+                          {privacy ? "•••" : `₹${totalB.toLocaleString('en-IN')}`}
+                        </div>
+                        <div className="text-sm text-muted-foreground">{formatMonth(compareMonthB)}</div>
+                      </div>
+                      <div className={`rounded-lg p-4 text-center ${totalDiff >= 0 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-green-50 dark:bg-green-900/20'}`}>
+                        <div className={`text-2xl font-bold ${totalDiff >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                          {privacy ? "•••" : `${totalDiff >= 0 ? '+' : ''}₹${totalDiff.toLocaleString('en-IN')}`}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {privacy ? "•••" : `${totalPercent >= 0 ? '+' : ''}${totalPercent.toFixed(1)}%`}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Category Comparison */}
+                    <div className="space-y-3">
+                      <h4 className="font-semibold text-foreground">Category Breakdown</h4>
+                      {compareRows.map(row => (
+                        <div key={row.category} className="bg-muted/30 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="font-medium">{row.category}</div>
+                            <div className={`text-sm font-medium ${row.difference >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                              {privacy ? "•••" : `${row.difference >= 0 ? '+' : ''}₹${row.difference.toLocaleString('en-IN')}`}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">{formatMonth(compareMonthA)}:</span>
+                              <span className="font-medium">
+                                {privacy ? "•••" : `₹${row.monthA.toLocaleString('en-IN')}`}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">{formatMonth(compareMonthB)}:</span>
+                              <span className="font-medium">
+                                {privacy ? "•••" : `₹${row.monthB.toLocaleString('en-IN')}`}
+                              </span>
+                            </div>
+                          </div>
+                          {!privacy && Math.abs(row.percentChange) !== Infinity && (
+                            <div className="mt-2 text-xs text-muted-foreground">
+                              {row.percentChange >= 0 ? '↗' : '↘'} {Math.abs(row.percentChange).toFixed(1)}% change
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      
+                      {compareRows.length === 0 && (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50"/>
+                          <p>No spending data found for the selected months</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
