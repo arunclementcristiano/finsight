@@ -281,6 +281,16 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
           {proposal?.constraints ? (
             <div className="text-[11px] text-muted-foreground">Constraints applied: EF {Number(proposal.constraints.efMonths||0)} months{Number(proposal.constraints.liquidityAmount||0)?`, liquidity ₹${proposal.constraints.liquidityAmount} over ${Number(proposal.constraints.liquidityMonths||0)} months`:''}{proposal.goalsCount?` · goals: ${proposal.goalsCount}`:''}</div>
           ) : (proposal?.goalsCount? <div className="text-[11px] text-muted-foreground">Goals considered: {proposal.goalsCount}</div> : null)}
+          {proposal?.afterMix ? (
+            <div className="mt-2 rounded-md border border-border p-2">
+              <div className="text-xs font-medium mb-1">Suggested mix</div>
+              <div className="grid grid-cols-2 gap-1 text-xs">
+                {Object.keys(proposal.afterMix).map((k)=> (
+                  <div key={`mix-${k}`} className="flex items-center justify-between"><span>{k}</span><span>{Math.round(Number(proposal.afterMix[k]||0))}%</span></div>
+                ))}
+              </div>
+            </div>
+          ) : null}
           {proposal?.trades?.length ? (
             <div className="space-y-2">
               {proposal.trades.map((it:any)=> (
