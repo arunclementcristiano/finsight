@@ -9,6 +9,7 @@ import { LineChart, Layers, Banknote, Coins, Home, Droplet, Edit3, RefreshCw } f
 import { Target } from "lucide-react";
 import { Sparkles } from "lucide-react";
 import { Modal } from "../../components/Modal";
+import GoalsInlineModal from "./GoalsInlineModal";
 
 export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, onBuildBaseline, aiViewOn, onToggleAiView, aiLoading, aiExplanation, aiSummary, mode, aiDisabled, locks, onToggleLock }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void; onEditAnswers?: () => void; onBuildBaseline?: () => void; aiViewOn?: boolean; onToggleAiView?: () => void; aiLoading?: boolean; aiExplanation?: string; aiSummary?: string; mode?: 'advisor'|'custom'; aiDisabled?: boolean; locks?: Record<string, boolean>; onToggleLock?: (cls: string)=>void }) {
   const { holdings, driftTolerancePct, questionnaire, activePortfolioId } = useApp() as any;
@@ -24,6 +25,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
   const [proposal, setProposal] = useState<any | null>(null);
   const [proposeLoading, setProposeLoading] = useState(false);
   const [proposeError, setProposeError] = useState<string | null>(null);
+  const [goalsOpen, setGoalsOpen] = useState(false);
 
   useEffect(()=>{
     let ignore = false;
@@ -116,7 +118,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
               {mode !== 'custom' ? (
                 <Button variant="outline" leftIcon={<Edit3 className="h-4 w-4 text-sky-600" />} onClick={onEditAnswers}>Adjust Risk Profile</Button>
               ) : null}
-              <Button variant="outline" leftIcon={<Target className="h-4 w-4 text-amber-600" />} onClick={()=> router.push('/PortfolioManagement/Goals')}>Goals & Constraints</Button>
+              <Button variant="outline" leftIcon={<Target className="h-4 w-4 text-amber-600" />} onClick={()=> setGoalsOpen(true)}>Goals & Constraints</Button>
               {mode !== 'custom' ? (
                 <div className="inline-flex items-center gap-2 ml-2">
                   <Sparkles className="h-4 w-4 text-amber-500" />
@@ -297,6 +299,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
           {proposal?.rationale ? <div className="text-[11px] text-muted-foreground">{proposal.rationale}</div> : null}
         </div>
       </Modal>
+      <GoalsInlineModal open={goalsOpen} onClose={()=> setGoalsOpen(false)} />
       <style jsx>{`
         @keyframes shake { 10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(2px); } 30%, 50%, 70% { transform: translateX(-4px); } 40%, 60% { transform: translateX(4px); } }
         .animate-shake { animation: shake 0.3s linear; }
