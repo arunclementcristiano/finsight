@@ -30,6 +30,18 @@ export default function ExpenseTrackerPage() {
 
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [dateOpen, setDateOpen] = useState(false);
+  
+  // Insights controls
+  const [insightsPreset, setInsightsPreset] = useState<"today"|"week"|"month"|"lastMonth"|"custom">("month");
+  const [insightsStart, setInsightsStart] = useState<string>("");
+  const [insightsEnd, setInsightsEnd] = useState<string>("");
+  const [insightsOverOnly, setInsightsOverOnly] = useState(false);
+  
+  // Compare months functionality  
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [compareMonthA, setCompareMonthA] = useState<string>("");
+  const [compareMonthB, setCompareMonthB] = useState<string>("");
+  const [compareShowAll, setCompareShowAll] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -82,6 +94,37 @@ export default function ExpenseTrackerPage() {
       return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
     }
   }
+  function toLocalDateOnly(dateStr: string) {
+    try {
+      const dt = new Date(dateStr);
+      return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+    } catch {
+      return new Date();
+    }
+  }
+
+function toLocalDateOnly(dateStr: string) {
+  try {
+    const s = String(dateStr || "").slice(0, 10);
+    const parts = s.split("-");
+    if (parts.length === 3) {
+      const y = Number(parts[0]);
+      const m = Number(parts[1]);
+      const d = Number(parts[2]);
+      if (isFinite(y) && isFinite(m) && isFinite(d)) return new Date(y, m - 1, d);
+    }
+    const dt = new Date(dateStr);
+    return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+  } catch {
+    const dt = new Date(dateStr);
+    return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+  }
+}
+
+function getMonthlyBudgetFor(ym: string, cat: string): number {
+  const d = (defaultCategoryBudgets || {})[cat] || 0;
+  return Number(d) || 0;
+}
   function fmtDateYYYYMMDDLocal(dateStr: string) {
     const d = toLocalDateOnly(dateStr);
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -1542,6 +1585,54 @@ export default function ExpenseTrackerPage() {
                         </div>
                       );
                     })}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Category Budgets with Warnings */}
+              {monthlyCategorySpend.arr.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Category Budgets</CardTitle>
+                    <CardDescription>{currentYm} budgets and usage</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {monthlyCategorySpend.arr.map(([cat, spent]) => {
+                        const budget = (defaultCategoryBudgets?.[cat]) || 0;
+                        const pct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
+                        const warn = pct >= 80 && pct < 100;
+                        const alert = pct >= 100;
+                        
+                        return (
+                          <div key={cat} className="rounded-lg border border-border p-3">
+                            <div className="flex items-center justify-between text-sm">
+                              <div className="font-medium flex items-center gap-2">
+                                {cat}
+                                {alert && <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">OVER BUDGET</span>}
+                                {warn && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded">WARNING</span>}
+                              </div>
+                              <div className="text-muted-foreground">
+                                {privacy ? "•••" : `₹${spent.toLocaleString('en-IN')}`}
+                                <span className="mx-1">/</span>
+                                {budget > 0 ? (
+                                  <span className="font-medium">{privacy ? "•••" : `₹${budget.toLocaleString('en-IN')}`}</span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">No budget set</span>
+                                )}
+                              </div>
+                            </div>
+                            {budget > 0 && (
+                              <Progress 
+                                value={Math.min(100, pct)} 
+                                className="mt-2 h-2"
+                                barClassName={alert ? "bg-red-500" : warn ? "bg-amber-500" : "bg-green-500"}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </CardContent>
                 </Card>
               )}
