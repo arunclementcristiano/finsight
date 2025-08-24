@@ -717,6 +717,10 @@ export default function ExpenseTrackerPage() {
 
             {/* Beautiful Mobile Cards (Expenses List) */}
             <div className="xl:hidden flex-1 min-h-0 overflow-y-auto px-1">
+              {/* Debug info - can remove later */}
+              <div className="mb-2 p-2 bg-muted rounded text-xs text-muted-foreground">
+                Debug: {pageRows.length} expenses, {expenses.length} total
+              </div>
               {pageRows.length > 0 ? (
                 pageRows.map((e: Expense) => {
                   // Get category-specific styling
@@ -746,11 +750,11 @@ export default function ExpenseTrackerPage() {
                   const categoryData = getCategoryData(e.category as string);
                   
                   return (
-                    <Card key={e.id} className={`relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br ${categoryData.color} mb-3`}>
-                      {/* Gradient background accent */}
-                      <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${categoryData.color} opacity-10 rounded-bl-full`}></div>
+                    <Card key={e.id} className="relative overflow-hidden border border-border/20 shadow-lg hover:shadow-xl transition-all duration-300 bg-card mb-3">
+                      {/* Colorful accent bar */}
+                      <div className={`absolute top-0 left-0 w-1 h-full bg-gradient-to-b ${categoryData.color}`}></div>
                       
-                      <CardContent className="p-4 relative z-10">
+                      <CardContent className="p-4 pl-6 relative">
                         {/* Header Row */}
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-3">
@@ -759,21 +763,21 @@ export default function ExpenseTrackerPage() {
                             </div>
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <span className="text-xs text-white/70 bg-white/20 px-2 py-1 rounded-full font-medium">
+                                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full font-medium">
                                   {fmtDateYYYYMMDDLocal(e.date as any)}
                                 </span>
                                 <span className={`text-xs px-2 py-1 rounded-full font-semibold text-white bg-gradient-to-r ${categoryData.color} shadow-sm`}>
                                   {e.category as string}
                                 </span>
                               </div>
-                              <div className="text-lg font-bold text-white">
+                              <div className="text-lg font-bold text-foreground">
                                 {privacy ? "•••••" : `₹${e.amount.toFixed(0)}`}
                               </div>
                             </div>
                           </div>
                           <button
                             onClick={() => handleDelete(e.id)}
-                            className="h-10 w-10 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-200 dark:border-red-800 text-red-600 hover:text-red-700 dark:hover:text-red-400 transition-all duration-200 touch-manipulation flex items-center justify-center group-hover:scale-105"
+                            className="h-10 w-10 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-200 dark:border-red-800 text-red-600 hover:text-red-700 dark:hover:text-red-400 transition-all duration-200 touch-manipulation flex items-center justify-center"
                             aria-label={`Delete ${e.text}`}
                           >
                             <X className="h-4 w-4" />
@@ -782,8 +786,8 @@ export default function ExpenseTrackerPage() {
                         
                         {/* Description */}
                         {e.text && (
-                          <div className="bg-white/50 dark:bg-black/20 rounded-xl p-3 border border-white/20 dark:border-white/10">
-                            <p className="text-sm text-white/90 font-medium">{e.text}</p>
+                          <div className="bg-muted/50 rounded-xl p-3 border border-border/30">
+                            <p className="text-sm text-muted-foreground font-medium">{e.text}</p>
                           </div>
                         )}
                       </CardContent>
