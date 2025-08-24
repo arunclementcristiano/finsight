@@ -68,6 +68,22 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
 
   const rebalance = useMemo(() => (plan ? computeRebalance(holdings, plan, driftTolerancePct) : { items: [], totalCurrentValue: 0 }), [holdings, plan, driftTolerancePct]);
 
+  const stress = useMemo(() => {
+    try {
+      const total = (rebalance as any).totalCurrentValue || holdings.reduce((s:any,h:any)=> s + (h.currentValue||0), 0);
+      if (!plan || total <= 0) return null;
+      const eqPct = (plan.buckets||[]).filter((b:any)=> b.class==='Stocks' || b.class==='Mutual Funds').reduce((s:number,b:any)=> s + (b.pct||0), 0) / 100;
+      const shock = 0.20; // 20% equity drop
+      const impact = Math.round(total * eqPct * shock);
+      const liquidPct = (plan.buckets||[]).find((b:any)=> b.class==='Liquid')?.pct || 0;
+      const liquidAmt = Math.round((liquidPct/100) * total);
+      // Placeholder monthly expense estimate: 3% of portfolio
+      const monthly = Math.max(1, Math.round(total * 0.03 / 12));
+      const months = Math.max(0, Math.floor(liquidAmt / monthly));
+      return { impact, months, liquidAmt };
+    } catch { return null; }
+  }, [plan, holdings, rebalance]);
+
   function displayRange(range?: [number, number]) { if (!range) return "—"; const [min, max] = range; const mi = Math.round(min); const ma = Math.round(max); return `${mi}% – ${ma}%`; }
 
   const avoidSet = useMemo(()=>{
@@ -220,6 +236,12 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                 <div className="text-[11px] text-muted-foreground">
                   {plan.explain.topDrivers.map((d:any,i:number)=> `${d.driver} ${d.effectPct>0?'+':''}${d.effectPct}%`).join(' · ')}
                 </div>
+              </div>
+            ) : null}
+            {stress ? (
+              <div className="mt-3 rounded-md border border-border p-3">
+                <div className="text-xs font-semibold mb-1">Stress check</div>
+                <div className="text-[11px] text-muted-foreground">If equity falls 20%, portfolio impact ≈ {stress.impact.toLocaleString()} · Liquid covers ≈ {stress.months} months at a typical spend rate.</div>
               </div>
             ) : null}
             </>
