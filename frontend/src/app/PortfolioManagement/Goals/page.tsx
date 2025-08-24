@@ -1,20 +1,59 @@
 "use client";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Button } from "../../components/Button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/Card";
 import { Modal } from "../../components/Modal";
 import { useApp } from "../../store";
-import { Target, Plus, CalendarDays, Shield, AlertCircle } from "lucide-react";
+import { Target, Plus, CalendarDays, Shield, AlertCircle, Trash2 } from "lucide-react";
 
 export default function GoalsPage() {
 	const { activePortfolioId, getConstraints, setConstraints } = useApp() as any;
 	const [addOpen, setAddOpen] = useState(false);
 	const [filter, setFilter] = useState<"all"|"0-2"|"3-5"|"6-10"|"10+">("all");
-  const c = getConstraints?.(activePortfolioId || "") || {};
+	const c = getConstraints?.(activePortfolioId || "") || {};
 
-	// Placeholder data (to be wired)
-	const kpis = useMemo(()=> ({ efMonths: 6, liquidity: { amount: 0, months: 0 }, monthlySip: 0, coveragePct: 0 }), []);
-	const goals: Array<any> = [];
+	const [goals, setGoals] = useState<any[]>([]);
+	const [gName, setGName] = useState("");
+	const [gAmount, setGAmount] = useState(0);
+	const [gDate, setGDate] = useState("");
+	const [gPriority, setGPriority] = useState("Medium");
+	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
+	async function loadGoals() {
+		if (!activePortfolioId) return;
+		try {
+			const res = await fetch(`/api/portfolio/goals?portfolioId=${activePortfolioId}`);
+			const data = await res.json();
+			setGoals((data?.goals||[]).map((it:any)=> ({ id: (it.goal?.id)|| (it.sk||'').split('#').pop(), ...it.goal })));
+		} catch (e:any) {
+			setError(String(e?.message||e));
+		}
+	}
+
+	useEffect(()=>{ loadGoals(); }, [activePortfolioId]);
+
+	async function saveGoal() {
+		try {
+			setLoading(true); setError(null);
+			const id = crypto.randomUUID();
+			const body = { portfolioId: activePortfolioId, goal: { id, name: gName.trim(), targetAmount: Math.max(0, Number(gAmount)||0), targetDate: gDate, priority: gPriority } };
+			const res = await fetch('/api/portfolio/goals', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+			if (!res.ok) throw new Error('Failed to save');
+			setAddOpen(false); setGName(""); setGAmount(0); setGDate(""); setGPriority("Medium");
+			await loadGoals();
+		} catch (e:any) {
+			setError(String(e?.message||e));
+		} finally { setLoading(false); }
+	}
+
+	async function deleteGoal(id: string) {
+		if (!activePortfolioId) return;
+		await fetch(`/api/portfolio/goals?portfolioId=${activePortfolioId}&goalId=${id}`, { method: 'DELETE' });
+		await loadGoals();
+	}
+
+	const kpis = useMemo(()=> ({ efMonths: Number(c.efMonths||0), liquidity: { amount: Number(c.liquidityAmount||0), months: Number(c.liquidityMonths||0) }, monthlySip: 0, coveragePct: 0 }), [c]);
 
 	return (
 		<div className="max-w-5xl mx-auto space-y-4">
@@ -45,13 +84,13 @@ export default function GoalsPage() {
 				<Card>
 					<CardContent className="p-3 text-center">
 						<div className="text-[11px] text-muted-foreground">Monthly SIP</div>
-						<div className="text-base font-semibold">{kpis.monthlySip ? `₹${kpis.monthlySip}` : '—'}</div>
+						<div className="text-base font-semibold">—</div>
 					</CardContent>
 				</Card>
 				<Card>
 					<CardContent className="p-3 text-center">
 						<div className="text-[11px] text-muted-foreground">Goal Coverage</div>
-						<div className="text-base font-semibold">{kpis.coveragePct}%</div>
+						<div className="text-base font-semibold">—</div>
 					</CardContent>
 				</Card>
 			</div>
@@ -78,13 +117,10 @@ export default function GoalsPage() {
 										<div className="font-medium">{g.name}</div>
 										<div className="inline-flex items-center gap-1 text-muted-foreground"><CalendarDays className="h-3.5 w-3.5" /> {g.targetDate}</div>
 									</div>
-									<div className="mt-2 h-1.5 rounded bg-muted overflow-hidden"><div className="h-1.5 bg-indigo-500" style={{ width: `${Math.min(100, Math.round(g.coverage||0))}%` }}></div></div>
-									<div className="mt-1 text-[11px] text-muted-foreground">{Math.round(g.coverage||0)}% funded · needs ₹{g.shortfall||0}</div>
-									<div className="mt-2 text-xs">Target mix preview here…</div>
+									<div className="mt-1 text-[11px] text-muted-foreground">Target ₹{g.targetAmount||0} · Priority {g.priority||'Medium'}</div>
+									<div className="mt-2 h-1.5 rounded bg-muted overflow-hidden"><div className="h-1.5 bg-indigo-500" style={{ width: `${Math.min(100, 0)}%` }}></div></div>
 									<div className="mt-2 flex items-center gap-2">
-										<Button variant="outline" size="sm">Edit</Button>
-										<Button variant="outline" size="sm">Pause</Button>
-										<Button variant="outline" size="sm">Achieved</Button>
+										<Button variant="outline" size="sm" onClick={()=> deleteGoal(g.id)} leftIcon={<Trash2 className="h-3.5 w-3.5" />}>Delete</Button>
 									</div>
 								</div>
 							))}
@@ -129,43 +165,33 @@ export default function GoalsPage() {
 			<Modal open={addOpen} onClose={()=> setAddOpen(false)} title="Add Goal" footer={(
 				<>
 					<Button variant="outline" onClick={()=> setAddOpen(false)}>Cancel</Button>
-					<Button onClick={()=> setAddOpen(false)}>Save</Button>
+					<Button onClick={saveGoal} disabled={loading || !gName || !gDate}>Save</Button>
 				</>
 			)}>
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
 					<div className="space-y-2">
 						<div>
 							<div className="text-[11px] text-muted-foreground">Name</div>
-							<input className="w-full rounded border border-border bg-background px-2 py-1" placeholder="e.g., Emergency, House, Education" />
+							<input className="w-full rounded border border-border bg-background px-2 py-1" placeholder="e.g., Emergency, House, Education" value={gName} onChange={e=> setGName(e.target.value)} />
 						</div>
 						<div>
 							<div className="text-[11px] text-muted-foreground">Target amount</div>
-							<input className="w-full rounded border border-border bg-background px-2 py-1" placeholder="₹" />
+							<input className="w-full rounded border border-border bg-background px-2 py-1" placeholder="₹" value={gAmount} onChange={e=> setGAmount(Math.max(0, Number(e.target.value)||0))} />
 						</div>
 						<div>
 							<div className="text-[11px] text-muted-foreground">Target date</div>
-							<input type="date" className="w-full rounded border border-border bg-background px-2 py-1" />
+							<input type="date" className="w-full rounded border border-border bg-background px-2 py-1" value={gDate} onChange={e=> setGDate(e.target.value)} />
 						</div>
 						<div>
 							<div className="text-[11px] text-muted-foreground">Priority</div>
-							<select className="w-full rounded border border-border bg-background px-2 py-1"><option>Medium</option><option>High</option><option>Low</option></select>
+							<select className="w-full rounded border border-border bg-background px-2 py-1" value={gPriority} onChange={e=> setGPriority(e.target.value)}><option>Medium</option><option>High</option><option>Low</option></select>
 						</div>
 					</div>
 					<div className="space-y-2">
-						<div>
-							<div className="text-[11px] text-muted-foreground">Monthly contribution (optional)</div>
-							<input className="w-full rounded border border-border bg-background px-2 py-1" placeholder="₹ per month" />
-						</div>
-						<div>
-							<label className="inline-flex items-center gap-2">
-								<input type="checkbox" />
-								<span>Per‑goal risk override</span>
-							</label>
-							<select className="mt-1 w-full rounded border border-border bg-background px-2 py-1"><option>Inherit household (default)</option><option>Conservative</option><option>Balanced</option><option>Aggressive</option></select>
-						</div>
 						<div className="rounded-md border border-dashed p-2 text-muted-foreground">Live preview of target mix will appear here…</div>
 					</div>
 				</div>
+				{error ? <div className="mt-2 text-[11px] text-rose-600">{error}</div> : null}
 			</Modal>
 		</div>
 	);

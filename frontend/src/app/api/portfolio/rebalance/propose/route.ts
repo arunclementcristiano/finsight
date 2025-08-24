@@ -140,6 +140,7 @@ export async function POST(req: NextRequest) {
 		const modeKind = (mode === 'to-target') ? 'to-target' : 'to-band';
 		const cashOnly = !!(options?.cashOnly);
 		const turnoverLimitPct = Math.max(0, Math.min(10, Number(options?.turnoverLimitPct) || 1));
+		const considerGoals = options?.considerGoals !== false;
 
 		// Load constraints/goals if portfolioId provided
 		let constraints = constraintsIn || null;
@@ -152,7 +153,7 @@ export async function POST(req: NextRequest) {
 
 		// Household blended target from goals (if any)
 		let blendedTarget: Record<string, number> | null = null;
-		if (goals && goals.length) {
+		if (considerGoals && goals && goals.length) {
 			const parts: Array<{ mix: Record<string, number>; w: number }> = [];
 			for (const it of goals) {
 				const g = (it as any)?.goal || {};
@@ -250,7 +251,7 @@ export async function POST(req: NextRequest) {
 		const constraintNote = (efMonths || liqAmt)
 			? ` while respecting ${efMonths? efMonths+ ' months EF':''}${efMonths&&liqAmt?' and ':''}${liqAmt? ('₹'+liqAmt+' over '+(liqMonths||0)+' months'):''}`
 			: '';
-		const goalsNote = goals?.length ? ` and considering ${goals.length} goal(s)` : '';
+		const goalsNote = goals?.length && considerGoals ? ` and considering ${goals.length} goal(s)` : '';
 		const rationale = modeKind === 'to-band'
 			? `We bring assets back inside comfort bands using ${cashOnly? 'new contributions':'minimal sells and buys'}, within a turnover cap of ${turnoverLimitPct}%${constraintNote}${goalsNote}.`
 			: `We realign to exact targets${cashOnly? ' using contributions only':''}, keeping turnover under ${turnoverLimitPct}%${constraintNote}${goalsNote}.`;
@@ -269,7 +270,7 @@ export async function POST(req: NextRequest) {
 			turnoverPct,
 			rationale,
 			constraints: constraints || null,
-			goalsCount: goals?.length || 0,
+			goalsCount: considerGoals ? (goals?.length || 0) : 0,
 			blendedTarget: blendedTarget || null,
 		});
 	} catch (e:any) {

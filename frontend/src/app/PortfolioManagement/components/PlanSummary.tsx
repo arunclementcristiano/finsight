@@ -20,6 +20,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
   const [proposeMode, setProposeMode] = useState<'to-band'|'to-target'>("to-band");
   const [optCashOnly, setOptCashOnly] = useState(false);
   const [optTurnoverPct, setOptTurnoverPct] = useState(1);
+  const [optUseGoals, setOptUseGoals] = useState(true);
   const [proposal, setProposal] = useState<any | null>(null);
   const [proposeLoading, setProposeLoading] = useState(false);
   const [proposeError, setProposeError] = useState<string | null>(null);
@@ -38,7 +39,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
             plan,
             holdings,
             mode: proposeMode,
-            options: { cashOnly: optCashOnly, turnoverLimitPct: optTurnoverPct },
+            options: { cashOnly: optCashOnly, turnoverLimitPct: optTurnoverPct, considerGoals: optUseGoals },
           })
         });
         const data = await res.json();
@@ -271,6 +272,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
             <div className="inline-flex items-center gap-3">
               <label className="inline-flex items-center gap-1"><input type="checkbox" checked={optCashOnly} onChange={e=> setOptCashOnly(e.target.checked)} /> <span>Contributions only</span></label>
               <label className="inline-flex items-center gap-1">Turnover cap <input type="number" min={0} max={10} className="w-14 rounded border border-border bg-background px-1 py-0.5" value={optTurnoverPct} onChange={e=> setOptTurnoverPct(Math.max(0, Math.min(10, Math.round(Number(e.target.value)||0))))} />%</label>
+              <label className="inline-flex items-center gap-1"><input type="checkbox" checked={optUseGoals} onChange={e=> setOptUseGoals(e.target.checked)} /> <span>Use goals</span></label>
             </div>
           </div>
           {proposeError ? <div className="text-[11px] text-rose-600">{proposeError}</div> : null}

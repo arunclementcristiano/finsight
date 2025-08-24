@@ -68,7 +68,8 @@ function normalizeAnswers(q: Record<string, any>): Answers {
     return "None" as any;
   })();
   const financialGoal = (() => {
-    const v = String(q.financialGoal || "Wealth growth");
+    const v = String(q.financialGoal || "");
+    if (!v) return "Wealth growth" as any;
     if (v === "House purchase" || v === "Education") return "Major purchase" as any;
     if (v === "Retirement" || v === "Wealth growth" || v === "Capital preservation" || v === "Income generation") return v as any;
     if (v === "Mixed") return horizon === "Long (>7 yrs)" ? "Wealth growth" : "Capital preservation" as any;

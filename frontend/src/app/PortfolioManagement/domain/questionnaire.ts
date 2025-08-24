@@ -36,17 +36,10 @@ export const questions = [
     helperText: "Helps set your risk tolerance."
   },
   {
-    key: "financialGoal",
-    text: "Financial Goals",
-    options: ["Wealth growth", "Retirement", "House purchase", "Education", "Mixed"],
-    helperText: "Maps assets to objectives like growth vs safety."
-  },
-  {
     key: "investmentKnowledge",
-    text: "Past Investing Experience (Optional)",
+    text: "Investment Knowledge",
     options: ["Beginner", "Intermediate", "Experienced"],
-    helperText: "Novices need safer allocation.",
-    optional: true
+    helperText: "Your familiarity with investments.",
   },
   {
     key: "emergencyFundSixMonths",

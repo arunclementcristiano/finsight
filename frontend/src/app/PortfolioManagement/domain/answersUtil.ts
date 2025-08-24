@@ -5,13 +5,13 @@ export const ALLOWED_QUESTION_KEYS = [
 	"liabilities",
 	"dependents",
 	"volatilityComfort",
-	"financialGoal",
+	// "financialGoal", // moved to Goals module
 	"investmentKnowledge",
 	"emergencyFundSixMonths",
 	"insuranceCoverage",
-	"taxPreference",
 	"avoidAssets",
-] as const;
+	"emphasizeAssets",
+];
 
 export function pruneQuestionnaire(q: Record<string, any> = {}): Record<string, any> {
 	const out: Record<string, any> = {};
@@ -59,8 +59,8 @@ export function normalizeAnswersForEngine(q: Record<string, any> = {}): Record<s
 	const vol = String(q.volatilityComfort||"").toLowerCase();
 	out.volatilityComfort = vol.includes("very") ? "High" : vol.includes("not") ? "Low" : "Medium";
 	// Financial goal
-	const fg = String(q.financialGoal||"Wealth growth");
-	if (fg === "House purchase" || fg === "Education") out.financialGoal = "Major purchase"; else if (["Retirement","Wealth growth","Capital preservation","Income generation"].includes(fg)) out.financialGoal = fg; else out.financialGoal = "Wealth growth";
+	// const fg = String(q.financialGoal||"Wealth growth");
+	// if (fg === "House purchase" || fg === "Education") out.financialGoal = "Major purchase"; else if (["Retirement","Wealth growth","Capital preservation","Income generation"].includes(fg)) out.financialGoal = fg; else out.financialGoal = "Wealth growth";
 	// Knowledge
 	const know = String(q.investmentKnowledge||"Intermediate");
 	out.investmentKnowledge = (know === "Experienced") ? "Advanced" : (["Beginner","Intermediate","Advanced"].includes(know) ? know : "Intermediate");
