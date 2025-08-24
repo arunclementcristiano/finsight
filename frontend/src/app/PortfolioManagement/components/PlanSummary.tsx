@@ -1,10 +1,12 @@
 "use client";
 import React, { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { useApp } from "../../store";
 import { computeRebalance } from "../domain/rebalance";
 import { LineChart, Layers, Banknote, Coins, Home, Droplet, Edit3, RefreshCw } from "lucide-react";
+import { Target } from "lucide-react";
 import { Sparkles } from "lucide-react";
 import { Modal } from "../../components/Modal";
 
@@ -13,6 +15,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
   const [edgeHit, setEdgeHit] = useState<Record<string, { edge: 'min'|'max'; val: number } | null>>({});
   const [tipFor, setTipFor] = useState<string | null>(null);
   const [rebalanceOpen, setRebalanceOpen] = useState(false);
+  const router = useRouter();
 
   const kpis = useMemo(() => {
     if (!plan) return { equity: 0, defensive: 0, satellite: 0 };
@@ -64,6 +67,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
               {mode !== 'custom' ? (
                 <Button variant="outline" leftIcon={<Edit3 className="h-4 w-4 text-sky-600" />} onClick={onEditAnswers}>Adjust Risk Profile</Button>
               ) : null}
+              <Button variant="outline" leftIcon={<Target className="h-4 w-4 text-amber-600" />} onClick={()=> router.push('/PortfolioManagement/Goals')}>Goals & Constraints</Button>
               {mode !== 'custom' ? (
                 <div className="inline-flex items-center gap-2 ml-2">
                   <Sparkles className="h-4 w-4 text-amber-500" />
