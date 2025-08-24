@@ -221,15 +221,31 @@ class SignalProcessor {
       "not_stable": { equity: -10, safety: +10, explanation: "Unstable income necessitates conservative approach" }
     };
     
+    console.log("getIncomeStabilitySignal called with:", stability);
     const signal = stabilitySignals[stability as keyof typeof stabilitySignals];
+    console.log("Found signal:", signal);
+    
     if (!signal) {
       // Fallback for unknown stability values
+      console.log("Using fallback for income stability");
       return {
         factor: "income_stability",
         equitySignal: 0,
         safetySignal: +5,
         weight: 0.15,
         explanation: "Unknown income stability, applying moderate safety buffer"
+      };
+    }
+    
+    // Additional safety check
+    if (!signal.hasOwnProperty('equity') || !signal.hasOwnProperty('safety')) {
+      console.log("Signal missing equity/safety properties, using fallback");
+      return {
+        factor: "income_stability",
+        equitySignal: 0,
+        safetySignal: +5,
+        weight: 0.15,
+        explanation: "Malformed income stability signal, applying moderate safety buffer"
       };
     }
     
