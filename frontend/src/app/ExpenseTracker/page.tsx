@@ -528,12 +528,12 @@ export default function ExpenseTrackerPage() {
       {activeTab === "data" ? (
       <div className="space-y-6 xl:grid xl:grid-cols-3 xl:gap-6 xl:space-y-0 p-4 xl:p-6 flex-1 min-h-0 overflow-auto">
         {/* Recent Expenses (full width on xl span 2) */}
-        <Card className="xl:col-span-2 h-full flex flex-col overflow-hidden">
+        <Card className="xl:col-span-2 xl:h-full flex flex-col xl:overflow-hidden">
           <CardHeader>
             <CardTitle>Recent Expenses</CardTitle>
             <CardDescription>Synced with backend</CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 min-h-0 flex flex-col pb-0">
+          <CardContent className="xl:flex-1 xl:min-h-0 flex flex-col pb-0">
             {/* Desktop Filters */}
             <div className="mb-3 hidden xl:flex flex-wrap gap-2 items-center">
               <label className="text-sm text-muted-foreground">Range</label>
@@ -716,14 +716,27 @@ export default function ExpenseTrackerPage() {
             </div>
 
             {/* Clean Mobile Expense List */}
-            <div className="xl:hidden flex-1 min-h-0 overflow-y-auto space-y-3">
+            <div className="xl:hidden space-y-3 p-3">
               {/* Debug info */}
-              <div className="px-3 py-2 bg-blue-50 dark:bg-blue-950/20 rounded-lg text-sm">
-                <span className="font-medium">📊 Data: {pageRows.length} expenses shown, {expenses.length} total</span>
+              <div className="px-3 py-2 bg-blue-50 dark:bg-blue-950/20 rounded-lg text-sm space-y-1">
+                <div className="font-medium">📊 Debug Information:</div>
+                <div>• Total expenses: {expenses.length}</div>
+                <div>• Filtered expenses: {sortedExpenses.length}</div>
+                <div>• Page {page} of {totalPages} (showing {pageRows.length})</div>
+                <div>• Current filter: {preset}</div>
+                <div>• Sort: {sortField} ({sortDir})</div>
               </div>
               
               {pageRows.length > 0 ? (
-                pageRows.map((e: Expense) => {
+                <>
+                  <div className="px-3 py-2 bg-green-50 dark:bg-green-950/20 rounded-lg text-sm">
+                    <div className="font-medium">🎯 Rendering {pageRows.length} expenses:</div>
+                    {pageRows.slice(0, 3).map((e, i) => (
+                      <div key={i}>• {e.id}: {e.amount} - {e.category} - {e.text}</div>
+                    ))}
+                    {pageRows.length > 3 && <div>... and {pageRows.length - 3} more</div>}
+                  </div>
+                  {pageRows.map((e: Expense) => {
                   // Simple category emoji mapping
                   const getCategoryEmoji = (category: string) => {
                     const mapping: Record<string, string> = {
@@ -770,7 +783,8 @@ export default function ExpenseTrackerPage() {
                       </div>
                     </div>
                   );
-                })
+                  })}
+                </>
               ) : (
                 <div className="text-center py-12">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
