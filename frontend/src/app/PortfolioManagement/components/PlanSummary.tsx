@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../..
 import { Button } from "../../components/Button";
 import { useApp } from "../../store";
 import { computeRebalance } from "../domain/rebalance";
-import { LineChart, Layers, Banknote, Coins, Home, Droplet, Edit3, RefreshCw } from "lucide-react";
+import { LineChart, Layers, Banknote, Coins, Home, Droplet, Edit3, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 import { Target } from "lucide-react";
 import { Sparkles } from "lucide-react";
 import { Modal } from "../../components/Modal";
@@ -27,6 +27,11 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
   const [proposeError, setProposeError] = useState<string | null>(null);
   const [rebalanceOn, setRebalanceOn] = useState(false);
   const [goalsOpen, setGoalsOpen] = useState(false);
+  
+  // Enhanced sections expand/collapse state
+  const [signalsExpanded, setSignalsExpanded] = useState(false);
+  const [stressTestExpanded, setStressTestExpanded] = useState(false);
+  const [rationaleExpanded, setRationaleExpanded] = useState(false);
 
   useEffect(()=>{
     let ignore = false;
@@ -393,87 +398,111 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
       {/* Enhanced Features from 10-Advisor Council Engine */}
       {plan?.signals && plan.signals.length > 0 && (
         <Card className="mt-4">
-          <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-yellow-500" />
-              Signal Analysis
+          <CardHeader 
+            className="cursor-pointer" 
+            onClick={() => setSignalsExpanded(!signalsExpanded)}
+          >
+            <CardTitle className="text-sm flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-yellow-500" />
+                Signal Analysis
+              </div>
+              {signalsExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </CardTitle>
             <CardDescription className="text-xs">
               Factors that influenced your allocation
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
-            {plan.signals
-              .sort((a: any, b: any) => Math.abs(b.equitySignal * b.weight) - Math.abs(a.equitySignal * a.weight))
-              .slice(0, 5)
-              .map((signal: any, index: number) => {
-                const impact = signal.equitySignal * signal.weight;
-                const isPositive = impact > 0;
-                
-                return (
-                  <div key={index} className="flex items-center justify-between p-2 bg-muted/20 rounded text-xs">
-                    <div className="flex-1">
-                      <div className="font-medium capitalize">
-                        {signal.factor.replace(/_/g, ' ')}
+          {signalsExpanded && (
+            <CardContent className="space-y-2">
+              {plan.signals
+                .sort((a: any, b: any) => Math.abs(b.equitySignal * b.weight) - Math.abs(a.equitySignal * a.weight))
+                .slice(0, 5)
+                .map((signal: any, index: number) => {
+                  const impact = signal.equitySignal * signal.weight;
+                  const isPositive = impact > 0;
+                  
+                  return (
+                    <div key={index} className="flex items-center justify-between p-2 bg-muted/20 rounded text-xs">
+                      <div className="flex-1">
+                        <div className="font-medium capitalize">
+                          {signal.factor.replace(/_/g, ' ')}
+                        </div>
+                        <div className="text-muted-foreground text-[11px]">
+                          {signal.explanation}
+                        </div>
                       </div>
-                      <div className="text-muted-foreground text-[11px]">
-                        {signal.explanation}
+                      <div className={`text-right font-semibold ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                        {isPositive ? '+' : ''}{Math.round(impact)}
                       </div>
                     </div>
-                    <div className={`text-right font-semibold ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                      {isPositive ? '+' : ''}{Math.round(impact)}
-                    </div>
-                  </div>
-                );
-              })}
-          </CardContent>
+                  );
+                })}
+            </CardContent>
+          )}
         </Card>
       )}
 
       {plan?.stressTest && (
         <Card className="mt-4">
-          <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Target className="h-4 w-4 text-orange-500" />
-              Stress Test Results
+          <CardHeader 
+            className="cursor-pointer" 
+            onClick={() => setStressTestExpanded(!stressTestExpanded)}
+          >
+            <CardTitle className="text-sm flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Target className="h-4 w-4 text-orange-500" />
+                Stress Test Results
+              </div>
+              {stressTestExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </CardTitle>
             <CardDescription className="text-xs">
               How your portfolio might perform in market downturns
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {Object.entries(plan.stressTest.scenarios).slice(0, 3).map(([scenario, result]: [string, any]) => (
-              <div key={scenario} className="p-2 border rounded text-xs">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="font-medium">{scenario}</div>
-                  <div className={`font-semibold ${
-                    result.portfolioImpact > 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {result.portfolioImpact > 0 ? '+' : ''}{result.portfolioImpact.toFixed(1)}%
+          {stressTestExpanded && (
+            <CardContent className="space-y-3">
+              {Object.entries(plan.stressTest.scenarios).slice(0, 3).map(([scenario, result]: [string, any]) => (
+                <div key={scenario} className="p-2 border rounded text-xs">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="font-medium">{scenario}</div>
+                    <div className={`font-semibold ${
+                      result.portfolioImpact > 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {result.portfolioImpact > 0 ? '+' : ''}{result.portfolioImpact.toFixed(1)}%
+                    </div>
+                  </div>
+                  <div className="text-muted-foreground text-[11px]">
+                    Emergency coverage: {result.monthsCovered.toFixed(1)} months
                   </div>
                 </div>
-                <div className="text-muted-foreground text-[11px]">
-                  Emergency coverage: {result.monthsCovered.toFixed(1)} months
-                </div>
-              </div>
-            ))}
-          </CardContent>
+              ))}
+            </CardContent>
+          )}
         </Card>
       )}
 
       {plan?.rationale && typeof plan.rationale === 'string' && plan.rationale.length > 100 && (
         <Card className="mt-4">
-          <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <LineChart className="h-4 w-4 text-blue-500" />
-              Why This Allocation?
+          <CardHeader 
+            className="cursor-pointer" 
+            onClick={() => setRationaleExpanded(!rationaleExpanded)}
+          >
+            <CardTitle className="text-sm flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <LineChart className="h-4 w-4 text-blue-500" />
+                Why This Mix?
+              </div>
+              {rationaleExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              {plan.rationale}
-            </p>
-          </CardContent>
+          {rationaleExpanded && (
+            <CardContent>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {plan.rationale}
+              </p>
+            </CardContent>
+          )}
         </Card>
       )}
 
