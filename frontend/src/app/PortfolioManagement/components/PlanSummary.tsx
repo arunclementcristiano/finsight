@@ -65,19 +65,17 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
   const kpis = useMemo(() => {
     if (!plan) return { equity: 0, defensive: 0, satellite: 0 };
     const byClass = new Map<string, number>();
-    for (const b of (plan?.buckets||[])) byClass.set(b.class, (byClass.get(b.class) || 0) + b.pct);
+    
+    // Only consider buckets that are actually in the plan (avoided assets won't be here)
+    for (const b of (plan?.buckets||[])) {
+      if (b.pct > 0) { // Extra safety: only count positive allocations
+        byClass.set(b.class, (byClass.get(b.class) || 0) + b.pct);
+      }
+    }
+    
     const equity = (byClass.get("Stocks") || 0) + (byClass.get("Mutual Funds") || 0);
     const defensive = (byClass.get("Debt") || 0) + (byClass.get("Liquid") || 0);
     const satellite = (byClass.get("Gold") || 0) + (byClass.get("Real Estate") || 0);
-    
-    // Debug logging to understand the satellite calculation issue
-    console.log("KPI Calculation Debug:", {
-      allBuckets: plan?.buckets?.map(b => ({ class: b.class, pct: b.pct })),
-      byClassMap: Object.fromEntries(byClass),
-      gold: byClass.get("Gold") || 0,
-      realEstate: byClass.get("Real Estate") || 0,
-      calculated: { equity, defensive, satellite }
-    });
     
     return { equity, defensive, satellite };
   }, [plan]);

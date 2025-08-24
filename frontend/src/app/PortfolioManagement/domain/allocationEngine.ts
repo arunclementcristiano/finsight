@@ -193,13 +193,16 @@ function buildPlanWithAdvisorCouncil(q: Record<string, any>): AllocationPlan {
     const result: AllocationResult = advisorEngine.generateRecommendation(councilAnswers);
     
     // Transform to legacy AllocationPlan format for backward compatibility
-    const buckets = Object.entries(result.allocation).map(([cls, pct]) => ({
-      class: cls as AssetClass,
-      pct: Math.round(pct),
-      range: getRangeForClass(cls as AssetClass, pct),
-      riskCategory: getRiskCategoryForClass(cls as AssetClass),
-      notes: getNotesForClass(cls as AssetClass, pct, councilAnswers)
-    }));
+    // Filter out avoided assets completely (don't show 0% allocations)
+    const buckets = Object.entries(result.allocation)
+      .filter(([cls, pct]) => pct > 0) // Only include assets with actual allocation
+      .map(([cls, pct]) => ({
+        class: cls as AssetClass,
+        pct: Math.round(pct),
+        range: getRangeForClass(cls as AssetClass, pct),
+        riskCategory: getRiskCategoryForClass(cls as AssetClass),
+        notes: getNotesForClass(cls as AssetClass, pct, councilAnswers)
+      }));
 
     return {
       riskLevel: result.riskLevel,
@@ -354,7 +357,9 @@ function buildPlanLegacy(q: Record<string, any>): AllocationPlan {
     return "";
   }
 
-  const buckets = (Object.keys(alloc) as AssetClass[]).map(cls => {
+  const buckets = (Object.keys(alloc) as AssetClass[])
+    .filter(cls => alloc[cls] > 0) // Only include assets with actual allocation (filter out avoided assets)
+    .map(cls => {
     const pct = alloc[cls];
     const band = Math.max(minWidthFor(cls), baseBandPctFor(cls) * adjustFactorByProfile(cls));
     const delta = pct * band;
