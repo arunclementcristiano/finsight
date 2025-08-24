@@ -214,6 +214,14 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                 ) : null}
               </div>
             ) : null}
+            {plan?.explain?.topDrivers?.length ? (
+              <div className="mt-3 rounded-md border border-border p-3">
+                <div className="text-xs font-semibold mb-1">Why this mix</div>
+                <div className="text-[11px] text-muted-foreground">
+                  {plan.explain.topDrivers.map((d:any,i:number)=> `${d.driver} ${d.effectPct>0?'+':''}${d.effectPct}%`).join(' · ')}
+                </div>
+              </div>
+            ) : null}
             </>
           ) : (
             <div className="text-muted-foreground text-sm">No plan yet.</div>

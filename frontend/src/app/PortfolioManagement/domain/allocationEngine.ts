@@ -14,6 +14,10 @@ export interface AllocationPlan {
     riskCategory: string;
     notes: string;
   }>;
+  explain?: {
+    perAsset: Record<string, Array<{ driver: string; effectPct: number }>>;
+    topDrivers: Array<{ driver: string; effectPct: number }>;
+  };
 }
 
 import { suggestAllocation, Answers } from "./suggestAllocation";
@@ -236,6 +240,18 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
     };
   });
 
+  // Structured explainability (lightweight)
+  const explainPer: Record<string, Array<{ driver: string; effectPct: number }>> = {};
+  const push = (k: string, d: string, e: number)=> { if (!explainPer[k]) explainPer[k] = []; if (e !== 0) explainPer[k].push({ driver: d, effectPct: Math.round(e) }); };
+  // Example drivers (illustrative from ans)
+  try {
+    const eqNow = (alloc as any).Stocks + (alloc as any)["Mutual Funds"]; const baseEq = 55; push('Stocks', 'Risk profile composite', eqNow - baseEq); push('Mutual Funds', 'Risk profile composite', 0);
+    if ((q as any).horizon === 'Short (<3 yrs)') { push('Debt', 'Short horizon safety', +5); push('Liquid', 'Short horizon liquidity', +5); }
+    if ((q as any).liabilities === 'High') { push('Debt', 'High liabilities safety', +3); }
+    if ((q as any).avoidAssets && ((q as any).avoidAssets||[]).includes('Gold')) { push('Gold', 'Avoided asset', -((alloc as any).Gold||0)); }
+  } catch {}
+  const topDrivers = Object.values(explainPer).flat().sort((a,b)=> Math.abs(b.effectPct) - Math.abs(a.effectPct)).slice(0, 5);
+
   const toList = (v: any): string => {
     if (Array.isArray(v)) return v.join(", ");
     if (typeof v === 'string') return v;
@@ -243,5 +259,5 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
   };
   const rationale = `Derived from risk (${riskLevel}), horizon (${q.horizon||""}), EF6m=${q.emergencyFundSixMonths||""}, liabilities (${q.liabilities||"None"}), dependents (${q.dependents||"None"}), avoid [${toList((q as any).avoidAssets)}].`;
 
-  return { riskLevel, rationale, buckets };
+  return { riskLevel, rationale, buckets, explain: { perAsset: explainPer, topDrivers } };
 }
