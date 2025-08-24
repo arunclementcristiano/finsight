@@ -65,20 +65,33 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
 
   const kpis = useMemo(() => {
     if (!plan) return { equity: 0, defensive: 0, satellite: 0 };
-    const byClass = new Map<string, number>();
     
-    // Only consider buckets that are actually in the plan (avoided assets won't be here)
-    for (const b of (plan?.buckets||[])) {
-      if (b.pct > 0) { // Extra safety: only count positive allocations
-        byClass.set(b.class, (byClass.get(b.class) || 0) + b.pct);
+    // Calculate KPIs directly from the buckets that are displayed in the table
+    let equity = 0, defensive = 0, satellite = 0;
+    
+    for (const bucket of (plan?.buckets || [])) {
+      if (bucket.pct > 0) { // Only count positive allocations
+        if (bucket.class === "Stocks" || bucket.class === "Mutual Funds") {
+          equity += bucket.pct;
+        } else if (bucket.class === "Debt" || bucket.class === "Liquid") {
+          defensive += bucket.pct;
+        } else if (bucket.class === "Gold" || bucket.class === "Real Estate") {
+          satellite += bucket.pct;
+        }
       }
     }
     
-    const equity = (byClass.get("Stocks") || 0) + (byClass.get("Mutual Funds") || 0);
-    const defensive = (byClass.get("Debt") || 0) + (byClass.get("Liquid") || 0);
-    const satellite = (byClass.get("Gold") || 0) + (byClass.get("Real Estate") || 0);
+    // Debug logging to track satellite calculation
+    console.log("KPI Debug:", {
+      buckets: plan?.buckets?.map((b: any) => ({ class: b.class, pct: b.pct })),
+      calculated: { equity, defensive, satellite }
+    });
     
-    return { equity, defensive, satellite };
+    return { 
+      equity: Math.round(equity), 
+      defensive: Math.round(defensive), 
+      satellite: Math.round(satellite) 
+    };
   }, [plan]);
 
   const rebalance = useMemo(() => (plan ? computeRebalance(holdings, plan, driftTolerancePct) : { items: [], totalCurrentValue: 0 }), [holdings, plan, driftTolerancePct]);
@@ -341,12 +354,12 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
         >
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="text-base">
                 Rebalancing Suggestions
-                {rebalanceExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </CardTitle>
               <CardDescription className="text-xs">Based on drift tolerance of {driftTolerancePct}%</CardDescription>
             </div>
+            {rebalanceExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </div>
         </CardHeader>
         {rebalanceExpanded && (

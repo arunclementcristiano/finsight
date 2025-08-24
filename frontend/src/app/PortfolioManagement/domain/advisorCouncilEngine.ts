@@ -140,7 +140,9 @@ class SignalProcessor {
       });
     }
     
+    console.log("Insurance check - hasInsurance:", answers.hasInsurance);
     if (!answers.hasInsurance) {
+      console.log("Adding no_insurance negative signal");
       signals.push({
         factor: "no_insurance",
         equitySignal: -10,
@@ -148,6 +150,8 @@ class SignalProcessor {
         weight: 0.10,
         explanation: "Lack of insurance requires more conservative positioning"
       });
+    } else {
+      console.log("Insurance is adequate, no negative signal added");
     }
     
     return signals;
@@ -947,7 +951,7 @@ export class AdvisorCouncilEngine {
       esgPreference: "no_preference", // Default
       jobStability: oldAnswers.incomeStability || "somewhat_stable",
       withdrawalNext2Years: false, // Default
-      hasInsurance: oldAnswers.adequateInsurance === "Yes"
+      hasInsurance: oldAnswers.adequateInsurance === "Yes" || oldAnswers.insuranceCoverage === "Yes"
     };
   }
   
