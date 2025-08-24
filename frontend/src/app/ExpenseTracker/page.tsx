@@ -42,6 +42,20 @@ export default function ExpenseTrackerPage() {
   const [compareMonthA, setCompareMonthA] = useState<string>("");
   const [compareMonthB, setCompareMonthB] = useState<string>("");
   const [compareShowAll, setCompareShowAll] = useState(false);
+  
+  
+  // Budget management
+  const [tempDefaultBudgets, setTempDefaultBudgets] = useState<Record<string, number>>({});
+  const [tempOverrideBudgets, setTempOverrideBudgets] = useState<Record<string, number>>({});
+  const [draftBudgets, setDraftBudgets] = useState<Record<string, number>>({});
+  const [draftInputs, setDraftInputs] = useState<Record<string, string>>({});
+  const [baselineBudgets, setBaselineBudgets] = useState<Record<string, number>>({});
+  const [allCategories, setAllCategories] = useState<string[]>([]);
+  const [overridesByMonth, setOverridesByMonth] = useState<Record<string, Record<string, number>>>({});
+  
+  // Inline editing
+  const [editingCat, setEditingCat] = useState<string | null>(null);
+  const [editingVal, setEditingVal] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
