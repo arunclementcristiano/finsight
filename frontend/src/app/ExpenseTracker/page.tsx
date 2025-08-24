@@ -27,9 +27,7 @@ export default function ExpenseTrackerPage() {
   const [preset, setPreset] = useState<"all" | "today" | "week" | "month" | "lastMonth" | "custom">("all");
   const [customStart, setCustomStart] = useState<string>("");
   const [customEnd, setCustomEnd] = useState<string>("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const amountRef = useRef<HTMLInputElement>(null);
-  const customRef = useRef<HTMLInputElement>(null);
+
   const [dateOpen, setDateOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     const d = new Date();
@@ -208,23 +206,7 @@ export default function ExpenseTrackerPage() {
     } catch {}
   }
 
-  async function confirm(category?: string, amountStr?: string) {
-    if (!ai?.raw) return;
-    const categoryFinal = category || ai.category || "Other";
-    const amountFinal = Number(amountStr || ai.amount || 0);
-    if (!categoryFinal || !isFinite(amountFinal)) return;
-    try {
-      const res = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText: ai.raw, category: categoryFinal, amount: amountFinal, date: dateOpen ? selectedDate : undefined }) });
-      const data = await res.json();
-      if (data.ok) {
-        addExpense({ id: data.expenseId || uuidv4(), text: ai.raw, amount: amountFinal, category: categoryFinal, date: (dateOpen ? selectedDate : new Date().toISOString().slice(0,10)), createdAt: new Date().toISOString(), note: ai.raw });
-        setAi(null);
-        setInput("");
-        inputRef.current?.focus();
-        resetDatePicker();
-      }
-    } catch {}
-  }
+
 
   const categorySummary = useMemo(() => {
     const map = new Map<string, number>();
@@ -546,27 +528,6 @@ export default function ExpenseTrackerPage() {
           >
             📈 Analytics
           </button>
-        </div>
-      </div>
-            {ai && (
-              <div className="mt-3 rounded-xl border border-border p-3 text-sm space-y-2">
-                <div>Suggested: <span className="font-semibold">{ai.category}</span> {ai.AIConfidence ? `(conf ${Math.round((ai.AIConfidence||0)*100)}%)` : ""}</div>
-                <div className="flex flex-wrap gap-2 items-center">
-                  <input ref={amountRef} type="number" step="0.01" defaultValue={ai.amount ?? 0} className="h-9 w-28 rounded-md border border-border px-2 bg-card text-right"/>
-                  <select value={selectedCategory || ai.category || "Other"} onChange={(e)=> setSelectedCategory(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card">
-                    {Array.from(new Set<string>((((ai as any).options as string[] | undefined) || []).concat(ai.category || []).filter(Boolean))).map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                  <input ref={customRef} type="text" placeholder="Custom category (optional)" className="h-9 rounded-md border border-border px-2 bg-card"/>
-                  <Button onClick={()=>{
-                    const custom = (customRef.current?.value || "").trim();
-                    const chosen = custom || (selectedCategory || ai.category || "Other");
-                    confirm(chosen, amountRef.current?.value);
-                  }}>Confirm</Button>
-                </div>
-              </div>
-            )}
         </div>
       </div>
 
