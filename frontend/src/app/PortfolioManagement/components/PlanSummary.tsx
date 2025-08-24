@@ -68,6 +68,8 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
     
     // Calculate KPIs directly from the buckets that are displayed in the table
     let equity = 0, defensive = 0, satellite = 0;
+    const satelliteBreakdown: any[] = [];
+    const unclassifiedAssets: any[] = [];
     
     for (const bucket of (plan?.buckets || [])) {
       if (bucket.pct > 0) { // Only count positive allocations
@@ -77,13 +79,20 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
           defensive += bucket.pct;
         } else if (bucket.class === "Gold" || bucket.class === "Real Estate") {
           satellite += bucket.pct;
+          satelliteBreakdown.push({ class: bucket.class, pct: bucket.pct });
+        } else {
+          // Track any unclassified assets
+          unclassifiedAssets.push({ class: bucket.class, pct: bucket.pct });
         }
       }
     }
     
-    // Debug logging to track satellite calculation
-    console.log("KPI Debug:", {
-      buckets: plan?.buckets?.map((b: any) => ({ class: b.class, pct: b.pct })),
+    // Enhanced debug logging to track satellite calculation
+    console.log("🔍 SATELLITE KPI DEBUG:", {
+      allBuckets: plan?.buckets?.map((b: any) => ({ class: b.class, pct: b.pct })),
+      satelliteBreakdown: satelliteBreakdown,
+      satelliteTotal: satellite,
+      unclassifiedAssets: unclassifiedAssets,
       calculated: { equity, defensive, satellite }
     });
     
@@ -190,7 +199,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
         </div>
         <div className="rounded-lg border border-border p-2 text-center">
           <div className="text-[11px] text-muted-foreground">Satellite</div>
-          <div className="text-base font-semibold text-amber-600">{kpis.satellite.toFixed(0)}%</div>
+          <div className="text-base font-semibold text-amber-600">{kpis.satellite}%</div>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
