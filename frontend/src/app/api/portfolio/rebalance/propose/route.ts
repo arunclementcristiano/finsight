@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserSubFromJwt } from "../../../_utils/auth";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 
 // Types aligned with frontend
 interface Bucket { class: string; pct: number; range?: [number, number]; }
 interface Plan { buckets: Bucket[]; riskLevel?: string; rationale?: string }
 interface Holding { instrumentClass: string; currentValue?: number; units?: number; price?: number; investedAmount?: number }
+
+const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.AWS_REGION || "us-east-1" }));
+const INVEST_TABLE = process.env.INVEST_TABLE || "InvestApp";
 
 function valueOfHolding(h: Holding): number {
 	if (typeof h.currentValue === "number") return h.currentValue;
@@ -13,20 +18,45 @@ function valueOfHolding(h: Holding): number {
 	return 0;
 }
 
+async function fetchConstraints(sub: string, portfolioId: string) {
+	const res = await ddb.send(new GetCommand({ TableName: INVEST_TABLE, Key: { pk: `USER#${sub}`, sk: `CONSTRAINTS#${portfolioId}` } }));
+	return (res.Item as any)?.constraints || null;
+}
+
+async function fetchGoals(sub: string, portfolioId: string) {
+	const res = await ddb.send(new QueryCommand({
+		TableName: INVEST_TABLE,
+		IndexName: "GSI1",
+		KeyConditionExpression: "GSI1PK = :g",
+		ExpressionAttributeValues: { ":g": `PORTFOLIO#${portfolioId}` },
+		ScanIndexForward: false,
+	}));
+	return (res.Items||[]).filter((it:any)=> String(it.sk||"").startsWith(`GOAL#${portfolioId}#`));
+}
+
 export async function POST(req: NextRequest) {
 	const sub = await getUserSubFromJwt(req);
 	if (!sub) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	try {
-		const { plan, holdings, mode, options, constraints } = await req.json();
+		const { plan, holdings, mode, options, constraints: constraintsIn, portfolioId } = await req.json();
 		if (!plan || !Array.isArray(plan?.buckets) || !Array.isArray(holdings)) {
 			return NextResponse.json({ error: "Missing or invalid plan/holdings" }, { status: 400 });
 		}
 		const modeKind = (mode === 'to-target') ? 'to-target' : 'to-band';
 		const cashOnly = !!(options?.cashOnly);
 		const turnoverLimitPct = Math.max(0, Math.min(10, Number(options?.turnoverLimitPct) || 1));
-    const efMonths = Math.max(0, Math.min(24, Number(constraints?.efMonths)||0));
-    const liqAmt = Math.max(0, Number(constraints?.liquidityAmount)||0);
-    const liqMonths = Math.max(0, Math.min(36, Number(constraints?.liquidityMonths)||0));
+
+		// Load constraints/goals if portfolioId provided
+		let constraints = constraintsIn || null;
+		if (!constraints && portfolioId) constraints = await fetchConstraints(sub, portfolioId);
+		const goals = portfolioId ? await fetchGoals(sub, portfolioId) : [];
+
+		const efMonths = Math.max(0, Math.min(24, Number(constraints?.efMonths)||0));
+		const liqAmt = Math.max(0, Number(constraints?.liquidityAmount)||0);
+		const liqMonths = Math.max(0, Math.min(36, Number(constraints?.liquidityMonths)||0));
+
+		// Household target mix: placeholder uses provided plan; future: blend per-goal targets
+		const targetPlan: Plan = plan;
 
 		const total = holdings.reduce((s: number, h: Holding) => s + valueOfHolding(h), 0) || 0;
 		const classToValue = new Map<string, number>();
@@ -35,7 +65,7 @@ export async function POST(req: NextRequest) {
 			const k = h.instrumentClass;
 			classToValue.set(k, (classToValue.get(k) || 0) + v);
 		}
-		const allClasses = new Set<string>([...plan.buckets.map((b: Bucket)=> b.class), ...Array.from(classToValue.keys())]);
+		const allClasses = new Set<string>([...targetPlan.buckets.map((b: Bucket)=> b.class), ...Array.from(classToValue.keys())]);
 
 		// Build current and target maps
 		const currentPct: Record<string, number> = {};
@@ -43,7 +73,7 @@ export async function POST(req: NextRequest) {
 		for (const cls of allClasses) {
 			const cur = total > 0 ? ((classToValue.get(cls) || 0) / total) * 100 : 0;
 			currentPct[cls] = +(cur.toFixed(2));
-			const pb = (plan.buckets as Bucket[]).find(b => b.class === cls);
+			const pb = (targetPlan.buckets as Bucket[]).find(b => b.class === cls);
 			const baseTarget = pb ? Number(pb.pct) || 0 : 0;
 			if (modeKind === 'to-target') {
 				targetPct[cls] = baseTarget;
@@ -96,9 +126,10 @@ export async function POST(req: NextRequest) {
 		const constraintNote = (efMonths || liqAmt)
 			? ` while respecting ${efMonths? efMonths+ ' months EF':''}${efMonths&&liqAmt?' and ':''}${liqAmt? ('₹'+liqAmt+' over '+(liqMonths||0)+' months'):''}`
 			: '';
+		const goalsNote = goals?.length ? ` and considering ${goals.length} goal(s)` : '';
 		const rationale = modeKind === 'to-band'
-			? `We bring assets back inside comfort bands using ${cashOnly? 'new contributions':'minimal sells and buys'}, within a turnover cap of ${turnoverLimitPct}%${constraintNote}.`
-			: `We realign to exact targets${cashOnly? ' using contributions only':''}, keeping turnover under ${turnoverLimitPct}%${constraintNote}.`;
+			? `We bring assets back inside comfort bands using ${cashOnly? 'new contributions':'minimal sells and buys'}, within a turnover cap of ${turnoverLimitPct}%${constraintNote}${goalsNote}.`
+			: `We realign to exact targets${cashOnly? ' using contributions only':''}, keeping turnover under ${turnoverLimitPct}%${constraintNote}${goalsNote}.`;
 
 		// After-mix (approx): apply targetPct where trades exist; else keep current
 		const afterMix: Record<string, number> = {};
@@ -113,6 +144,8 @@ export async function POST(req: NextRequest) {
 			afterMix,
 			turnoverPct,
 			rationale,
+			constraints: constraints || null,
+			goalsCount: goals?.length || 0,
 		});
 	} catch (e:any) {
 		return NextResponse.json({ error: 'Bad request', detail: String(e?.message||e) }, { status: 400 });
