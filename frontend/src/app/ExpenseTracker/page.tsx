@@ -939,12 +939,285 @@ export default function ExpenseTrackerPage() {
             </div>
           </>
         ) : (
-          <div className="text-center py-12">
-            <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
-              <span className="text-3xl">📈</span>
+          <div className="space-y-6">
+            {/* Quick Stats Cards */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Total Spent This Month */}
+              <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl p-4 shadow-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-blue-100 text-xs font-medium opacity-90">This Month</p>
+                    <p className="text-xl font-bold mt-1">
+                      {privacy ? "•••••" : `₹${monthSpend.toLocaleString('en-IN')}`}
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                    <span className="text-lg">💰</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Budget Usage */}
+              <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-2xl p-4 shadow-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-purple-100 text-xs font-medium opacity-90">Budget Used</p>
+                    <p className="text-xl font-bold mt-1">
+                      {privacy ? "•••" : `${budgetUsedPct}%`}
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                    <span className="text-lg">📊</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Analytics Coming Soon</h2>
-            <p className="text-gray-500 dark:text-gray-400">Advanced insights and charts will be available here</p>
+
+            {/* Top Category & Transaction Count */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-2xl p-4 shadow-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-green-100 text-xs font-medium opacity-90">Top Category</p>
+                    <p className="text-lg font-bold mt-1 truncate">
+                      {topCategory === "—" ? "None" : topCategory}
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                    <span className="text-lg">🏆</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-2xl p-4 shadow-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-orange-100 text-xs font-medium opacity-90">Transactions</p>
+                    <p className="text-xl font-bold mt-1">
+                      {filteredExpenses.length}
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                    <span className="text-lg">📝</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Spending by Category Chart */}
+            {monthlyCategorySpend.arr.length > 0 && (
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+                  <span className="text-xl mr-2">🍰</span>
+                  Category Breakdown
+                </h3>
+                <div className="relative h-64 flex items-center justify-center">
+                  <Doughnut
+                    data={{
+                      labels: monthlyCategorySpend.arr.map(([cat]) => cat),
+                      datasets: [{
+                        data: monthlyCategorySpend.arr.map(([_, spent]) => spent),
+                        backgroundColor: [
+                          '#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', 
+                          '#EF4444', '#06B6D4', '#84CC16', '#F97316',
+                          '#EC4899', '#6366F1', '#14B8A6', '#F59E0B'
+                        ],
+                        borderWidth: 0,
+                        hoverOffset: 8
+                      }]
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        legend: {
+                          display: false
+                        },
+                        tooltip: {
+                          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                          titleColor: 'white',
+                          bodyColor: 'white',
+                          cornerRadius: 8,
+                          callbacks: {
+                            label: function(context) {
+                              const percentage = ((context.parsed / monthSpend) * 100).toFixed(1);
+                              return ` ${context.label}: ₹${context.parsed.toLocaleString('en-IN')} (${percentage}%)`;
+                            }
+                          }
+                        }
+                      }
+                    }}
+                  />
+                </div>
+                
+                {/* Category Legend */}
+                <div className="grid grid-cols-2 gap-2 mt-4">
+                  {monthlyCategorySpend.arr.slice(0, 6).map(([cat, spent], index) => {
+                    const colors = ['bg-blue-500', 'bg-purple-500', 'bg-green-500', 'bg-yellow-500', 'bg-red-500', 'bg-cyan-500'];
+                    const percentage = ((spent / monthSpend) * 100).toFixed(1);
+                    return (
+                      <div key={cat} className="flex items-center space-x-2">
+                        <div className={`w-3 h-3 rounded-full ${colors[index] || 'bg-gray-500'}`}></div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{cat}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {privacy ? "•••" : `₹${spent.toLocaleString('en-IN')}`} ({percentage}%)
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Spending Trends */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+                <span className="text-xl mr-2">📈</span>
+                Spending Insights
+              </h3>
+              
+              <div className="space-y-4">
+                {/* Average Transaction */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                      <span className="text-blue-600 dark:text-blue-400">📊</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">Average Transaction</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Per expense</p>
+                    </div>
+                  </div>
+                  <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                    {privacy ? "•••" : filteredExpenses.length > 0 ? `₹${Math.round(monthSpend / filteredExpenses.length).toLocaleString('en-IN')}` : "₹0"}
+                  </p>
+                </div>
+
+                {/* Daily Average */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                      <span className="text-green-600 dark:text-green-400">📅</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">Daily Average</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">This month</p>
+                    </div>
+                  </div>
+                  <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                    {privacy ? "•••" : `₹${Math.round(monthSpend / new Date().getDate()).toLocaleString('en-IN')}`}
+                  </p>
+                </div>
+
+                {/* Most Expensive */}
+                {filteredExpenses.length > 0 && (
+                  <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
+                        <span className="text-purple-600 dark:text-purple-400">💎</span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">Highest Expense</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Single transaction</p>
+                      </div>
+                    </div>
+                    <p className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                      {privacy ? "•••" : `₹${Math.max(...filteredExpenses.map(e => e.amount)).toLocaleString('en-IN')}`}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Budget Health */}
+            {totalBudget > 0 && (
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+                  <span className="text-xl mr-2">🎯</span>
+                  Budget Health
+                </h3>
+                
+                <div className="space-y-4">
+                  {/* Overall Progress */}
+                  <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border border-blue-100 dark:border-blue-800/30">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">Overall Budget</span>
+                      <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                        {privacy ? "•••" : `${budgetUsedPct}%`}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3 mb-2">
+                      <div 
+                        className={`h-3 rounded-full transition-all duration-500 ${
+                          budgetUsedPct >= 100 ? 'bg-red-500' : 
+                          budgetUsedPct >= 80 ? 'bg-amber-500' : 'bg-green-500'
+                        }`}
+                        style={{ width: `${Math.min(100, budgetUsedPct)}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                      <span>{privacy ? "•••" : `₹${monthSpend.toLocaleString('en-IN')} spent`}</span>
+                      <span>{privacy ? "•••" : `₹${totalBudget.toLocaleString('en-IN')} total`}</span>
+                    </div>
+                  </div>
+
+                  {/* Budget Status */}
+                  <div className={`p-4 rounded-xl border ${
+                    budgetUsedPct >= 100 ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/30' :
+                    budgetUsedPct >= 80 ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/30' :
+                    'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/30'
+                  }`}>
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        budgetUsedPct >= 100 ? 'bg-red-100 dark:bg-red-900/30' :
+                        budgetUsedPct >= 80 ? 'bg-amber-100 dark:bg-amber-900/30' :
+                        'bg-green-100 dark:bg-green-900/30'
+                      }`}>
+                        <span className="text-lg">
+                          {budgetUsedPct >= 100 ? '🚨' : budgetUsedPct >= 80 ? '⚠️' : '✅'}
+                        </span>
+                      </div>
+                      <div>
+                        <p className={`font-medium ${
+                          budgetUsedPct >= 100 ? 'text-red-700 dark:text-red-400' :
+                          budgetUsedPct >= 80 ? 'text-amber-700 dark:text-amber-400' :
+                          'text-green-700 dark:text-green-400'
+                        }`}>
+                          {budgetUsedPct >= 100 ? 'Over Budget!' :
+                           budgetUsedPct >= 80 ? 'Approaching Limit' :
+                           'On Track'}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {budgetUsedPct >= 100 ? 
+                            `Exceeded by ${privacy ? '•••' : `₹${(monthSpend - totalBudget).toLocaleString('en-IN')}`}` :
+                            `${privacy ? '•••' : `₹${(totalBudget - monthSpend).toLocaleString('en-IN')}`} remaining`
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Empty State for New Users */}
+            {filteredExpenses.length === 0 && (
+              <div className="text-center py-12">
+                <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-full flex items-center justify-center">
+                  <span className="text-3xl">📊</span>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No Data Yet</h3>
+                <p className="text-gray-500 dark:text-gray-400 mb-4">Add some expenses to see beautiful insights!</p>
+                <button 
+                  onClick={() => setActiveTab("data")} 
+                  className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all active:scale-95"
+                >
+                  Start Adding Expenses
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
