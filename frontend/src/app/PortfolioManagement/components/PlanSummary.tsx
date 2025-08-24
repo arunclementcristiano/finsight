@@ -194,7 +194,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                         <div className="group flex items-center gap-2">
                           {(() => { const maxAllowed = 100; return (
                             <>
-                              {(() => { const rawBand = (Array.isArray(b.range) ? b.range as [number,number] : [0,100]); const minBound = 0; const maxBound = mode==='custom' ? maxAllowed : 100; const bandMin = Math.round(rawBand[0]||0); const bandMax = Math.round(rawBand[1]||100); const valueNow = Math.round(b.pct||0); const bandStart = Math.max(0, Math.min(100, bandMin)); const bandEnd = Math.max(0, Math.min(100, bandMax)); const cls = b.class; const isEdge = !!edgeHit?.[cls]; return (
+                              {(() => { const rawBand = (Array.isArray(b.range) ? b.range as [number,number] : [0,100]); const minBound = 0; const maxBound = mode==='custom' ? maxAllowed : 100; const bandMin = Math.round((Number(rawBand[0])||0)); const bandMax = Math.round((Number(rawBand[1])||100)); const valueNow = Number.isFinite(Number(b.pct)) ? Math.round(Number(b.pct)) : 0; const bandStart = Math.max(0, Math.min(100, bandMin)); const bandEnd = Math.max(0, Math.min(100, bandMax)); const cls = b.class; const isEdge = !!edgeHit?.[cls]; return (
                                 <>
                                   <div className="relative w-full md:w-56">
                                     <input
