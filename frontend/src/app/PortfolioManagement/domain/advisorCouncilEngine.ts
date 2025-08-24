@@ -956,7 +956,7 @@ export class AdvisorCouncilEngine {
       monthlyObligations: this.mapObligations(oldAnswers.liabilities),
       volatilityComfort: this.mapVolatility(oldAnswers.volatilityComfort),
       maxAcceptableLoss: "20%", // Default
-      investmentKnowledge: oldAnswers.investmentKnowledge || "some_knowledge",
+      investmentKnowledge: this.mapKnowledge(oldAnswers.investmentKnowledge),
       previousLosses: "no_major_losses", // Default
       primaryGoal: "wealth_building", // Default
       expectedReturn: "8-12%", // Default
@@ -987,6 +987,15 @@ export class AdvisorCouncilEngine {
     };
   }
   
+  private mapKnowledge(knowledge: string): CouncilAnswers["investmentKnowledge"] {
+    const normalizedKnowledge = String(knowledge || "").toLowerCase();
+    if (normalizedKnowledge === "beginner") return "beginner";
+    if (normalizedKnowledge === "some knowledge" || normalizedKnowledge === "some_knowledge") return "some_knowledge";
+    if (normalizedKnowledge === "experienced") return "experienced";
+    if (normalizedKnowledge === "expert") return "expert";
+    return "some_knowledge"; // Default fallback
+  }
+
   private mapAge(ageBand: string): CouncilAnswers["age"] {
     if (ageBand === "<30") return "<25";
     if (ageBand === "30–45") return "25-35";
