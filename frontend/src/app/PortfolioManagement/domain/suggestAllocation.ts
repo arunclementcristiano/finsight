@@ -242,6 +242,20 @@ export function suggestAllocation(ans: Answers): Allocation {
     base["Mutual Funds"] += add * (1 - sFrac);
     base.Debt -= add;
   }
+  // Glide path for retirement: progressively reduce equity as age increases for Retirement goal
+  (function retirementGlidePath(){
+    if (ans.financialGoal !== "Retirement") return;
+    // Base glide by age band
+    const glideByAge: Record<Answers["ageBand"], number> = { "18–30": 0, "31–45": 2, "46–60": 5, "60+": 8 };
+    let cut = glideByAge[ans.ageBand];
+    // Add small adjustment by horizon (medium vs long)
+    if (ans.horizon === "Medium (3–7 yrs)") cut += 2; else if (ans.horizon === "Short (<3 yrs)") cut += 4;
+    if (cut <= 0) return;
+    const eq = base.Stocks + base["Mutual Funds"]; if (eq <= 0) return;
+    const sFrac = base.Stocks / eq || 0.5;
+    const reduce = Math.min(cut, eq);
+    base.Stocks -= reduce * sFrac; base["Mutual Funds"] -= reduce * (1 - sFrac); base.Debt += reduce;
+  })();
   // Age nudges beyond cap: small shifts if room
   (function ageNudge(){
     const younger = ans.ageBand === "18–30" || ans.ageBand === "31–45";
