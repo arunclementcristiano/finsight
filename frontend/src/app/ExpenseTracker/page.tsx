@@ -59,16 +59,6 @@ export default function ExpenseTrackerPage() {
   const [baselineBudgets, setBaselineBudgets] = useState<Record<string, number>>({});
   const [allCategories, setAllCategories] = useState<string[]>([]);
   const [overridesByMonth, setOverridesByMonth] = useState<Record<string, Record<string, number>>>({});
-  // Insights controls
-  const [insightsPreset, setInsightsPreset] = useState<"today"|"week"|"month"|"lastMonth"|"custom">("month");
-  const [insightsStart, setInsightsStart] = useState<string>("");
-  const [insightsEnd, setInsightsEnd] = useState<string>("");
-  const [insightsOverOnly, setInsightsOverOnly] = useState(false);
-  // Compare months drawer
-  const [compareOpen, setCompareOpen] = useState(false);
-  const [compareMonthA, setCompareMonthA] = useState<string>("");
-  const [compareMonthB, setCompareMonthB] = useState<string>("");
-  const [compareShowAll, setCompareShowAll] = useState(false);
   // Export CSV modal controls
   const [exportOpen, setExportOpen] = useState(false);
   const [exportPreset, setExportPreset] = useState<"all"|"today"|"week"|"month"|"lastMonth"|"custom">("all");
@@ -94,34 +84,7 @@ export default function ExpenseTrackerPage() {
       return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
     }
   }
-  function toLocalDateOnly(dateStr: string) {
-    try {
-      const dt = new Date(dateStr);
-      return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
-    } catch {
-      return new Date();
-    }
-  }
 
-function toLocalDateOnly(dateStr: string) {
-  try {
-    const s = String(dateStr || "").slice(0, 10);
-    const parts = s.split("-");
-    if (parts.length === 3) {
-      const y = Number(parts[0]);
-      const m = Number(parts[1]);
-      const d = Number(parts[2]);
-      if (isFinite(y) && isFinite(m) && isFinite(d)) return new Date(y, m - 1, d);
-    }
-    const dt = new Date(dateStr);
-    return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
-  } catch {
-    const dt = new Date(dateStr);
-    return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
-  }
-}
-
-function getMonthlyBudgetFor(ym: string, cat: string): number {
   const d = (defaultCategoryBudgets || {})[cat] || 0;
   return Number(d) || 0;
 }
