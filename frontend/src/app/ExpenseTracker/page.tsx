@@ -534,7 +534,8 @@ export default function ExpenseTrackerPage() {
             <CardDescription>Synced with backend</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 min-h-0 flex flex-col pb-0">
-            <div className="mb-3 flex flex-wrap gap-2 items-center">
+            {/* Desktop Filters */}
+            <div className="mb-3 hidden xl:flex flex-wrap gap-2 items-center">
               <label className="text-sm text-muted-foreground">Range</label>
               <select value={preset} onChange={(e)=> setPreset(e.target.value as any)} className="h-9 rounded-md border border-border px-2 bg-card">
                 <option value="all">All</option>
@@ -552,7 +553,114 @@ export default function ExpenseTrackerPage() {
                 </>
               )}
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-border">
+
+            {/* Beautiful Mobile Filters & Sorting */}
+            <div className="xl:hidden mb-4">
+              <Card className="border-0 shadow-md bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-950/50 dark:to-gray-950/50">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <span className="text-xl">🔍</span>
+                    Filter & Sort
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Time Range Select */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">📅 Time Range</label>
+                    <select 
+                      value={preset} 
+                      onChange={(e)=> setPreset(e.target.value as any)} 
+                      className="w-full h-12 rounded-xl border-2 border-border/50 bg-white/50 dark:bg-black/50 px-4 text-base font-medium focus:border-blue-500 focus:ring-0"
+                    >
+                      <option value="all">🌐 All Time</option>
+                      <option value="today">📅 Today</option>
+                      <option value="week">📊 This Week</option>
+                      <option value="month">📈 This Month</option>
+                      <option value="lastMonth">📉 Last Month</option>
+                      <option value="custom">🎯 Custom Range</option>
+                    </select>
+                  </div>
+
+                  {/* Custom Date Range */}
+                  {preset === "custom" && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">📊 Custom Date Range</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <input 
+                          type="date" 
+                          value={customStart} 
+                          onChange={(e)=> setCustomStart(e.target.value)} 
+                          className="w-full h-10 rounded-lg border-2 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 px-3 text-sm font-medium focus:border-emerald-500 focus:ring-0"
+                        />
+                        <input 
+                          type="date" 
+                          value={customEnd} 
+                          onChange={(e)=> setCustomEnd(e.target.value)} 
+                          className="w-full h-10 rounded-lg border-2 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 px-3 text-sm font-medium focus:border-emerald-500 focus:ring-0"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Sort By */}
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium text-foreground">🔄 Sort By</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        onClick={() => toggleSort("date")}
+                        className={`h-12 rounded-xl border-2 text-sm font-medium touch-manipulation transition-all ${
+                          sortField === "date" 
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300' 
+                            : 'border-border bg-background hover:bg-muted'
+                        }`}
+                      >
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-base">📅</span>
+                          <span>Date</span>
+                          {sortField === "date" && (
+                            <span className="text-xs">{sortDir === "asc" ? "↑" : "↓"}</span>
+                          )}
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => toggleSort("amount")}
+                        className={`h-12 rounded-xl border-2 text-sm font-medium touch-manipulation transition-all ${
+                          sortField === "amount" 
+                            ? 'border-green-500 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300' 
+                            : 'border-border bg-background hover:bg-muted'
+                        }`}
+                      >
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-base">💰</span>
+                          <span>Amount</span>
+                          {sortField === "amount" && (
+                            <span className="text-xs">{sortDir === "asc" ? "↑" : "↓"}</span>
+                          )}
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => toggleSort("category")}
+                        className={`h-12 rounded-xl border-2 text-sm font-medium touch-manipulation transition-all ${
+                          sortField === "category" 
+                            ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300' 
+                            : 'border-border bg-background hover:bg-muted'
+                        }`}
+                      >
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-base">🏷️</span>
+                          <span>Category</span>
+                          {sortField === "category" && (
+                            <span className="text-xs">{sortDir === "asc" ? "↑" : "↓"}</span>
+                          )}
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            {/* Desktop Table View */}
+            <div className="hidden xl:block flex-1 min-h-0 overflow-y-auto rounded-xl border border-border">
             <table className="w-full text-left text-sm">
               <thead className="bg-card">
                 <tr>
@@ -606,8 +714,102 @@ export default function ExpenseTrackerPage() {
               </tbody>
             </table>
             </div>
+
+            {/* Beautiful Mobile Cards (Expenses List) */}
+            <div className="xl:hidden flex-1 min-h-0 overflow-y-auto px-1">
+              {pageRows.length > 0 ? (
+                pageRows.map((e: Expense) => {
+                  // Get category-specific styling
+                  const getCategoryData = (category: string) => {
+                    const mapping: Record<string, {emoji: string, color: string}> = {
+                      "Food": {emoji: "🍽️", color: "from-orange-500 to-red-600"},
+                      "Travel": {emoji: "✈️", color: "from-blue-500 to-cyan-600"},
+                      "Shopping": {emoji: "🛍️", color: "from-pink-500 to-purple-600"},
+                      "Utilities": {emoji: "⚡", color: "from-yellow-500 to-orange-600"},
+                      "Housing": {emoji: "🏠", color: "from-green-500 to-teal-600"},
+                      "Healthcare": {emoji: "🩺", color: "from-red-500 to-pink-600"},
+                      "Entertainment": {emoji: "🎬", color: "from-purple-500 to-indigo-600"},
+                      "Investment": {emoji: "📈", color: "from-emerald-500 to-green-600"},
+                      "Loans": {emoji: "💳", color: "from-slate-500 to-gray-600"},
+                      "Insurance": {emoji: "🛡️", color: "from-blue-600 to-indigo-700"},
+                      "Grooming": {emoji: "💄", color: "from-pink-400 to-rose-500"},
+                      "Subscription": {emoji: "📱", color: "from-violet-500 to-purple-600"},
+                      "Education": {emoji: "📚", color: "from-indigo-500 to-blue-600"},
+                      "Taxes": {emoji: "🧾", color: "from-gray-500 to-slate-600"},
+                      "Gifts": {emoji: "🎁", color: "from-rose-500 to-pink-600"},
+                      "Pet Care": {emoji: "🐕", color: "from-amber-500 to-yellow-600"},
+                      "Other": {emoji: "📦", color: "from-gray-400 to-slate-500"}
+                    };
+                    return mapping[category] || {emoji: "💸", color: "from-gray-400 to-slate-500"};
+                  };
+                  
+                  const categoryData = getCategoryData(e.category as string);
+                  
+                  return (
+                    <Card key={e.id} className={`relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br ${categoryData.color} mb-3`}>
+                      {/* Gradient background accent */}
+                      <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${categoryData.color} opacity-10 rounded-bl-full`}></div>
+                      
+                      <CardContent className="p-4 relative z-10">
+                        {/* Header Row */}
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`h-12 w-12 rounded-2xl bg-gradient-to-br ${categoryData.color} flex items-center justify-center shadow-lg`}>
+                              <span className="text-xl text-white">{categoryData.emoji}</span>
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xs text-white/70 bg-white/20 px-2 py-1 rounded-full font-medium">
+                                  {fmtDateYYYYMMDDLocal(e.date as any)}
+                                </span>
+                                <span className={`text-xs px-2 py-1 rounded-full font-semibold text-white bg-gradient-to-r ${categoryData.color} shadow-sm`}>
+                                  {e.category as string}
+                                </span>
+                              </div>
+                              <div className="text-lg font-bold text-white">
+                                {privacy ? "•••••" : `₹${e.amount.toFixed(0)}`}
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleDelete(e.id)}
+                            className="h-10 w-10 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-200 dark:border-red-800 text-red-600 hover:text-red-700 dark:hover:text-red-400 transition-all duration-200 touch-manipulation flex items-center justify-center group-hover:scale-105"
+                            aria-label={`Delete ${e.text}`}
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                        
+                        {/* Description */}
+                        {e.text && (
+                          <div className="bg-white/50 dark:bg-black/20 rounded-xl p-3 border border-white/20 dark:border-white/10">
+                            <p className="text-sm text-white/90 font-medium">{e.text}</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              ) : (
+                <Card className="border-0 shadow-lg bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 mb-3">
+                  <CardContent className="flex flex-col items-center justify-center text-center py-16">
+                    <div className="relative mb-6">
+                      <div className="h-24 w-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-xl">
+                        <span className="text-4xl">💸</span>
+                      </div>
+                      <div className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+                        <span className="text-white text-lg font-bold">+</span>
+                      </div>
+                    </div>
+                    <h3 className="text-xl font-bold mb-2">No expenses yet</h3>
+                    <p className="text-muted-foreground text-base">Start adding expenses to see them here</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </CardContent>
-          <CardFooter className="pt-3 border-t border-border">
+          {/* Desktop Pagination */}
+          <CardFooter className="pt-3 border-t border-border hidden xl:block">
             <div className="w-full flex-none flex items-center justify-between text-sm">
               <div>Page {page} of {totalPages}</div>
               <div className="flex gap-2">
@@ -616,6 +818,39 @@ export default function ExpenseTrackerPage() {
               </div>
             </div>
           </CardFooter>
+
+          {/* Mobile Pagination */}
+          <div className="xl:hidden mt-4">
+            <Card className="border-0 shadow-md">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    Page {page} of {totalPages}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={prev} 
+                      disabled={page === 1}
+                      className="h-10 px-4 touch-manipulation"
+                    >
+                      ← Prev
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={next} 
+                      disabled={page === totalPages}
+                      className="h-10 px-4 touch-manipulation"
+                    >
+                      Next →
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </Card>
 
         {/* Beautiful Category Budgets (Mobile Header) */}
@@ -809,42 +1044,91 @@ export default function ExpenseTrackerPage() {
         </div>
       </div>
       ) : (
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 p-4 flex-1 overflow-auto">
-        {/* KPIs */}
-        <Card className="xl:col-span-3">
-          <CardHeader>
+      <div className="space-y-6 xl:grid xl:grid-cols-3 xl:gap-6 xl:space-y-0 p-4 xl:p-6 flex-1 overflow-auto">
+        {/* Beautiful Mobile Insights Header */}
+        <div className="flex items-center justify-between xl:hidden mb-6">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
+              <span className="text-xl">📈</span>
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-foreground">Smart Insights</h2>
+              <p className="text-sm text-muted-foreground">{currentYm} analytics</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Beautiful Mobile KPIs */}
+        <Card className="xl:col-span-3 border-0 shadow-lg bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-950/50 dark:to-gray-950/50">
+          <CardHeader className="xl:block hidden">
             <CardTitle>Overview</CardTitle>
             <CardDescription>Key metrics for {currentYm}</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="rounded-xl border border-border p-3">
-                <div className="text-xs text-muted-foreground">Today</div>
-                <div className="text-lg font-semibold">{fmtMoney(todaySpend)}</div>
-              </div>
-              <div className="rounded-xl border border-border p-3">
-                <div className="text-xs text-muted-foreground">This Month</div>
-                <div className="text-lg font-semibold">{fmtMoney(monthSpend)}</div>
-              </div>
-              <div className="rounded-xl border border-border p-3">
-                <div className="text-xs text-muted-foreground">Budget Used</div>
-                <div className={`text-lg font-semibold ${totalBudget > 0 ? (budgetUsedPct >= 100 ? 'text-rose-600' : (budgetUsedPct >= 80 ? 'text-amber-600' : 'text-emerald-600')) : ''}`}>
-                  {totalBudget > 0 ? `${privacy ? '•••' : formatCurrency(monthSpend)} / ${privacy ? '•••' : formatCurrency(totalBudget)} (${budgetUsedPct}%)` : "—"}
+          <CardContent className="p-4 xl:p-6">
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 xl:gap-4">
+              <div className="rounded-2xl border-0 bg-gradient-to-br from-blue-500 to-cyan-600 p-4 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <span className="text-lg">📅</span>
+                  </div>
+                  <div>
+                    <div className="text-xs text-white/70 font-medium">Today</div>
+                    <div className="text-lg xl:text-xl font-bold">{fmtMoney(todaySpend)}</div>
+                  </div>
                 </div>
               </div>
-              <div className="rounded-xl border border-border p-3">
-                <div className="text-xs text-muted-foreground">Top Category</div>
-                <div className="text-lg font-semibold">{topCategory}</div>
+              <div className="rounded-2xl border-0 bg-gradient-to-br from-emerald-500 to-green-600 p-4 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <span className="text-lg">📊</span>
+                  </div>
+                  <div>
+                    <div className="text-xs text-white/70 font-medium">This Month</div>
+                    <div className="text-lg xl:text-xl font-bold">{fmtMoney(monthSpend)}</div>
+                  </div>
+                </div>
+              </div>
+              <div className={`rounded-2xl border-0 p-4 text-white shadow-lg hover:shadow-xl transition-all duration-300 ${totalBudget > 0 ? (budgetUsedPct >= 100 ? 'bg-gradient-to-br from-red-500 to-rose-600' : (budgetUsedPct >= 80 ? 'bg-gradient-to-br from-amber-500 to-orange-600' : 'bg-gradient-to-br from-emerald-500 to-green-600')) : 'bg-gradient-to-br from-gray-500 to-slate-600'}`}>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <span className="text-lg">{totalBudget > 0 ? (budgetUsedPct >= 100 ? '🚨' : (budgetUsedPct >= 80 ? '⚠️' : '✅')) : '📈'}</span>
+                  </div>
+                  <div>
+                    <div className="text-xs text-white/70 font-medium">Budget Used</div>
+                    <div className="text-sm xl:text-base font-bold">
+                      {totalBudget > 0 ? `${budgetUsedPct}%` : "—"}
+                    </div>
+                    {totalBudget > 0 && (
+                      <div className="text-xs text-white/80">
+                        {privacy ? '•••' : formatCurrency(monthSpend)} / {privacy ? '•••' : formatCurrency(totalBudget)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-2xl border-0 bg-gradient-to-br from-purple-500 to-indigo-600 p-4 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <span className="text-lg">🏆</span>
+                  </div>
+                  <div>
+                    <div className="text-xs text-white/70 font-medium">Top Category</div>
+                    <div className="text-lg xl:text-xl font-bold">{topCategory}</div>
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Donut */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Category Share</CardTitle>
-            <CardDescription>Distribution across categories</CardDescription>
+        {/* Beautiful Category Share Chart */}
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base xl:text-lg">
+              <span className="text-xl">🥧</span>
+              Category Share
+            </CardTitle>
+            <CardDescription className="text-sm">Distribution across categories</CardDescription>
           </CardHeader>
           <CardContent>
             {(() => {
@@ -878,14 +1162,18 @@ export default function ExpenseTrackerPage() {
           </CardContent>
         </Card>
 
-        {/* Monthly */}
-        <Card className="xl:col-span-2">
-          <CardHeader>
-            <CardTitle>Actual vs Expected (prorated by day)</CardTitle>
-            <CardDescription>Compare spend vs budget for your selected range</CardDescription>
+        {/* Beautiful Budget vs Actual Chart */}
+        <Card className="xl:col-span-2 border-0 shadow-lg bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-950/30 dark:to-green-950/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base xl:text-lg">
+              <span className="text-xl">📊</span>
+              Budget vs Actual
+            </CardTitle>
+            <CardDescription className="text-sm">Compare spend vs budget for your selected range</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-2 flex flex-wrap gap-2 items-center">
+            {/* Desktop Controls */}
+            <div className="mb-4 hidden xl:flex flex-wrap gap-2 items-center">
               <label className="text-sm text-muted-foreground">Range</label>
               <select value={insightsPreset} onChange={(e)=> setInsightsPreset(e.target.value as any)} className="h-9 rounded-md border border-border px-2 bg-card">
                 <option value="today">Today</option>
@@ -912,6 +1200,72 @@ export default function ExpenseTrackerPage() {
                 setCompareShowAll(false);
                 setCompareOpen(true);
               }}>Compare months</Button>
+            </div>
+
+            {/* Beautiful Mobile Controls */}
+            <div className="xl:hidden mb-4 space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">📅 Time Range</label>
+                <select 
+                  value={insightsPreset} 
+                  onChange={(e)=> setInsightsPreset(e.target.value as any)} 
+                  className="w-full h-12 rounded-xl border-2 border-border/50 bg-white/50 dark:bg-black/50 px-4 text-base font-medium focus:border-emerald-500 focus:ring-0"
+                >
+                  <option value="today">📅 Today</option>
+                  <option value="week">📊 This Week</option>
+                  <option value="month">📈 This Month</option>
+                  <option value="lastMonth">📉 Last Month</option>
+                  <option value="custom">🎯 Custom Range</option>
+                </select>
+              </div>
+
+              {insightsPreset === "custom" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">📊 Custom Range</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <input 
+                      type="date" 
+                      value={insightsStart} 
+                      onChange={e=> setInsightsStart(e.target.value)} 
+                      className="w-full h-10 rounded-lg border-2 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 px-3 text-sm font-medium focus:border-emerald-500 focus:ring-0"
+                    />
+                    <input 
+                      type="date" 
+                      value={insightsEnd} 
+                      onChange={e=> setInsightsEnd(e.target.value)} 
+                      className="w-full h-10 rounded-lg border-2 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 px-3 text-sm font-medium focus:border-emerald-500 focus:ring-0"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between">
+                <label className="inline-flex items-center gap-2 text-sm font-medium">
+                  <input 
+                    type="checkbox" 
+                    checked={insightsOverOnly} 
+                    onChange={e=> setInsightsOverOnly(e.target.checked)} 
+                    className="w-4 h-4 rounded border-border focus:ring-emerald-500"
+                  /> 
+                  🚨 Over budget only
+                </label>
+                <Button 
+                  variant="outline" 
+                  className="h-10 px-4 bg-emerald-500/10 border-emerald-500 text-emerald-700 hover:bg-emerald-500/20 touch-manipulation"
+                  onClick={()=> {
+                    const now = new Date();
+                    const thisMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+                    const last = new Date(now.getFullYear(), now.getMonth()-1, 1);
+                    const lastMonth = `${last.getFullYear()}-${String(last.getMonth()+1).padStart(2,'0')}`;
+                    if (!compareMonthA) setCompareMonthA(lastMonth);
+                    if (!compareMonthB) setCompareMonthB(thisMonth);
+                    setCompareShowAll(false);
+                    setCompareOpen(true);
+                  }}
+                >
+                  📊 Compare
+                </Button>
+              </div>
             </div>
             {(() => {
               // Compute range (local)
