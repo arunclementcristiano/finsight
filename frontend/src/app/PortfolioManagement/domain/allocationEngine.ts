@@ -163,6 +163,20 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
     }
   } catch {}
 
+  // Household Real Estate sleeve: if household RE% is high, reduce investable equity and add to Debt
+  try {
+    const hhRe = Math.max(0, Math.min(100, Number((q as any)?.householdRealEstatePct)||0));
+    if (hhRe >= 30) {
+      let cut = hhRe >= 50 ? 5 : (hhRe >= 40 ? 3 : 2);
+      const eq = (alloc as any).Stocks + (alloc as any)["Mutual Funds"];
+      const sFrac = eq > 0 ? ((alloc as any).Stocks / eq) : 0.5;
+      const apply = Math.min(cut, eq);
+      (alloc as any).Stocks = Math.max(0, (alloc as any).Stocks - apply * sFrac);
+      (alloc as any)["Mutual Funds"] = Math.max(0, (alloc as any)["Mutual Funds"] - apply * (1 - sFrac));
+      (alloc as any).Debt = Math.min(100, (alloc as any).Debt + apply);
+    }
+  } catch {}
+
   // Risk score for display/ranges
   const mapRA: Record<Answers["riskAppetite"], number> = { Low: 20, Moderate: 50, High: 80 };
   const mapVol: Record<Answers["volatilityComfort"], number> = { Low: 20, Medium: 50, High: 80 } as any;
@@ -257,7 +271,7 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
     if (typeof v === 'string') return v;
     return "";
   };
-  const rationale = `Derived from risk (${riskLevel}), horizon (${q.horizon||""}), EF6m=${q.emergencyFundSixMonths||""}, liabilities (${q.liabilities||"None"}), dependents (${q.dependents||"None"}), avoid [${toList((q as any).avoidAssets)}].`;
+  const rationale = `Derived from risk (${riskLevel}), horizon (${q.horizon||""}), EF6m=${q.emergencyFundSixMonths||""}, liabilities (${q.liabilities||"None"}), dependents (${q.dependents||"None"}), HHRE=${(q as any)?.householdRealEstatePct||0}%, avoid [${toList((q as any).avoidAssets)}].`;
 
   return { riskLevel, rationale, buckets, explain: { perAsset: explainPer, topDrivers } };
 }
