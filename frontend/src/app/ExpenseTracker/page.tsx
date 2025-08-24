@@ -715,83 +715,85 @@ export default function ExpenseTrackerPage() {
             </table>
             </div>
 
-            {/* Clean Mobile Expense List */}
-            <div className="xl:hidden space-y-3 p-3">
-              {/* Debug info */}
-              <div className="px-3 py-2 bg-blue-50 dark:bg-blue-950/20 rounded-lg text-sm space-y-1">
-                <div className="font-medium">📊 Debug Information:</div>
-                <div>• Total expenses: {expenses.length}</div>
-                <div>• Filtered expenses: {sortedExpenses.length}</div>
-                <div>• Page {page} of {totalPages} (showing {pageRows.length})</div>
-                <div>• Current filter: {preset}</div>
-                <div>• Sort: {sortField} ({sortDir})</div>
-              </div>
-              
+            {/* Modern Mobile Transaction List (Groww/ET Money Style) */}
+            <div className="xl:hidden">
               {pageRows.length > 0 ? (
-                <>
-                  <div className="px-3 py-2 bg-green-50 dark:bg-green-950/20 rounded-lg text-sm">
-                    <div className="font-medium">🎯 Rendering {pageRows.length} expenses:</div>
-                    {pageRows.slice(0, 3).map((e, i) => (
-                      <div key={i}>• {e.id}: {e.amount} - {e.category} - {e.text}</div>
-                    ))}
-                    {pageRows.length > 3 && <div>... and {pageRows.length - 3} more</div>}
-                  </div>
+                <div className="divide-y divide-gray-100 dark:divide-gray-800">
                   {pageRows.map((e: Expense) => {
-                  // Simple category emoji mapping
-                  const getCategoryEmoji = (category: string) => {
-                    const mapping: Record<string, string> = {
-                      "Food": "🍽️", "Travel": "✈️", "Shopping": "🛍️", "Utilities": "⚡", 
-                      "Housing": "🏠", "Healthcare": "🩺", "Entertainment": "🎬", "Investment": "📈",
-                      "Loans": "💳", "Insurance": "🛡️", "Grooming": "💄", "Subscription": "📱",
-                      "Education": "📚", "Taxes": "🧾", "Gifts": "🎁", "Pet Care": "🐕", "Other": "📦"
+                    // Category icon mapping (Groww-style colored backgrounds)
+                    const getCategoryInfo = (category: string) => {
+                      const mapping: Record<string, {icon: string, bg: string, color: string}> = {
+                        "Food": {icon: "🍽️", bg: "bg-orange-50 dark:bg-orange-900/20", color: "text-orange-600 dark:text-orange-400"},
+                        "Travel": {icon: "✈️", bg: "bg-blue-50 dark:bg-blue-900/20", color: "text-blue-600 dark:text-blue-400"},
+                        "Shopping": {icon: "🛍️", bg: "bg-pink-50 dark:bg-pink-900/20", color: "text-pink-600 dark:text-pink-400"},
+                        "Utilities": {icon: "⚡", bg: "bg-yellow-50 dark:bg-yellow-900/20", color: "text-yellow-600 dark:text-yellow-400"},
+                        "Housing": {icon: "🏠", bg: "bg-green-50 dark:bg-green-900/20", color: "text-green-600 dark:text-green-400"},
+                        "Healthcare": {icon: "🩺", bg: "bg-red-50 dark:bg-red-900/20", color: "text-red-600 dark:text-red-400"},
+                        "Entertainment": {icon: "🎬", bg: "bg-purple-50 dark:bg-purple-900/20", color: "text-purple-600 dark:text-purple-400"},
+                        "Investment": {icon: "📈", bg: "bg-emerald-50 dark:bg-emerald-900/20", color: "text-emerald-600 dark:text-emerald-400"},
+                        "Loans": {icon: "💳", bg: "bg-slate-50 dark:bg-slate-900/20", color: "text-slate-600 dark:text-slate-400"},
+                        "Insurance": {icon: "🛡️", bg: "bg-indigo-50 dark:bg-indigo-900/20", color: "text-indigo-600 dark:text-indigo-400"},
+                        "Grooming": {icon: "💄", bg: "bg-rose-50 dark:bg-rose-900/20", color: "text-rose-600 dark:text-rose-400"},
+                        "Subscription": {icon: "📱", bg: "bg-violet-50 dark:bg-violet-900/20", color: "text-violet-600 dark:text-violet-400"},
+                        "Education": {icon: "📚", bg: "bg-cyan-50 dark:bg-cyan-900/20", color: "text-cyan-600 dark:text-cyan-400"},
+                        "Taxes": {icon: "🧾", bg: "bg-gray-50 dark:bg-gray-900/20", color: "text-gray-600 dark:text-gray-400"},
+                        "Gifts": {icon: "🎁", bg: "bg-amber-50 dark:bg-amber-900/20", color: "text-amber-600 dark:text-amber-400"},
+                        "Pet Care": {icon: "🐕", bg: "bg-teal-50 dark:bg-teal-900/20", color: "text-teal-600 dark:text-teal-400"},
+                        "Other": {icon: "📦", bg: "bg-gray-50 dark:bg-gray-900/20", color: "text-gray-600 dark:text-gray-400"}
+                      };
+                      return mapping[category] || {icon: "💸", bg: "bg-gray-50 dark:bg-gray-900/20", color: "text-gray-600 dark:text-gray-400"};
                     };
-                    return mapping[category] || "💸";
-                  };
-                  
-                  return (
-                    <div key={e.id} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                            <span className="text-lg">{getCategoryEmoji(e.category as string)}</span>
+                    
+                    const categoryInfo = getCategoryInfo(e.category as string);
+                    const amount = e.amount || 0;
+                    
+                    return (
+                      <div key={e.id} className="flex items-center justify-between py-4 px-4 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
+                        {/* Left section - Icon & Details */}
+                        <div className="flex items-center space-x-3 flex-1 min-w-0">
+                          <div className={`w-12 h-12 rounded-full ${categoryInfo.bg} flex items-center justify-center flex-shrink-0`}>
+                            <span className="text-xl">{categoryInfo.icon}</span>
                           </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                              <span>{fmtDateYYYYMMDDLocal(e.date as any)}</span>
-                              <span>•</span>
-                              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-xs">
-                                {e.category as string}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                                {e.text || e.category}
+                              </h3>
+                              <span className="text-lg font-bold text-gray-900 dark:text-gray-100 ml-2">
+                                {privacy ? "•••••" : `₹${amount.toLocaleString('en-IN')}`}
                               </span>
                             </div>
-                            <div className="font-semibold text-gray-900 dark:text-gray-100 text-lg">
-                              {privacy ? "•••••" : `₹${e.amount.toFixed(0)}`}
-                            </div>
-                            {e.text && (
-                              <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                                {e.text}
+                            <div className="flex items-center justify-between text-xs">
+                              <div className="flex items-center space-x-2 text-gray-500 dark:text-gray-400">
+                                <span className={`px-2 py-1 rounded-full ${categoryInfo.bg} ${categoryInfo.color} font-medium`}>
+                                  {e.category}
+                                </span>
+                                <span>•</span>
+                                <span>{fmtDateYYYYMMDDLocal(e.date as any)}</span>
                               </div>
-                            )}
+                              <button
+                                onClick={() => handleDelete(e.id)}
+                                className="w-6 h-6 rounded-full bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 flex items-center justify-center transition-colors opacity-70 hover:opacity-100"
+                                aria-label="Delete expense"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleDelete(e.id)}
-                          className="w-8 h-8 rounded-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 flex items-center justify-center transition-colors"
-                          aria-label={`Delete ${e.text}`}
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
                       </div>
-                    </div>
-                  );
+                    );
                   })}
-                </>
+                </div>
               ) : (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                    <span className="text-2xl">💸</span>
+                <div className="text-center py-16 px-4">
+                  <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 flex items-center justify-center">
+                    <span className="text-3xl">💸</span>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No expenses yet</h3>
-                  <p className="text-gray-500 dark:text-gray-400">Add your first expense to get started</p>
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">No transactions yet</h3>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed max-w-sm mx-auto">
+                    Start tracking your expenses to see detailed insights and manage your budget effectively
+                  </p>
                 </div>
               )}
             </div>
