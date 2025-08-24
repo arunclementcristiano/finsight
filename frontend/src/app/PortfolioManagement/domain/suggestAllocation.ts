@@ -133,6 +133,42 @@ export function suggestAllocation(ans: Answers): Allocation {
   };
   const giveTo = (k: Asset, amt: number) => { base[k] += amt; };
 
+  // RULE HIERARCHY: Goals (near-term) overrides first → Liabilities/Capacity → Appetite (already in base)
+  // Near-term override proxy: horizon short OR big expense within 36 months OR major purchase goal
+  (function nearTermOverride(){
+    const nearByHorizon = ans.horizon === "Short (<3 yrs)";
+    const nearByExpense = ans.bigExpenseTimeline === "<12 months" || ans.bigExpenseTimeline === "12–36 months";
+    const majorPurchase = ans.financialGoal === "Major purchase";
+    if (!(nearByHorizon || nearByExpense || majorPurchase)) return;
+    // Enforce safety floor and strict equity cap
+    const safetyFloor = 70; // Debt + Liquid >= 70%
+    const strictEqCap = 30; // Equity <= 30%
+    // First clamp equity down to cap, move to Debt
+    let eqNow = base.Stocks + base["Mutual Funds"];
+    if (eqNow > strictEqCap) {
+      const reduce = eqNow - strictEqCap;
+      const sFrac = base.Stocks / eqNow || 0.5;
+      base.Stocks = Math.max(0, base.Stocks - reduce * sFrac);
+      base["Mutual Funds"] = Math.max(0, base["Mutual Funds"] - reduce * (1 - sFrac));
+      base.Debt += reduce;
+      eqNow = strictEqCap;
+    }
+    // Then raise safety (Debt+Liquid) to floor, preferring Debt
+    let safetyNow = base.Debt + base.Liquid;
+    if (safetyNow < safetyFloor) {
+      const need = safetyFloor - safetyNow;
+      // Pull from equity proportionally
+      const eqTotal = base.Stocks + base["Mutual Funds"]; if (eqTotal > 0) {
+        const sTake = Math.min(need * (base.Stocks / eqTotal), base.Stocks); base.Stocks -= sTake; base.Debt += sTake;
+        const mfTake = Math.min(need - sTake, base["Mutual Funds"]); base["Mutual Funds"] -= mfTake; base.Debt += mfTake;
+      }
+      // If still short, take from Gold then Real Estate
+      let remain = Math.max(0, safetyFloor - (base.Debt + base.Liquid));
+      if (remain > 0) { const goldTake = Math.min(remain, Math.max(0, base.Gold - 3)); base.Gold -= goldTake; base.Debt += goldTake; remain -= goldTake; }
+      if (remain > 0) { const reTake = Math.min(remain, Math.max(0, base["Real Estate"])); base["Real Estate"] -= reTake; base.Debt += reTake; remain -= reTake; }
+    }
+  })();
+
   // 5) Liquidity: floor + bumps (Debt first, then S/MF pro-rata, then Gold, then RE)
   const floorByMonths: Record<Answers["emergencyFundMonthsTarget"], number> = { "3": 5, "6": 10, "9": 13, "12": 18 };
   const bumpByLiq: Record<Answers["liquidityPreference"], number> = { High: 4, Medium: 2, Low: 0 } as any;
@@ -168,9 +204,10 @@ export function suggestAllocation(ans: Answers): Allocation {
   // 6) Equity cap by drawdown tolerance and age ceiling (use the stricter)
   const capByDD: Record<Answers["maxDrawdownTolerance"], number> = { "5%": 30, "10%": 45, "20%": 65, "30%+": 90 };
   const capByAge: Record<Answers["ageBand"], number> = { "18–30": 60, "31–45": 58, "46–60": 55, "60+": 50 };
+  const strictCap = (ans.horizon === "Short (<3 yrs)" || ans.bigExpenseTimeline === "<12 months" || ans.bigExpenseTimeline === "12–36 months" || ans.financialGoal === "Major purchase") ? 30 : 100;
   const eqCapDD = capByDD[ans.maxDrawdownTolerance];
   const eqCapAge = capByAge[ans.ageBand];
-  const eqCap = Math.min(eqCapDD, eqCapAge);
+  const eqCap = Math.min(eqCapDD, eqCapAge, strictCap);
   let eqNow = base.Stocks + base["Mutual Funds"];
   if (eqNow > eqCap) {
     const reduce = eqNow - eqCap;
@@ -310,11 +347,11 @@ export function suggestAllocation(ans: Answers): Allocation {
   // 10c) High-capacity growth profiles: gently bias away from Gold
   (function highCapacityGoldReduce() {
     const hasEF = ans.emergencyFundMonthsTarget === "6";
-    const noNearTerm = ans.bigExpenseTimeline === "None";
+    const noNearTerm2 = ans.bigExpenseTimeline === "None";
     const ageYoung = ans.ageBand === "18–30" || ans.ageBand === "31–45" || ans.ageBand === "46–60";
     const longHor = ans.horizon === "Long (>7 yrs)";
     const highCapacity = ans.riskAppetite === "High" && ageYoung && longHor && ans.liabilities !== "High" && ans.dependents !== "3+";
-    if (!(hasEF && noNearTerm && highCapacity)) return;
+    if (!(hasEF && noNearTerm2 && highCapacity)) return;
     const targetFloor = 6;
     const reducible = Math.max(0, base.Gold - targetFloor);
     let reduce = Math.min(2, reducible);
@@ -364,6 +401,32 @@ export function suggestAllocation(ans: Answers): Allocation {
       if (need > 0) { const liqTake = Math.min(need, Math.max(0, base.Liquid - 5)); base.Liquid -= liqTake; base.Debt += liqTake; need -= liqTake; }
       // then from Gold (respect floor 3)
       if (need > 0) { const goldTake = Math.min(need, Math.max(0, base.Gold - 3)); base.Gold -= goldTake; base.Debt += goldTake; need -= goldTake; }
+    }
+  })();
+
+  // Reassert near-term strict cap and safety floor at the end (rule hierarchy)
+  (function reassertNearTerm(){
+    const nearByHorizon = ans.horizon === "Short (<3 yrs)";
+    const nearByExpense = ans.bigExpenseTimeline === "<12 months" || ans.bigExpenseTimeline === "12–36 months";
+    const majorPurchase = ans.financialGoal === "Major purchase";
+    if (!(nearByHorizon || nearByExpense || majorPurchase)) return;
+    const safetyFloor = 70;
+    const strictEqCap = 30;
+    let eq = base.Stocks + base["Mutual Funds"];
+    if (eq > strictEqCap) {
+      const reduce = eq - strictEqCap;
+      const sFrac = base.Stocks / eq || 0.5;
+      base.Stocks -= reduce * sFrac; base["Mutual Funds"] -= reduce * (1 - sFrac); base.Debt += reduce; eq = strictEqCap;
+    }
+    const safety = base.Debt + base.Liquid;
+    if (safety < safetyFloor) {
+      let need = safetyFloor - safety;
+      const eqTotal = base.Stocks + base["Mutual Funds"]; if (eqTotal > 0 && need > 0) {
+        const sTake = Math.min(need * (base.Stocks / eqTotal), base.Stocks); base.Stocks -= sTake; base.Debt += sTake; need -= sTake;
+        const mfTake = Math.min(need, base["Mutual Funds"]); base["Mutual Funds"] -= mfTake; base.Debt += mfTake; need -= mfTake;
+      }
+      if (need > 0) { const goldTake = Math.min(need, Math.max(0, base.Gold - 3)); base.Gold -= goldTake; base.Debt += goldTake; need -= goldTake; }
+      if (need > 0) { const reTake = Math.min(need, Math.max(0, base["Real Estate"])); base["Real Estate"] -= reTake; base.Debt += reTake; need -= reTake; }
     }
   })();
 
