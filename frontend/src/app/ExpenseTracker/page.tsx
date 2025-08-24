@@ -436,7 +436,9 @@ export default function ExpenseTrackerPage() {
   function next() { setPage(p => Math.min(totalPages, p + 1)); }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20">
+    <>
+      {/* Mobile View (< 768px) */}
+      <div className="block md:hidden min-h-screen bg-gray-50 dark:bg-gray-900 pb-20">
       {/* Mobile App Header */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white sticky top-0 z-20 shadow-lg">
         <div className="px-4 py-6 pb-8">
@@ -1222,5 +1224,361 @@ export default function ExpenseTrackerPage() {
         )}
       </div>
     </div>
+
+      {/* Desktop/Web View (≥ 768px) - Original Layout */}
+      <div className="hidden md:flex flex-col h-[calc(100vh-5rem)] overflow-hidden">
+        {/* Sticky Command Bar */}
+        <div className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+          <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-4 p-4">
+            {/* Chat input */}
+            <div>
+              <form onSubmit={handleSubmit} className="flex gap-2 items-center">
+                <input 
+                  ref={inputRef} 
+                  value={input} 
+                  onChange={e=>setInput(e.target.value)} 
+                  className="flex-1 h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]" 
+                  placeholder="e.g., Lunch 250 at restaurant"
+                />
+                <button 
+                  type="button" 
+                  aria-label="Set date" 
+                  title="Set date" 
+                  onClick={()=> setDateOpen(o=>!o)} 
+                  className={`h-11 w-11 inline-flex items-center justify-center rounded-xl border ${dateOpen ? 'border-emerald-400 text-emerald-600' : 'border-border text-muted-foreground'} bg-card hover:bg-muted focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]`}
+                >
+                  <Calendar className="h-4 w-4" />
+                </button>
+                {dateOpen && (
+                  <input 
+                    type="date" 
+                    value={selectedDate} 
+                    onChange={(e)=> setSelectedDate(e.target.value)} 
+                    className="h-11 rounded-xl border border-border px-3 bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]" 
+                  />
+                )}
+                <Button type="submit" disabled={loading}>
+                  {loading ? "Adding..." : "Add Expense"}
+                </Button>
+              </form>
+            </div>
+            
+            {/* Actions */}
+            <div className="flex items-start justify-end gap-2">
+              <Button variant="outline" onClick={()=> setShowBudgetsModal(true)}>
+                <Settings2 className="h-4 w-4 mr-2"/>
+                Budgets
+              </Button>
+              <Button variant="outline" onClick={()=> setPrivacy(!privacy)}>
+                {privacy ? <EyeOff className="h-4 w-4 mr-2"/> : <Eye className="h-4 w-4 mr-2"/>}
+                {privacy ? "Show" : "Hide"}
+              </Button>
+              <Button variant="outline" onClick={()=> exportCsvFrom(sortedExpenses)}>
+                <Download className="h-4 w-4 mr-2"/>
+                Export
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop Content */}
+        <div className="flex-1 overflow-auto">
+          <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-4 p-4 h-full">
+            {/* Data Table */}
+            <Card className="flex flex-col">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Expense Tracker</CardTitle>
+                    <CardDescription>
+                      {pageRows.length} of {sortedExpenses.length} expenses
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <select 
+                      value={preset} 
+                      onChange={(e)=> setPreset(e.target.value as any)} 
+                      className="h-9 rounded-md border border-border px-2 bg-card"
+                    >
+                      <option value="all">All time</option>
+                      <option value="today">Today</option>
+                      <option value="week">This week</option>
+                      <option value="month">This month</option>
+                      <option value="lastMonth">Last month</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                    {preset === "custom" && (
+                      <>
+                        <input 
+                          type="date" 
+                          value={customStart} 
+                          onChange={e=> setCustomStart(e.target.value)} 
+                          className="h-9 rounded-md border border-border px-2 bg-card" 
+                        />
+                        <span className="text-sm text-muted-foreground">to</span>
+                        <input 
+                          type="date" 
+                          value={customEnd} 
+                          onChange={e=> setCustomEnd(e.target.value)} 
+                          className="h-9 rounded-md border border-border px-2 bg-card" 
+                        />
+                      </>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="flex-1 overflow-auto">
+                {pageRows.length > 0 ? (
+                  <div className="rounded-xl border border-border overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-card">
+                        <tr>
+                          <th className="px-3 py-2 border-b text-left">
+                            <button 
+                              className="flex items-center gap-1 hover:opacity-80" 
+                              onClick={()=> {
+                                setSortField("date");
+                                setSortDir(sortField === "date" && sortDir === "desc" ? "asc" : "desc");
+                              }}
+                            >
+                              Date
+                              {sortField === "date" && (sortDir === "desc" ? <ArrowDown className="h-3 w-3"/> : <ArrowUp className="h-3 w-3"/>)}
+                            </button>
+                          </th>
+                          <th className="px-3 py-2 border-b text-left">
+                            <button 
+                              className="flex items-center gap-1 hover:opacity-80" 
+                              onClick={()=> {
+                                setSortField("category");
+                                setSortDir(sortField === "category" && sortDir === "desc" ? "asc" : "desc");
+                              }}
+                            >
+                              Category
+                              {sortField === "category" && (sortDir === "desc" ? <ArrowDown className="h-3 w-3"/> : <ArrowUp className="h-3 w-3"/>)}
+                            </button>
+                          </th>
+                          <th className="px-3 py-2 border-b text-left">Description</th>
+                          <th className="px-3 py-2 border-b text-right">
+                            <button 
+                              className="flex items-center gap-1 hover:opacity-80" 
+                              onClick={()=> {
+                                setSortField("amount");
+                                setSortDir(sortField === "amount" && sortDir === "desc" ? "asc" : "desc");
+                              }}
+                            >
+                              Amount
+                              {sortField === "amount" && (sortDir === "desc" ? <ArrowDown className="h-3 w-3"/> : <ArrowUp className="h-3 w-3"/>)}
+                            </button>
+                          </th>
+                          <th className="px-3 py-2 border-b text-center">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pageRows.map(expense => (
+                          <tr key={expense.id} className="hover:bg-muted/50">
+                            <td className="px-3 py-2 border-b text-sm">
+                              {fmtDateYYYYMMDDLocal(expense.date as any)}
+                            </td>
+                            <td className="px-3 py-2 border-b text-sm">
+                              <span className="px-2 py-1 bg-muted rounded-md text-xs">
+                                {expense.category || "Other"}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 border-b text-sm">
+                              {expense.text}
+                            </td>
+                            <td className="px-3 py-2 border-b text-sm text-right font-medium">
+                              {privacy ? "•••••" : `₹${expense.amount.toLocaleString('en-IN')}`}
+                            </td>
+                            <td className="px-3 py-2 border-b text-center">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={()=> deleteExpense(expense.id)}
+                                className="h-7 w-7 p-0"
+                              >
+                                <X className="h-3 w-3"/>
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>No expenses found for the selected period.</p>
+                    <p className="text-sm mt-1">Add your first expense above!</p>
+                  </div>
+                )}
+                
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="text-sm text-muted-foreground">
+                      Page {page} of {totalPages}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={prev} disabled={page <= 1}>
+                        Previous
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={next} disabled={page >= totalPages}>
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Sidebar */}
+            <div className="space-y-4">
+              {/* Quick Stats */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Quick Stats</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">This month</span>
+                    <span className="font-medium">
+                      {privacy ? "•••••" : `₹${monthSpend.toLocaleString('en-IN')}`}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Today</span>
+                    <span className="font-medium">
+                      {privacy ? "•••••" : `₹${todaySpend.toLocaleString('en-IN')}`}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Budget used</span>
+                    <span className="font-medium">
+                      {privacy ? "•••" : `${budgetUsedPct}%`}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Top Categories */}
+              {categorySummary.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Top Categories</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {categorySummary.slice(0, 5).map(([cat, spent]) => {
+                        const pct = monthSpend > 0 ? Math.round((spent / monthSpend) * 100) : 0;
+                        return (
+                          <div key={cat} className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">{cat}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">
+                                {privacy ? "•••" : `₹${spent.toLocaleString('en-IN')}`}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                ({pct}%)
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Budget Overview */}
+              {monthlyCategorySpend.arr.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Budget Overview</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {monthlyCategorySpend.arr.slice(0, 3).map(([cat, spent]) => {
+                      const budget = (defaultCategoryBudgets?.[cat]) || 0;
+                      const pct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
+                      return (
+                        <div key={cat} className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">{cat}</span>
+                            <span className="font-medium">
+                              {privacy ? "•••" : `₹${spent.toLocaleString('en-IN')}`}
+                              {budget > 0 && (
+                                <span className="text-muted-foreground ml-1">
+                                  / {privacy ? "•••" : `₹${budget.toLocaleString('en-IN')}`}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                          {budget > 0 && (
+                            <Progress 
+                              value={Math.min(100, pct)} 
+                              className="h-2"
+                              barClassName={pct >= 100 ? "bg-red-500" : pct >= 80 ? "bg-amber-500" : "bg-green-500"}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Budgets Modal */}
+      {showBudgetsModal && (
+        <div className="fixed inset-0 z-30 bg-black/30 flex items-center justify-center p-4" onClick={()=> setShowBudgetsModal(false)}>
+          <div className="w-full max-w-2xl rounded-xl border border-border bg-card text-foreground shadow-xl" onClick={e=> e.stopPropagation()}>
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+              <div className="font-semibold">Set Budgets</div>
+              <button 
+                className="text-muted-foreground hover:text-foreground" 
+                onClick={()=> setShowBudgetsModal(false)}
+              >
+                <X className="h-5 w-5"/>
+              </button>
+            </div>
+            <div className="p-4 max-h-96 overflow-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {allCategories.map(cat => {
+                  const current = defaultCategoryBudgets?.[cat] || 0;
+                  return (
+                    <div key={cat} className="rounded-lg border border-border p-3 space-y-2">
+                      <div className="text-sm font-semibold">{cat}</div>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-xs text-muted-foreground">Budget</div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          defaultValue={current}
+                          onChange={(e)=> {
+                            const val = Number(e.target.value) || 0;
+                            setDefaultCategoryBudgets(prev => ({...prev, [cat]: val}));
+                          }}
+                          className="h-9 w-28 rounded-md border border-border px-2 bg-background text-right"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="px-4 py-3 border-t border-border flex items-center justify-end gap-2">
+              <Button variant="outline" onClick={()=> setShowBudgetsModal(false)}>
+                Cancel
+              </Button>
+              <Button onClick={()=> setShowBudgetsModal(false)}>
+                Save
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
