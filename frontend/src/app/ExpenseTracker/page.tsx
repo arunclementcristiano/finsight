@@ -999,7 +999,6 @@ export default function ExpenseTrackerPage() {
                   </div>
                 );
               })
-            </div>
             ) : (
               <div className="text-center py-12">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-100 dark:bg-purple-800 flex items-center justify-center">
