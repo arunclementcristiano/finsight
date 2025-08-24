@@ -888,6 +888,7 @@ export class AdvisorCouncilEngine {
   private stressTester = new StressTester();
   
   generateRecommendation(answers: CouncilAnswers): AllocationResult {
+    console.log("🚀 ADVISOR COUNCIL ENGINE GENERATERECOMMENDATION CALLED! 🚀");
     console.log("🏗️ === ADVISOR COUNCIL ENGINE - DETAILED CALCULATION === 🏗️");
     console.log("📋 INPUT ANSWERS:", answers);
     

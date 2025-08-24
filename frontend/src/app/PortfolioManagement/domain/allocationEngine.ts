@@ -164,6 +164,7 @@ function normalizeAnswers(q: Record<string, any>): Answers {
 
 export function buildPlan(q: Record<string, any>): AllocationPlan {
   try {
+    console.log("🔥 ALLOCATION ENGINE CALLED! 🔥");
     console.log("🏗️ BUILD PLAN DEBUG:", {
       questionnaire: q,
       isEnhanced: isEnhancedQuestionnaire(q),
