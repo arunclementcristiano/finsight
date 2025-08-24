@@ -962,7 +962,7 @@ export class AdvisorCouncilEngine {
       expectedReturn: "8-12%", // Default
       liquidityNeeds: "few_times_year", // Default
       esgPreference: "no_preference", // Default
-      jobStability: oldAnswers.incomeStability || "somewhat_stable",
+      jobStability: this.mapIncomeStability(oldAnswers.incomeStability),
       withdrawalNext2Years: false, // Default
       hasInsurance: oldAnswers.adequateInsurance === "Yes" || oldAnswers.insuranceCoverage === "Yes",
       avoidAssets: (() => {
@@ -990,10 +990,19 @@ export class AdvisorCouncilEngine {
   private mapKnowledge(knowledge: string): CouncilAnswers["investmentKnowledge"] {
     const normalizedKnowledge = String(knowledge || "").toLowerCase();
     if (normalizedKnowledge === "beginner") return "beginner";
+    if (normalizedKnowledge === "intermediate") return "some_knowledge"; // Questionnaire says "Intermediate"
     if (normalizedKnowledge === "some knowledge" || normalizedKnowledge === "some_knowledge") return "some_knowledge";
     if (normalizedKnowledge === "experienced") return "experienced";
     if (normalizedKnowledge === "expert") return "expert";
     return "some_knowledge"; // Default fallback
+  }
+
+  private mapIncomeStability(stability: string): CouncilAnswers["jobStability"] {
+    const normalized = String(stability || "").toLowerCase();
+    if (normalized.includes("very stable")) return "very_stable";
+    if (normalized.includes("somewhat stable")) return "somewhat_stable";  
+    if (normalized.includes("not stable")) return "not_stable";
+    return "somewhat_stable"; // Default fallback
   }
 
   private mapAge(ageBand: string): CouncilAnswers["age"] {
@@ -1023,8 +1032,10 @@ export class AdvisorCouncilEngine {
   }
   
   private mapVolatility(comfort: string): CouncilAnswers["volatilityComfort"] {
-    if (comfort?.includes("Very")) return "stay_calm";
-    if (comfort?.includes("Not")) return "very_uncomfortable";
-    return "somewhat_concerned";
+    const normalized = String(comfort || "").toLowerCase();
+    if (normalized.includes("very comfortable")) return "stay_calm";
+    if (normalized.includes("not at all")) return "very_uncomfortable";
+    if (normalized.includes("somewhat")) return "somewhat_concerned";
+    return "somewhat_concerned"; // Default fallback
   }
 }
