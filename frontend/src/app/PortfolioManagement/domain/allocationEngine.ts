@@ -40,6 +40,9 @@ export interface AllocationPlan {
 import { suggestAllocation, Answers, getLastDrivers } from "./suggestAllocation";
 import { AdvisorCouncilEngine, CouncilAnswers, AllocationResult } from "./advisorCouncilEngine";
 
+// Initialize the new sophisticated engine
+const advisorEngine = new AdvisorCouncilEngine();
+
 function normalizeAnswers(q: Record<string, any>): Answers {
   // Helpers
   const ageBand = (() => {
@@ -160,6 +163,102 @@ function normalizeAnswers(q: Record<string, any>): Answers {
 }
 
 export function buildPlan(q: Record<string, any>): AllocationPlan {
+  try {
+    // Try to use the new sophisticated engine first
+    if (isEnhancedQuestionnaire(q)) {
+      return buildPlanWithAdvisorCouncil(q);
+    }
+    
+    // Fallback to legacy engine for old questionnaire format
+    return buildPlanLegacy(q);
+    
+  } catch (err) {
+    console.error("buildPlan: failed to build plan", err);
+    return fallbackPlan("Failed to generate allocation plan");
+  }
+}
+
+function isEnhancedQuestionnaire(q: Record<string, any>): boolean {
+  // Check if questionnaire has new enhanced fields
+  const enhancedFields = ['investmentAmount', 'jobStability', 'volatilityComfort', 'primaryGoal'];
+  return enhancedFields.some(field => q[field] !== undefined);
+}
+
+function buildPlanWithAdvisorCouncil(q: Record<string, any>): AllocationPlan {
+  try {
+    // Convert questionnaire to CouncilAnswers format
+    const councilAnswers: CouncilAnswers = convertToCouncilAnswers(q);
+    
+    // Generate recommendation using sophisticated engine
+    const result: AllocationResult = advisorEngine.generateRecommendation(councilAnswers);
+    
+    // Transform to legacy AllocationPlan format for backward compatibility
+    const buckets = Object.entries(result.allocation).map(([cls, pct]) => ({
+      class: cls as AssetClass,
+      pct: Math.round(pct),
+      range: getRangeForClass(cls as AssetClass, pct),
+      riskCategory: getRiskCategoryForClass(cls as AssetClass),
+      notes: getNotesForClass(cls as AssetClass, pct, councilAnswers)
+    }));
+
+    return {
+      riskLevel: result.riskLevel,
+      rationale: result.rationale.join(' '),
+      buckets,
+      explain: {
+        perAsset: {},
+        topDrivers: result.signals.map(s => ({
+          driver: s.factor,
+          effectPct: s.equitySignal * s.weight
+        }))
+      },
+      // Enhanced fields
+      riskScore: result.riskScore,
+      signals: result.signals,
+      stressTest: result.stressTest
+    };
+    
+  } catch (err) {
+    console.error("buildPlanWithAdvisorCouncil failed:", err);
+    // Fallback to legacy engine
+    return buildPlanLegacy(q);
+  }
+}
+
+function convertToCouncilAnswers(q: Record<string, any>): CouncilAnswers {
+  // Handle both new enhanced format and conversion from legacy
+  if (q.age && q.investmentHorizon) {
+    // New enhanced format
+    return {
+      age: q.age || "25-35",
+      investmentHorizon: q.investmentHorizon || "5-10 years",
+      targetRetirementAge: q.targetRetirementAge || "60-65",
+      annualIncome: q.annualIncome || "1L-2L",
+      investmentAmount: Number(q.investmentAmount) || 100000,
+      existingInvestments: q.existingInvestments || "<1L",
+      emergencyFundMonths: q.emergencyFundMonths || "4-6",
+      dependents: q.dependents || "0",
+      monthlyObligations: q.monthlyObligations || "10K-25K",
+      volatilityComfort: q.volatilityComfort || "somewhat_concerned",
+      maxAcceptableLoss: q.maxAcceptableLoss || "20%",
+      investmentKnowledge: q.investmentKnowledge || "some_knowledge",
+      previousLosses: q.previousLosses || "no_major_losses",
+      primaryGoal: q.primaryGoal || "wealth_building",
+      expectedReturn: q.expectedReturn || "8-12%",
+      liquidityNeeds: q.liquidityNeeds || "few_times_year",
+      esgPreference: q.esgPreference || "no_preference",
+      jobStability: q.jobStability || "somewhat_stable",
+      withdrawalNext2Years: Boolean(q.withdrawalNext2Years),
+      hasInsurance: Boolean(q.hasInsurance),
+      avoidAssets: q.avoidAssets || []
+    };
+  } else {
+    // Convert from legacy format using the engine's conversion method
+    return advisorEngine.convertLegacyAnswers(q);
+  }
+}
+
+function buildPlanLegacy(q: Record<string, any>): AllocationPlan {
   // Normalize UI answers into engine enums
   const ans = normalizeAnswers(q);
   // Compute whole-number allocation using the spec-driven engine
@@ -208,7 +307,7 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
     0.15 * mapAge[ans.ageBand] +
     0.10 * mapInc[ans.incomeVsExpenses]
   )));
-  const riskLevel: RiskLevel = riskScore >= 67 ? "High" : riskScore <= 33 ? "Low" : "Moderate";
+  const riskLevel: RiskLevel = riskScore >= 67 ? "Aggressive" : riskScore <= 33 ? "Conservative" : "Moderate";
 
   // Per-asset corridors with profile modifiers
   function baseBandPctFor(cls: AssetClass): number {
@@ -221,7 +320,7 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
   function adjustFactorByProfile(cls: AssetClass): number {
     let f = 1.0;
     // Risk appetite
-    if (riskLevel === "Low") f *= 0.8; else if (riskLevel === "High") f *= 1.2;
+    if (riskLevel === "Conservative") f *= 0.8; else if (riskLevel === "Aggressive") f *= 1.2;
     // Horizon
     if ((q as Answers).horizon === "Long (>7 yrs)") f *= 1.1; else if ((q as Answers).horizon === "Short (<3 yrs)") f *= 0.8;
     // Age
@@ -246,7 +345,7 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
     return "Other";
   }
   function getNotes(cls: AssetClass, level: RiskLevel): string {
-    if (cls === "Stocks") return level === "High" ? "Growth focus" : "Balanced equity";
+    if (cls === "Stocks") return level === "Aggressive" ? "Growth focus" : "Balanced equity";
     if (cls === "Mutual Funds") return "Diversified exposure";
     if (cls === "Gold") return "Inflation hedge";
     if (cls === "Real Estate") return "Long-term asset";
@@ -298,4 +397,45 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
   const rationale = `Derived from risk (${riskLevel}), horizon (${q.horizon||""}), EF6m=${q.emergencyFundSixMonths||""}, liabilities (${q.liabilities||"None"}), dependents (${q.dependents||"None"}), HHRE=${(q as any)?.householdRealEstatePct||0}%, avoid [${toList((q as any).avoidAssets)}].`;
 
   return { riskLevel, rationale, buckets, explain: { perAsset: explainPer, topDrivers } };
+}
+
+// Helper functions for the new engine
+function getRangeForClass(cls: AssetClass, pct: number): [number, number] {
+  const band = cls === "Stocks" || cls === "Mutual Funds" ? 0.10 : 
+               cls === "Debt" ? 0.07 : 
+               cls === "Liquid" ? 0.03 : 0.025;
+  const delta = pct * band;
+  return [Math.max(0, pct - delta), Math.min(100, pct + delta)];
+}
+
+function getRiskCategoryForClass(cls: AssetClass): string {
+  if (cls === "Stocks" || cls === "Mutual Funds") return "Core";
+  if (cls === "Gold" || cls === "Real Estate") return "Satellite";
+  if (cls === "Debt" || cls === "Liquid") return "Defensive";
+  return "Other";
+}
+
+function getNotesForClass(cls: AssetClass, pct: number, answers: any): string {
+  if (cls === "Stocks") return pct > 30 ? "Growth focus" : "Balanced equity";
+  if (cls === "Mutual Funds") return "Diversified exposure";
+  if (cls === "Gold") return "Inflation hedge";
+  if (cls === "Real Estate") return "Long-term asset";
+  if (cls === "Debt") return "Stability & income";
+  if (cls === "Liquid") return "Emergency buffer";
+  return "";
+}
+
+function fallbackPlan(error: string): AllocationPlan {
+  return {
+    riskLevel: "Moderate",
+    rationale: `Conservative fallback allocation due to: ${error}`,
+    buckets: [
+      { class: "Mutual Funds", pct: 40, range: [35, 45], riskCategory: "Core", notes: "Diversified exposure" },
+      { class: "Debt", pct: 30, range: [25, 35], riskCategory: "Defensive", notes: "Stability & income" },
+      { class: "Liquid", pct: 15, range: [12, 18], riskCategory: "Defensive", notes: "Emergency buffer" },
+      { class: "Stocks", pct: 10, range: [5, 15], riskCategory: "Core", notes: "Balanced equity" },
+      { class: "Gold", pct: 3, range: [2, 5], riskCategory: "Satellite", notes: "Inflation hedge" },
+      { class: "Real Estate", pct: 2, range: [1, 4], riskCategory: "Satellite", notes: "Long-term asset" }
+    ]
+  };
 }
