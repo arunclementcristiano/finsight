@@ -84,6 +84,18 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
     } catch { return null; }
   }, [plan, holdings, rebalance]);
 
+  const kpiExtras = useMemo(()=>{
+    const total = (rebalance as any)?.totalCurrentValue || 0;
+    const reValue = (holdings||[]).filter((h:any)=> h.instrumentClass==='Real Estate').reduce((s:number,h:any)=> s + (h.currentValue||0), 0);
+    const rePct = total>0 ? Math.round((reValue/total)*100) : 0;
+    // Turnover and cost estimate
+    const sells = (rebalance as any)?.items?.filter((it:any)=> it.action==='Reduce') || [];
+    const turnover = total>0 ? Math.round((sells.reduce((s:number,it:any)=> s + (it.amount||0), 0)/total)*100) : 0;
+    const assumedFriction = 0.004; // 0.4% blended friction heuristic
+    const estCost = Math.round((turnover/100) * total * assumedFriction);
+    return { rePct, turnover, estCost };
+  }, [rebalance, holdings]);
+
   function displayRange(range?: [number, number]) { if (!range) return "—"; const [min, max] = range; const mi = Math.round(min); const ma = Math.round(max); return `${mi}% – ${ma}%`; }
 
   const avoidSet = useMemo(()=>{
@@ -123,6 +135,16 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
         <div className="rounded-lg border border-border p-2 text-center">
           <div className="text-[11px] text-muted-foreground">Satellite</div>
           <div className="text-base font-semibold text-amber-600">{kpis.satellite.toFixed(0)}%</div>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-md border border-border p-2 text-center">
+          <div className="text-[11px] text-muted-foreground">Household Real Estate</div>
+          <div className="text-sm font-medium">{kpiExtras.rePct}%</div>
+        </div>
+        <div className="rounded-md border border-border p-2 text-center">
+          <div className="text-[11px] text-muted-foreground">Est. Rebalance Cost</div>
+          <div className="text-sm font-medium">₹{kpiExtras.estCost.toLocaleString()} <span className="text-[10px] text-muted-foreground">(turnover {kpiExtras.turnover}%)</span></div>
         </div>
       </div>
       <Card>
