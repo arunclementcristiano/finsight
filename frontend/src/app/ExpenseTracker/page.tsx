@@ -85,9 +85,6 @@ export default function ExpenseTrackerPage() {
     }
   }
 
-  const d = (defaultCategoryBudgets || {})[cat] || 0;
-  return Number(d) || 0;
-}
   function fmtDateYYYYMMDDLocal(dateStr: string) {
     const d = toLocalDateOnly(dateStr);
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -590,7 +587,7 @@ export default function ExpenseTrackerPage() {
               {/* Mobile Transaction Cards */}
               <div className="divide-y divide-gray-100 dark:divide-gray-700">
                 {pageRows.length > 0 ? (
-                  pageRows.map(expense => {
+                  pageRows.map((expense: Expense) => {
                     const isExpanded = expandedExpenses.has(expense.id);
                     const amount = expense.amount || 0;
                     
@@ -1133,7 +1130,7 @@ export default function ExpenseTrackerPage() {
                       </div>
                     </div>
                     <p className="text-lg font-bold text-purple-600 dark:text-purple-400">
-                      {privacy ? "•••" : `₹${Math.max(...sortedExpenses.map(e => e.amount)).toLocaleString('en-IN')}`}
+                      {privacy ? "•••" : `₹${Math.max(...sortedExpenses.map((e: Expense) => e.amount)).toLocaleString('en-IN')}`}
                     </p>
                   </div>
                 )}
