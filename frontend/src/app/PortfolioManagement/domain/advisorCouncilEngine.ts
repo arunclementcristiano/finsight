@@ -965,7 +965,25 @@ export class AdvisorCouncilEngine {
       jobStability: oldAnswers.incomeStability || "somewhat_stable",
       withdrawalNext2Years: false, // Default
       hasInsurance: oldAnswers.adequateInsurance === "Yes" || oldAnswers.insuranceCoverage === "Yes",
-      avoidAssets: oldAnswers.avoidAssets || []
+      avoidAssets: (() => {
+        console.log("🔍 CONVERT LEGACY - avoidAssets raw:", oldAnswers.avoidAssets);
+        
+        // Canonicalize asset names (same logic as legacy engine)
+        const canonicalize = (s: any): any => {
+          const v = String(s || "").toLowerCase().replace(/[\s_-]/g, "");
+          if (v === "stocks" || v === "stock") return "Stocks";
+          if (v === "mutualfunds" || v === "mutualfund") return "Mutual Funds";
+          if (v === "gold") return "Gold";
+          if (v === "realestate" || v === "realty" || v === "re") return "Real Estate";
+          return null;
+        };
+        
+        const avoidAssetsRaw = Array.isArray(oldAnswers.avoidAssets) ? oldAnswers.avoidAssets : (typeof oldAnswers.avoidAssets === 'string' ? [oldAnswers.avoidAssets] : []);
+        const avoided = avoidAssetsRaw.map(canonicalize).filter(Boolean) as AssetClass[];
+        
+        console.log("🔍 CONVERT LEGACY - avoidAssets final:", avoided);
+        return avoided;
+      })()
     };
   }
   
