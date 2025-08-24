@@ -89,7 +89,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
       const ds = (plan as any)?.explain?.topDrivers || [];
       if (!ds.length) return '';
       const mapDriver = (d: string) => {
-        if (d.includes('Near-term cap')) return 'Because a near-term goal exists, we cap equity and prioritise safety.';
+        if (d.includes('Near-term cap')) return 'We cap equity and prioritise safety due to short-term considerations.';
         if (d.includes('Near-term safety')) return 'We add more to Debt/Liquid to protect near-term needs.';
         if (d.includes('EF buffer')) return 'Liquid is set to cover emergency needs.';
         if (d.includes('Equity cap')) return 'Equity is kept within a safe range for your risk tolerance.';

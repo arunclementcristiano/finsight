@@ -83,7 +83,7 @@ function normalizeAnswers(q: Record<string, any>): Answers {
   const insuranceOk = String(q.insuranceCoverage || "Yes").toLowerCase() === "yes";
 
   // Derived legacy fields
-  const bigExpenseTimeline: Answers["bigExpenseTimeline"] = emergencySix ? "12–36 months" : "None";
+  const bigExpenseTimeline: Answers["bigExpenseTimeline"] = "None";
   const liquidityPreference: Answers["liquidityPreference"] = emergencySix ? "High" : "Medium";
   const emergencyFundMonthsTarget: Answers["emergencyFundMonthsTarget"] = emergencySix ? "6" : "9";
   const incomeVsExpenses: Answers["incomeVsExpenses"] = (incomeStability === "Stable") ? "Surplus" : (incomeStability === "Variable" ? "Break-even" : "Deficit");
