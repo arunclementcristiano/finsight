@@ -651,7 +651,7 @@ export default function ExpenseTrackerPage() {
                           )}
                         </div>
                       </div>
-                      <Progress value={Math.min(100, pct)} barClassName={barClass} className="mt-2" />
+                      <Progress value={Math.min(100, pct)} className="mt-2" />
                       {budget > 0 && (
                         <div className={`mt-1 text-xs ${alert ? "text-rose-600" : warn ? "text-amber-600" : "text-muted-foreground"}`}>
                           {alert ? `${privacy ? '•••' : formatCurrency(spent - budget)} over` : `${privacy ? '•••' : formatCurrency(budget - spent)} left`}

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../..
 import { Button } from "../../components/Button";
 import { useRouter } from "next/navigation";
 import PlanSummary from "../components/PlanSummary";
+import EnhancedPlanSummary from "../components/EnhancedPlanSummary";
 import QuestionCard from "../components/QuestionCard";
 import { questions } from "../domain/questionnaire";
 import { buildPlan } from "../domain/allocationEngine";
@@ -30,6 +31,11 @@ export default function PlanPage() {
 	const [mode, setMode] = useState<'advisor'|'custom'>('advisor');
 	const [customLocks, setLocalCustomLocks] = useState<Record<string, boolean>>({});
 	const [advisorPins, setAdvisorPins] = useState<Record<string, boolean>>({});
+	
+	// Enhanced features detection
+	const hasEnhancedFeatures = useMemo(() => {
+		return !!(local?.signals || local?.stressTest || local?.riskScore);
+	}, [local]);
 
 	const saveChip = useMemo(() => {
 		try {
@@ -539,21 +545,67 @@ export default function PlanPage() {
 				</div>
 			</Modal>
 
-			<PlanSummary
-				plan={local}
-				onEditAnswers={()=>{ setEditAnswers({ ...(questionnaire||{}) }); setAnsStep(0); setAnswersOpen(true); }}
-				onBuildBaseline={()=>{ const allocation = buildPlan(questionnaire); setLocal(allocation); setAiInfo(null); setAiSummary(undefined); setAiViewOn(false); setAnswersDrift(false); setAdvisorPins({}); }}
-				onChangeBucketPct={handleChangeBucketPct}
-				aiViewOn={aiViewOn}
-				onToggleAiView={handleToggleAiView}
-				aiLoading={aiLoading}
-				aiExplanation={aiInfo?.rationale as any}
-				aiSummary={aiSummary as any}
-				mode={mode}
-				aiDisabled={mode==='custom'}
-				locks={customLocks}
-				onToggleLock={(cls)=> { setLocalCustomLocks(prev=> ({ ...(prev||{}), [cls]: !prev?.[cls] })); try { if (activePortfolioId) setCustomLocks(activePortfolioId, { [cls]: !customLocks?.[cls] }); } catch {} }}
-			/>
+			{hasEnhancedFeatures ? (
+				<div className="space-y-6">
+					{/* Enhanced Plan Summary with sophisticated features */}
+					<EnhancedPlanSummary 
+						plan={local}
+						showDetails={true}
+						showStressTest={true}
+						showSignalAnalysis={true}
+					/>
+					
+					{/* Action buttons for enhanced plan */}
+					<Card>
+						<CardContent className="p-6">
+							<div className="flex items-center justify-between">
+								<div>
+									<h3 className="font-semibold">Ready to proceed?</h3>
+									<p className="text-sm text-muted-foreground">
+										You can adjust your answers or save this plan
+									</p>
+								</div>
+								<div className="flex gap-3">
+									<Button 
+										variant="outline" 
+										onClick={()=>{ setEditAnswers({ ...(questionnaire||{}) }); setAnsStep(0); setAnswersOpen(true); }}
+									>
+										Edit Answers
+									</Button>
+									<Button 
+										variant="outline"
+										onClick={()=>{ const allocation = buildPlan(questionnaire); setLocal(allocation); setAiInfo(null); setAiSummary(undefined); setAiViewOn(false); setAnswersDrift(false); setAdvisorPins({}); }}
+									>
+										<RotateCcw className="w-4 h-4 mr-2" />
+										Rebuild Plan
+									</Button>
+									<Button onClick={handleSaveClick}>
+										<SaveIcon className="w-4 h-4 mr-2" />
+										{saveChip || 'Save Plan'}
+									</Button>
+								</div>
+							</div>
+						</CardContent>
+					</Card>
+				</div>
+			) : (
+				/* Legacy Plan Summary for backward compatibility */
+				<PlanSummary
+					plan={local}
+					onEditAnswers={()=>{ setEditAnswers({ ...(questionnaire||{}) }); setAnsStep(0); setAnswersOpen(true); }}
+					onBuildBaseline={()=>{ const allocation = buildPlan(questionnaire); setLocal(allocation); setAiInfo(null); setAiSummary(undefined); setAiViewOn(false); setAnswersDrift(false); setAdvisorPins({}); }}
+					onChangeBucketPct={handleChangeBucketPct}
+					aiViewOn={aiViewOn}
+					onToggleAiView={handleToggleAiView}
+					aiLoading={aiLoading}
+					aiExplanation={aiInfo?.rationale as any}
+					aiSummary={aiSummary as any}
+					mode={mode}
+					aiDisabled={mode==='custom'}
+					locks={customLocks}
+					onToggleLock={(cls)=> { setLocalCustomLocks(prev=> ({ ...(prev||{}), [cls]: !prev?.[cls] })); try { if (activePortfolioId) setCustomLocks(activePortfolioId, { [cls]: !customLocks?.[cls] }); } catch {} }}
+				/>
+			)}
 			{toast && (
 				<div className={`fixed bottom-4 right-4 z-50 rounded-md border px-3 py-2 text-sm shadow-lg ${toast.type==='success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : toast.type==='info' ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
 					{toast.msg}

@@ -189,7 +189,7 @@ export default function Summary({ plan }: SummaryProps) {
 										<td className="py-3 px-4 font-medium"><span className="inline-flex items-center">{classIcon(b.class)}{b.class}</span></td>
 										<td className="py-3 px-4 text-right align-middle">
 											<div className="font-semibold text-indigo-600 dark:text-indigo-300">{b.pct}%</div>
-											<div className="mt-1"><Progress value={Math.max(0, Math.min(100, ((b.pct - b.range[0]) * 100) / Math.max(1, (b.range[1]-b.range[0]))))} barClassName={b.riskCategory==="Defensive"?"bg-emerald-500":b.riskCategory==="Satellite"?"bg-amber-500":"bg-indigo-500"} /></div>
+											<div className="mt-1"><Progress value={Math.max(0, Math.min(100, ((b.pct - b.range[0]) * 100) / Math.max(1, (b.range[1]-b.range[0]))))} className={b.riskCategory==="Defensive"?"bg-emerald-500":b.riskCategory==="Satellite"?"bg-amber-500":"bg-indigo-500"} /></div>
 										</td>
 										<td className="py-3 px-4 text-right">{b.range[0]}% – {b.range[1]}%</td>
 										<td className="py-3 px-4"><span className={`inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs ${roleColor(b.riskCategory)}`}>{b.riskCategory||"—"}</span></td>

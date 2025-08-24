@@ -10,7 +10,7 @@ export default function ProgressBar({ current, total }: ProgressBarProps) {
 	const percent = Math.round((current / total) * 100);
 	return (
 		<div className="w-full mb-6">
-			<Progress value={percent} label={`Step ${current} of ${total}`} className="transition-colors" />
+			                  <Progress value={percent} className="transition-colors" />
 		</div>
 	);
 }
