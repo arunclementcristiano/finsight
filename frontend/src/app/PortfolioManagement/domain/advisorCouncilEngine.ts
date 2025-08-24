@@ -888,17 +888,58 @@ export class AdvisorCouncilEngine {
   private stressTester = new StressTester();
   
   generateRecommendation(answers: CouncilAnswers): AllocationResult {
+    console.log("🏗️ === ADVISOR COUNCIL ENGINE - DETAILED CALCULATION === 🏗️");
+    console.log("📋 INPUT ANSWERS:", answers);
+    
     // Step 1: Process all signals
     const signals = this.signalProcessor.calculateSignals(answers);
+    console.log("📊 STEP 1 - SIGNALS CALCULATED:", {
+      totalSignals: signals.length,
+      signalBreakdown: signals.map(s => ({
+        factor: s.factor,
+        equitySignal: s.equitySignal,
+        safetySignal: s.safetySignal,
+        weight: s.weight,
+        weightedEquityEffect: s.equitySignal * s.weight,
+        explanation: s.explanation
+      }))
+    });
     
     // Step 2: Calculate dynamic base allocation
     const { equityBase, safetyBase, riskScore } = this.allocationCalculator.calculateDynamicBase(signals);
+    console.log("⚖️ STEP 2 - DYNAMIC BASE ALLOCATION:", {
+      equityBase: `${equityBase}%`,
+      safetyBase: `${safetyBase}%`,
+      riskScore: riskScore,
+      totalEquitySignals: signals.reduce((sum, s) => sum + (s.equitySignal * s.weight), 0),
+      totalSafetySignals: signals.reduce((sum, s) => sum + (s.safetySignal * s.weight), 0)
+    });
     
     // Step 3: Split equity category
     const { stocks, mutualFunds } = this.allocationCalculator.splitEquityCategory(equityBase, answers);
+    console.log("📈 STEP 3 - EQUITY SPLIT:", {
+      equityBase: `${equityBase}%`,
+      stocks: `${stocks}%`,
+      mutualFunds: `${mutualFunds}%`,
+      splitRatio: `${(stocks/equityBase*100).toFixed(1)}% stocks / ${(mutualFunds/equityBase*100).toFixed(1)}% MF`,
+      reasonForSplit: answers.investmentKnowledge
+    });
     
     // Step 4: Split safety category
     const { liquid, gold, realEstate, debt } = this.allocationCalculator.splitSafetyCategory(safetyBase, answers);
+    console.log("🛡️ STEP 4 - SAFETY SPLIT:", {
+      safetyBase: `${safetyBase}%`,
+      liquid: `${liquid}%`,
+      debt: `${debt}%`,
+      gold: `${gold}%`,
+      realEstate: `${realEstate}%`,
+      splitBreakdown: {
+        liquidRatio: `${(liquid/safetyBase*100).toFixed(1)}%`,
+        debtRatio: `${(debt/safetyBase*100).toFixed(1)}%`,
+        goldRatio: `${(gold/safetyBase*100).toFixed(1)}%`,
+        realEstateRatio: `${(realEstate/safetyBase*100).toFixed(1)}%`
+      }
+    });
     
     // Step 5: Create base allocation
     let allocation: Record<AssetClass, number> = {
@@ -909,9 +950,29 @@ export class AdvisorCouncilEngine {
       "Debt": debt,
       "Liquid": liquid
     };
+    console.log("🔧 STEP 5 - BASE ALLOCATION CREATED:", {
+      allocation,
+      totals: {
+        equity: stocks + mutualFunds,
+        safety: liquid + debt + gold + realEstate,
+        total: Object.values(allocation).reduce((sum, val) => sum + val, 0)
+      }
+    });
     
     // Step 6: Apply goal adjustments
+    const allocationBeforeGoals = { ...allocation };
     allocation = this.allocationCalculator.applyGoalAdjustments(allocation, answers);
+    console.log("🎯 STEP 6 - GOAL ADJUSTMENTS:", {
+      primaryGoal: answers.primaryGoal,
+      before: allocationBeforeGoals,
+      after: allocation,
+      changes: Object.keys(allocation).map(key => ({
+        asset: key,
+        before: allocationBeforeGoals[key as AssetClass],
+        after: allocation[key as AssetClass],
+        change: allocation[key as AssetClass] - allocationBeforeGoals[key as AssetClass]
+      })).filter(change => change.change !== 0)
+    });
     
     // Step 7: Handle avoided assets
     console.log("🚫 AVOIDED ASSETS DEBUG:", {
@@ -923,12 +984,40 @@ export class AdvisorCouncilEngine {
     
     // Step 8: Generate rationale
     const rationale = this.rationaleGenerator.generate(allocation, signals, answers, riskScore);
+    console.log("💭 STEP 8 - RATIONALE GENERATED:", {
+      rationaleLength: rationale.length,
+      rationale: rationale
+    });
     
     // Step 9: Run stress tests
     const stressTest = this.stressTester.runStressTest(allocation, answers);
+    console.log("🧪 STEP 9 - STRESS TESTS:", {
+      scenarios: Object.keys(stressTest.scenarios),
+      worstCaseScenario: Object.entries(stressTest.scenarios).sort((a, b) => a[1].portfolioImpact - b[1].portfolioImpact)[0],
+      bestCaseScenario: Object.entries(stressTest.scenarios).sort((a, b) => b[1].portfolioImpact - a[1].portfolioImpact)[0],
+      averageImpact: Object.values(stressTest.scenarios).reduce((sum, s) => sum + s.portfolioImpact, 0) / Object.keys(stressTest.scenarios).length,
+      fullResults: stressTest
+    });
     
     // Step 10: Determine risk level
     const riskLevel = riskScore <= 35 ? "Conservative" : riskScore <= 65 ? "Moderate" : "Aggressive";
+    console.log("🎯 STEP 10 - FINAL RESULTS:", {
+      riskScore: riskScore,
+      riskLevel: riskLevel,
+      finalAllocation: allocation,
+      allocationSummary: {
+        totalEquity: allocation.Stocks + allocation["Mutual Funds"],
+        totalSafety: allocation.Liquid + allocation.Debt + allocation.Gold + allocation["Real Estate"],
+        satellite: allocation.Gold + allocation["Real Estate"],
+        breakdown: {
+          equity: `${allocation.Stocks + allocation["Mutual Funds"]}% (${allocation.Stocks}% stocks + ${allocation["Mutual Funds"]}% MF)`,
+          defensive: `${allocation.Liquid + allocation.Debt}% (${allocation.Liquid}% liquid + ${allocation.Debt}% debt)`,
+          satellite: `${allocation.Gold + allocation["Real Estate"]}% (${allocation.Gold}% gold + ${allocation["Real Estate"]}% real estate)`
+        }
+      }
+    });
+    
+    console.log("🏁 === ENGINE CALCULATION COMPLETE === 🏁");
     
     return {
       allocation,
