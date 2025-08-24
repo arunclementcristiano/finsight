@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
 		if (!plan || !Array.isArray(plan?.buckets) || !Array.isArray(holdings)) {
 			return NextResponse.json({ error: "Missing or invalid plan/holdings" }, { status: 400 });
 		}
-		const modeKind = (mode === 'to-target') ? 'to-target' : 'to-band';
+		const modeKind = 'to-target';
 		const cashOnly = !!(options?.cashOnly);
 		const turnoverLimitPct = Math.max(0, Math.min(10, Number(options?.turnoverLimitPct) || 1));
 		const considerGoals = options?.considerGoals !== false;
@@ -193,22 +193,13 @@ export async function POST(req: NextRequest) {
 			currentPct[cls] = +(cur.toFixed(2));
 			const pb = (plan.buckets as Bucket[]).find(b => b.class === cls);
 			let baseTarget = pb ? Number(pb.pct) || 0 : 0;
-			if (modeKind === 'to-target') {
-				if (blendedTarget && typeof blendedTarget[cls] === 'number') baseTarget = blendedTarget[cls];
-				targetPct[cls] = baseTarget;
-			} else {
-				const band: [number, number] = pb?.range ? [Math.round(pb.range[0]||0), Math.round(pb.range[1]||100)] : [0, 100];
-				if (cur > band[1]) targetPct[cls] = band[1];
-				else if (cur < band[0]) targetPct[cls] = band[0];
-				else targetPct[cls] = cur; // already inside band
-			}
+			if (blendedTarget && typeof blendedTarget[cls] === 'number') baseTarget = blendedTarget[cls];
+			targetPct[cls] = baseTarget;
 		}
 
-		// If to-target and constraints exist, enforce simple Liquid floor
-		if (modeKind === 'to-target') {
-			const adjusted = applyLiquidFloor(targetPct, efMonths, liqAmt);
-			for (const k of Object.keys(adjusted)) targetPct[k] = adjusted[k];
-		}
+		// Enforce simple Liquid floor
+		const adjusted = applyLiquidFloor(targetPct, efMonths, liqAmt);
+		for (const k of Object.keys(adjusted)) targetPct[k] = adjusted[k];
 
 		// Compose trades
 		type Trade = { class: string; action: 'Increase'|'Reduce'; amount: number; actualPct: number; targetPct: number; reason: string };
@@ -220,8 +211,8 @@ export async function POST(req: NextRequest) {
 			if (Math.abs(tgt - cur) < 0.5) continue; // ignore tiny deltas < 0.5%
 			const deltaPct = tgt - cur;
 			const amt = +(total * (Math.abs(deltaPct) / 100)).toFixed(2);
-			if (deltaPct > 0) buys.push({ class: cls, action: 'Increase', amount: amt, actualPct: cur, targetPct: tgt, reason: modeKind==='to-band' ? (cur < tgt ? 'below band' : 'to band') : 'to target' });
-			else sells.push({ class: cls, action: 'Reduce', amount: amt, actualPct: cur, targetPct: tgt, reason: modeKind==='to-band' ? (cur > tgt ? 'above band' : 'to band') : 'to target' });
+			if (deltaPct > 0) buys.push({ class: cls, action: 'Increase', amount: amt, actualPct: cur, targetPct: tgt, reason: 'to target' });
+			else sells.push({ class: cls, action: 'Reduce', amount: amt, actualPct: cur, targetPct: tgt, reason: 'to target' });
 		}
 
 		// Apply options: cashOnly removes sells
@@ -252,9 +243,7 @@ export async function POST(req: NextRequest) {
 			? ` while respecting ${efMonths? efMonths+ ' months EF':''}${efMonths&&liqAmt?' and ':''}${liqAmt? ('₹'+liqAmt+' over '+(liqMonths||0)+' months'):''}`
 			: '';
 		const goalsNote = goals?.length && considerGoals ? ` and considering ${goals.length} goal(s)` : '';
-		const rationale = modeKind === 'to-band'
-			? `We bring assets back inside comfort bands using ${cashOnly? 'new contributions':'minimal sells and buys'}, within a turnover cap of ${turnoverLimitPct}%${constraintNote}${goalsNote}.`
-			: `We realign to exact targets${cashOnly? ' using contributions only':''}, keeping turnover under ${turnoverLimitPct}%${constraintNote}${goalsNote}.`;
+		const rationale = `We realign to targets${considerGoals? ' blended from your goals':''}${cashOnly? ' using contributions only':''}, keeping turnover under ${turnoverLimitPct}%${constraintNote}${goalsNote}.`;
 
 		// After-mix (approx): apply targetPct where trades exist; else keep current
 		const afterMix: Record<string, number> = {};

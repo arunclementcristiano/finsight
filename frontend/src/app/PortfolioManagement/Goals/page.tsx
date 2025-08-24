@@ -35,14 +35,19 @@ export default function GoalsPage() {
 
 	async function saveGoal() {
 		try {
+			if (!activePortfolioId) { console.warn('No active portfolio selected'); setError('Select a portfolio first'); return; }
+			if (!gName.trim() || !gDate) { setError('Please enter name and target date'); return; }
 			setLoading(true); setError(null);
 			const id = crypto.randomUUID();
 			const body = { portfolioId: activePortfolioId, goal: { id, name: gName.trim(), targetAmount: Math.max(0, Number(gAmount)||0), targetDate: gDate, priority: gPriority } };
+			console.log('Saving goal', body);
 			const res = await fetch('/api/portfolio/goals', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+			console.log('Save response', res.status);
 			if (!res.ok) throw new Error('Failed to save');
 			setAddOpen(false); setGName(""); setGAmount(0); setGDate(""); setGPriority("Medium");
 			await loadGoals();
 		} catch (e:any) {
+			console.error('Save goal error', e);
 			setError(String(e?.message||e));
 		} finally { setLoading(false); }
 	}
@@ -165,7 +170,7 @@ export default function GoalsPage() {
 			<Modal open={addOpen} onClose={()=> setAddOpen(false)} title="Add Goal" footer={(
 				<>
 					<Button variant="outline" onClick={()=> setAddOpen(false)}>Cancel</Button>
-					<Button onClick={saveGoal} disabled={loading || !gName || !gDate}>Save</Button>
+					<Button onClick={saveGoal} disabled={loading}>Save</Button>
 				</>
 			)}>
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">

@@ -17,7 +17,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
   const [rebalanceOpen, setRebalanceOpen] = useState(false);
   const router = useRouter();
 
-  const [proposeMode, setProposeMode] = useState<'to-band'|'to-target'>("to-band");
+  const [proposeMode, setProposeMode] = useState<'to-band'|'to-target'>("to-target");
   const [optCashOnly, setOptCashOnly] = useState(false);
   const [optTurnoverPct, setOptTurnoverPct] = useState(1);
   const [optUseGoals, setOptUseGoals] = useState(true);
@@ -263,8 +263,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
           <div className="flex items-center justify-between text-xs">
             <div className="text-muted-foreground">Mode</div>
             <div className="inline-flex items-center gap-2">
-              <button className={`px-2 py-0.5 rounded border border-border ${proposeMode==='to-band'?'bg-muted':''}`} onClick={()=> setProposeMode('to-band')}>To band</button>
-              <button className={`px-2 py-0.5 rounded border border-border ${proposeMode==='to-target'?'bg-muted':''}`} onClick={()=> setProposeMode('to-target')}>To target</button>
+              <span className="px-2 py-0.5 rounded border border-border bg-muted">Proposal</span>
             </div>
           </div>
           <div className="flex items-center justify-between text-xs">
