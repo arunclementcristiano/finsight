@@ -66,14 +66,6 @@ export default function ExpenseTrackerPage() {
   const [expandedExpenses, setExpandedExpenses] = useState<Set<string>>(new Set());
   const [expandedBudgets, setExpandedBudgets] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
-  const [tempDefaultBudgets, setTempDefaultBudgets] = useState<Record<string, number>>({});
-  const [tempOverrideBudgets, setTempOverrideBudgets] = useState<Record<string, number>>({});
-  const [draftBudgets, setDraftBudgets] = useState<Record<string, number>>({});
-  const [draftInputs, setDraftInputs] = useState<Record<string, string>>({});
-  const [baselineBudgets, setBaselineBudgets] = useState<Record<string, number>>({});
-  const [allCategories, setAllCategories] = useState<string[]>([]);
-  const [overridesByMonth, setOverridesByMonth] = useState<Record<string, Record<string, number>>>({});
-  // Export CSV modal controls
   const [exportOpen, setExportOpen] = useState(false);
   const [exportPreset, setExportPreset] = useState<"all"|"today"|"week"|"month"|"lastMonth"|"custom">("all");
   const [exportStart, setExportStart] = useState<string>("");
@@ -264,8 +256,6 @@ export default function ExpenseTrackerPage() {
     return { arr, map };
   }, [expenses, currentYm]);
 
-  const [editingCat, setEditingCat] = useState<string | null>(null);
-  const [editingVal, setEditingVal] = useState<string>("");
   function saveBudget(cat: string) {
     const amt = Math.max(0, Number(editingVal) || 0);
     const nextDef = { ...(defaultCategoryBudgets || {}), [cat]: amt };
@@ -1291,7 +1281,7 @@ export default function ExpenseTrackerPage() {
                 {privacy ? <EyeOff className="h-4 w-4 mr-2"/> : <Eye className="h-4 w-4 mr-2"/>}
                 {privacy ? "Show" : "Hide"}
               </Button>
-              <Button variant="outline" onClick={()=> exportCsvFrom(sortedExpenses)}>
+              <Button variant="outline" onClick={()=> setExportOpen(true)}>
                 <Download className="h-4 w-4 mr-2"/>
                 Export
               </Button>
@@ -1652,13 +1642,180 @@ export default function ExpenseTrackerPage() {
                 </CardContent>
               </Card>
 
-              {/* Budget Analysis */}
+              {/* Budget Analysis - Enhanced with Actual vs Expected */}
               <Card className="xl:col-span-2">
                 <CardHeader>
-                  <CardTitle>Budget Analysis</CardTitle>
-                  <CardDescription>Compare spending vs budgets for this month</CardDescription>
+                  <CardTitle>Actual vs Expected (prorated by day)</CardTitle>
+                  <CardDescription>Compare spend vs budget for your selected range</CardDescription>
                 </CardHeader>
                 <CardContent>
+                  {/* Enhanced Insights Controls */}
+                  <div className="mb-4 flex flex-wrap gap-2 items-center">
+                    <label className="text-sm text-muted-foreground">Range</label>
+                    <select 
+                      value={insightsPreset} 
+                      onChange={(e)=> setInsightsPreset(e.target.value as any)} 
+                      className="h-9 rounded-md border border-border px-2 bg-card"
+                    >
+                      <option value="today">Today</option>
+                      <option value="week">This week</option>
+                      <option value="month">This month</option>
+                      <option value="lastMonth">Last month</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                    {insightsPreset === "custom" && (
+                      <>
+                        <input 
+                          type="date" 
+                          value={insightsStart} 
+                          onChange={e=> setInsightsStart(e.target.value)} 
+                          className="h-9 rounded-md border border-border px-2 bg-card" 
+                        />
+                        <span className="text-sm text-muted-foreground">to</span>
+                        <input 
+                          type="date" 
+                          value={insightsEnd} 
+                          onChange={e=> setInsightsEnd(e.target.value)} 
+                          className="h-9 rounded-md border border-border px-2 bg-card" 
+                        />
+                      </>
+                    )}
+                    <label className="ml-auto inline-flex items-center gap-2 text-sm">
+                      <input 
+                        type="checkbox" 
+                        checked={insightsOverOnly} 
+                        onChange={e=> setInsightsOverOnly(e.target.checked)} 
+                      /> 
+                      Over budget only
+                    </label>
+                    <Button variant="outline" onClick={()=> {
+                      const now = new Date();
+                      const thisMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+                      const last = new Date(now.getFullYear(), now.getMonth()-1, 1);
+                      const lastMonth = `${last.getFullYear()}-${String(last.getMonth()+1).padStart(2,'0')}`;
+                      if (!compareMonthA) setCompareMonthA(lastMonth);
+                      if (!compareMonthB) setCompareMonthB(thisMonth);
+                      setCompareShowAll(false);
+                      setCompareOpen(true);
+                    }}>
+                      Compare months
+                    </Button>
+                  </div>
+
+                  {/* Bar Chart: Actual vs Expected */}
+                  {(() => {
+                    // Compute range (local)
+                    const now = new Date();
+                    let start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    let end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+                    if (insightsPreset === "week") { 
+                      const day = start.getDay() || 7;
+                      start.setDate(start.getDate() - (day-1)); 
+                      end = new Date(start); 
+                      end.setDate(start.getDate() + 6); 
+                    } else if (insightsPreset === "month") { 
+                      start = new Date(now.getFullYear(), now.getMonth(), 1); 
+                      end = new Date(now.getFullYear(), now.getMonth()+1, 0); 
+                    } else if (insightsPreset === "lastMonth") { 
+                      const s = new Date(now.getFullYear(), now.getMonth()-1, 1); 
+                      start = s; 
+                      end = new Date(now.getFullYear(), now.getMonth(), 0); 
+                    } else if (insightsPreset === "custom" && insightsStart && insightsEnd) { 
+                      start = new Date(insightsStart); 
+                      end = new Date(insightsEnd); 
+                    }
+
+                    // Calculate actual spending in range
+                    const actualMap = new Map<string, number>();
+                    const startSOD = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+                    const endExclusive = new Date(end.getFullYear(), end.getMonth(), end.getDate() + 1);
+
+                    for (const e of expenses) {
+                      const d0 = new Date(e.date as any);
+                      const d = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate());
+                      if (d >= startSOD && d < endExclusive) {
+                        actualMap.set(String(e.category||"Other"), (actualMap.get(String(e.category||"Other"))||0) + Number(e.amount||0));
+                      }
+                    }
+
+                    // Calculate expected (prorated budget)
+                    const expectedMap = new Map<string, number>();
+                    const cats = allCategories.length ? allCategories : Object.keys(defaultCategoryBudgets||{});
+                    const rangeDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                    
+                    for (const cat of cats) {
+                      const monthlyBudget = getMonthlyBudgetFor(currentYm, cat);
+                      const daysInCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+                      const expectedForRange = (monthlyBudget / daysInCurrentMonth) * rangeDays;
+                      if (expectedForRange > 0) expectedMap.set(cat, expectedForRange);
+                    }
+
+                    // Create chart data
+                    const allCats = Array.from(new Set([...Array.from(actualMap.keys()), ...Array.from(expectedMap.keys())]));
+                    let rows = allCats.map(cat => ({
+                      cat,
+                      actual: actualMap.get(cat) || 0,
+                      expected: expectedMap.get(cat) || 0,
+                      variance: (actualMap.get(cat) || 0) - (expectedMap.get(cat) || 0)
+                    }));
+
+                    if (insightsOverOnly) rows = rows.filter(r => r.actual > r.expected);
+
+                    const top = rows.sort((a,b)=> (b.actual - b.expected) - (a.actual - a.expected)).slice(0,6);
+                    const chart = {
+                      labels: top.map(r=> r.cat),
+                      datasets: [
+                        { label: "Actual", data: top.map(r=> r.actual), backgroundColor: "rgba(239,68,68,0.6)" },
+                        { label: "Expected", data: top.map(r=> r.expected), backgroundColor: "rgba(99,102,241,0.5)" }
+                      ]
+                    };
+
+                    const totalActual = Array.from(actualMap.values()).reduce((s, v) => s + v, 0);
+                    const totalExpected = Array.from(expectedMap.values()).reduce((s, v) => s + v, 0);
+
+                    return (
+                      <div className="space-y-4">
+                        <div className="h-56">
+                          <Bar 
+                            data={chart} 
+                            options={{ 
+                              responsive: true, 
+                              maintainAspectRatio: false, 
+                              plugins: { legend: { position: "bottom" as const } }, 
+                              scales: { y: { beginAtZero: true } } 
+                            }} 
+                          />
+                        </div>
+                        
+                        {/* Totals Summary */}
+                        <div className="rounded-lg border border-border p-3">
+                          <div className="flex items-center justify-between mb-2 text-sm">
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-1">
+                                <span className="inline-block h-2.5 w-2.5 rounded-sm bg-rose-500"></span>
+                                <span className="text-muted-foreground">Actual</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="inline-block h-2.5 w-2.5 rounded-sm bg-indigo-500"></span>
+                                <span className="text-muted-foreground">Expected</span>
+                              </div>
+                            </div>
+                            <div className="text-xs text-muted-foreground">Totals</div>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <div className="font-medium text-rose-600">
+                              {privacy ? "•••" : `₹${totalActual.toLocaleString('en-IN')}`}
+                            </div>
+                            <div className="font-medium text-indigo-600">
+                              {privacy ? "•••" : `₹${totalExpected.toLocaleString('en-IN')}`}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   <div className="space-y-4">
                     {/* Overall Budget Progress */}
                     <div className="p-4 bg-muted/50 rounded-lg">
@@ -1812,6 +1969,100 @@ export default function ExpenseTrackerPage() {
               </Button>
               <Button onClick={()=> setShowBudgetsModal(false)}>
                 Save
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export CSV Modal - Matching Beautiful Design */}
+      {exportOpen && (
+        <div className="fixed inset-0 z-30 bg-black/30 flex items-center justify-center p-4" onClick={()=> setExportOpen(false)}>
+          <div className="w-full max-w-lg rounded-xl border border-border bg-card text-foreground shadow-xl" onClick={e=> e.stopPropagation()}>
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+              <div className="font-semibold">Export CSV</div>
+              <button 
+                className="text-muted-foreground hover:text-foreground" 
+                onClick={()=> setExportOpen(false)}
+              >
+                <X className="h-5 w-5"/>
+              </button>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="text-sm text-muted-foreground">Choose a date range to export. Uses local time boundaries.</div>
+              
+              <div className="flex flex-wrap gap-2 items-center">
+                <label className="text-sm text-muted-foreground">Range</label>
+                <select 
+                  value={exportPreset} 
+                  onChange={(e)=> setExportPreset(e.target.value as any)} 
+                  className="h-9 rounded-md border border-border px-2 bg-card"
+                >
+                  <option value="all">All time</option>
+                  <option value="today">Today</option>
+                  <option value="week">This week</option>
+                  <option value="month">This month</option>
+                  <option value="lastMonth">Last month</option>
+                  <option value="custom">Custom</option>
+                </select>
+                {exportPreset === "custom" && (
+                  <>
+                    <input 
+                      type="date" 
+                      value={exportStart} 
+                      onChange={(e)=> setExportStart(e.target.value)} 
+                      className="h-9 rounded-md border border-border px-2 bg-card" 
+                    />
+                    <span className="text-sm text-muted-foreground">to</span>
+                    <input 
+                      type="date" 
+                      value={exportEnd} 
+                      onChange={(e)=> setExportEnd(e.target.value)} 
+                      className="h-9 rounded-md border border-border px-2 bg-card" 
+                    />
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="px-4 py-3 border-t border-border flex items-center justify-end gap-2">
+              <Button variant="outline" onClick={()=> setExportOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={()=> {
+                // Filter expenses based on selected range
+                let filtered = sortedExpenses;
+                if (exportPreset !== "all") {
+                  const now = new Date();
+                  let start = new Date(), end = new Date();
+                  
+                  if (exportPreset === "today") {
+                    start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+                  } else if (exportPreset === "week") {
+                    const day = start.getDay() || 7;
+                    start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (day - 1));
+                    end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7);
+                  } else if (exportPreset === "month") {
+                    start = new Date(now.getFullYear(), now.getMonth(), 1);
+                    end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                  } else if (exportPreset === "lastMonth") {
+                    start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                    end = new Date(now.getFullYear(), now.getMonth(), 0);
+                  } else if (exportPreset === "custom" && exportStart && exportEnd) {
+                    start = new Date(exportStart);
+                    end = new Date(exportEnd);
+                  }
+                  
+                  filtered = sortedExpenses.filter(expense => {
+                    const expenseDate = new Date(expense.date);
+                    return expenseDate >= start && expenseDate <= end;
+                  });
+                }
+                
+                exportCsvFrom(filtered);
+                setExportOpen(false);
+              }}>
+                Export
               </Button>
             </div>
           </div>
