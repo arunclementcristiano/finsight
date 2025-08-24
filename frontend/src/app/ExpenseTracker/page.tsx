@@ -503,18 +503,30 @@ export default function ExpenseTrackerPage() {
             </Button>
           </div>
         </div>
-        {/* Tabs */}
-        <div className="px-4 pb-3">
-          <div className="inline-flex rounded-lg border border-border overflow-hidden">
-            <button onClick={()=> setActiveTab("data")} className={`px-4 py-2 text-sm ${activeTab==='data' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>Data</button>
-            <button onClick={()=> setActiveTab("insights")} className={`px-4 py-2 text-sm ${activeTab==='insights' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>Insights</button>
+        {/* Beautiful Tabs */}
+        <div className="px-4 xl:px-6 pb-4">
+          <div className="relative bg-muted/30 rounded-2xl p-1">
+            <div className="grid grid-cols-2">
+              <button 
+                onClick={()=> setActiveTab("data")} 
+                className={`relative z-10 px-6 py-4 xl:py-3 text-base xl:text-sm font-semibold rounded-xl transition-all duration-300 touch-manipulation ${activeTab === 'data' ? 'bg-card text-foreground shadow-lg' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                📊 Data
+              </button>
+              <button 
+                onClick={()=> setActiveTab("insights")} 
+                className={`relative z-10 px-6 py-4 xl:py-3 text-base xl:text-sm font-semibold rounded-xl transition-all duration-300 touch-manipulation ${activeTab === 'insights' ? 'bg-card text-foreground shadow-lg' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                📈 Insights
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Main panels */}
+      {/* Beautiful Mobile-First Main Content */}
       {activeTab === "data" ? (
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 p-4 flex-1 min-h-0 overflow-auto">
+      <div className="space-y-6 xl:grid xl:grid-cols-3 xl:gap-6 xl:space-y-0 p-4 xl:p-6 flex-1 min-h-0 overflow-auto">
         {/* Recent Expenses (full width on xl span 2) */}
         <Card className="xl:col-span-2 h-full flex flex-col overflow-hidden">
           <CardHeader>
@@ -606,8 +618,21 @@ export default function ExpenseTrackerPage() {
           </CardFooter>
         </Card>
 
-        {/* Budgets in Data tab */}
-        <Card className="h-full overflow-y-auto">
+        {/* Beautiful Category Budgets (Mobile Header) */}
+        <div className="flex items-center justify-between xl:hidden mb-4">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg">
+              <span className="text-xl">💡</span>
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-foreground">Budget Insights</h2>
+              <p className="text-sm text-muted-foreground">{currentYm} overview</p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Desktop Category Budgets */}
+        <Card className="h-full overflow-y-auto hidden xl:block">
           <CardHeader>
             <CardTitle>Category Budgets</CardTitle>
             <CardDescription>{currentYm} budgets and usage</CardDescription>
@@ -666,6 +691,122 @@ export default function ExpenseTrackerPage() {
             )}
           </CardContent>
         </Card>
+        
+        {/* Beautiful Mobile Budget Cards */}
+        <div className="xl:hidden space-y-4">
+          {(monthlyCategorySpend.arr).length > 0 ? (
+            (monthlyCategorySpend.arr).map(([cat, spent]) => {
+              const budget = (defaultCategoryBudgets?.[cat]) || 0;
+              const pct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
+              const warn = pct >= 80 && pct < 100;
+              const alert = pct >= 100;
+              
+              // Get category-specific styling
+              const getCategoryData = (category: string) => {
+                const mapping: Record<string, {emoji: string, color: string}> = {
+                  "Food": {emoji: "🍽️", color: "from-orange-500 to-red-600"},
+                  "Travel": {emoji: "✈️", color: "from-blue-500 to-cyan-600"},
+                  "Shopping": {emoji: "🛍️", color: "from-pink-500 to-purple-600"},
+                  "Utilities": {emoji: "⚡", color: "from-yellow-500 to-orange-600"},
+                  "Housing": {emoji: "🏠", color: "from-green-500 to-teal-600"},
+                  "Healthcare": {emoji: "🩺", color: "from-red-500 to-pink-600"},
+                  "Entertainment": {emoji: "🎬", color: "from-purple-500 to-indigo-600"},
+                  "Investment": {emoji: "📈", color: "from-emerald-500 to-green-600"},
+                  "Loans": {emoji: "💳", color: "from-slate-500 to-gray-600"},
+                  "Insurance": {emoji: "🛡️", color: "from-blue-600 to-indigo-700"},
+                  "Grooming": {emoji: "💄", color: "from-pink-400 to-rose-500"},
+                  "Subscription": {emoji: "📱", color: "from-violet-500 to-purple-600"},
+                  "Education": {emoji: "📚", color: "from-indigo-500 to-blue-600"},
+                  "Taxes": {emoji: "🧾", color: "from-gray-500 to-slate-600"},
+                  "Gifts": {emoji: "🎁", color: "from-rose-500 to-pink-600"},
+                  "Pet Care": {emoji: "🐕", color: "from-amber-500 to-yellow-600"},
+                  "Other": {emoji: "📦", color: "from-gray-400 to-slate-500"}
+                };
+                return mapping[category] || {emoji: "💸", color: "from-gray-400 to-slate-500"};
+              };
+              
+              const categoryData = getCategoryData(cat);
+              
+              return (
+                <Card key={cat} className={`relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br ${categoryData.color}`}>
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-white/20 to-white/5 rounded-bl-full"></div>
+                  <CardContent className="p-4 relative z-10">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                          <span className="text-lg">{categoryData.emoji}</span>
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-white text-base">{cat}</h3>
+                          <p className="text-white/70 text-sm">
+                            {privacy ? "•••" : formatCurrency(spent)} / {budget > 0 ? (privacy ? "•••" : formatCurrency(budget)) : "No budget"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className={`text-lg font-bold text-white ${alert ? 'animate-pulse' : ''}`}>
+                          {budget > 0 ? `${pct}%` : '—'}
+                        </div>
+                        {budget > 0 && (
+                          <div className="text-xs text-white/70">
+                            {alert ? `₹${(spent - budget).toFixed(0)} over` : `₹${(budget - spent).toFixed(0)} left`}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {budget > 0 ? (
+                      <div className="space-y-2">
+                        <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
+                          <div 
+                            className={`h-full transition-all duration-500 ${alert ? 'bg-red-400' : warn ? 'bg-yellow-400' : 'bg-green-400'}`}
+                            style={{ width: `${Math.min(100, pct)}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    ) : editingCat === cat ? (
+                      <div className="bg-white/20 rounded-xl p-3 border border-white/30">
+                        <input
+                          autoFocus
+                          type="number"
+                          step="0.01"
+                          value={editingVal}
+                          onChange={(e)=> setEditingVal(e.target.value)}
+                          onBlur={()=> saveBudget(cat)}
+                          onKeyDown={(e)=> {
+                            if (e.key === "Enter") saveBudget(cat);
+                            else if (e.key === "Escape") { setEditingCat(null); setEditingVal(""); }
+                          }}
+                          className="w-full h-10 rounded-lg border-0 bg-white/90 px-3 text-gray-900 text-base font-medium text-right placeholder-gray-500"
+                          placeholder="Enter budget amount"
+                        />
+                      </div>
+                    ) : (
+                      <button 
+                        className="w-full mt-2 py-2 px-4 bg-white/20 hover:bg-white/30 border border-white/30 rounded-xl text-white font-medium transition-all duration-200 touch-manipulation"
+                        onClick={()=> { setEditingCat(cat); setEditingVal(String(budget || 0)); }}
+                      >
+                        💡 Set Budget
+                      </button>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })
+          ) : (
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900">
+              <CardContent className="p-8 text-center">
+                <div className="mb-4">
+                  <div className="h-16 w-16 mx-auto rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-3">
+                    <span className="text-2xl">💸</span>
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">No expenses yet</h3>
+                  <p className="text-muted-foreground">Start tracking expenses to see budget insights</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
       ) : (
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 p-4 flex-1 overflow-auto">

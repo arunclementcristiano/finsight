@@ -208,8 +208,8 @@ export default function DashboardPage() {
 												<span className="text-xs text-muted-foreground">{item.actualPct}% → {item.targetPct}%</span>
 											</div>
 											<div className="text-base font-semibold">
-												<span className={item.action === "Buy" ? "text-emerald-600" : "text-orange-600"}>
-													{item.action === "Buy" ? "🟢" : "🟠"} {item.action} {formatCurrency(item.amount, currency)}
+												<span className={item.action === "Increase" ? "text-emerald-600" : "text-orange-600"}>
+													{item.action === "Increase" ? "🟢" : "🟠"} {item.action} {formatCurrency(item.amount, currency)}
 												</span>
 											</div>
 										</div>
