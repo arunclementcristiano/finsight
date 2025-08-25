@@ -10,6 +10,7 @@ import { TrendingUp, Shield, Globe2, LineChart, Layers, Banknote, Coins, Home, D
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { useChartThemeColors } from "../../components/useChartTheme";
+import RiskProfile from "../components/RiskProfile";
 Chart.register(ArcElement, Tooltip, Legend);
 
 interface SummaryProps {
@@ -126,9 +127,12 @@ export default function Summary({ plan }: SummaryProps) {
 				<CardHeader className="text-center">
 					<CardTitle className="text-2xl">Your Suggested Allocation</CardTitle>
 					<CardDescription className="mt-1">Baseline model with optional AI personalization.</CardDescription>
-					<div className="mt-2 inline-flex items-center gap-2">
-						<span className="text-sm text-muted-foreground">Risk Level:</span>
-						<span className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${riskBadgeClass(plan.riskLevel)}`}>{plan.riskLevel}</span>
+					<div className="mt-3 flex justify-center">
+						<RiskProfile 
+							riskLevel={target?.riskLevel || plan.riskLevel} 
+							riskScore={target?.riskScore || (plan as any)?.riskScore}
+							compact={true}
+						/>
 					</div>
 				</CardHeader>
 				<CardContent>

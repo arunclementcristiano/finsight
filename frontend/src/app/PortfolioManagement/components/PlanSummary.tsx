@@ -10,6 +10,7 @@ import { Target } from "lucide-react";
 import { Sparkles } from "lucide-react";
 import { Modal } from "../../components/Modal";
 import GoalsInlineModal from "./GoalsInlineModal";
+import RiskProfile from "./RiskProfile";
 
 export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, onBuildBaseline, aiViewOn, onToggleAiView, aiLoading, aiExplanation, aiSummary, mode, aiDisabled, locks, onToggleLock }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void; onEditAnswers?: () => void; onBuildBaseline?: () => void; aiViewOn?: boolean; onToggleAiView?: () => void; aiLoading?: boolean; aiExplanation?: string; aiSummary?: string; mode?: 'advisor'|'custom'; aiDisabled?: boolean; locks?: Record<string, boolean>; onToggleLock?: (cls: string)=>void }) {
   const { holdings, driftTolerancePct, questionnaire, activePortfolioId } = useApp() as any;
@@ -202,7 +203,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
           <div className="text-base font-semibold text-amber-600">{kpis.satellite}%</div>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         <div className="rounded-md border border-border p-2 text-center">
           <div className="text-[11px] text-muted-foreground">Household Real Estate</div>
           <div className="text-sm font-medium">{kpiExtras.rePct}%</div>
@@ -210,6 +211,15 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
         <div className="rounded-md border border-border p-2 text-center">
           <div className="text-[11px] text-muted-foreground">Est. Rebalance Cost</div>
           <div className="text-sm font-medium">₹{kpiExtras.estCost.toLocaleString()} <span className="text-[10px] text-muted-foreground">(turnover {kpiExtras.turnover}%)</span></div>
+        </div>
+        <div className="rounded-md border border-border p-2 text-center">
+          <div className="text-[11px] text-muted-foreground">Risk Profile</div>
+          <RiskProfile 
+            riskLevel={plan?.riskLevel} 
+            riskScore={plan?.riskScore} 
+            compact={true}
+            className="w-full justify-center"
+          />
         </div>
       </div>
       <Card>
