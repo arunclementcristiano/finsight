@@ -319,7 +319,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
       </Card>
 
       {/* Enhanced Why This Mix - Right after allocation table */}
-      {plan?.rationale && typeof plan.rationale === 'string' && plan.rationale.length > 100 && (
+      {plan?.rationale && (Array.isArray(plan.rationale) ? plan.rationale.length > 0 : plan.rationale.length > 100) && (
         <Card className="mt-4">
           <CardHeader 
             className="cursor-pointer" 
@@ -335,9 +335,19 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
           </CardHeader>
           {rationaleExpanded && (
             <CardContent>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {plan.rationale}
-              </p>
+              {Array.isArray(plan.rationale) ? (
+                <div className="space-y-2">
+                  {plan.rationale.map((reason: string, index: number) => (
+                    <div key={index} className="text-xs text-muted-foreground leading-relaxed p-2 bg-muted/20 rounded">
+                      {reason}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {plan.rationale}
+                </p>
+              )}
             </CardContent>
           )}
         </Card>
@@ -439,6 +449,24 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
           {proposal?.rationale ? <div className="text-[11px] text-muted-foreground">{proposal.rationale}</div> : null}
         </div>
       </Modal>
+
+      {/* Debug Section - Temporary */}
+      {process.env.NODE_ENV === 'development' && plan && (
+        <Card className="mt-4 border-dashed border-amber-300">
+          <CardHeader>
+            <CardTitle className="text-sm text-amber-600">Debug: Plan Data</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xs space-y-1">
+              <div>Has signals: {plan.signals ? `Yes (${plan.signals.length})` : 'No'}</div>
+              <div>Has stressTest: {plan.stressTest ? 'Yes' : 'No'}</div>
+              <div>Has rationale: {plan.rationale ? `Yes (${Array.isArray(plan.rationale) ? plan.rationale.length : 'string'})` : 'No'}</div>
+              <div>Risk Level: {plan.riskLevel || 'N/A'}</div>
+              <div>Risk Score: {plan.riskScore || 'N/A'}</div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Enhanced Features from 10-Advisor Council Engine */}
       {plan?.signals && plan.signals.length > 0 && (
