@@ -267,19 +267,25 @@ class SignalProcessor {
   }
   
   calculateSignals(answers: CouncilAnswers): Signal[] {
+    console.log("🚀🚀🚀 NEW ENGINE CALCULATE SIGNALS CALLED! 🚀🚀🚀");
+    console.log("📋 Input answers:", answers);
+    
     const signals: Signal[] = [];
     
     // Calculate dynamic weights based on goal context
     const { ageWeight, horizonWeight, goalWeight } = this.calculateDynamicWeights(answers.primaryGoal);
+    console.log("🎯 Dynamic weights calculated:", { ageWeight, horizonWeight, goalWeight });
     
     // Age Signals (DYNAMIC WEIGHT: 25% base, adjusted by goal)
     const ageSignal = this.getAgeSignal(answers.age);
     ageSignal.weight = ageWeight;
+    console.log("👴 Age signal with dynamic weight:", ageSignal);
     signals.push(ageSignal);
     
     // Time Horizon (DYNAMIC WEIGHT: 25% base, adjusted by goal)
     const horizonSignal = this.getHorizonSignal(answers.investmentHorizon);
     horizonSignal.weight = horizonWeight;
+    console.log("⏰ Horizon signal with dynamic weight:", horizonSignal);
     signals.push(horizonSignal);
     
     // Financial Situation (15% weight)
@@ -293,6 +299,7 @@ class SignalProcessor {
     // Goals & Objectives (DYNAMIC WEIGHT: 15% base, adjusted by goal)
     const goalSignal = this.getGoalSignal(answers.primaryGoal);
     goalSignal.weight = goalWeight;
+    console.log("🎯 Goal signal with dynamic weight:", goalSignal);
     signals.push(goalSignal);
     
     // Contextual Signals (5% weight)
@@ -309,9 +316,16 @@ class SignalProcessor {
       console.log("Insurance is adequate, no negative signal added");
     }
     
+    console.log("🔍 BEFORE knowledge multiplier - signals:", signals.map(s => ({
+      factor: s.factor,
+      equitySignal: s.equitySignal,
+      safetySignal: s.safetySignal,
+      weight: s.weight
+    })));
+    
     // Apply knowledge multiplier to all signals (not as separate weight)
     this.applyKnowledgeMultiplier(signals, answers.investmentKnowledge);
-
+    
     // Apply goal-specific volatility tolerance adjustments
     this.applyGoalSpecificAdjustments(signals, answers.primaryGoal, answers.investmentHorizon);
     
@@ -325,6 +339,7 @@ class SignalProcessor {
       weightedSafety: s.safetySignal * s.weight
     })));
     
+    console.log("🚀🚀🚀 NEW ENGINE CALCULATE SIGNALS COMPLETED! 🚀🚀🚀");
     return signals;
   }
 
@@ -398,6 +413,9 @@ class SignalProcessor {
    * Capped to prevent extreme adjustments
    */
   private applyKnowledgeMultiplier(signals: Signal[], knowledge: string): void {
+    console.log("🧠🧠🧠 KNOWLEDGE MULTIPLIER APPLIED! 🧠🧠🧠");
+    console.log("📚 Knowledge level:", knowledge);
+    
     const knowledgeMultipliers = {
       "beginner": 0.8,        // -20% penalty
       "some_knowledge": 0.9,  // -10% penalty
@@ -406,9 +424,13 @@ class SignalProcessor {
     };
 
     const multiplier = knowledgeMultipliers[knowledge as keyof typeof knowledgeMultipliers] || 1.0;
+    console.log("🎯 Selected multiplier:", multiplier);
     
     // Apply multiplier to equity and safety signals
-    signals.forEach(signal => {
+    signals.forEach((signal, index) => {
+      const originalEquity = signal.equitySignal;
+      const originalSafety = signal.safetySignal;
+      
       // Cap total adjustment to ±10 absolute percentage points
       const maxAdjustment = 10;
       
@@ -424,9 +446,16 @@ class SignalProcessor {
         const direction = knowledge === "expert" ? "enhanced" : "adjusted";
         signal.explanation += ` (${direction} for ${knowledge} knowledge level)`;
       }
+      
+      console.log(`📊 Signal ${index + 1} (${signal.factor}):`, {
+        original: { equity: originalEquity, safety: originalSafety },
+        adjusted: { equity: signal.equitySignal, safety: signal.safetySignal },
+        multiplier: multiplier
+      });
     });
     
     console.log(`🔍 DEBUG: Applied knowledge multiplier: ${multiplier}x for ${knowledge} level`);
+    console.log("🧠🧠🧠 KNOWLEDGE MULTIPLIER COMPLETED! 🧠🧠🧠");
   }
   
   /**
