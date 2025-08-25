@@ -269,67 +269,51 @@ class SignalProcessor {
   calculateSignals(answers: CouncilAnswers): Signal[] {
     const signals: Signal[] = [];
     
-    // Age Signals (25% weight)
-    signals.push(this.getAgeSignal(answers.age));
+    // Calculate dynamic weights based on goal context
+    const { ageWeight, horizonWeight, goalWeight } = this.calculateDynamicWeights(answers.primaryGoal);
     
-    // Time Horizon (25% weight)
-    signals.push(this.getHorizonSignal(answers.investmentHorizon));
+    // Age Signals (DYNAMIC WEIGHT: 25% base, adjusted by goal)
+    const ageSignal = this.getAgeSignal(answers.age);
+    ageSignal.weight = ageWeight;
+    signals.push(ageSignal);
     
-    // Financial Situation Signals (30% weight)
-    if (answers.jobStability) {
-      console.log("🔍 DEBUG: Adding job stability signal for:", answers.jobStability);
-      signals.push(this.getIncomeStabilitySignal(answers.jobStability));
-    }
+    // Time Horizon (DYNAMIC WEIGHT: 25% base, adjusted by goal)
+    const horizonSignal = this.getHorizonSignal(answers.investmentHorizon);
+    horizonSignal.weight = horizonWeight;
+    signals.push(horizonSignal);
+    
+    // Financial Situation (15% weight)
     signals.push(this.getDependentsSignal(answers.dependents));
     signals.push(this.getEmergencyFundSignal(answers.emergencyFundMonths));
-    if (answers.monthlyObligations) {
-      console.log("🔍 DEBUG: Adding monthly obligations signal for:", answers.monthlyObligations);
-      signals.push(this.getObligationsSignal(answers.monthlyObligations));
-    }
     
-    // Risk Tolerance Signals (25% weight)
+    // Risk Tolerance (15% weight) - Knowledge will be applied as multiplier later
     signals.push(this.getVolatilitySignal(answers.volatilityComfort));
-    signals.push(this.getKnowledgeSignal(answers.investmentKnowledge));
     signals.push(this.getLossToleranceSignal(answers.maxAcceptableLoss));
     
-    // Goals & Objectives (20% weight)
-    signals.push(this.getGoalSignal(answers.primaryGoal));
-    if (answers.liquidityNeeds) {
-      console.log("🔍 DEBUG: Adding liquidity needs signal for:", answers.liquidityNeeds);
-      signals.push(this.getLiquiditySignal(answers.liquidityNeeds));
-    }
+    // Goals & Objectives (DYNAMIC WEIGHT: 15% base, adjusted by goal)
+    const goalSignal = this.getGoalSignal(answers.primaryGoal);
+    goalSignal.weight = goalWeight;
+    signals.push(goalSignal);
     
-    // Contextual Signals
-    if (answers.withdrawalNext2Years) {
-      console.log("🔍 DEBUG: Adding withdrawal next 2 years signal");
-      signals.push({
-        factor: "withdrawal_next_2yrs",
-        equitySignal: -10,
-        safetySignal: +20,
-        weight: 0.15,
-        explanation: "Near-term withdrawal needs require higher liquid allocation"
-      });
-    }
-    
-    // Geographic Context Signal (NEW - from inferred values)
-    if (answers.geographicContext) {
-      console.log("🔍 DEBUG: Adding geographic context signal for:", answers.geographicContext);
-      signals.push(this.getGeographicContextSignal(answers.geographicContext));
-    }
-    
-    console.log("Insurance check - hasInsurance:", answers.hasInsurance);
+    // Contextual Signals (5% weight)
     if (!answers.hasInsurance) {
       console.log("Adding no_insurance negative signal");
       signals.push({
         factor: "no_insurance",
         equitySignal: -10,
         safetySignal: +10,
-        weight: 0.10,
+        weight: 0.05, // REDISTRIBUTED: 5% weight
         explanation: "Lack of insurance requires more conservative positioning"
       });
     } else {
       console.log("Insurance is adequate, no negative signal added");
     }
+    
+    // Apply knowledge multiplier to all signals (not as separate weight)
+    this.applyKnowledgeMultiplier(signals, answers.investmentKnowledge);
+
+    // Apply goal-specific volatility tolerance adjustments
+    this.applyGoalSpecificAdjustments(signals, answers.primaryGoal, answers.investmentHorizon);
     
     // Debug: Log all signals and their impact
     console.log("🔍 DEBUG: All signals generated:", signals.map(s => ({
@@ -342,6 +326,161 @@ class SignalProcessor {
     })));
     
     return signals;
+  }
+
+  /**
+   * Calculate dynamic weights based on primary goal context
+   * Goals modify Age/Horizon weights rather than being independent
+   */
+  private calculateDynamicWeights(primaryGoal: string): { ageWeight: number; horizonWeight: number; goalWeight: number } {
+    const baseWeights = {
+      ageWeight: 0.25,      // 25% base (Core Factors: 65%)
+      horizonWeight: 0.25,  // 25% base (Core Factors: 65%)
+      goalWeight: 0.15      // 15% base (Core Factors: 65%)
+    };
+
+    switch (primaryGoal) {
+      case "retirement":
+        // Retirement: Horizon matters more than age
+        return {
+          ageWeight: 0.20,      // 25% → 20% (-5%)
+          horizonWeight: 0.30,  // 25% → 30% (+5%)
+          goalWeight: 0.15      // 15% unchanged
+        };
+      
+      case "child_education":
+        // Education: Horizon dominates, age less relevant
+        return {
+          ageWeight: 0.15,      // 25% → 15% (-10%)
+          horizonWeight: 0.35,  // 25% → 35% (+10%)
+          goalWeight: 0.15      // 15% unchanged
+        };
+      
+      case "home_purchase":
+        // Home purchase: Horizon critical, age less important
+        return {
+          ageWeight: 0.15,      // 25% → 15% (-10%)
+          horizonWeight: 0.35,  // 25% → 35% (+10%)
+          goalWeight: 0.15      // 15% unchanged
+        };
+      
+      case "wealth_building":
+        // Wealth building: Age and horizon equally important
+        return {
+          ageWeight: 0.25,      // 25% unchanged
+          horizonWeight: 0.25,  // 25% unchanged
+          goalWeight: 0.15      // 15% unchanged
+        };
+      
+      case "income_generation":
+        // Income: Age matters more (stability), horizon less
+        return {
+          ageWeight: 0.30,      // 25% → 30% (+5%)
+          horizonWeight: 0.20,  // 25% → 20% (-5%)
+          goalWeight: 0.15      // 15% unchanged
+        };
+      
+      case "preservation":
+        // Preservation: Age critical, horizon less relevant
+        return {
+          ageWeight: 0.30,      // 25% → 30% (+5%)
+          horizonWeight: 0.20,  // 25% → 20% (-5%)
+          goalWeight: 0.15      // 15% unchanged
+        };
+      
+      default:
+        return baseWeights;
+    }
+  }
+
+  /**
+   * Apply knowledge multiplier to all signals (not as separate weight)
+   * Capped to prevent extreme adjustments
+   */
+  private applyKnowledgeMultiplier(signals: Signal[], knowledge: string): void {
+    const knowledgeMultipliers = {
+      "beginner": 0.8,        // -20% penalty
+      "some_knowledge": 0.9,  // -10% penalty
+      "experienced": 1.0,     // No change
+      "expert": 1.2           // +20% bonus
+    };
+
+    const multiplier = knowledgeMultipliers[knowledge as keyof typeof knowledgeMultipliers] || 1.0;
+    
+    // Apply multiplier to equity and safety signals
+    signals.forEach(signal => {
+      // Cap total adjustment to ±10 absolute percentage points
+      const maxAdjustment = 10;
+      
+      // Apply multiplier with safety cap
+      const adjustedEquity = Math.max(-maxAdjustment, Math.min(maxAdjustment, signal.equitySignal * multiplier));
+      const adjustedSafety = Math.max(-maxAdjustment, Math.min(maxAdjustment, signal.safetySignal * multiplier));
+      
+      signal.equitySignal = adjustedEquity;
+      signal.safetySignal = adjustedSafety;
+      
+      // Add knowledge context to explanation
+      if (knowledge !== "experienced") {
+        const direction = knowledge === "expert" ? "enhanced" : "adjusted";
+        signal.explanation += ` (${direction} for ${knowledge} knowledge level)`;
+      }
+    });
+    
+    console.log(`🔍 DEBUG: Applied knowledge multiplier: ${multiplier}x for ${knowledge} level`);
+  }
+  
+  /**
+   * Apply goal-specific volatility tolerance adjustments
+   * Some goals automatically modify risk tolerance
+   */
+  private applyGoalSpecificAdjustments(signals: Signal[], primaryGoal: string, investmentHorizon: string): void {
+    // Child education: automatically reduce volatility tolerance
+    if (primaryGoal === "child_education") {
+      const volatilitySignal = signals.find(s => s.factor === "volatility_comfort");
+      if (volatilitySignal) {
+        // Reduce volatility tolerance by 20% for education goals
+        volatilitySignal.equitySignal = Math.max(-15, volatilitySignal.equitySignal * 0.8);
+        volatilitySignal.safetySignal = Math.min(15, volatilitySignal.safetySignal * 1.2);
+        volatilitySignal.explanation += " (reduced for child education goal)";
+        
+        console.log("🎓 Applied child education volatility adjustment:", {
+          originalEquity: volatilitySignal.equitySignal / 0.8,
+          adjustedEquity: volatilitySignal.equitySignal,
+          originalSafety: volatilitySignal.safetySignal / 1.2,
+          adjustedSafety: volatilitySignal.safetySignal
+        });
+      }
+    }
+    
+    // Home purchase: increase liquidity preference
+    if (primaryGoal === "home_purchase") {
+      const liquidityPreference = signals.find(s => s.factor === "emergency_fund");
+      if (liquidityPreference) {
+        // Increase safety preference for home purchase
+        liquidityPreference.safetySignal = Math.min(15, liquidityPreference.safetySignal * 1.3);
+        liquidityPreference.explanation += " (enhanced for home purchase goal)";
+        
+        console.log("🏠 Applied home purchase liquidity adjustment:", {
+          originalSafety: liquidityPreference.safetySignal / 1.3,
+          adjustedSafety: liquidityPreference.safetySignal
+        });
+      }
+    }
+    
+    // Retirement: enhance long-term growth signals
+    if (primaryGoal === "retirement" && investmentHorizon === "20+ years") {
+      const ageSignal = signals.find(s => s.factor === "age");
+      if (ageSignal && ageSignal.equitySignal > 0) {
+        // Enhance growth signals for long-term retirement
+        ageSignal.equitySignal = Math.min(15, ageSignal.equitySignal * 1.1);
+        ageSignal.explanation += " (enhanced for long-term retirement)";
+        
+        console.log("🌅 Applied retirement growth enhancement:", {
+          originalEquity: ageSignal.equitySignal / 1.1,
+          adjustedEquity: ageSignal.equitySignal
+        });
+      }
+    }
   }
   
   private getAgeSignal(age: string): Signal {
@@ -391,7 +530,7 @@ class SignalProcessor {
         factor: "investment_horizon",
         equitySignal: +5,
         safetySignal: -2,
-        weight: 0.25,
+        weight: 0.25, // Base weight, will be adjusted dynamically
         explanation: "Unknown investment horizon, applying moderate growth allocation"
       };
     }
@@ -461,7 +600,7 @@ class SignalProcessor {
       dependentSignals,
       dependents,
       "dependents",
-      0.10,
+      0.075, // REDISTRIBUTED: 10% → 7.5%
       { equity: -2, safety: +5, explanation: "Unknown dependents count, applying moderate safety allocation" }
     );
   }
@@ -479,7 +618,7 @@ class SignalProcessor {
       efSignals,
       efMonths,
       "emergency_fund",
-      0.15,
+      0.075, // REDISTRIBUTED: 15% → 7.5%
       { equity: 0, safety: 0, explanation: "Unknown emergency fund amount, applying neutral allocation" }
     );
   }
@@ -517,7 +656,7 @@ class SignalProcessor {
       volatilitySignals,
       comfort,
       "volatility_comfort",
-      0.20,
+      0.075, // REDISTRIBUTED: 20% → 7.5%
       { equity: 0, safety: 0, explanation: "Unknown volatility comfort, applying balanced allocation" }
     );
   }
@@ -552,7 +691,7 @@ class SignalProcessor {
       toleranceSignals,
       tolerance,
       "loss_tolerance",
-      0.15,
+      0.075, // REDISTRIBUTED: 15% → 7.5%
       { equity: 0, safety: 0, explanation: "Unknown loss tolerance, applying balanced allocation" }
     );
   }
@@ -610,6 +749,65 @@ class SignalProcessor {
       0.10,
       { equity: 0, safety: 0, explanation: "Unknown geographic context, applying neutral allocation" }
     );
+  }
+
+  /**
+   * Apply smart insurance logic: adjust equity caps and liquid floors instead of flat penalties
+   */
+  applyInsuranceLogic(allocation: Record<AssetClass, number>, hasInsurance: boolean): Record<AssetClass, number> {
+    if (hasInsurance) {
+      // Adequate insurance: no adjustments needed
+      console.log("✅ Insurance adequate - no allocation adjustments needed");
+      return allocation;
+    }
+
+    // No insurance: apply smart adjustments
+    console.log("⚠️ No insurance - applying smart allocation adjustments");
+    
+    const adjustedAllocation = { ...allocation };
+    
+    // Reduce equity exposure (more conservative when vulnerable)
+    const equityTotal = allocation.Stocks + allocation["Mutual Funds"];
+    const equityReduction = Math.min(equityTotal * 0.1, 10); // Max 10% reduction
+    
+    if (allocation.Stocks > 0) {
+      const stockReduction = (allocation.Stocks / equityTotal) * equityReduction;
+      adjustedAllocation.Stocks = Math.max(0, allocation.Stocks - stockReduction);
+    }
+    
+    if (allocation["Mutual Funds"] > 0) {
+      const mfReduction = (allocation["Mutual Funds"] / equityTotal) * equityReduction;
+      adjustedAllocation["Mutual Funds"] = Math.max(0, allocation["Mutual Funds"] - mfReduction);
+    }
+    
+    // Increase liquid allocation (better emergency preparedness)
+    const liquidIncrease = Math.min(10, equityReduction * 0.5); // Up to 10% increase
+    adjustedAllocation.Liquid = Math.min(100, allocation.Liquid + liquidIncrease);
+    
+    // Increase debt allocation (stability)
+    const debtIncrease = Math.min(5, equityReduction * 0.3); // Up to 5% increase
+    adjustedAllocation.Debt = Math.min(100, allocation.Debt + debtIncrease);
+    
+    // Normalize to ensure total = 100%
+    const total = Object.values(adjustedAllocation).reduce((sum, val) => sum + val, 0);
+    if (Math.abs(total - 100) > 0.1) {
+      const normalizationFactor = 100 / total;
+      Object.keys(adjustedAllocation).forEach(key => {
+        adjustedAllocation[key as AssetClass] = adjustedAllocation[key as AssetClass] * normalizationFactor;
+      });
+    }
+    
+    console.log("🔧 Insurance adjustments applied:", {
+      original: allocation,
+      adjusted: adjustedAllocation,
+      changes: {
+        equityReduction: equityReduction.toFixed(1) + "%",
+        liquidIncrease: liquidIncrease.toFixed(1) + "%",
+        debtIncrease: debtIncrease.toFixed(1) + "%"
+      }
+    });
+    
+    return adjustedAllocation;
   }
 }
 
@@ -1238,17 +1436,31 @@ export class AdvisorCouncilEngine {
     allocation = this.allocationCalculator.handleAvoidedAssets(allocation, answers.avoidAssets);
     console.log("🚫 ALLOCATION AFTER AVOIDING:", allocation);
     
-    // Step 8: Generate rationale
+    // Step 8: Apply insurance logic
+    allocation = this.signalProcessor.applyInsuranceLogic(allocation, answers.hasInsurance);
+    console.log("🛡️ STEP 8 - INSURANCE ADJUSTMENTS:", {
+      hasInsurance: answers.hasInsurance,
+      originalAllocation: allocationBeforeGoals,
+      adjustedAllocation: allocation,
+      changes: Object.keys(allocation).map(key => ({
+        asset: key,
+        before: allocationBeforeGoals[key as AssetClass],
+        after: allocation[key as AssetClass],
+        change: allocation[key as AssetClass] - allocationBeforeGoals[key as AssetClass]
+      })).filter(change => change.change !== 0)
+    });
+    
+    // Step 9: Generate rationale
     const behavioralWarnings = validateBehavioralConsistency(answers);
     const rationale = this.rationaleGenerator.generate(allocation, signals, answers, riskScore, behavioralWarnings);
-    console.log("💭 STEP 8 - RATIONALE GENERATED:", {
+    console.log("💭 STEP 9 - RATIONALE GENERATED:", {
       rationaleLength: rationale.length,
       rationale: rationale
     });
     
-    // Step 9: Run stress tests
+    // Step 10: Run stress tests
     const stressTest = this.stressTester.runStressTest(allocation, answers);
-    console.log("🧪 STEP 9 - STRESS TESTS:", {
+    console.log("🧪 STEP 10 - STRESS TESTS:", {
       scenarios: Object.keys(stressTest.scenarios),
       worstCaseScenario: Object.entries(stressTest.scenarios).sort((a, b) => a[1].portfolioImpact - b[1].portfolioImpact)[0],
       bestCaseScenario: Object.entries(stressTest.scenarios).sort((a, b) => b[1].portfolioImpact - a[1].portfolioImpact)[0],
@@ -1256,14 +1468,14 @@ export class AdvisorCouncilEngine {
       fullResults: stressTest
     });
     
-    // Step 10: Determine risk level with consistent mapping
+    // Step 11: Determine risk level with consistent mapping
     const riskProfile = getConsistentRiskProfile(riskScore);
     const riskLevel = riskProfile.level;
     
-    // Step 11: Behavioral consistency validation
+    // Step 12: Behavioral consistency validation
     const consistencyScore = Math.max(0, 100 - (behavioralWarnings.length * 15)); // Deduct 15 points per warning
     
-    console.log("🧠 STEP 11 - BEHAVIORAL VALIDATION:", {
+    console.log("🧠 STEP 12 - BEHAVIORAL VALIDATION:", {
       warningsFound: behavioralWarnings.length,
       consistencyScore: consistencyScore,
       criticalIssues: behavioralWarnings.filter(w => w.severity === "critical").length,
@@ -1271,7 +1483,7 @@ export class AdvisorCouncilEngine {
       fullWarnings: behavioralWarnings
     });
     
-    console.log("🎯 STEP 10 - FINAL RESULTS:", {
+    console.log("🎯 STEP 11 - FINAL RESULTS:", {
       riskScore: riskScore,
       riskLevel: riskLevel,
       finalAllocation: allocation,
