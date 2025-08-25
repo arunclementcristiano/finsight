@@ -4,6 +4,12 @@
  */
 
 export type AssetClass = "Stocks" | "Mutual Funds" | "Gold" | "Real Estate" | "Debt" | "Liquid";
+// Configurable risk scoring parameters for easy calibration
+const RISK_SCORING_CONFIG = {
+  base: 55,           // Base threshold (was 50, increased to 55)
+  safetyCoef: 0.30,   // Safety signal coefficient
+  offset: 5           // Post-hoc offset to reach 70+ target (was 0)
+};
 export type RiskLevel = "Conservative" | "Moderate" | "Aggressive";
 
 interface RiskRange {
