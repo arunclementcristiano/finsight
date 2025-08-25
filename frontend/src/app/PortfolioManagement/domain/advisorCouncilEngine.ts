@@ -255,24 +255,30 @@ export interface RebalanceAction {
  * Enhanced Stress Test Scenarios with Historical Evidence
  * Real market events with specific drop percentages and recovery timelines
  */
-const stressTestScenarios = {
+interface StressTestScenario {
+  drop: Record<string, string>;
+  evidence: string;
+  recovery: string;
+}
+
+const stressTestScenarios: Record<string, StressTestScenario> = {
   "2008 Financial Crisis": { 
-    drop: { S&P500: "-37%", NIFTY: "-52%" },
+    drop: { "S&P500": "-37%", "NIFTY": "-52%" },
     evidence: "2008–2009 global financial crisis",
     recovery: "3–4 years"
   },
   "COVID Crash": {
-    drop: { NIFTY: "-38%" },
+    drop: { "NIFTY": "-38%" },
     evidence: "March 2020 pandemic shock",
     recovery: "6–9 months"
   },
   "Dotcom Bust": {
-    drop: { NASDAQ: "-78%" },
+    drop: { "NASDAQ": "-78%" },
     evidence: "2000–2002 tech bubble burst",
     recovery: "15 years for NASDAQ"
   },
   "2016 Demonetization": {
-    drop: { NIFTY: "-15%", "Real Estate": "-35%", "Gold": "-20%" },
+    drop: { "NIFTY": "-15%", "Real Estate": "-35%", "Gold": "-20%" },
     evidence: "November 2016 currency ban, cash crunch",
     recovery: "6–8 months"
   }
@@ -1121,10 +1127,10 @@ class StressTester {
           assetImpact = parseFloat(scenario.drop["Real Estate"].replace('%', ''));
         } else if (scenario.drop.Gold && asset === "Gold") {
           assetImpact = parseFloat(scenario.drop.Gold.replace('%', ''));
-        } else if (scenario.drop.S&P500 && asset === "Stocks") {
-          assetImpact = parseFloat(scenario.drop.S&P500.replace('%', ''));
-        } else if (scenario.drop.NASDAQ && asset === "Mutual Funds") {
-          assetImpact = parseFloat(scenario.drop.NASDAQ.replace('%', ''));
+        } else if (scenario.drop["S&P500"] && asset === "Stocks") {
+          assetImpact = parseFloat(scenario.drop["S&P500"].replace('%', ''));
+        } else if (scenario.drop["NASDAQ"] && asset === "Mutual Funds") {
+          assetImpact = parseFloat(scenario.drop["NASDAQ"].replace('%', ''));
         } else {
           // Default impact for assets not specifically mentioned
           assetImpact = asset === "Debt" ? -5 : asset === "Liquid" ? 0 : -15;
@@ -1144,7 +1150,7 @@ class StressTester {
         emergencyFundValue > 0 ? 12 : 0;
       
       // Get the most relevant historical drop for comparison
-      const historicalDrop = scenario.drop.NIFTY || scenario.drop.S&P500 || scenario.drop.NASDAQ || "-20%";
+      const historicalDrop = scenario.drop["NIFTY"] || scenario.drop["S&P500"] || scenario.drop["NASDAQ"] || "-20%";
       const portfolioDrop = `${(portfolioImpact * 100).toFixed(1)}%`;
       
       let recommendation = "Portfolio shows good resilience";
