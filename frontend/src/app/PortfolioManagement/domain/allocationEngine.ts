@@ -12,11 +12,19 @@ export interface AllocationPlan {
   satellite: number;
   riskProfile: string;
   rationale: string[];
-  // Extended fields for Dashboard compatibility
+  // Extended fields for Dashboard compatibility with dynamic ranges
   buckets: Array<{
     class: AssetClass;
     pct: number;
-    range: [number, number];
+    range: {
+      min: number;
+      max: number;
+      range: number;
+      base: number;
+      multiplier: number;
+      cap: number;
+      explanation: string;
+    };
     riskCategory: string;
     notes: string;
   }>;
@@ -72,6 +80,130 @@ export interface QuestionnaireAnswers {
   avoidAssets?: string[];
 }
 
+// Helper functions for dynamic range calculation
+const getBaseRange = (asset: AssetClass): number => {
+  const baseRanges = {
+    "Stocks": 0.05,        // ±5% base range
+    "Mutual Funds": 0.04,  // ±4% base range
+    "Debt": 0.03,          // ±3% base range
+    "Liquid": 0.02,        // ±2% base range
+    "Gold": 0.03,          // ±3% base range
+    "Real Estate": 0.03    // ±3% base range
+  };
+  return baseRanges[asset] || 0.03;
+};
+
+const getAssetCap = (asset: AssetClass): number => {
+  const caps = {
+    "Stocks": 2.5,        // Most volatile, widest ranges
+    "Mutual Funds": 2.2,  // High volatility
+    "Debt": 1.5,          // Low volatility, tight ranges
+    "Liquid": 1.3,        // Very stable
+    "Gold": 1.8,          // Moderate volatility
+    "Real Estate": 1.6    // Low-medium volatility
+  };
+  return caps[asset] || 2.0; // Default fallback
+};
+
+const getAssetBounds = (asset: AssetClass, riskLevel: RiskLevel) => {
+  const bounds = {
+    "Stocks": {
+      min: riskLevel === "Conservative" ? 5 : riskLevel === "Aggressive" ? 15 : 10,
+      max: riskLevel === "Conservative" ? 45 : riskLevel === "Aggressive" ? 75 : 60
+    },
+    "Mutual Funds": {
+      min: riskLevel === "Conservative" ? 10 : riskLevel === "Aggressive" ? 20 : 15,
+      max: riskLevel === "Conservative" ? 50 : riskLevel === "Aggressive" ? 70 : 60
+    },
+    "Debt": {
+      min: riskLevel === "Conservative" ? 25 : riskLevel === "Aggressive" ? 15 : 20,
+      max: riskLevel === "Conservative" ? 60 : riskLevel === "Aggressive" ? 40 : 50
+    },
+    "Liquid": {
+      min: riskLevel === "Conservative" ? 8 : riskLevel === "Aggressive" ? 5 : 6,
+      max: riskLevel === "Conservative" ? 25 : riskLevel === "Aggressive" ? 15 : 20
+    },
+    "Gold": {
+      min: 2, // Never below 2%
+      max: riskLevel === "Conservative" ? 15 : riskLevel === "Aggressive" ? 25 : 20
+    },
+    "Real Estate": {
+      min: 2, // Never below 2%
+      max: riskLevel === "Conservative" ? 20 : riskLevel === "Aggressive" ? 30 : 25
+    }
+  };
+  
+  return bounds[asset];
+};
+
+const getComprehensiveContextMultiplier = (context: any) => {
+  let multiplier = 1.0;
+  
+  // Existing factors (capped)
+  if (context.investmentHorizon === "<2 years") multiplier *= 0.8;
+  if (context.age === "65+") multiplier *= 0.85;
+  if (context.emergencyFundMonths === "0-1") multiplier *= 0.8;
+  
+  // New factors
+  if (context.dependents === "5+") multiplier *= 0.9; // More dependents = tighter ranges
+  if (context.dependents === "0") multiplier *= 1.1;  // No dependents = slightly wider
+  
+  if (!context.hasInsurance) multiplier *= 0.85; // No insurance = tighter ranges
+  if (context.withdrawalNext2Years) multiplier *= 0.8; // Near-term withdrawals = tighter
+  
+  if (context.jobStability === "not_stable") multiplier *= 0.9; // Unstable job = tighter
+  if (context.jobStability === "very_stable") multiplier *= 1.05; // Stable job = slightly wider
+  
+  // Apply progressive caps
+  multiplier = Math.max(0.5, Math.min(1.5, multiplier)); // Never go below 50% or above 150%
+  
+  return multiplier;
+};
+
+const getContextSummary = (context: any): string => {
+  const factors = [];
+  
+  if (context.investmentHorizon === "<2 years") factors.push("Short horizon");
+  if (context.age === "65+") factors.push("Senior");
+  if (context.emergencyFundMonths === "0-1") factors.push("Low EF");
+  if (context.dependents === "5+") factors.push("Many dependents");
+  if (!context.hasInsurance) factors.push("No insurance");
+  
+  return factors.length > 0 ? factors.join(", ") : "Standard";
+};
+
+const getSmartDynamicRange = (
+  asset: AssetClass,
+  currentAllocation: number,
+  riskLevel: RiskLevel,
+  context: any
+) => {
+  const baseRange = getBaseRange(asset);
+  const contextMultiplier = getComprehensiveContextMultiplier(context);
+
+  const bounds = getAssetBounds(asset, riskLevel);
+  const assetCap = getAssetCap(asset); // asset-specific instead of flat 2.0
+
+  // Range with asset-specific cap
+  const calculatedRange = Math.min(baseRange * contextMultiplier, baseRange * assetCap);
+
+  // Delta with floor (at least 2%)
+  const delta = Math.max(currentAllocation * calculatedRange, 0.02);
+
+  const min = Math.max(bounds.min, currentAllocation - delta);
+  const max = Math.min(bounds.max, currentAllocation + delta);
+
+  return {
+    min,
+    max,
+    range: calculatedRange,
+    base: baseRange,
+    multiplier: contextMultiplier,
+    cap: assetCap,
+    explanation: `±${(calculatedRange * 100).toFixed(1)}% | Bounds: ${bounds.min}–${bounds.max}% | Context: ${getContextSummary(context)}`
+  };
+};
+
 export function buildPlan(answers: QuestionnaireAnswers): AllocationPlan {
   console.log("🚀 Building allocation plan with new engine format:", answers);
   
@@ -104,47 +236,47 @@ export function buildPlan(answers: QuestionnaireAnswers): AllocationPlan {
     satellite: result.allocation.Gold + result.allocation["Real Estate"],
     riskProfile: result.riskLevel,
     rationale: result.rationale,
-    // Extended fields for Dashboard compatibility
+    // Extended fields for Dashboard compatibility with dynamic ranges
     buckets: [
       {
         class: "Stocks",
         pct: result.allocation.Stocks,
-        range: [Math.max(0, result.allocation.Stocks - 5), Math.min(100, result.allocation.Stocks + 5)],
+        range: getSmartDynamicRange("Stocks", result.allocation.Stocks, result.riskLevel, convertedAnswers),
         riskCategory: "Core",
         notes: "Growth focus"
       },
       {
         class: "Mutual Funds",
         pct: result.allocation["Mutual Funds"],
-        range: [Math.max(0, result.allocation["Mutual Funds"] - 5), Math.min(100, result.allocation["Mutual Funds"] + 5)],
+        range: getSmartDynamicRange("Mutual Funds", result.allocation["Mutual Funds"], result.riskLevel, convertedAnswers),
         riskCategory: "Core",
         notes: "Diversified exposure"
       },
       {
         class: "Debt",
         pct: result.allocation.Debt,
-        range: [Math.max(0, result.allocation.Debt - 3), Math.min(100, result.allocation.Debt + 3)],
+        range: getSmartDynamicRange("Debt", result.allocation.Debt, result.riskLevel, convertedAnswers),
         riskCategory: "Defensive",
         notes: "Stability & income"
       },
       {
         class: "Liquid",
         pct: result.allocation.Liquid,
-        range: [Math.max(0, result.allocation.Liquid - 2), Math.min(100, result.allocation.Liquid + 2)],
+        range: getSmartDynamicRange("Liquid", result.allocation.Liquid, result.riskLevel, convertedAnswers),
         riskCategory: "Defensive",
         notes: "Emergency buffer"
       },
       {
         class: "Gold",
         pct: result.allocation.Gold,
-        range: [Math.max(0, result.allocation.Gold - 2), Math.min(100, result.allocation.Gold + 2)],
+        range: getSmartDynamicRange("Gold", result.allocation.Gold, result.riskLevel, convertedAnswers),
         riskCategory: "Satellite",
         notes: "Inflation hedge"
       },
       {
         class: "Real Estate",
         pct: result.allocation["Real Estate"],
-        range: [Math.max(0, result.allocation["Real Estate"] - 2), Math.min(100, result.allocation["Real Estate"] + 2)],
+        range: getSmartDynamicRange("Real Estate", result.allocation["Real Estate"], result.riskLevel, convertedAnswers),
         riskCategory: "Satellite",
         notes: "Long-term asset"
       }
