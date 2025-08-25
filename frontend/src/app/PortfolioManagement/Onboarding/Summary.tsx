@@ -10,6 +10,7 @@ import { TrendingUp, Shield, Globe2, LineChart, Layers, Banknote, Coins, Home, D
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { useChartThemeColors } from "../../components/useChartTheme";
+import RiskProfile from "../components/RiskProfile";
 Chart.register(ArcElement, Tooltip, Legend);
 
 interface SummaryProps {
@@ -126,9 +127,12 @@ export default function Summary({ plan }: SummaryProps) {
 				<CardHeader className="text-center">
 					<CardTitle className="text-2xl">Your Suggested Allocation</CardTitle>
 					<CardDescription className="mt-1">Baseline model with optional AI personalization.</CardDescription>
-					<div className="mt-2 inline-flex items-center gap-2">
-						<span className="text-sm text-muted-foreground">Risk Level:</span>
-						<span className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${riskBadgeClass(plan.riskLevel)}`}>{plan.riskLevel}</span>
+					<div className="mt-3 flex justify-center">
+						<RiskProfile 
+							riskLevel={target?.riskLevel || plan.riskLevel} 
+							riskScore={target?.riskScore || (plan as any)?.riskScore}
+							compact={true}
+						/>
 					</div>
 				</CardHeader>
 				<CardContent>
@@ -189,7 +193,7 @@ export default function Summary({ plan }: SummaryProps) {
 										<td className="py-3 px-4 font-medium"><span className="inline-flex items-center">{classIcon(b.class)}{b.class}</span></td>
 										<td className="py-3 px-4 text-right align-middle">
 											<div className="font-semibold text-indigo-600 dark:text-indigo-300">{b.pct}%</div>
-											<div className="mt-1"><Progress value={Math.max(0, Math.min(100, ((b.pct - b.range[0]) * 100) / Math.max(1, (b.range[1]-b.range[0]))))} barClassName={b.riskCategory==="Defensive"?"bg-emerald-500":b.riskCategory==="Satellite"?"bg-amber-500":"bg-indigo-500"} /></div>
+											<div className="mt-1"><Progress value={Math.max(0, Math.min(100, ((b.pct - b.range[0]) * 100) / Math.max(1, (b.range[1]-b.range[0]))))} className={b.riskCategory==="Defensive"?"bg-emerald-500":b.riskCategory==="Satellite"?"bg-amber-500":"bg-indigo-500"} /></div>
 										</td>
 										<td className="py-3 px-4 text-right">{b.range[0]}% – {b.range[1]}%</td>
 										<td className="py-3 px-4"><span className={`inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs ${roleColor(b.riskCategory)}`}>{b.riskCategory||"—"}</span></td>

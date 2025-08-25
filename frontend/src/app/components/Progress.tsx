@@ -1,30 +1,24 @@
-import React from "react";
-import { cn } from "./utils";
+import * as React from "react";
 
-interface ProgressProps {
-	value: number; // 0-100
-	label?: string;
-	className?: string;
-	barClassName?: string; // optional override for the inner bar color
-}
+const Progress = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & {
+    value?: number;
+    max?: number;
+  }
+>(({ className = "", value = 0, max = 100, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={`relative h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700 ${className}`}
+    {...props}
+  >
+    <div
+      className="h-full w-full flex-1 bg-blue-500 transition-all"
+      style={{ transform: `translateX(-${100 - (value / max) * 100}%)` }}
+    />
+  </div>
+));
 
-export function Progress({ value, label, className, barClassName }: ProgressProps) {
-	const clamped = Math.max(0, Math.min(100, Math.round(value)));
-	return (
-		<div className={cn("w-full", className)}>
-			<div className="flex items-center justify-between text-sm text-muted-foreground mb-1">
-				{label ? <span>{label}</span> : <span />}
-				<span>{clamped}%</span>
-			</div>
-			<div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-				<div
-					className={cn(
-						"h-2 rounded-full transition-all",
-						barClassName ? barClassName : "bg-gradient-to-r from-emerald-500 via-indigo-500 to-indigo-600"
-					)}
-					style={{ width: `${clamped}%` }}
-				/>
-			</div>
-		</div>
-	);
-}
+Progress.displayName = "Progress";
+
+export { Progress };

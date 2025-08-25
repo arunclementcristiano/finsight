@@ -45,6 +45,9 @@ interface AppState {
 	driftTolerancePct: number;
 	emergencyMonths: number;
 
+	// Constraints (client-side for now)
+	constraintsByPortfolio: Record<string, { efMonths?: number; liquidityAmount?: number; liquidityMonths?: number; notes?: string }>;
+
 	expenses: Expense[];
 	categoryMemory: Record<string, ExpenseCategory | string>; // keyword -> category
 	expenseReminderDaily: boolean;
@@ -88,6 +91,9 @@ interface AppState {
 	setSpendBaselineMode: (mode: "last" | "avg3" | "ytd") => void;
 	setSpendSensitivity: (level: "low" | "medium" | "high") => void;
 
+	setConstraints: (portfolioId: string, c: Partial<{ efMonths?: number; liquidityAmount?: number; liquidityMonths?: number; notes?: string }>) => void;
+	getConstraints: (portfolioId: string) => { efMonths?: number; liquidityAmount?: number; liquidityMonths?: number; notes?: string } | undefined;
+
 	setCustomDraft: (portfolioId: string, plan: AllocationPlan | null) => void;
 	getCustomDraft: (portfolioId: string) => AllocationPlan | null;
 	setCustomLocks: (portfolioId: string, locks: Record<string, boolean>) => void;
@@ -108,6 +114,8 @@ export const useApp = create<AppState>()(
 			portfolios: [],
 			driftTolerancePct: 5,
 			emergencyMonths: 6,
+
+			constraintsByPortfolio: {},
 
 			expenses: [],
 			categoryMemory: {},
@@ -154,6 +162,9 @@ export const useApp = create<AppState>()(
 			setDefaultCategoryBudget: (category: string, amount: number) => set((state: AppState) => ({ defaultCategoryBudgets: { ...state.defaultCategoryBudgets, [category]: Math.max(0, Number(amount) || 0) } })),
 			setSpendBaselineMode: (mode: "last" | "avg3" | "ytd") => set(() => ({ spendBaselineMode: mode })),
 			setSpendSensitivity: (level: "low" | "medium" | "high") => set(() => ({ spendSensitivity: level })),
+
+			setConstraints: (portfolioId: string, c: Partial<{ efMonths?: number; liquidityAmount?: number; liquidityMonths?: number; notes?: string }>) => set((state: AppState) => ({ constraintsByPortfolio: { ...state.constraintsByPortfolio, [portfolioId]: { ...(state.constraintsByPortfolio?.[portfolioId]||{}), ...c } } })),
+			getConstraints: (portfolioId: string) => (get().constraintsByPortfolio?.[portfolioId]),
 
 			setCustomDraft: (portfolioId: string, plan: AllocationPlan | null) => set((state: AppState) => ({ customDraftByPortfolio: { ...state.customDraftByPortfolio, [portfolioId]: plan } })),
 			getCustomDraft: (portfolioId: string) => (get().customDraftByPortfolio?.[portfolioId] || null),

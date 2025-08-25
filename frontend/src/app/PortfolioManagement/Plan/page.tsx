@@ -10,11 +10,12 @@ import { questions } from "../domain/questionnaire";
 import { buildPlan } from "../domain/allocationEngine";
 import { Modal } from "../../components/Modal";
 import { RotateCcw, Save as SaveIcon, AlertTriangle, ShieldOff } from "lucide-react";
-import { pruneQuestionnaire, stableAnswersSig } from "../domain/answersUtil";
+
 import { advisorTune } from "../domain/advisorTune";
+import PlanKPIs from "../components/PlanKPIs";
 
 export default function PlanPage() {
-	const { plan, setPlan, activePortfolioId, questionnaire, setQuestionAnswer, setQuestionnaire, getCustomDraft, setCustomDraft, getCustomLocks, setCustomLocks, getCustomSaved, setCustomSaved } = useApp() as any;
+	const { plan, setPlan, activePortfolioId, questionnaire, setQuestionAnswer, setQuestionnaire, getCustomDraft, setCustomDraft, getCustomLocks, setCustomLocks, getCustomSaved, setCustomSaved, holdings } = useApp() as any;
 	const router = useRouter();
 	const [local, setLocal] = useState<any | null>(plan || null);
 	const [aiLoading, setAiLoading] = useState(false);
@@ -30,11 +31,15 @@ export default function PlanPage() {
 	const [mode, setMode] = useState<'advisor'|'custom'>('advisor');
 	const [customLocks, setLocalCustomLocks] = useState<Record<string, boolean>>({});
 	const [advisorPins, setAdvisorPins] = useState<Record<string, boolean>>({});
+	
+	// Always use professional mode
+	const displayMode = 'advisor';
+
 
 	const saveChip = useMemo(() => {
 		try {
 			const pruneAlloc = (p:any)=> ({ riskLevel: p?.riskLevel, buckets: (p?.buckets||[]).map((b:any)=>({ class: b.class, pct: b.pct })) });
-			const snapshot = pruneQuestionnaire(questionnaire);
+			const snapshot = questionnaire; // Simplified - no pruning needed
 			const answersDirty = makeAnswersSig(snapshot) !== (((plan as any)?.answersSig) || "");
 			const allocDirty = !!(local && plan && JSON.stringify(pruneAlloc(local)) !== JSON.stringify(pruneAlloc(plan)));
 			const originDirty = (mode === 'custom' && ((plan as any)?.origin !== 'custom'));
@@ -50,7 +55,7 @@ export default function PlanPage() {
 	}, [toast]);
 
 	function makeAnswersSig(q: any): string {
-		try { return stableAnswersSig(q); } catch { try { return JSON.stringify({ q }); } catch { return ""; } }
+		try { return JSON.stringify(q); } catch { return ""; }
 	}
 	function makeSummary(baseline: any, aiBuckets: any[]): string {
 		try {
@@ -181,7 +186,7 @@ export default function PlanPage() {
 
 	async function handleSaveClick() {
 		const pruneAlloc = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))});
-		const snapshot = pruneQuestionnaire(questionnaire);
+					const snapshot = questionnaire; // Simplified - no pruning needed
 		const answersDirty = makeAnswersSig(snapshot) !== (((plan as any)?.answersSig) || "");
 		const allocDirty = !!(local && plan && JSON.stringify(pruneAlloc(local)) !== JSON.stringify(pruneAlloc(plan)));
 		const originDirty = (mode === 'custom' && ((plan as any)?.origin !== 'custom'));
@@ -261,7 +266,11 @@ export default function PlanPage() {
 		const changedClass = next.buckets[idx].class as any;
 		const baseline = buildPlan(questionnaire);
 		const baseBucket = (baseline?.buckets||[]).find((b:any)=> b.class === changedClass);
-		const rawBand: [number, number] = (baseBucket?.range as [number,number]) || [0,100];
+		// Extract min/max from new dynamic range object
+		const rangeObj = baseBucket?.range;
+		const rawBand: [number, number] = rangeObj && typeof rangeObj === 'object' && 'min' in rangeObj 
+			? [rangeObj.min, rangeObj.max] 
+			: [0, 100];
 		const band: [number, number] = [Math.round(rawBand[0]||0), Math.round(rawBand[1]||100)];
 		const currentVal = Math.round(Number(next.buckets[idx].pct) || 0);
 		const sumOthers = Math.round(((next.buckets||[]) as any[]).reduce((s:number,b:any,i:number)=> i===idx ? s : s + (Number(b.pct)||0), 0));
@@ -437,6 +446,21 @@ export default function PlanPage() {
 		return { ...(next||{}), buckets: rounded };
 	}
 
+	useEffect(() => {
+		function onGoalsUpdated() {
+			try {
+				if (mode === 'advisor') {
+					const allocation = buildPlan(questionnaire);
+					setLocal(allocation);
+					setAiViewOn(false);
+					setAiSummary(undefined);
+				}
+			} catch {}
+		}
+		try { window.addEventListener('goals-updated', onGoalsUpdated as any); } catch {}
+		return () => { try { window.removeEventListener('goals-updated', onGoalsUpdated as any); } catch {} };
+	}, [mode, questionnaire]);
+
 	if (!plan) {
 		return (
 			<div className="max-w-3xl mx-auto">
@@ -523,6 +547,13 @@ export default function PlanPage() {
 					</div>
 				</div>
 			</Modal>
+
+			{/* Enhanced KPI Dashboard */}
+			<PlanKPIs 
+				plan={local}
+				holdings={holdings || []}
+				className="mb-6"
+			/>
 
 			<PlanSummary
 				plan={local}

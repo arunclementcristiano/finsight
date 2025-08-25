@@ -8,6 +8,7 @@ import { Chart, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElem
 import { formatCurrency, formatNumber } from "../../utils/format";
 import { computeRebalance } from "../domain/rebalance";
 import { ArrowUpRight, ArrowDownRight, PlusCircle, Target, PieChart, LineChart } from "lucide-react";
+import RiskProfile from "../components/RiskProfile";
 
 Chart.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
@@ -77,11 +78,11 @@ export default function DashboardPage() {
 				</div>
 			</div>
 
-			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+			<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 				<Card>
 					<CardHeader>
 						<CardTitle>Target Allocation</CardTitle>
-						<CardDescription>Your plan’s target mix</CardDescription>
+						<CardDescription>Your plan's target mix</CardDescription>
 					</CardHeader>
 					<CardContent>
 						{plan && donutData ? (
@@ -107,6 +108,14 @@ export default function DashboardPage() {
 						</div>
 					</CardContent>
 				</Card>
+
+				{plan && (plan.riskLevel || plan.riskScore) && (
+					<RiskProfile 
+						riskLevel={plan.riskLevel} 
+						riskScore={plan.riskScore}
+						className="h-fit"
+					/>
+				)}
 			</div>
 
 			<Card>

@@ -1,83 +1,95 @@
-export const questions = [
+interface Question {
+  key: string;
+  text: string;
+  options?: string[];
+  type?: "text" | "number";
+  helperText?: string;
+  maxSelect?: number;
+  optional?: boolean;
+}
+
+export const questions: Question[] = [
+  // Demographics & Time Horizon (25% weight)
   {
-    key: "ageBand",
-    text: "Age (Because younger = higher equity capacity)",
-    options: ["<30", "30–45", "45–60", "60+"],
+    key: "age",
+    text: "What is your age?",
+    options: ["<25", "25-35", "35-45", "45-55", "55-65", "65+"],
     helperText: "Age helps determine risk capacity and equity ceiling."
   },
   {
-    key: "horizon",
-    text: "Investment Horizon (How long can the money stay invested)",
-    options: ["<3 years", "3–7 years", "7+ years"],
+    key: "investmentHorizon",
+    text: "How long can your money stay invested?",
+    options: ["<2 years", "2-5 years", "5-10 years", "10-20 years", "20+ years"],
     helperText: "Longer horizons allow higher equity; shorter horizons favor defensive assets."
   },
+  
+  // Financial Situation (30% weight)
   {
-    key: "incomeStability",
-    text: "Monthly Savings / Income Stability (Ability to absorb risks)",
-    options: ["Very stable", "Somewhat stable", "Not stable"],
-    helperText: "Less stable income calls for more conservative allocation."
+    key: "annualIncome",
+    text: "What is your annual income?",
+    options: ["<50K", "50K-1L", "1L-2L", "2L-5L", "5L+"],
+    helperText: "Income level affects risk capacity and investment amount."
   },
   {
-    key: "liabilities",
-    text: "Existing Liabilities (Loans/EMIs)",
-    options: ["None", "Moderate", "Heavy"],
-    helperText: "Higher liabilities reduce equity capacity."
+    key: "investmentAmount",
+    text: "How much are you planning to invest? (in rupees)",
+    type: "number",
+    helperText: "Enter the actual amount you plan to invest."
+  },
+  {
+    key: "emergencyFundMonths",
+    text: "How many months of emergency fund do you have?",
+    options: ["0-1", "2-3", "4-6", "7-12", "12+"],
+    helperText: "If less than 6 months, we'll prioritize liquid assets."
   },
   {
     key: "dependents",
-    text: "Dependents (Family responsibilities)",
-    options: ["None", "Few", "Many"],
+    text: "How many dependents do you have?",
+    options: ["0", "1-2", "3-4", "5+"],
     helperText: "More dependents generally require more safety allocation."
   },
+  
+  // Risk Tolerance (25% weight)
   {
     key: "volatilityComfort",
-    text: "Comfort with Volatility (Psychological tolerance)",
-    options: ["Very comfortable", "Somewhat", "Not at all"],
-    helperText: "Helps set your risk tolerance."
+    text: "How do you react to market volatility?",
+    options: ["panic_sell", "very_uncomfortable", "somewhat_concerned", "stay_calm", "buy_more"],
+    helperText: "Helps set your psychological risk tolerance."
   },
   {
-    key: "financialGoal",
-    text: "Financial Goals",
-    options: ["Wealth growth", "Retirement", "House purchase", "Education", "Mixed"],
-    helperText: "Maps assets to objectives like growth vs safety."
+    key: "maxAcceptableLoss",
+    text: "What's the maximum loss you can accept?",
+    options: ["5%", "10%", "20%", "30%", "40%+"],
+    helperText: "Your risk capacity for portfolio declines."
   },
   {
     key: "investmentKnowledge",
-    text: "Past Investing Experience (Optional)",
-    options: ["Beginner", "Intermediate", "Experienced"],
-    helperText: "Novices need safer allocation.",
-    optional: true
+    text: "What is your investment knowledge level?",
+    options: ["beginner", "some_knowledge", "experienced", "expert"],
+    helperText: "Your familiarity with investments."
   },
+  
+  // Goals & Objectives (20% weight)
   {
-    key: "withdrawNext2Yrs",
-    text: "Liquidity Needs: Do you expect to withdraw in the next 1–2 years?",
+    key: "primaryGoal",
+    text: "What is your primary investment goal?",
+    options: ["retirement", "wealth_building", "income_generation", "child_education", "home_purchase", "preservation"],
+    helperText: "Your main objective guides asset allocation."
+  },
+  
+  // Additional Context
+  {
+    key: "hasInsurance",
+    text: "Do you have adequate health & life insurance?",
     options: ["Yes", "No"],
-    helperText: "Caps illiquid exposure and boosts cash if yes."
-  },
-  {
-    key: "emergencyFundSixMonths",
-    text: "Emergency Fund: Do you already have at least 6 months saved?",
-    options: ["Yes", "No"],
-    helperText: "If no, we raise Liquid until a six-month buffer is built."
-  },
-  {
-    key: "insuranceCoverage",
-    text: "Insurance Coverage: Do you have health & life insurance?",
-    options: ["Yes", "No"],
-    helperText: "If no, we reduce risky allocation and flag coverage gap."
-  },
-  {
-    key: "taxPreference",
-    text: "Tax Preference",
-    options: ["Tax efficiency", "Max return"],
-    helperText: "Guides product selection within buckets."
+    helperText: "Insurance coverage affects risk allocation."
   },
   {
     key: "avoidAssets",
-    text: "Ethical/Custom Constraints (Optional) — assets to avoid",
-    options: ["Stocks", "Mutual Funds", "Gold", "Real Estate"],
+    text: "Are there any assets you want to avoid? (Optional)",
+    options: ["Stocks", "Mutual Funds", "Gold", "Real Estate", "Debt", "Liquid"],
     helperText: "We will set avoided assets to 0% (safety sleeves remain).",
-    maxSelect: 4,
+    maxSelect: 6,
     optional: true
   },
 ];
