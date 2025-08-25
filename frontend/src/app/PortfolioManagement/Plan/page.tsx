@@ -32,8 +32,8 @@ export default function PlanPage() {
 	const [customLocks, setLocalCustomLocks] = useState<Record<string, boolean>>({});
 	const [advisorPins, setAdvisorPins] = useState<Record<string, boolean>>({});
 	
-	// Dual-mode display state
-	const [displayMode, setDisplayMode] = useState<'investor' | 'advisor'>('investor');
+	// Always use professional mode
+	const displayMode = 'advisor';
 
 
 	const saveChip = useMemo(() => {
@@ -509,32 +509,6 @@ export default function PlanPage() {
 							</div>
 						</Button>
 					</div>
-					
-					{/* Dual-Mode Display Toggle */}
-					<div className="inline-flex rounded-md border border-border overflow-hidden text-xs">
-						<Button 
-							size="sm" 
-							variant="outline" 
-							className={`rounded-none ${displayMode==='investor' ? 'bg-green-600 text-white border-green-600' : ''}`} 
-							onClick={() => setDisplayMode('investor')}
-						>
-							<div className="flex flex-col items-start leading-tight">
-								<span>📱 Simple</span>
-								{displayMode==='investor' ? <span className="text-[10px] opacity-80">Easy to understand</span> : null}
-							</div>
-						</Button>
-						<Button 
-							size="sm" 
-							variant="outline" 
-							className={`rounded-none ${displayMode==='advisor' ? 'bg-blue-600 text-white border-blue-600' : ''}`} 
-							onClick={() => setDisplayMode('advisor')}
-						>
-							<div className="flex flex-col items-start leading-tight">
-								<span>⚡ Professional</span>
-								{displayMode==='advisor' ? <span className="text-[10px] opacity-80">Technical details</span> : null}
-							</div>
-						</Button>
-					</div>
 					<Button variant="ghost" size="sm" aria-label="Reset" onClick={handleResetClick}>
 						<RotateCcw className="h-4 w-4 text-rose-600" />
 					</Button>
@@ -579,7 +553,6 @@ export default function PlanPage() {
 				plan={local}
 				holdings={holdings || []}
 				className="mb-6"
-				displayMode={displayMode}
 			/>
 
 			<PlanSummary
@@ -596,7 +569,6 @@ export default function PlanPage() {
 				aiDisabled={mode==='custom'}
 				locks={customLocks}
 				onToggleLock={(cls)=> { setLocalCustomLocks(prev=> ({ ...(prev||{}), [cls]: !prev?.[cls] })); try { if (activePortfolioId) setCustomLocks(activePortfolioId, { [cls]: !customLocks?.[cls] }); } catch {} }}
-				displayMode={displayMode}
 			/>
 			{toast && (
 				<div className={`fixed bottom-4 right-4 z-50 rounded-md border px-3 py-2 text-sm shadow-lg ${toast.type==='success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : toast.type==='info' ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>

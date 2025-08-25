@@ -12,7 +12,6 @@ import { Modal } from "../../components/Modal";
 import GoalsInlineModal from "./GoalsInlineModal";
 import RiskProfile from "./RiskProfile";
 import { transformText, transformRiskLevel, transformRiskScore, transformAllocationRange, transformStressTestResult } from "../domain/languageTransform";
-import type { DisplayMode } from "../domain/languageTransform";
 
 export default function PlanSummary({ 
 	plan, 
@@ -27,8 +26,7 @@ export default function PlanSummary({
 	mode, 
 	aiDisabled, 
 	locks, 
-	onToggleLock,
-	displayMode = 'investor'
+	onToggleLock
 }: { 
 	plan: any; 
 	onChangeBucketPct?: (index: number, newPct: number) => void; 
@@ -43,7 +41,6 @@ export default function PlanSummary({
 	aiDisabled?: boolean; 
 	locks?: Record<string, boolean>; 
 	onToggleLock?: (cls: string) => void;
-	displayMode?: 'investor' | 'advisor';
 }) {
   const { holdings, driftTolerancePct, questionnaire, activePortfolioId } = useApp() as any;
   const [edgeHit, setEdgeHit] = useState<Record<string, { edge: 'min'|'max'; val: number } | null>>({});
@@ -62,8 +59,8 @@ export default function PlanSummary({
   const [goalsOpen, setGoalsOpen] = useState(false);
   
   // Enhanced sections expand/collapse state
-  const [signalsExpanded, setSignalsExpanded] = useState(false);
-  const [stressTestExpanded, setStressTestExpanded] = useState(false);
+  const [signalsExpanded, setSignalsExpanded] = useState(true); // Expanded by default for professional mode
+  const [stressTestExpanded, setStressTestExpanded] = useState(true); // Expanded by default for professional mode
   const [rationaleExpanded, setRationaleExpanded] = useState(false);
   const [rebalanceExpanded, setRebalanceExpanded] = useState(false);
   const [rebalanceOptionsExpanded, setRebalanceOptionsExpanded] = useState(false);
@@ -236,26 +233,26 @@ export default function PlanSummary({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-base">
-                {displayMode === 'advisor' ? 'Allocation' : 'Your Investment Mix'}
+                Allocation
               </CardTitle>
               <CardDescription className="text-xs">
-                {displayMode === 'advisor' ? 'Target mix and details' : 'How your money is divided'}
+                Target mix and details
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
               {mode !== 'custom' ? (
                 <Button variant="outline" leftIcon={<Edit3 className="h-4 w-4 text-sky-600" />} onClick={onEditAnswers}>
-                  {displayMode === 'advisor' ? 'Adjust Risk Profile' : 'Change Your Style'}
+                  Adjust Risk Profile
                 </Button>
               ) : null}
               <Button variant="outline" leftIcon={<Target className="h-4 w-4 text-amber-600" />} onClick={()=> setGoalsOpen(true)}>
-                {displayMode === 'advisor' ? 'Goals & Constraints' : 'Your Goals & Limits'}
+                Goals & Constraints
               </Button>
               {mode !== 'custom' ? (
                 <div className="inline-flex items-center gap-2 ml-2">
                   <Sparkles className="h-4 w-4 text-amber-500" />
                   <span className="text-[11px] text-muted-foreground">
-                    {displayMode === 'advisor' ? 'AI Assist' : 'AI Help'}
+                    AI Assist
                   </span>
                   <button type="button" onClick={onToggleAiView} disabled={!!aiLoading || !!aiDisabled} className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${aiViewOn?"bg-gradient-to-r from-amber-500 via-fuchsia-500 to-indigo-600":"bg-muted"}`}>
                     <span className={`inline-block h-5 w-5 transform rounded-full bg-white dark:bg-zinc-900 shadow transition-transform ${aiViewOn?"translate-x-6":"translate-x-1"}`}></span>
@@ -272,21 +269,11 @@ export default function PlanSummary({
               <table className="w-full text-left text-xs">
                 <thead className="bg-card sticky top-0 z-10">
                   <tr>
-                    <th className="py-2 px-3 text-muted-foreground">
-                      {displayMode === 'advisor' ? 'Asset Class' : 'Investment Type'}
-                    </th>
-                    <th className="py-2 px-3 text-muted-foreground text-right">
-                      {displayMode === 'advisor' ? 'Allocation' : 'Percentage'}
-                    </th>
-                    <th className="py-2 px-3 text-muted-foreground">
-                      {displayMode === 'advisor' ? 'Adjust' : 'Change'}
-                    </th>
-                    <th className="py-2 px-3 text-muted-foreground">
-                      {displayMode === 'advisor' ? 'Role' : 'Purpose'}
-                    </th>
-                    <th className="py-2 px-3 text-muted-foreground">
-                      {displayMode === 'advisor' ? 'Remarks' : 'Notes'}
-                    </th>
+                    <th className="py-2 px-3 text-muted-foreground">Asset Class</th>
+                    <th className="py-2 px-3 text-muted-foreground text-right">Allocation</th>
+                    <th className="py-2 px-3 text-muted-foreground">Adjust</th>
+                    <th className="py-2 px-3 text-muted-foreground">Role</th>
+                    <th className="py-2 px-3 text-muted-foreground">Remarks</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -380,7 +367,7 @@ export default function PlanSummary({
             <CardTitle className="text-sm flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <LineChart className="h-4 w-4 text-blue-500" />
-                {displayMode === 'advisor' ? 'Why This Mix?' : 'Why This Investment Mix?'}
+                Why This Mix?
               </div>
               {rationaleExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </CardTitle>
@@ -391,13 +378,13 @@ export default function PlanSummary({
                 <div className="space-y-2">
                   {plan.rationale.map((reason: string, index: number) => (
                     <div key={index} className="text-xs text-muted-foreground leading-relaxed p-2 bg-muted/20 rounded">
-                      {displayMode === 'advisor' ? reason : transformText(reason, displayMode)}
+                      {reason}
                     </div>
                   ))}
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  {displayMode === 'advisor' ? plan.rationale : transformText(plan.rationale, displayMode)}
+                  {plan.rationale}
                 </p>
               )}
             </CardContent>
@@ -413,13 +400,10 @@ export default function PlanSummary({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-base">
-                {displayMode === 'advisor' ? 'Rebalancing Suggestions' : 'Investment Adjustments'}
+                Rebalancing Suggestions
               </CardTitle>
               <CardDescription className="text-xs">
-                {displayMode === 'advisor' 
-                  ? `Based on drift tolerance of ${driftTolerancePct}%`
-                  : `When your investments move more than ${driftTolerancePct}% from target`
-                }
+                Based on drift tolerance of {driftTolerancePct}%
               </CardDescription>
             </div>
             {rebalanceExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -440,10 +424,7 @@ export default function PlanSummary({
                         <div className={`h-2 ${item.action === 'Increase' ? 'bg-indigo-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(100, Math.max(5, Math.round((item.amount / Math.max(1, rebalance.totalCurrentValue)) * 100)))}%` }}></div>
                       </div>
                       <div className={`text-xs ${item.action === 'Increase' ? 'text-indigo-600' : 'text-rose-600'}`}>
-                        {displayMode === 'advisor' 
-                          ? `${item.action} ${item.amount.toFixed(0)}`
-                          : `${item.action === 'Increase' ? 'Add' : 'Reduce'} ₹${item.amount.toFixed(0)}`
-                        }
+                        {item.action} {item.amount.toFixed(0)}
                       </div>
                     </div>
                   </div>
@@ -452,8 +433,8 @@ export default function PlanSummary({
             ) : (
               <div className="text-muted-foreground text-sm">
                 {!plan 
-                  ? (displayMode === 'advisor' ? "No plan yet." : "No plan yet.")
-                  : (displayMode === 'advisor' ? "All good! No rebalancing needed." : "Great! Your investments are well balanced.")
+                  ? "No plan yet."
+                  : "All good! No rebalancing needed."
                 }
               </div>
             )}
@@ -517,45 +498,27 @@ export default function PlanSummary({
         </div>
       </Modal>
 
-      {/* Debug Section - Temporary */}
-      {process.env.NODE_ENV === 'development' && plan && (
-        <Card className="mt-4 border-dashed border-amber-300">
-          <CardHeader>
-            <CardTitle className="text-sm text-amber-600">Debug: Plan Data</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xs space-y-1">
-              <div>Has signals: {plan.signals ? `Yes (${plan.signals.length})` : 'No'}</div>
-              <div>Has stressTest: {plan.stressTest ? 'Yes' : 'No'}</div>
-              <div>Has rationale: {plan.rationale ? `Yes (${Array.isArray(plan.rationale) ? plan.rationale.length : 'string'})` : 'No'}</div>
-              <div>Risk Level: {plan.riskLevel || 'N/A'}</div>
-              <div>Risk Score: {plan.riskScore || 'N/A'}</div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Enhanced Features from 10-Advisor Council Engine */}
-      {plan?.signals && plan.signals.length > 0 && (
-        <Card className="mt-4">
-          <CardHeader 
-            className="cursor-pointer" 
-            onClick={() => setSignalsExpanded(!signalsExpanded)}
-          >
-            <CardTitle className="text-sm flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-yellow-500" />
-                Signal Analysis
-              </div>
-              {signalsExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Factors that influenced your allocation
-            </CardDescription>
-          </CardHeader>
-          {signalsExpanded && (
-            <CardContent className="space-y-2">
-              {plan.signals
+      <Card className="mt-4">
+        <CardHeader 
+          className="cursor-pointer" 
+          onClick={() => setSignalsExpanded(!signalsExpanded)}
+        >
+          <CardTitle className="text-sm flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-yellow-500" />
+              Signal Analysis
+            </div>
+            {signalsExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Factors that influenced your allocation
+          </CardDescription>
+        </CardHeader>
+        {signalsExpanded && (
+          <CardContent className="space-y-2">
+            {plan?.signals && plan.signals.length > 0 ? (
+              plan.signals
                 .sort((a: any, b: any) => Math.abs(b.equitySignal * b.weight) - Math.abs(a.equitySignal * a.weight))
                 .slice(0, 5)
                 .map((signal: any, index: number) => {
@@ -577,32 +540,36 @@ export default function PlanSummary({
                       </div>
                     </div>
                   );
-                })}
-            </CardContent>
-          )}
-        </Card>
-      )}
-
-      {plan?.stressTest && (
-        <Card className="mt-4">
-          <CardHeader 
-            className="cursor-pointer" 
-            onClick={() => setStressTestExpanded(!stressTestExpanded)}
-          >
-            <CardTitle className="text-sm flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-orange-500" />
-                Stress Test Results
+                })
+            ) : (
+              <div className="text-xs text-muted-foreground p-2 bg-muted/20 rounded">
+                No signal data available. Complete the questionnaire to generate allocation signals.
               </div>
-              {stressTestExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </CardTitle>
-            <CardDescription className="text-xs">
-              How your portfolio might perform in market downturns
-            </CardDescription>
-          </CardHeader>
-          {stressTestExpanded && (
-            <CardContent className="space-y-3">
-              {Object.entries(plan.stressTest.scenarios).slice(0, 3).map(([scenario, result]: [string, any]) => (
+            )}
+          </CardContent>
+        )}
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader 
+          className="cursor-pointer" 
+          onClick={() => setStressTestExpanded(!stressTestExpanded)}
+        >
+          <CardTitle className="text-sm flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Target className="h-4 w-4 text-orange-500" />
+              Stress Test Results
+            </div>
+            {stressTestExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </CardTitle>
+          <CardDescription className="text-xs">
+            How your portfolio might perform in market downturns
+          </CardDescription>
+        </CardHeader>
+        {stressTestExpanded && (
+          <CardContent className="space-y-3">
+            {plan?.stressTest && Object.keys(plan.stressTest.scenarios).length > 0 ? (
+              Object.entries(plan.stressTest.scenarios).slice(0, 3).map(([scenario, result]: [string, any]) => (
                 <div key={scenario} className="p-2 border rounded text-xs">
                   <div className="flex items-center justify-between mb-1">
                     <div className="font-medium">{scenario}</div>
@@ -615,12 +582,31 @@ export default function PlanSummary({
                   <div className="text-muted-foreground text-[11px]">
                     Emergency coverage: {result.monthsCovered.toFixed(1)} months
                   </div>
+                  {result.historicalDrop && (
+                    <div className="text-muted-foreground text-[11px] mt-1">
+                      Historical drop: {result.historicalDrop}
+                    </div>
+                  )}
+                  {result.evidence && (
+                    <div className="text-muted-foreground text-[11px]">
+                      Evidence: {result.evidence}
+                    </div>
+                  )}
+                  {result.recovery && (
+                    <div className="text-muted-foreground text-[11px]">
+                      Recovery: {result.recovery}
+                    </div>
+                  )}
                 </div>
-              ))}
-            </CardContent>
-          )}
-        </Card>
-      )}
+              ))
+            ) : (
+              <div className="text-xs text-muted-foreground p-2 bg-muted/20 rounded">
+                No stress test data available. Complete the questionnaire to generate stress test scenarios.
+              </div>
+            )}
+          </CardContent>
+        )}
+      </Card>
 
       {/* Rebalance Options Section */}
       <Card className="mt-4">

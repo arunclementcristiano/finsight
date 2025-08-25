@@ -1,17 +1,14 @@
 "use client";
 import React from "react";
 import { Card, CardContent } from "../../components/Card";
-import { transformRiskLevel } from "../domain/languageTransform";
-import type { DisplayMode } from "../domain/languageTransform";
 
 interface PlanKPIsProps {
   plan: any;
   holdings?: any[];
   className?: string;
-  displayMode?: DisplayMode;
 }
 
-export default function PlanKPIs({ plan, holdings = [], className = "", displayMode }: PlanKPIsProps) {
+export default function PlanKPIs({ plan, holdings = [], className = "" }: PlanKPIsProps) {
   if (!plan) return null;
 
   // Calculate KPIs
@@ -43,54 +40,38 @@ export default function PlanKPIs({ plan, holdings = [], className = "", displayM
       <div className="grid grid-cols-4 gap-3">
         {/* Equity */}
         <div className="rounded-lg border border-border bg-card p-3 text-center">
-          <div className="text-xs text-muted-foreground mb-1">
-            {displayMode === 'advisor' ? 'Equity' : 'Stocks & Funds'}
-          </div>
+          <div className="text-xs text-muted-foreground mb-1">Equity</div>
           <div className="text-lg font-semibold text-indigo-600 dark:text-indigo-400 mb-1">
             {kpis.equity}%
           </div>
-          <div className="text-[10px] text-muted-foreground">
-            {displayMode === 'advisor' ? 'Growth Focus' : 'For growth'}
-          </div>
+          <div className="text-[10px] text-muted-foreground">Growth Focus</div>
         </div>
 
         {/* Defensive */}
         <div className="rounded-lg border border-border bg-card p-3 text-center">
-          <div className="text-xs text-muted-foreground mb-1">
-            {displayMode === 'advisor' ? 'Defensive' : 'Safe Investments'}
-          </div>
+          <div className="text-xs text-muted-foreground mb-1">Defensive</div>
           <div className="text-lg font-semibold text-emerald-600 dark:text-emerald-400 mb-1">
             {kpis.defensive}%
           </div>
-          <div className="text-[10px] text-muted-foreground">
-            {displayMode === 'advisor' ? 'Stability' : 'For safety'}
-          </div>
+          <div className="text-[10px] text-muted-foreground">Stability</div>
         </div>
 
         {/* Satellite */}
         <div className="rounded-lg border border-border bg-card p-3 text-center">
-          <div className="text-xs text-muted-foreground mb-1">
-            {displayMode === 'advisor' ? 'Satellite' : 'Special Investments'}
-          </div>
+          <div className="text-xs text-muted-foreground mb-1">Satellite</div>
           <div className="text-lg font-semibold text-amber-600 dark:text-amber-400 mb-1">
             {kpis.satellite}%
           </div>
-          <div className="text-[10px] text-muted-foreground">
-            {displayMode === 'advisor' ? 'Diversification' : 'For variety'}
-          </div>
+          <div className="text-[10px] text-muted-foreground">Diversification</div>
         </div>
 
         {/* Risk Profile */}
         <div className="rounded-lg border border-border bg-card p-3 text-center">
-          <div className="text-xs text-muted-foreground mb-1">
-            {displayMode === 'advisor' ? 'Risk Profile' : 'Your Style'}
-          </div>
+          <div className="text-xs text-muted-foreground mb-1">Risk Profile</div>
           <div className="text-lg font-semibold text-foreground mb-1">
-            {displayMode === 'advisor' ? (plan?.riskLevel || "—") : transformRiskLevel(plan?.riskLevel || "", displayMode || 'investor')}
+            {plan?.riskLevel || "—"}
           </div>
-          <div className="text-[10px] text-muted-foreground">
-            {displayMode === 'advisor' ? 'Tolerance Level' : 'Investment comfort'}
-          </div>
+          <div className="text-[10px] text-muted-foreground">Tolerance Level</div>
         </div>
       </div>
     </div>
