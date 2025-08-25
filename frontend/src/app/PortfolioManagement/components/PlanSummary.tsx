@@ -182,24 +182,34 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
   return (
     <div className="space-y-3">
       {/* Additional Metrics */}
-      <div className="grid grid-cols-3 gap-2">
-        <div className="rounded-md border border-border p-2 text-center">
-          <div className="text-[11px] text-muted-foreground">Household Real Estate</div>
-          <div className="text-sm font-medium">{kpiExtras.rePct}%</div>
-        </div>
-        <div className="rounded-md border border-border p-2 text-center">
-          <div className="text-[11px] text-muted-foreground">Est. Rebalance Cost</div>
-          <div className="text-sm font-medium">₹{kpiExtras.estCost.toLocaleString()} <span className="text-[10px] text-muted-foreground">(turnover {kpiExtras.turnover}%)</span></div>
-        </div>
-        <div className="rounded-md border border-border p-2 text-center">
-          <div className="text-[11px] text-muted-foreground">Risk Profile</div>
-          <RiskProfile 
-            riskLevel={plan?.riskLevel} 
-            riskScore={plan?.riskScore} 
-            compact={true}
-            className="w-full justify-center"
-          />
-        </div>
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="bg-gradient-to-br from-slate-50 via-gray-50 to-zinc-50 border-slate-100 shadow-sm hover:shadow-md transition-all duration-200">
+          <CardContent className="p-4">
+            <div className="text-center">
+              <div className="text-xs font-medium text-slate-600 mb-2 tracking-wide uppercase">Real Estate</div>
+              <div className="text-xl font-bold text-slate-800 mb-1">{kpiExtras.rePct}%</div>
+              <div className="text-xs text-slate-500 opacity-75">Household</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 border-violet-100 shadow-sm hover:shadow-md transition-all duration-200">
+          <CardContent className="p-4">
+            <div className="text-center">
+              <div className="text-xs font-medium text-violet-600 mb-2 tracking-wide uppercase">Rebalance Cost</div>
+              <div className="text-xl font-bold text-violet-800 mb-1">₹{kpiExtras.estCost.toLocaleString()}</div>
+              <div className="text-xs text-violet-500 opacity-75">Turnover {kpiExtras.turnover}%</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-cyan-50 via-sky-50 to-blue-50 border-cyan-100 shadow-sm hover:shadow-md transition-all duration-200">
+          <CardContent className="p-4">
+            <div className="text-center">
+              <div className="text-xs font-medium text-cyan-600 mb-2 tracking-wide uppercase">Portfolio Status</div>
+              <div className="text-xl font-bold text-cyan-800 mb-1">Active</div>
+              <div className="text-xs text-cyan-500 opacity-75">Monitoring</div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
       <Card>
         <CardHeader className="py-2">
