@@ -69,12 +69,6 @@ export const questions: Question[] = [
     helperText: "Your familiarity with investments."
   },
   
-  // Goals & Objectives (20% weight)
-  {
-    key: "primaryGoal",
-    text: "What is your primary investment goal?",
-    options: ["retirement", "wealth_building", "income_generation", "child_education", "home_purchase", "preservation"],
-    helperText: "Your main objective guides asset allocation."
   },
   
   // Additional Context

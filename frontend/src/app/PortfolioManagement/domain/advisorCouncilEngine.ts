@@ -57,6 +57,13 @@ const getConsistentRiskProfile = (score: number) => {
   return { level: level[0] as RiskLevel, score, ...level[1] };
 };
 
+
+interface Goal {
+  type: "retirement" | "wealth_building" | "child_education" | "home_purchase" | "travel" | "emergency";
+  targetAmount: number;
+  targetDate: Date;
+  priority: 1 | 2 | 3 | 4 | 5;
+}
 export interface CouncilAnswers {
   // Demographics & Time Horizon (25% weight)
   age: string;
@@ -73,8 +80,8 @@ export interface CouncilAnswers {
   maxAcceptableLoss: string;
   investmentKnowledge: string;
   
-  // Goals & Objectives (20% weight)
-  primaryGoal: string;
+  // Goals // Goals // Goals & Objectives (20% weight) Objectives (Optional - replaces primary goal) Objectives (Optional - replaces primary goal)
+  goals?: Goal[];
   
   // Additional Context
   hasInsurance: boolean;
@@ -1429,12 +1436,135 @@ class StressTester {
  * Main Advisor Council Engine
  * Orchestrates all components to generate professional allocation recommendations
  */
+
+/**
+ * Goal Analysis Engine
+ * Analyzes goals and provides allocation adjustments
+ */
+class GoalAnalyzer {
+  analyzeGoals(goals: Goal[]): {
+    shortTermWeight: number;
+    mediumTermWeight: number;
+    longTermWeight: number;
+    totalPriority: number;
+    goalCount: number;
+  } {
+    if (!goals || goals.length === 0) {
+      return {
+        shortTermWeight: 0,
+        mediumTermWeight: 0,
+        longTermWeight: 0,
+        totalPriority: 0,
+        goalCount: 0
+      };
+    }
+
+    let shortTermWeight = 0;
+    let mediumTermWeight = 0;
+    let longTermWeight = 0;
+    let totalPriority = 0;
+
+    goals.forEach(goal => {
+      const yearsToTarget = this.calculateYearsToTarget(goal.targetDate);
+      const goalWeight = goal.targetAmount * goal.priority;
+      totalPriority += goal.priority;
+
+      if (yearsToTarget < 5) {
+        shortTermWeight += goalWeight;
+      } else if (yearsToTarget <= 10) {
+        mediumTermWeight += goalWeight;
+      } else {
+        longTermWeight += goalWeight;
+      }
+    });
+
+    return {
+      shortTermWeight,
+      mediumTermWeight,
+      longTermWeight,
+      totalPriority,
+      goalCount: goals.length
+    };
+  }
+
+  private calculateYearsToTarget(targetDate: Date): number {
+    const now = new Date();
+    const diffTime = targetDate.getTime() - now.getTime();
+    const diffYears = diffTime / (1000 * 60 * 60 * 24 * 365.25);
+    return Math.max(0, diffYears);
+  }
+
+  applyGoalAdjustments(
+    baseAllocation: Record<AssetClass, number>,
+    goals: Goal[],
+    answers: CouncilAnswers
+  ): Record<AssetClass, number> {
+    if (!goals || goals.length === 0) {
+      return baseAllocation;
+    }
+
+    const goalAnalysis = this.analyzeGoals(goals);
+    const adjustedAllocation = { ...baseAllocation };
+
+    // Apply timeline-based adjustments
+    if (goalAnalysis.shortTermWeight > 0) {
+      // Short-term goals: increase Debt/Liquid
+      const shortTermBoost = Math.min(15, goalAnalysis.shortTermWeight / 1000000); // Cap at 15%
+      adjustedAllocation.Debt = Math.min(40, adjustedAllocation.Debt + shortTermBoost);
+      adjustedAllocation.Liquid = Math.min(30, adjustedAllocation.Liquid + shortTermBoost);
+    }
+
+    if (goalAnalysis.longTermWeight > 0) {
+      // Long-term goals: increase Equity
+      const longTermBoost = Math.min(20, goalAnalysis.longTermWeight / 1000000); // Cap at 20%
+      adjustedAllocation.Stocks = Math.min(50, adjustedAllocation.Stocks + longTermBoost * 0.6);
+      adjustedAllocation["Mutual Funds"] = Math.min(45, adjustedAllocation["Mutual Funds"] + longTermBoost * 0.4);
+    }
+
+    // Normalize to ensure total = 100%
+    return this.normalizeAllocation(adjustedAllocation);
+  }
+
+  private normalizeAllocation(allocation: Record<AssetClass, number>): Record<AssetClass, number> {
+    const total = Object.values(allocation).reduce((sum, val) => sum + val, 0);
+    if (total === 100) return allocation;
+
+    const factor = 100 / total;
+    const normalized: Record<AssetClass, number> = {} as any;
+
+    Object.keys(allocation).forEach(key => {
+      normalized[key as AssetClass] = Math.round(allocation[key as AssetClass] * factor);
+    });
+
+    // Handle rounding errors
+    let runningTotal = 0;
+    const remainders: Array<{ asset: AssetClass; remainder: number }> = [];
+
+    Object.entries(normalized).forEach(([asset, value]) => {
+      const floor = Math.floor(value);
+      normalized[asset as AssetClass] = floor;
+      runningTotal += floor;
+      remainders.push({ asset: asset as AssetClass, remainder: value - floor });
+    });
+
+    const remaining = 100 - runningTotal;
+    remainders.sort((a, b) => b.remainder - a.remainder);
+
+    for (let i = 0; i < remaining; i++) {
+      if (remainders[i]) {
+        normalized[remainders[i].asset]++;
+      }
+    }
+
+    return normalized;
+  }
+}
 export class AdvisorCouncilEngine {
   private signalProcessor = new SignalProcessor();
   private allocationCalculator = new AllocationCalculator();
   private rationaleGenerator = new RationaleGenerator();
   private stressTester = new StressTester();
-  
+  private goalAnalyzer = new GoalAnalyzer();  
   generateRecommendation(answers: CouncilAnswers): AllocationResult {
     console.log("🚀 ADVISOR COUNCIL ENGINE GENERATERECOMMENDATION CALLED! 🚀");
     console.log("🏗️ === ADVISOR COUNCIL ENGINE - DETAILED CALCULATION === 🏗️");
@@ -1500,114 +1630,16 @@ export class AdvisorCouncilEngine {
       "Liquid": liquid
     };
     console.log("🔧 STEP 5 - BASE ALLOCATION CREATED:", {
-      allocation,
-      totals: {
-        equity: stocks + mutualFunds,
-        safety: liquid + debt + gold + realEstate,
-        total: Object.values(allocation).reduce((sum, val) => sum + val, 0)
-      }
-    });
     
-    // Step 6: Apply goal adjustments
-    const allocationBeforeGoals = { ...allocation };
-    allocation = this.allocationCalculator.applyGoalAdjustments(allocation, answers);
-    console.log("🎯 STEP 6 - GOAL ADJUSTMENTS:", {
-      primaryGoal: answers.primaryGoal,
-      before: allocationBeforeGoals,
-      after: allocation,
-      changes: Object.keys(allocation).map(key => ({
-        asset: key,
-        before: allocationBeforeGoals[key as AssetClass],
-        after: allocation[key as AssetClass],
-        change: allocation[key as AssetClass] - allocationBeforeGoals[key as AssetClass]
-      })).filter(change => change.change !== 0)
-    });
-    
-    // Step 7: Handle avoided assets
-    console.log("🚫 AVOIDED ASSETS DEBUG:", {
-      avoidAssets: answers.avoidAssets,
-      allocationBefore: allocation,
-    });
-    allocation = this.allocationCalculator.handleAvoidedAssets(allocation, answers.avoidAssets);
-    console.log("🚫 ALLOCATION AFTER AVOIDING:", allocation);
-    
-    // Step 8: Apply insurance logic
-    allocation = this.signalProcessor.applyInsuranceLogic(allocation, answers.hasInsurance);
-    console.log("🛡️ STEP 8 - INSURANCE ADJUSTMENTS:", {
-      hasInsurance: answers.hasInsurance,
-      originalAllocation: allocationBeforeGoals,
-      adjustedAllocation: allocation,
-      changes: Object.keys(allocation).map(key => ({
-        asset: key,
-        before: allocationBeforeGoals[key as AssetClass],
-        after: allocation[key as AssetClass],
-        change: allocation[key as AssetClass] - allocationBeforeGoals[key as AssetClass]
-      })).filter(change => change.change !== 0)
-    });
-    
-    // Step 9: Generate rationale
-    const behavioralWarnings = validateBehavioralConsistency(answers);
-    const rationale = this.rationaleGenerator.generate(allocation, signals, answers, riskScore, behavioralWarnings);
-    console.log("💭 STEP 9 - RATIONALE GENERATED:", {
-      rationaleLength: rationale.length,
-      rationale: rationale
-    });
-    
-    // Step 10: Run stress tests
-    const stressTest = this.stressTester.runStressTest(allocation, answers);
-    console.log("🧪 STEP 10 - STRESS TESTS:", {
-      scenarios: Object.keys(stressTest.scenarios),
-      worstCaseScenario: Object.entries(stressTest.scenarios).sort((a, b) => a[1].portfolioImpact - b[1].portfolioImpact)[0],
-      bestCaseScenario: Object.entries(stressTest.scenarios).sort((a, b) => b[1].portfolioImpact - a[1].portfolioImpact)[0],
-      averageImpact: Object.values(stressTest.scenarios).reduce((sum, s) => sum + s.portfolioImpact, 0) / Object.keys(stressTest.scenarios).length,
-      fullResults: stressTest
-    });
-    
-    // Step 11: Determine risk level with consistent mapping
-    const riskProfile = getConsistentRiskProfile(riskScore);
-    const riskLevel = riskProfile.level;
-    
-    // Step 12: Behavioral consistency validation
-    const consistencyScore = Math.max(0, 100 - (behavioralWarnings.length * 15)); // Deduct 15 points per warning
-    
-    console.log("🧠 STEP 12 - BEHAVIORAL VALIDATION:", {
-      warningsFound: behavioralWarnings.length,
-      consistencyScore: consistencyScore,
-      criticalIssues: behavioralWarnings.filter(w => w.severity === "critical").length,
-      warnings: behavioralWarnings.filter(w => w.severity === "warning").length,
-      fullWarnings: behavioralWarnings
-    });
-    
-    console.log("🎯 STEP 11 - FINAL RESULTS:", {
-      riskScore: riskScore,
-      riskLevel: riskLevel,
-      finalAllocation: allocation,
-      allocationSummary: {
-        totalEquity: allocation.Stocks + allocation["Mutual Funds"],
-        totalSafety: allocation.Liquid + allocation.Debt + allocation.Gold + allocation["Real Estate"],
-        satellite: allocation.Gold + allocation["Real Estate"],
-        breakdown: {
-          equity: `${allocation.Stocks + allocation["Mutual Funds"]}% (${allocation.Stocks}% stocks + ${allocation["Mutual Funds"]}% MF)`,
-          defensive: `${allocation.Liquid + allocation.Debt}% (${allocation.Liquid}% liquid + ${allocation.Debt}% debt)`,
-          satellite: `${allocation.Gold + allocation["Real Estate"]}% (${allocation.Gold}% gold + ${allocation["Real Estate"]}% real estate)`
-        }
-      }
-    });
-    
-    console.log("🏁 === ENGINE CALCULATION COMPLETE === 🏁");
-    
-    return {
-      allocation,
-      riskScore,
-      riskLevel,
-      riskProfile,
-      behavioralWarnings,
-      consistencyScore,
-      signals,
-      rationale,
-      stressTest
-    };
-  }
-  
-
-}
+    // Step 5.5: Apply goal-based adjustments (NEW!)
+    if (answers.goals && answers.goals.length > 0) {
+      console.log("🎯 STEP 5.5 - GOAL ANALYSIS:", {
+        goalCount: answers.goals.length,
+        goals: answers.goals.map(g => ({
+          type: g.type,
+          targetAmount: g.targetAmount,
+          targetDate: g.targetDate,
+          priority: g.priority
+        }))
+      });
+      
