@@ -71,43 +71,111 @@ export interface AllocationPlan {
 
 export interface QuestionnaireAnswers {
   // Demographics & Time Horizon (25% weight)
-  age: "<25" | "25-35" | "35-45" | "45-55" | "55-65" | "65+";
-  investmentHorizon: "<2 years" | "2-5 years" | "5-10 years" | "10-20 years" | "20+ years";
-  targetRetirementAge: "50-55" | "55-60" | "60-65" | "65-70" | "70+";
+  age: string;
+  investmentHorizon: string;
   
-  // Financial Situation (30% weight) - Enhanced with geographic context
-  annualIncome: {
-    absolute: "<50K" | "50K-1L" | "1L-2L" | "2L-5L" | "5L+";
-    relative?: string; // "High for Tier-3, Moderate for Metro"
-    context?: string; // "Income meaning shifts by geography"
-  };
+  // Financial Situation (30% weight)
+  annualIncome: string | { absolute: string; relative?: string; context?: string };
   investmentAmount: number;
-  existingInvestments: "<1L" | "1L-5L" | "5L-20L" | "20L+";
-  emergencyFundMonths: "0-1" | "2-3" | "4-6" | "7-12" | "12+";
-  dependents: "0" | "1-2" | "3-4" | "5+";
-  monthlyObligations: "<10K" | "10K-25K" | "25K-50K" | "50K+";
-  
-  // Geographic Context
-  city: string; // "Mumbai", "Bangalore", "Indore", "Varanasi", etc.
+  emergencyFundMonths: string;
+  dependents: string;
   
   // Risk Tolerance (25% weight)
-  volatilityComfort: "panic_sell" | "very_uncomfortable" | "somewhat_concerned" | "stay_calm" | "buy_more";
-  maxAcceptableLoss: "5%" | "10%" | "20%" | "30%" | "40%+";
-  investmentKnowledge: "beginner" | "some_knowledge" | "experienced" | "expert";
-  previousLosses: "never_invested" | "no_major_losses" | "some_losses_learned" | "major_losses_still_investing";
+  volatilityComfort: string;
+  maxAcceptableLoss: string;
+  investmentKnowledge: string;
   
   // Goals & Objectives (20% weight)
-  primaryGoal: "retirement" | "wealth_building" | "income_generation" | "child_education" | "home_purchase" | "preservation";
-  expectedReturn: "5-8%" | "8-12%" | "12-15%" | "15-20%" | "20%+";
-  liquidityNeeds: "never" | "once_year" | "few_times_year" | "monthly" | "frequently";
-  esgPreference: "no_preference" | "some_esg" | "strong_esg" | "impact_only";
+  primaryGoal: string;
   
   // Additional Context
-  jobStability: "very_stable" | "somewhat_stable" | "not_stable";
-  withdrawalNext2Years: boolean;
-  hasInsurance: boolean;
+  hasInsurance: boolean | string;
   avoidAssets?: string[];
 }
+
+// Smart inference system for removed fields
+interface InferredValues {
+  monthlyObligations: string;
+  liquidityNeeds: string;
+  jobStability: string;
+  withdrawalNext2Years: boolean;
+  expectedReturn: string;
+  geographicContext: string;
+}
+
+const inferRemovedValues = (answers: QuestionnaireAnswers): InferredValues => {
+  // Infer monthly obligations from income
+  const getMonthlyObligations = (income: string): string => {
+    const incomeValue = income.replace(/[^0-9]/g, '');
+    const numIncome = parseInt(incomeValue);
+    
+    if (income.includes('5L+')) return "50K+";
+    if (income.includes('2L-5L')) return "25K-50K";
+    if (income.includes('1L-2L')) return "10K-25K";
+    if (income.includes('50K-1L')) return "10K-25K";
+    return "<10K";
+  };
+
+  // Infer liquidity needs from horizon and goal
+  const getLiquidityNeeds = (horizon: string, goal: string): string => {
+    if (horizon === "<2 years") return "monthly";
+    if (goal === "home_purchase") return "monthly";
+    if (horizon === "2-5 years") return "few_times_year";
+    if (goal === "wealth_building" && horizon === "20+ years") return "once_year";
+    return "never";
+  };
+
+  // Infer job stability from age, dependents, and emergency fund
+  const getJobStability = (age: string, dependents: string, emergencyFund: string): string => {
+    if (emergencyFund === "0-1" || emergencyFund === "2-3") return "not_stable";
+    if (age === "65+" || dependents === "5+") return "somewhat_stable";
+    if (age === "<25" || age === "25-35") return "very_stable";
+    return "somewhat_stable";
+  };
+
+  // Infer withdrawal needs from emergency fund
+  const getWithdrawalNext2Years = (emergencyFund: string): boolean => {
+    return emergencyFund === "0-1" || emergencyFund === "2-3";
+  };
+
+  // Infer expected return from risk tolerance
+  const getExpectedReturn = (maxLoss: string, volatility: string): string => {
+    if (maxLoss === "40%+" && volatility === "buy_more") return "20%+";
+    if (maxLoss === "30%" && volatility === "stay_calm") return "15-20%";
+    if (maxLoss === "20%" && volatility === "somewhat_concerned") return "12-15%";
+    if (maxLoss === "10%" && volatility === "very_uncomfortable") return "8-12%";
+    if (maxLoss === "5%" && volatility === "panic_sell") return "5-8%";
+    return "8-12%"; // Default moderate
+  };
+
+  // Infer geographic context from income patterns
+  const getGeographicContext = (income: string, obligations: string): string => {
+    const incomeValue = income.replace(/[^0-9]/g, '');
+    const obligationValue = obligations.replace(/[^0-9]/g, '');
+    
+    if (income.includes('5L+') && obligations.includes('10K')) return "urban_affluent";
+    if (income.includes('2L-5L') && obligations.includes('25K')) return "urban_standard";
+    if (income.includes('1L-2L') && obligations.includes('10K')) return "suburban";
+    if (income.includes('50K-1L') && obligations.includes('10K')) return "rural_standard";
+    return "rural_challenged";
+  };
+
+  const monthlyObligations = getMonthlyObligations(answers.annualIncome as string);
+  const liquidityNeeds = getLiquidityNeeds(answers.investmentHorizon, answers.primaryGoal);
+  const jobStability = getJobStability(answers.age, answers.dependents, answers.emergencyFundMonths);
+  const withdrawalNext2Years = getWithdrawalNext2Years(answers.emergencyFundMonths);
+  const expectedReturn = getExpectedReturn(answers.maxAcceptableLoss, answers.volatilityComfort);
+  const geographicContext = getGeographicContext(answers.annualIncome as string, monthlyObligations);
+
+  return {
+    monthlyObligations,
+    liquidityNeeds,
+    jobStability,
+    withdrawalNext2Years,
+    expectedReturn,
+    geographicContext
+  };
+};
 
 // Helper functions for dynamic range calculation
 const getBaseRange = (asset: AssetClass): number => {
@@ -166,114 +234,48 @@ const getAssetBounds = (asset: AssetClass, riskLevel: RiskLevel) => {
 };
 
 /**
- * Geographic Context System for Allocation Engine
- * Provides city classification and relative income positioning
+ * Smart Geographic Context System
+ * Infers geographic context from income patterns instead of hardcoded cities
  */
-type CityTier = "Tier-1" | "Tier-2" | "Tier-3" | "Metro";
 
-const CITY_CLASSIFICATIONS: Record<string, CityTier> = {
-  // Metro Cities (Highest cost of living)
-  "Mumbai": "Metro", "Delhi": "Metro", "Bangalore": "Metro", "Hyderabad": "Metro",
-  "Chennai": "Metro", "Kolkata": "Metro", "Pune": "Metro", "Ahmedabad": "Metro",
-  
-  // Tier-1 Cities (High cost of living)
-  "Gurgaon": "Tier-1", "Noida": "Tier-1", "Thane": "Tier-1", "Navi Mumbai": "Tier-1",
-  "Ghaziabad": "Tier-1", "Faridabad": "Tier-1",
-  
-  // Tier-2 Cities (Moderate cost of living)
-  "Indore": "Tier-2", "Bhopal": "Tier-2", "Jaipur": "Tier-2", "Lucknow": "Tier-2",
-  "Kanpur": "Tier-2", "Nagpur": "Tier-2", "Vadodara": "Tier-2", "Surat": "Tier-2",
-  
-  // Tier-3 Cities (Lower cost of living)
-  "Varanasi": "Tier-3", "Prayagraj": "Tier-3", "Gorakhpur": "Tier-3", "Bareilly": "Tier-3",
-  "Moradabad": "Tier-3", "Saharanpur": "Tier-3"
-};
-
-const getCityTier = (city: string): CityTier => {
-  const normalizedCity = city.trim().toLowerCase();
-  
-  for (const [cityName, tier] of Object.entries(CITY_CLASSIFICATIONS)) {
-    if (cityName.toLowerCase() === normalizedCity) {
-      return tier;
-    }
-  }
-  
-  // Default to Tier-2 for unknown cities
-  return "Tier-2";
-};
-
-const getRelativeIncomePosition = (income: string, city: string): string => {
-  const cityTier = getCityTier(city);
-  
-  switch (cityTier) {
-    case "Metro":
-      if (income === "5L+") return "Moderate";
-      if (income === "2L-5L") return "Low";
-      if (income === "1L-2L") return "Very Low";
-      return "Very Low";
-      
-    case "Tier-1":
-      if (income === "5L+") return "High";
-      if (income === "2L-5L") return "Moderate";
-      if (income === "1L-2L") return "Low";
-      return "Low";
-      
-    case "Tier-2":
-      if (income === "5L+") return "Very High";
-      if (income === "2L-5L") return "High";
-      if (income === "1L-2L") return "Moderate";
-      return "Moderate";
-      
-    case "Tier-3":
-      if (income === "5L+") return "Very High";
-      if (income === "2L-5L") return "Very High";
-      if (income === "1L-2L") return "High";
-      return "High";
-      
-    default:
-      return "Moderate";
-  }
-};
-
-const getComprehensiveContextMultiplier = (context: any) => {
+const getComprehensiveContextMultiplier = (context: any): number => {
   let multiplier = 1.0;
   
-  // Existing factors (capped)
+  // Time Horizon (Primary factor)
   if (context.investmentHorizon === "<2 years") multiplier *= 0.8;
-  if (context.age === "65+") multiplier *= 0.85;
-  if (context.emergencyFundMonths === "0-1") multiplier *= 0.8;
+  if (context.investmentHorizon === "20+ years") multiplier *= 1.1;
   
-  // New factors
+  // Age (Secondary factor)
+  if (context.age === "65+") multiplier *= 0.85;
+  if (context.age === "<25") multiplier *= 1.05;
+  
+  // Emergency Fund (Critical factor)
+  if (context.emergencyFundMonths === "0-1") multiplier *= 0.8;
+  if (context.emergencyFundMonths === "12+") multiplier *= 1.05;
+  
+  // Dependents (Family factor)
   if (context.dependents === "5+") multiplier *= 0.9; // More dependents = tighter ranges
   if (context.dependents === "0") multiplier *= 1.1;  // No dependents = slightly wider
   
+  // Insurance (Risk factor)
   if (!context.hasInsurance) multiplier *= 0.85; // No insurance = tighter ranges
+  
+  // Withdrawal needs (Liquidity factor)
   if (context.withdrawalNext2Years) multiplier *= 0.8; // Near-term withdrawals = tighter
   
+  // Job stability (Income factor)
   if (context.jobStability === "not_stable") multiplier *= 0.9; // Unstable job = tighter
   if (context.jobStability === "very_stable") multiplier *= 1.05; // Stable job = slightly wider
   
-  // Geographic income positioning (NEW)
-  if (context.city && context.annualIncome) {
-    const cityTier = getCityTier(context.city);
-    const income = typeof context.annualIncome === 'object' ? context.annualIncome.absolute : context.annualIncome;
-    const relativePosition = getRelativeIncomePosition(income, context.city);
-    
-    switch (relativePosition) {
-      case "Very High": multiplier *= 1.15; // Wider ranges for high relative income
-      case "High": multiplier *= 1.1;
-      case "Moderate": multiplier *= 1.0; // No change
-      case "Low": multiplier *= 0.9; // Tighter ranges for low relative income
-      case "Very Low": multiplier *= 0.8; // Even tighter for very low relative income
+  // Geographic context (Inferred from income patterns)
+  if (context.geographicContext) {
+    switch (context.geographicContext) {
+      case "urban_affluent": multiplier *= 1.15; // Wider ranges for high relative income
+      case "urban_standard": multiplier *= 1.1;
+      case "suburban": multiplier *= 1.0; // No change
+      case "rural_standard": multiplier *= 0.9; // Tighter ranges for low relative income
+      case "rural_challenged": multiplier *= 0.8; // Even tighter for very low relative income
     }
-    
-    console.log("🌍 Geographic Context:", {
-      city: context.city,
-      tier: cityTier,
-      income: income,
-      relativePosition: relativePosition,
-      multiplier: multiplier
-    });
   }
   
   // Apply progressive caps
@@ -329,10 +331,26 @@ const getSmartDynamicRange = (
 export function buildPlan(answers: QuestionnaireAnswers): AllocationPlan {
   console.log("🚀 Building allocation plan with new engine format:", answers);
   
+  // Get inferred values for removed fields
+  const inferredValues = inferRemovedValues(answers);
+  
   // Convert avoidAssets from string[] to AssetClass[]
   const convertedAnswers = {
     ...answers,
-    withdrawalNext2Years: typeof answers.withdrawalNext2Years === 'boolean' ? answers.withdrawalNext2Years : answers.withdrawalNext2Years === 'Yes',
+    // Convert annualIncome to expected format
+    annualIncome: {
+      absolute: answers.annualIncome as string,
+      relative: undefined,
+      context: "Income meaning inferred from patterns"
+    },
+    // Add inferred values
+    monthlyObligations: inferredValues.monthlyObligations,
+    liquidityNeeds: inferredValues.liquidityNeeds,
+    jobStability: inferredValues.jobStability,
+    withdrawalNext2Years: inferredValues.withdrawalNext2Years,
+    expectedReturn: inferredValues.expectedReturn,
+    geographicContext: inferredValues.geographicContext,
+    // Handle boolean conversions
     hasInsurance: typeof answers.hasInsurance === 'boolean' ? answers.hasInsurance : answers.hasInsurance === 'Yes',
     avoidAssets: (() => {
       if (!answers.avoidAssets) return [];
@@ -356,70 +374,60 @@ export function buildPlan(answers: QuestionnaireAnswers): AllocationPlan {
     equity: result.allocation.Stocks + result.allocation["Mutual Funds"],
     defensive: result.allocation.Debt + result.allocation.Liquid,
     satellite: result.allocation.Gold + result.allocation["Real Estate"],
-    riskProfile: {
-      level: result.riskLevel,
-      score: result.riskScore,
-      min: result.riskProfile.min,
-      max: result.riskProfile.max,
-      description: result.riskProfile.description,
-      context: result.riskProfile.context
-    },
+    riskProfile: result.riskProfile,
     rationale: result.rationale,
-    // Behavioral consistency validation
-    behavioralWarnings: result.behavioralWarnings,
-    consistencyScore: result.consistencyScore,
-    // Extended fields for Dashboard compatibility with dynamic ranges
     buckets: [
       {
-        class: "Stocks",
+        class: "Stocks" as AssetClass,
         pct: result.allocation.Stocks,
         range: getSmartDynamicRange("Stocks", result.allocation.Stocks, result.riskLevel, convertedAnswers),
-        riskCategory: "Core",
-        notes: "Growth focus"
+        riskCategory: "Equity",
+        notes: "Direct stock investments for growth"
       },
       {
-        class: "Mutual Funds",
+        class: "Mutual Funds" as AssetClass,
         pct: result.allocation["Mutual Funds"],
         range: getSmartDynamicRange("Mutual Funds", result.allocation["Mutual Funds"], result.riskLevel, convertedAnswers),
-        riskCategory: "Core",
-        notes: "Diversified exposure"
+        riskCategory: "Equity",
+        notes: "Diversified equity exposure through funds"
       },
       {
-        class: "Debt",
+        class: "Debt" as AssetClass,
         pct: result.allocation.Debt,
         range: getSmartDynamicRange("Debt", result.allocation.Debt, result.riskLevel, convertedAnswers),
         riskCategory: "Defensive",
-        notes: "Stability & income"
+        notes: "Fixed income for stability"
       },
       {
-        class: "Liquid",
+        class: "Liquid" as AssetClass,
         pct: result.allocation.Liquid,
         range: getSmartDynamicRange("Liquid", result.allocation.Liquid, result.riskLevel, convertedAnswers),
         riskCategory: "Defensive",
-        notes: "Emergency buffer"
+        notes: "Cash and liquid assets for emergencies"
       },
       {
-        class: "Gold",
+        class: "Gold" as AssetClass,
         pct: result.allocation.Gold,
         range: getSmartDynamicRange("Gold", result.allocation.Gold, result.riskLevel, convertedAnswers),
         riskCategory: "Satellite",
-        notes: "Inflation hedge"
+        notes: "Hedge against inflation and market volatility"
       },
       {
-        class: "Real Estate",
+        class: "Real Estate" as AssetClass,
         pct: result.allocation["Real Estate"],
         range: getSmartDynamicRange("Real Estate", result.allocation["Real Estate"], result.riskLevel, convertedAnswers),
         riskCategory: "Satellite",
-        notes: "Long-term asset"
+        notes: "Long-term real asset investment"
       }
     ],
     riskLevel: result.riskLevel,
     riskScore: result.riskScore,
-    // Advanced engine data
     signals: result.signals,
-    stressTest: result.stressTest
+    stressTest: result.stressTest,
+    behavioralWarnings: result.behavioralWarnings,
+    consistencyScore: result.consistencyScore
   };
   
-  console.log("✅ Generated plan:", plan);
+  console.log("✅ Allocation plan built successfully:", plan);
   return plan;
 }

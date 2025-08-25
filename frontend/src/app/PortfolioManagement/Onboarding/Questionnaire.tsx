@@ -23,59 +23,47 @@ export default function Questionnaire() {
 			// Convert questionnaire answers to the expected format
 			const answers: QuestionnaireAnswers = {
 				// Demographics & Time Horizon
-				age: questionnaire.age as QuestionnaireAnswers["age"],
-				investmentHorizon: questionnaire.investmentHorizon as QuestionnaireAnswers["investmentHorizon"],
-				targetRetirementAge: questionnaire.targetRetirementAge as QuestionnaireAnswers["targetRetirementAge"],
+				age: questionnaire.age as string,
+				investmentHorizon: questionnaire.investmentHorizon as string,
 				
-				// Financial Situation - Enhanced with geographic context
-				annualIncome: {
-					absolute: questionnaire.annualIncome as QuestionnaireAnswers["annualIncome"]["absolute"],
-					relative: undefined, // Will be calculated by the engine
-					context: "Income meaning shifts by geography; factor in local cost of living"
-				},
+				// Financial Situation
+				annualIncome: questionnaire.annualIncome as string,
 				investmentAmount: Number(questionnaire.investmentAmount) || 100000,
-				existingInvestments: questionnaire.existingInvestments as QuestionnaireAnswers["existingInvestments"],
-				emergencyFundMonths: questionnaire.emergencyFundMonths as QuestionnaireAnswers["emergencyFundMonths"],
-				dependents: questionnaire.dependents as QuestionnaireAnswers["dependents"],
-				monthlyObligations: questionnaire.monthlyObligations as QuestionnaireAnswers["monthlyObligations"],
-				
-				// Geographic Context
-				city: questionnaire.city || "Mumbai", // Default to Mumbai if not specified
+				emergencyFundMonths: questionnaire.emergencyFundMonths as string,
+				dependents: questionnaire.dependents as string,
 				
 				// Risk Tolerance
-				volatilityComfort: questionnaire.volatilityComfort as QuestionnaireAnswers["volatilityComfort"],
-				maxAcceptableLoss: questionnaire.maxAcceptableLoss as QuestionnaireAnswers["maxAcceptableLoss"],
-				investmentKnowledge: questionnaire.investmentKnowledge as QuestionnaireAnswers["investmentKnowledge"],
-				previousLosses: questionnaire.previousLosses as QuestionnaireAnswers["previousLosses"],
+				volatilityComfort: questionnaire.volatilityComfort as string,
+				maxAcceptableLoss: questionnaire.maxAcceptableLoss as string,
+				investmentKnowledge: questionnaire.investmentKnowledge as string,
 				
 				// Goals & Objectives
-				primaryGoal: questionnaire.primaryGoal as QuestionnaireAnswers["primaryGoal"],
-				expectedReturn: questionnaire.expectedReturn as QuestionnaireAnswers["expectedReturn"],
-				liquidityNeeds: questionnaire.liquidityNeeds as QuestionnaireAnswers["liquidityNeeds"],
-				esgPreference: questionnaire.esgPreference as QuestionnaireAnswers["esgPreference"],
+				primaryGoal: questionnaire.primaryGoal as string,
 				
 				// Additional Context
-				jobStability: questionnaire.jobStability as QuestionnaireAnswers["jobStability"],
-				withdrawalNext2Years: questionnaire.withdrawalNext2Years === "Yes",
 				hasInsurance: questionnaire.hasInsurance === "Yes",
 				avoidAssets: Array.isArray(questionnaire.avoidAssets) ? questionnaire.avoidAssets : []
 			};
 
 			// Validate required fields
 			const requiredFields = [
-				'age', 'investmentHorizon', 'targetRetirementAge', 'annualIncome', 'investmentAmount',
-				'existingInvestments', 'emergencyFundMonths', 'dependents', 'monthlyObligations',
-				'city', 'volatilityComfort', 'maxAcceptableLoss', 'investmentKnowledge', 'previousLosses',
-				'primaryGoal', 'expectedReturn', 'liquidityNeeds', 'esgPreference', 'jobStability',
-				'withdrawalNext2Years', 'hasInsurance'
+				'age', 'investmentHorizon', 'annualIncome', 'investmentAmount',
+				'emergencyFundMonths', 'dependents', 'volatilityComfort', 
+				'maxAcceptableLoss', 'investmentKnowledge', 'primaryGoal', 'hasInsurance'
 			];
 
 			for (const field of requiredFields) {
 				const value = answers[field as keyof QuestionnaireAnswers];
-				if (value === undefined || value === null) {
+				if (value === undefined || value === null || value === "") {
 					console.error(`Missing required field: ${field}`);
 					return null;
 				}
+			}
+
+			// Validate investment amount
+			if (answers.investmentAmount <= 0) {
+				console.error('Investment amount must be greater than 0');
+				return null;
 			}
 
 			return answers;

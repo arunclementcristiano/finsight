@@ -53,146 +53,48 @@ const getConsistentRiskProfile = (score: number) => {
 
 export interface CouncilAnswers {
   // Demographics & Time Horizon (25% weight)
-  age: "<25" | "25-35" | "35-45" | "45-55" | "55-65" | "65+";
-  investmentHorizon: "<2 years" | "2-5 years" | "5-10 years" | "10-20 years" | "20+ years";
-  targetRetirementAge: "50-55" | "55-60" | "60-65" | "65-70" | "70+";
+  age: string;
+  investmentHorizon: string;
   
-  // Financial Situation (30% weight) - Enhanced with geographic context
-  annualIncome: {
-    absolute: "<50K" | "50K-1L" | "1L-2L" | "2L-5L" | "5L+";
-    relative?: string; // "High for Tier-3, Moderate for Metro"
-    context?: string; // "Income meaning shifts by geography"
-  };
+  // Financial Situation (30% weight)
+  annualIncome: { absolute: string; relative?: string; context?: string };
   investmentAmount: number; // Actual amount in rupees
-  existingInvestments: "<1L" | "1L-5L" | "5L-20L" | "20L+";
-  emergencyFundMonths: "0-1" | "2-3" | "4-6" | "7-12" | "12+";
-  dependents: "0" | "1-2" | "3-4" | "5+";
-  monthlyObligations: "<10K" | "10K-25K" | "25K-50K" | "50K+";
-  
-  // Geographic Context
-  city: string; // "Mumbai", "Bangalore", "Indore", "Varanasi", etc.
+  emergencyFundMonths: string;
+  dependents: string;
   
   // Risk Tolerance (25% weight)
-  volatilityComfort: "panic_sell" | "very_uncomfortable" | "somewhat_concerned" | "stay_calm" | "buy_more";
-  maxAcceptableLoss: "5%" | "10%" | "20%" | "30%" | "40%+";
-  investmentKnowledge: "beginner" | "some_knowledge" | "experienced" | "expert";
-  previousLosses: "never_invested" | "no_major_losses" | "some_losses_learned" | "major_losses_still_investing";
+  volatilityComfort: string;
+  maxAcceptableLoss: string;
+  investmentKnowledge: string;
   
   // Goals & Objectives (20% weight)
-  primaryGoal: "retirement" | "wealth_building" | "income_generation" | "child_education" | "home_purchase" | "preservation";
-  expectedReturn: "5-8%" | "8-12%" | "12-15%" | "15-20%" | "20%+";
-  liquidityNeeds: "never" | "once_year" | "few_times_year" | "monthly" | "frequently";
-  esgPreference: "no_preference" | "some_esg" | "strong_esg" | "impact_only";
+  primaryGoal: string;
   
   // Additional Context
-  jobStability: "very_stable" | "somewhat_stable" | "not_stable";
-  withdrawalNext2Years: boolean;
   hasInsurance: boolean;
   avoidAssets?: AssetClass[];
+  
+  // Inferred values (added by allocation engine)
+  monthlyObligations?: string;
+  liquidityNeeds?: string;
+  jobStability?: string;
+  withdrawalNext2Years?: boolean;
+  expectedReturn?: string;
+  geographicContext?: string;
 }
 
 /**
- * Geographic Context System
- * Provides city classification and relative income positioning
+ * Behavioral Consistency Validation System
+ * Detects contradictory answers and provides advisor guidance
  */
-type CityTier = "Tier-1" | "Tier-2" | "Tier-3" | "Metro";
-
-const CITY_CLASSIFICATIONS: Record<string, CityTier> = {
-  // Metro Cities (Highest cost of living)
-  "Mumbai": "Metro",
-  "Delhi": "Metro", 
-  "Bangalore": "Metro",
-  "Hyderabad": "Metro",
-  "Chennai": "Metro",
-  "Kolkata": "Metro",
-  "Pune": "Metro",
-  "Ahmedabad": "Metro",
-  
-  // Tier-1 Cities (High cost of living)
-  "Gurgaon": "Tier-1",
-  "Noida": "Tier-1",
-  "Thane": "Tier-1",
-  "Navi Mumbai": "Tier-1",
-  "Ghaziabad": "Tier-1",
-  "Faridabad": "Tier-1",
-  
-  // Tier-2 Cities (Moderate cost of living)
-  "Indore": "Tier-2",
-  "Bhopal": "Tier-2",
-  "Jaipur": "Tier-2",
-  "Lucknow": "Tier-2",
-  "Kanpur": "Tier-2",
-  "Nagpur": "Tier-2",
-  "Vadodara": "Tier-2",
-  "Surat": "Tier-2",
-  
-  // Tier-3 Cities (Lower cost of living)
-  "Varanasi": "Tier-3",
-  "Prayagraj": "Tier-3",
-  "Gorakhpur": "Tier-3",
-  "Bareilly": "Tier-3",
-  "Moradabad": "Tier-3",
-  "Saharanpur": "Tier-3"
-};
-
-const getCityTier = (city: string): CityTier => {
-  const normalizedCity = city.trim().toLowerCase();
-  
-  for (const [cityName, tier] of Object.entries(CITY_CLASSIFICATIONS)) {
-    if (cityName.toLowerCase() === normalizedCity) {
-      return tier;
-    }
-  }
-  
-  // Default to Tier-2 for unknown cities
-  return "Tier-2";
-};
-
-const getRelativeIncomePosition = (income: string, city: string): string => {
-  const cityTier = getCityTier(city);
-  
-  switch (cityTier) {
-    case "Metro":
-      if (income === "5L+") return "Moderate";
-      if (income === "2L-5L") return "Low";
-      if (income === "1L-2L") return "Very Low";
-      return "Very Low";
-      
-    case "Tier-1":
-      if (income === "5L+") return "High";
-      if (income === "2L-5L") return "Moderate";
-      if (income === "1L-2L") return "Low";
-      return "Low";
-      
-    case "Tier-2":
-      if (income === "5L+") return "Very High";
-      if (income === "2L-5L") return "High";
-      if (income === "1L-2L") return "Moderate";
-      return "Moderate";
-      
-    case "Tier-3":
-      if (income === "5L+") return "Very High";
-      if (income === "2L-5L") return "Very High";
-      if (income === "1L-2L") return "High";
-      return "High";
-      
-    default:
-      return "Moderate";
-  }
-};
-
-const getGeographicIncomeMultiplier = (income: any, city: string): number => {
-  const relative = getRelativeIncomePosition(income.absolute || income, city);
-  
-  switch (relative) {
-    case "Very High": return 1.2;  // Wider ranges for high relative income
-    case "High": return 1.1;
-    case "Moderate": return 1.0;
-    case "Low": return 0.9;         // Tighter ranges for low relative income
-    case "Very Low": return 0.8;    // Even tighter for very low relative income
-    default: return 1.0;
-  }
-};
+interface ConsistencyRule {
+  condition: (a: CouncilAnswers) => boolean;
+  message: string;
+  severity: "critical" | "warning";
+  category: "risk-reward" | "timeline" | "financial-foundation" | "behavioral";
+  suggestedAction: string;
+  advisorNote?: string; // Additional context for advisors
+}
 
 export interface Signal {
   factor: string;
@@ -284,28 +186,7 @@ const stressTestScenarios: Record<string, StressTestScenario> = {
   }
 };
 
-/**
- * Behavioral Consistency Validation System
- * Catches contradictory answers that advisors would flag
- */
-interface ConsistencyRule {
-  condition: (answers: CouncilAnswers) => boolean;
-  message: string;
-  severity: "warning" | "critical";
-  category: "risk-reward" | "timeline" | "financial-foundation" | "behavioral";
-  suggestedAction: string;
-  advisorNote?: string; // Additional context for advisors
-}
-
 const consistencyRules: ConsistencyRule[] = [
-  {
-    condition: (a: CouncilAnswers) => a.volatilityComfort === "panic_sell" && a.expectedReturn === "20%+",
-    message: "High return expectation with low volatility tolerance",
-    severity: "critical",
-    category: "risk-reward",
-    suggestedAction: "Clarify realistic return expectations vs risk tolerance",
-    advisorNote: "Client may not understand risk-return relationship"
-  },
   {
     condition: (a: CouncilAnswers) => a.investmentHorizon === "<2 years" && a.primaryGoal === "wealth_building",
     message: "Short horizon with long-term wealth building goal",
@@ -313,14 +194,6 @@ const consistencyRules: ConsistencyRule[] = [
     category: "timeline",
     suggestedAction: "Discuss timeline alignment or goal adjustment",
     advisorNote: "Consider if client understands wealth building timelines"
-  },
-  {
-    condition: (a: CouncilAnswers) => a.maxAcceptableLoss === "5%" && a.expectedReturn === "15-20%",
-    message: "Low loss tolerance with high return expectations",
-    severity: "critical",
-    category: "risk-reward",
-    suggestedAction: "Educate on realistic risk-return trade-offs",
-    advisorNote: "Common misconception - needs education"
   },
   {
     condition: (a: CouncilAnswers) => a.emergencyFundMonths === "0-1" && a.primaryGoal === "retirement",
@@ -403,10 +276,14 @@ class SignalProcessor {
     signals.push(this.getHorizonSignal(answers.investmentHorizon));
     
     // Financial Situation Signals (30% weight)
-    signals.push(this.getIncomeStabilitySignal(answers.jobStability));
+    if (answers.jobStability) {
+      signals.push(this.getIncomeStabilitySignal(answers.jobStability));
+    }
     signals.push(this.getDependentsSignal(answers.dependents));
     signals.push(this.getEmergencyFundSignal(answers.emergencyFundMonths));
-    signals.push(this.getObligationsSignal(answers.monthlyObligations));
+    if (answers.monthlyObligations) {
+      signals.push(this.getObligationsSignal(answers.monthlyObligations));
+    }
     
     // Risk Tolerance Signals (25% weight)
     signals.push(this.getVolatilitySignal(answers.volatilityComfort));
@@ -415,7 +292,9 @@ class SignalProcessor {
     
     // Goals & Objectives (20% weight)
     signals.push(this.getGoalSignal(answers.primaryGoal));
-    signals.push(this.getLiquiditySignal(answers.liquidityNeeds));
+    if (answers.liquidityNeeds) {
+      signals.push(this.getLiquiditySignal(answers.liquidityNeeds));
+    }
     
     // Contextual Signals
     if (answers.withdrawalNext2Years) {
@@ -1180,7 +1059,7 @@ class StressTester {
   
   private estimateMonthlyExpenses(answers: CouncilAnswers): number {
     // Rough estimation based on income and obligations
-    const incomeMapping = {
+    const incomeMapping: Record<string, number> = {
       "<50K": 35000,
       "50K-1L": 75000,
       "1L-2L": 150000,
@@ -1188,7 +1067,7 @@ class StressTester {
       "5L+": 750000
     };
     
-    const monthlyIncome = incomeMapping[answers.annualIncome.absolute] / 12;
+    const monthlyIncome = incomeMapping[answers.annualIncome.absolute as keyof typeof incomeMapping] / 12;
     
     // Estimate expenses as 60-80% of income based on dependents
     const expenseRatio = answers.dependents === "0" ? 0.6 : 
@@ -1200,7 +1079,7 @@ class StressTester {
   private getEmergencyFundValue(answers: CouncilAnswers): number {
     const monthlyExpenses = this.estimateMonthlyExpenses(answers);
     
-    const efMapping = {
+    const efMapping: Record<string, number> = {
       "0-1": 0.5,
       "2-3": 2.5,
       "4-6": 5,
@@ -1208,7 +1087,7 @@ class StressTester {
       "12+": 15
     };
     
-    return monthlyExpenses * efMapping[answers.emergencyFundMonths];
+    return monthlyExpenses * efMapping[answers.emergencyFundMonths as keyof typeof efMapping];
   }
 }
 
