@@ -499,7 +499,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                     <div key={index} className="flex items-center justify-between p-2 bg-muted/20 rounded text-xs">
                       <div className="flex-1">
                         <div className="font-medium capitalize">
-                          {signal.factor.replace(/_/g, ' ')}
+                          {signal.factor?.replace(/_/g, ' ') || 'Unknown Factor'}
                         </div>
                         <div className="text-muted-foreground text-[11px]">
                           {signal.explanation}

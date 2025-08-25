@@ -710,7 +710,7 @@ class RationaleGenerator {
     const equityTotal = allocation.Stocks + allocation["Mutual Funds"];
     
     if (riskLevel === "Aggressive") {
-      return `Your ${equityTotal}% equity allocation reflects your comfort with volatility and long-term growth focus, supported by your ${answers.volatilityComfort.replace('_', ' ')} approach to market fluctuations.`;
+      return `Your ${equityTotal}% equity allocation reflects your comfort with volatility and long-term growth focus, supported by your ${answers.volatilityComfort?.replace('_', ' ') || 'moderate'} approach to market fluctuations.`;
     } else if (riskLevel === "Conservative") {
       return `The conservative ${100 - equityTotal}% allocation to safety assets provides stability aligned with your risk comfort level and circumstances.`;
     } else {
