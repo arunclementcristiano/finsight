@@ -97,6 +97,29 @@ export function buildPlan(answers: QuestionnaireAnswers): AllocationPlan {
   const advisorEngine = new AdvisorCouncilEngine();
   const result = advisorEngine.generateRecommendation(convertedAnswers);
   
+  // Debug logging to see what we got
+  console.log("🔍 ENGINE RESULT DEBUG:", {
+    hasSignals: !!result.signals,
+    signalsCount: result.signals?.length || 0,
+    hasStressTest: !!result.stressTest,
+    stressTestScenarios: result.stressTest ? Object.keys(result.stressTest.scenarios) : [],
+    hasRationale: !!result.rationale,
+    rationaleCount: result.rationale?.length || 0,
+    riskScore: result.riskScore,
+    riskLevel: result.riskLevel
+  });
+  
+  // Log the actual data structures
+  if (result.signals) {
+    console.log("📊 SIGNALS DATA:", result.signals);
+  }
+  if (result.stressTest) {
+    console.log("🧪 STRESS TEST DATA:", result.stressTest);
+  }
+  if (result.rationale) {
+    console.log("💭 RATIONALE DATA:", result.rationale);
+  }
+  
   // Convert the result to our standard format
   const plan: AllocationPlan = {
     equity: result.allocation.Stocks + result.allocation["Mutual Funds"],
