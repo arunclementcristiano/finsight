@@ -163,6 +163,17 @@ const inferRemovedValues = (answers: QuestionnaireAnswers): InferredValues => {
   const expectedReturn = getExpectedReturn(answers.maxAcceptableLoss, answers.volatilityComfort);
   const geographicContext = getGeographicContext(answers.annualIncome as string, monthlyObligations);
 
+  // Debug logging to see what's being inferred
+  console.log("🔍 DEBUG: Inferred Values:", {
+    monthlyObligations,
+    liquidityNeeds,
+    jobStability,
+    withdrawalNext2Years,
+    expectedReturn,
+    geographicContext,
+    originalIncome: answers.annualIncome
+  });
+
   return {
     monthlyObligations,
     liquidityNeeds,

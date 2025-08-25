@@ -277,11 +277,13 @@ class SignalProcessor {
     
     // Financial Situation Signals (30% weight)
     if (answers.jobStability) {
+      console.log("🔍 DEBUG: Adding job stability signal for:", answers.jobStability);
       signals.push(this.getIncomeStabilitySignal(answers.jobStability));
     }
     signals.push(this.getDependentsSignal(answers.dependents));
     signals.push(this.getEmergencyFundSignal(answers.emergencyFundMonths));
     if (answers.monthlyObligations) {
+      console.log("🔍 DEBUG: Adding monthly obligations signal for:", answers.monthlyObligations);
       signals.push(this.getObligationsSignal(answers.monthlyObligations));
     }
     
@@ -293,11 +295,13 @@ class SignalProcessor {
     // Goals & Objectives (20% weight)
     signals.push(this.getGoalSignal(answers.primaryGoal));
     if (answers.liquidityNeeds) {
+      console.log("🔍 DEBUG: Adding liquidity needs signal for:", answers.liquidityNeeds);
       signals.push(this.getLiquiditySignal(answers.liquidityNeeds));
     }
     
     // Contextual Signals
     if (answers.withdrawalNext2Years) {
+      console.log("🔍 DEBUG: Adding withdrawal next 2 years signal");
       signals.push({
         factor: "withdrawal_next_2yrs",
         equitySignal: -10,
@@ -305,6 +309,12 @@ class SignalProcessor {
         weight: 0.15,
         explanation: "Near-term withdrawal needs require higher liquid allocation"
       });
+    }
+    
+    // Geographic Context Signal (NEW - from inferred values)
+    if (answers.geographicContext) {
+      console.log("🔍 DEBUG: Adding geographic context signal for:", answers.geographicContext);
+      signals.push(this.getGeographicContextSignal(answers.geographicContext));
     }
     
     console.log("Insurance check - hasInsurance:", answers.hasInsurance);
@@ -320,6 +330,16 @@ class SignalProcessor {
     } else {
       console.log("Insurance is adequate, no negative signal added");
     }
+    
+    // Debug: Log all signals and their impact
+    console.log("🔍 DEBUG: All signals generated:", signals.map(s => ({
+      factor: s.factor,
+      equitySignal: s.equitySignal,
+      safetySignal: s.safetySignal,
+      weight: s.weight,
+      weightedEquity: s.equitySignal * s.weight,
+      weightedSafety: s.safetySignal * s.weight
+    })));
     
     return signals;
   }
@@ -571,6 +591,24 @@ class SignalProcessor {
       "liquidity_needs",
       0.10,
       { equity: -2, safety: +3, explanation: "Unknown liquidity needs, applying moderate safety buffer" }
+    );
+  }
+
+  private getGeographicContextSignal(context: string): Signal {
+    const contextSignals = {
+      "urban_affluent": { equity: +8, safety: -5, explanation: "Urban affluent areas allow for higher risk tolerance and equity exposure" },
+      "urban_standard": { equity: +5, safety: -3, explanation: "Urban standard areas support moderate growth strategies" },
+      "suburban": { equity: +2, safety: -1, explanation: "Suburban areas suggest balanced growth and safety approach" },
+      "rural_standard": { equity: -2, safety: +3, explanation: "Rural areas may require more conservative positioning" },
+      "rural_challenged": { equity: -5, safety: +8, explanation: "Challenged rural areas necessitate conservative safety-first approach" }
+    };
+    
+    return this.getSignalSafely(
+      contextSignals,
+      context,
+      "geographic_context",
+      0.10,
+      { equity: 0, safety: 0, explanation: "Unknown geographic context, applying neutral allocation" }
     );
   }
 }
