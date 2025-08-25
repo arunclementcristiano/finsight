@@ -181,21 +181,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
 
   return (
     <div className="space-y-3">
-      {/* Compact KPIs */}
-      <div className="grid grid-cols-3 gap-2">
-        <div className="rounded-lg border border-border p-2 text-center">
-          <div className="text-[11px] text-muted-foreground">Equity</div>
-          <div className="text-base font-semibold text-indigo-600">{kpis.equity.toFixed(0)}%</div>
-        </div>
-        <div className="rounded-lg border border-border p-2 text-center">
-          <div className="text-[11px] text-muted-foreground">Defensive</div>
-          <div className="text-base font-semibold text-emerald-600">{kpis.defensive.toFixed(0)}%</div>
-        </div>
-        <div className="rounded-lg border border-border p-2 text-center">
-          <div className="text-[11px] text-muted-foreground">Satellite</div>
-          <div className="text-base font-semibold text-amber-600">{kpis.satellite}%</div>
-        </div>
-      </div>
+      {/* Additional Metrics */}
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded-md border border-border p-2 text-center">
           <div className="text-[11px] text-muted-foreground">Household Real Estate</div>

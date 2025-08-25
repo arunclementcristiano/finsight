@@ -31,6 +31,24 @@ export default function RiskProfile({ riskLevel, riskScore, className = "", comp
     }
   };
 
+  const getRiskGradient = (level: string) => {
+    switch (level) {
+      case "Conservative": return "from-green-50 to-emerald-50 border-green-200";
+      case "Moderate": return "from-yellow-50 to-amber-50 border-yellow-200";
+      case "Aggressive": return "from-red-50 to-rose-50 border-red-200";
+      default: return "from-gray-50 to-slate-50 border-gray-200";
+    }
+  };
+
+  const getRiskTextColor = (level: string) => {
+    switch (level) {
+      case "Conservative": return "text-green-800";
+      case "Moderate": return "text-yellow-800";
+      case "Aggressive": return "text-red-800";
+      default: return "text-gray-800";
+    }
+  };
+
   const getRiskDescription = (level: string) => {
     switch (level) {
       case "Conservative": return "Lower risk, stable returns";
@@ -48,12 +66,11 @@ export default function RiskProfile({ riskLevel, riskScore, className = "", comp
 
   if (compact) {
     return (
-      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${getRiskColor(riskLevel || "")} ${className}`}>
-        {getRiskIcon(riskLevel || "")}
-        <span className="text-sm font-medium">{riskLevel}</span>
-        {riskScore && (
-          <span className="text-xs opacity-75">({riskScore})</span>
-        )}
+      <div className={`text-center`}>
+        <div className="text-sm font-medium text-gray-600 mb-1">{riskLevel}</div>
+        <div className={`text-lg font-bold ${getRiskTextColor(riskLevel || "")}`}>
+          {riskScore ? `${riskScore}/100` : riskLevel}
+        </div>
       </div>
     );
   }
