@@ -1658,6 +1658,13 @@ export class AdvisorCouncilEngine {
       "Liquid": liquid
     };
     console.log("🔧 STEP 5 - BASE ALLOCATION CREATED:", {
+      allocation,
+      totals: {
+        equity: stocks + mutualFunds,
+        safety: liquid + debt + gold + realEstate,
+        total: Object.values(allocation).reduce((sum, val) => sum + val, 0)
+      }
+    });
     
     // Step 5.5: Apply goal-based adjustments (NEW!)
     if (answers.goals && answers.goals.length > 0) {
