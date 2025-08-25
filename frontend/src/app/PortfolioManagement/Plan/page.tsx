@@ -12,9 +12,10 @@ import { Modal } from "../../components/Modal";
 import { RotateCcw, Save as SaveIcon, AlertTriangle, ShieldOff } from "lucide-react";
 import { pruneQuestionnaire, stableAnswersSig } from "../domain/answersUtil";
 import { advisorTune } from "../domain/advisorTune";
+import PlanKPIs from "../components/PlanKPIs";
 
 export default function PlanPage() {
-	const { plan, setPlan, activePortfolioId, questionnaire, setQuestionAnswer, setQuestionnaire, getCustomDraft, setCustomDraft, getCustomLocks, setCustomLocks, getCustomSaved, setCustomSaved } = useApp() as any;
+	const { plan, setPlan, activePortfolioId, questionnaire, setQuestionAnswer, setQuestionnaire, getCustomDraft, setCustomDraft, getCustomLocks, setCustomLocks, getCustomSaved, setCustomSaved, holdings } = useApp() as any;
 	const router = useRouter();
 	const [local, setLocal] = useState<any | null>(plan || null);
 	const [aiLoading, setAiLoading] = useState(false);
@@ -540,6 +541,13 @@ export default function PlanPage() {
 					</div>
 				</div>
 			</Modal>
+
+			{/* Enhanced KPI Dashboard */}
+			<PlanKPIs 
+				plan={local}
+				holdings={holdings || []}
+				className="mb-6"
+			/>
 
 			<PlanSummary
 				plan={local}
