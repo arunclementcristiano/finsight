@@ -63,7 +63,19 @@ export function buildPlan(answers: QuestionnaireAnswers): AllocationPlan {
   // Convert avoidAssets from string[] to AssetClass[]
   const convertedAnswers = {
     ...answers,
-    avoidAssets: answers.avoidAssets?.map(asset => asset as AssetClass) || []
+    withdrawalNext2Years: typeof answers.withdrawalNext2Years === 'boolean' ? answers.withdrawalNext2Years : answers.withdrawalNext2Years === 'Yes',
+    hasInsurance: typeof answers.hasInsurance === 'boolean' ? answers.hasInsurance : answers.hasInsurance === 'Yes',
+    avoidAssets: (() => {
+      if (!answers.avoidAssets) return [];
+      if (Array.isArray(answers.avoidAssets)) {
+        return answers.avoidAssets.map(asset => asset as AssetClass);
+      }
+      // Handle single string case
+      if (typeof answers.avoidAssets === 'string') {
+        return [answers.avoidAssets as AssetClass];
+      }
+      return [];
+    })()
   };
   
   // Use the new AdvisorCouncilEngine directly
