@@ -10,7 +10,7 @@ import { questions } from "../domain/questionnaire";
 import { buildPlan } from "../domain/allocationEngine";
 import { Modal } from "../../components/Modal";
 import { RotateCcw, Save as SaveIcon, AlertTriangle, ShieldOff } from "lucide-react";
-import { pruneQuestionnaire, stableAnswersSig } from "../domain/answersUtil";
+
 import { advisorTune } from "../domain/advisorTune";
 import PlanKPIs from "../components/PlanKPIs";
 
@@ -37,7 +37,7 @@ export default function PlanPage() {
 	const saveChip = useMemo(() => {
 		try {
 			const pruneAlloc = (p:any)=> ({ riskLevel: p?.riskLevel, buckets: (p?.buckets||[]).map((b:any)=>({ class: b.class, pct: b.pct })) });
-			const snapshot = pruneQuestionnaire(questionnaire);
+			const snapshot = questionnaire; // Simplified - no pruning needed
 			const answersDirty = makeAnswersSig(snapshot) !== (((plan as any)?.answersSig) || "");
 			const allocDirty = !!(local && plan && JSON.stringify(pruneAlloc(local)) !== JSON.stringify(pruneAlloc(plan)));
 			const originDirty = (mode === 'custom' && ((plan as any)?.origin !== 'custom'));
@@ -53,7 +53,7 @@ export default function PlanPage() {
 	}, [toast]);
 
 	function makeAnswersSig(q: any): string {
-		try { return stableAnswersSig(q); } catch { try { return JSON.stringify({ q }); } catch { return ""; } }
+		try { return JSON.stringify(q); } catch { return ""; }
 	}
 	function makeSummary(baseline: any, aiBuckets: any[]): string {
 		try {
@@ -184,7 +184,7 @@ export default function PlanPage() {
 
 	async function handleSaveClick() {
 		const pruneAlloc = (p:any)=> ({riskLevel:p?.riskLevel, buckets:(p?.buckets||[]).map((b:any)=>({class:b.class, pct:b.pct}))});
-		const snapshot = pruneQuestionnaire(questionnaire);
+					const snapshot = questionnaire; // Simplified - no pruning needed
 		const answersDirty = makeAnswersSig(snapshot) !== (((plan as any)?.answersSig) || "");
 		const allocDirty = !!(local && plan && JSON.stringify(pruneAlloc(local)) !== JSON.stringify(pruneAlloc(plan)));
 		const originDirty = (mode === 'custom' && ((plan as any)?.origin !== 'custom'));

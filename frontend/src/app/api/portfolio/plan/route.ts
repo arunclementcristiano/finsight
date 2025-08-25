@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { getUserSubFromJwt } from "../../_utils/auth";
-import { pruneQuestionnaire, stableAnswersSig } from "../../../PortfolioManagement/domain/answersUtil";
+
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.AWS_REGION || "us-east-1" }));
 const INVEST_TABLE = process.env.INVEST_TABLE || "InvestApp";
@@ -22,9 +22,9 @@ export async function PUT(req: NextRequest) {
 	const now = new Date().toISOString();
 	const origin = (plan?.origin || '').toLowerCase();
 	try {
-		const snap = pruneQuestionnaire((plan as any)?.answersSnapshot || {});
+		const snap = (plan as any)?.answersSnapshot || {}; // Simplified - no pruning needed
 		(plan as any).answersSnapshot = snap;
-		(plan as any).answersSig = stableAnswersSig(snap);
+		(plan as any).answersSig = JSON.stringify(snap); // Simplified signature
 		(plan as any).policyVersion = (plan as any).policyVersion || 'v1';
 		(plan as any).compliance = {
 			savedAt: now,

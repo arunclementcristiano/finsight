@@ -4,16 +4,27 @@ import { Info, Check } from "lucide-react";
 
 interface QuestionCardProps {
 	questionText: string;
-	options: string[];
-	selected: string | string[];
-	onChange: (value: string | string[]) => void;
+	options?: string[];
+	selected: string | string[] | number;
+	onChange: (value: string | string[] | number) => void;
 	multiSelect?: boolean;
 	helperText?: string;
 	maxSelect?: number;
-  compact?: boolean;
+	compact?: boolean;
+	type?: "text" | "number";
 }
 
-export default function QuestionCard({ questionText, options, selected, onChange, multiSelect, helperText, maxSelect, compact }: QuestionCardProps) {
+export default function QuestionCard({ 
+	questionText, 
+	options = [], 
+	selected, 
+	onChange, 
+	multiSelect, 
+	helperText, 
+	maxSelect, 
+	compact,
+	type = "text"
+}: QuestionCardProps) {
 	const isSelected = (option: string) => {
 		if (multiSelect && Array.isArray(selected)) return selected.includes(option);
 		return selected === option;
@@ -30,6 +41,35 @@ export default function QuestionCard({ questionText, options, selected, onChange
 			onChange(option);
 		}
 	};
+
+	const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const value = e.target.value;
+		onChange(value === "" ? 0 : Number(value));
+	};
+
+	if (type === "number") {
+		return (
+			<Card className="w-full">
+				<CardContent>
+					<div className={`${compact ? "mb-1 text-base" : "mb-2 text-lg"} font-semibold`}>{questionText}</div>
+					{helperText && (
+						<div className={`inline-flex items-center gap-1 ${compact ? "mb-2 text-[11px]" : "mb-4 text-xs"} text-muted-foreground`}>
+							<Info className="h-3.5 w-3.5"/>{helperText}
+						</div>
+					)}
+					<div className="mt-4">
+						<input
+							type="number"
+							value={selected || ""}
+							onChange={handleNumberChange}
+							placeholder="Enter amount"
+							className="w-full px-4 py-3 border border-border rounded-lg bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-all duration-200"
+						/>
+					</div>
+				</CardContent>
+			</Card>
+		);
+	}
 
 	return (
 		<Card className="w-full">
