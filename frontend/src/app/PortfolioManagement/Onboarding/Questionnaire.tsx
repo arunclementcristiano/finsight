@@ -65,8 +65,7 @@ export default function Questionnaire() {
 
 			for (const field of requiredFields) {
 				const value = answers[field as keyof QuestionnaireAnswers];
-				if (value === undefined || value === null || 
-					(typeof value === 'number' && value === 0)) {
+				if (value === undefined || value === null) {
 					console.error(`Missing required field: ${field}`);
 					return null;
 				}

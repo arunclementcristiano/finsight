@@ -822,7 +822,9 @@ class StressTester {
         portfolioImpact += (percentage / 100) * (impact / 100);
       });
       
-      const monthsCovered = (emergencyFundValue + (portfolioImpact * answers.investmentAmount)) / monthlyExpenses;
+      const monthsCovered = monthlyExpenses > 0 ? 
+        (emergencyFundValue + (portfolioImpact * answers.investmentAmount)) / monthlyExpenses : 
+        emergencyFundValue > 0 ? 12 : 0; // Fallback if no expenses data
       
       let recommendation = "Portfolio shows good resilience";
       if (monthsCovered < 3) {
