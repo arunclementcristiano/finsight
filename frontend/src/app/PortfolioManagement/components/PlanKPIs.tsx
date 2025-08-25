@@ -41,7 +41,7 @@ export default function PlanKPIs({ plan, holdings = [], className = "" }: PlanKP
         {/* Equity */}
         <div className="rounded-lg border border-border bg-card p-3 text-center">
           <div className="text-xs text-muted-foreground mb-1">Equity</div>
-          <div className="text-lg font-semibold text-indigo-600 mb-1">
+          <div className="text-lg font-semibold text-indigo-600 dark:text-indigo-400 mb-1">
             {kpis.equity}%
           </div>
           <div className="text-[10px] text-muted-foreground">Growth Focus</div>
@@ -50,7 +50,7 @@ export default function PlanKPIs({ plan, holdings = [], className = "" }: PlanKP
         {/* Defensive */}
         <div className="rounded-lg border border-border bg-card p-3 text-center">
           <div className="text-xs text-muted-foreground mb-1">Defensive</div>
-          <div className="text-lg font-semibold text-emerald-600 mb-1">
+          <div className="text-lg font-semibold text-emerald-600 dark:text-emerald-400 mb-1">
             {kpis.defensive}%
           </div>
           <div className="text-[10px] text-muted-foreground">Stability</div>
@@ -59,7 +59,7 @@ export default function PlanKPIs({ plan, holdings = [], className = "" }: PlanKP
         {/* Satellite */}
         <div className="rounded-lg border border-border bg-card p-3 text-center">
           <div className="text-xs text-muted-foreground mb-1">Satellite</div>
-          <div className="text-lg font-semibold text-amber-600 mb-1">
+          <div className="text-lg font-semibold text-amber-600 dark:text-amber-400 mb-1">
             {kpis.satellite}%
           </div>
           <div className="text-[10px] text-muted-foreground">Diversification</div>
@@ -68,7 +68,7 @@ export default function PlanKPIs({ plan, holdings = [], className = "" }: PlanKP
         {/* Risk Profile */}
         <div className="rounded-lg border border-border bg-card p-3 text-center">
           <div className="text-xs text-muted-foreground mb-1">Risk Profile</div>
-          <div className="text-lg font-semibold text-gray-900 mb-1">
+          <div className="text-lg font-semibold text-foreground mb-1">
             {plan?.riskLevel || "—"}
           </div>
           <div className="text-[10px] text-muted-foreground">Tolerance Level</div>

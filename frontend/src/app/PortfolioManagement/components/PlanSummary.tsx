@@ -185,17 +185,17 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-lg border border-border bg-card p-3 text-center">
           <div className="text-xs text-muted-foreground mb-1">Real Estate</div>
-          <div className="text-lg font-semibold text-gray-900 mb-1">{kpiExtras.rePct}%</div>
+          <div className="text-lg font-semibold text-foreground mb-1">{kpiExtras.rePct}%</div>
           <div className="text-[10px] text-muted-foreground">Household</div>
         </div>
         <div className="rounded-lg border border-border bg-card p-3 text-center">
           <div className="text-xs text-muted-foreground mb-1">Rebalance Cost</div>
-          <div className="text-lg font-semibold text-gray-900 mb-1">₹{kpiExtras.estCost.toLocaleString()}</div>
+          <div className="text-lg font-semibold text-foreground mb-1">₹{kpiExtras.estCost.toLocaleString()}</div>
           <div className="text-[10px] text-muted-foreground">Turnover {kpiExtras.turnover}%</div>
         </div>
         <div className="rounded-lg border border-border bg-card p-3 text-center">
           <div className="text-xs text-muted-foreground mb-1">Portfolio Status</div>
-          <div className="text-lg font-semibold text-gray-900 mb-1">Active</div>
+          <div className="text-lg font-semibold text-foreground mb-1">Active</div>
           <div className="text-[10px] text-muted-foreground">Monitoring</div>
         </div>
       </div>
