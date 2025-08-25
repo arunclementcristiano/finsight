@@ -190,7 +190,19 @@ export function buildPlan(q: Record<string, any>): AllocationPlan {
 function isEnhancedQuestionnaire(q: Record<string, any>): boolean {
   // Check if questionnaire has new enhanced fields
   const enhancedFields = ['investmentAmount', 'jobStability', 'volatilityComfort', 'primaryGoal'];
-  return enhancedFields.some(field => q[field] !== undefined);
+  const hasEnhancedFields = enhancedFields.some(field => q[field] !== undefined);
+  
+  // If it has enhanced fields, use the new format directly
+  if (hasEnhancedFields) {
+    return true;
+  }
+  
+  // If it has legacy fields, we can convert them - so treat as "enhanced" for new engine usage
+  const legacyFields = ['ageBand', 'horizon', 'incomeStability', 'volatilityComfort', 'investmentKnowledge'];
+  const hasLegacyFields = legacyFields.some(field => q[field] !== undefined);
+  
+  // Use new engine for both enhanced and convertible legacy questionnaires
+  return hasLegacyFields;
 }
 
 function buildPlanWithAdvisorCouncil(q: Record<string, any>): AllocationPlan {
