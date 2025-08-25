@@ -22,6 +22,21 @@ export interface AllocationPlan {
   }>;
   riskLevel: RiskLevel;
   riskScore?: number;
+  // Advanced engine data
+  signals?: Array<{
+    factor: string;
+    equitySignal: number;
+    safetySignal: number;
+    weight: number;
+    explanation: string;
+  }>;
+  stressTest?: {
+    scenarios: Record<string, {
+      portfolioImpact: number;
+      monthsCovered: number;
+      recommendation: string;
+    }>;
+  };
 }
 
 export interface QuestionnaireAnswers {
@@ -135,7 +150,10 @@ export function buildPlan(answers: QuestionnaireAnswers): AllocationPlan {
       }
     ],
     riskLevel: result.riskLevel,
-    riskScore: result.riskScore
+    riskScore: result.riskScore,
+    // Advanced engine data
+    signals: result.signals,
+    stressTest: result.stressTest
   };
   
   console.log("✅ Generated plan:", plan);
