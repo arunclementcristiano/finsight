@@ -67,10 +67,7 @@ export const questions: Question[] = [
     text: "What is your investment knowledge level?",
     options: ["beginner", "some_knowledge", "experienced", "expert"],
     helperText: "Your familiarity with investments."
-  },
-  
-  },
-  
+  }, 
   // Additional Context
   {
     key: "hasInsurance",

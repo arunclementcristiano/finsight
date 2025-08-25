@@ -63,6 +63,7 @@ interface Goal {
   targetAmount: number;
   targetDate: Date;
   priority: 1 | 2 | 3 | 4 | 5;
+  status: "active" | "inactive" | "completed";
 }
 export interface CouncilAnswers {
   // Demographics & Time Horizon (25% weight)
@@ -1450,7 +1451,20 @@ class GoalAnalyzer {
     goalCount: number;
   } {
     if (!goals || goals.length === 0) {
+    // Filter only active goals for allocation decisions
+    const activeGoals = goals.filter(goal => goal.status === "active");
+    
+    if (activeGoals.length === 0) {
       return {
+        shortTermWeight: 0,
+        mediumTermWeight: 0,
+        longTermWeight: 0,
+        totalPriority: 0,
+        goalCount: goals.length,
+      activeGoalCount: activeGoals.length,
+        activeGoalCount: 0
+      };
+    }      return {
         shortTermWeight: 0,
         mediumTermWeight: 0,
         longTermWeight: 0,
@@ -1483,7 +1497,8 @@ class GoalAnalyzer {
       mediumTermWeight,
       longTermWeight,
       totalPriority,
-      goalCount: goals.length
+      goalCount: goals.length,
+      activeGoalCount: activeGoals.length
     };
   }
 
@@ -1500,7 +1515,20 @@ class GoalAnalyzer {
     answers: CouncilAnswers
   ): Record<AssetClass, number> {
     if (!goals || goals.length === 0) {
-      return baseAllocation;
+    // Filter only active goals for allocation decisions
+    const activeGoals = goals.filter(goal => goal.status === "active");
+    
+    if (activeGoals.length === 0) {
+      return {
+        shortTermWeight: 0,
+        mediumTermWeight: 0,
+        longTermWeight: 0,
+        totalPriority: 0,
+        goalCount: goals.length,
+      activeGoalCount: activeGoals.length,
+        activeGoalCount: 0
+      };
+    }      return baseAllocation;
     }
 
     const goalAnalysis = this.analyzeGoals(goals);
