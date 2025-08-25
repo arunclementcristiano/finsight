@@ -466,10 +466,13 @@ class SignalProcessor {
   
   private getObligationsSignal(obligations: string): Signal {
     const obligationSignals = {
-      "<10K": { equity: +3, safety: -2, explanation: "Low obligations allow for higher risk tolerance" },
+      "<5K": { equity: +5, safety: -3, explanation: "Very low obligations allow for maximum risk tolerance" },
+      "5K-12K": { equity: +3, safety: -2, explanation: "Low obligations allow for higher risk tolerance" },
+      "8K-20K": { equity: +1, safety: -1, explanation: "Moderate-low obligations support growth positioning" },
       "10K-25K": { equity: 0, safety: 0, explanation: "Moderate obligations suggest balanced approach" },
-      "25K-50K": { equity: -3, safety: +5, explanation: "High obligations require increased stability" },
-      "50K+": { equity: -8, safety: +10, explanation: "Very high obligations necessitate conservative positioning" }
+      "15K-30K": { equity: 0, safety: 0, explanation: "Moderate obligations suggest balanced approach" },
+      "25K-50K": { equity: -1, safety: +2, explanation: "Moderate-high obligations suggest slight safety buffer" },
+      "50K+": { equity: -3, safety: +5, explanation: "High obligations require increased stability" }
     };
     
     return this.getSignalSafely(
