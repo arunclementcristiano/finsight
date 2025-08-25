@@ -271,6 +271,7 @@ class SignalProcessor {
     console.log("📋 Input answers:", answers);
     
     const signals: Signal[] = [];
+    let signalId = 1;
     
     // Calculate dynamic weights based on goal context
     const { ageWeight, horizonWeight, goalWeight } = this.calculateDynamicWeights(answers.primaryGoal);
@@ -279,26 +280,39 @@ class SignalProcessor {
     // Age Signals (DYNAMIC WEIGHT: 25% base, adjusted by goal)
     const ageSignal = this.getAgeSignal(answers.age);
     ageSignal.weight = ageWeight;
+    ageSignal.factor = `age_${signalId++}`;
     console.log("👴 Age signal with dynamic weight:", ageSignal);
     signals.push(ageSignal);
     
     // Time Horizon (DYNAMIC WEIGHT: 25% base, adjusted by goal)
     const horizonSignal = this.getHorizonSignal(answers.investmentHorizon);
     horizonSignal.weight = horizonWeight;
+    horizonSignal.factor = `horizon_${signalId++}`;
     console.log("⏰ Horizon signal with dynamic weight:", horizonSignal);
     signals.push(horizonSignal);
     
     // Financial Situation (15% weight)
-    signals.push(this.getDependentsSignal(answers.dependents));
-    signals.push(this.getEmergencyFundSignal(answers.emergencyFundMonths));
+    const dependentsSignal = this.getDependentsSignal(answers.dependents);
+    dependentsSignal.factor = `dependents_${signalId++}`;
+    signals.push(dependentsSignal);
+    
+    const emergencySignal = this.getEmergencyFundSignal(answers.emergencyFundMonths);
+    emergencySignal.factor = `emergency_${signalId++}`;
+    signals.push(emergencySignal);
     
     // Risk Tolerance (15% weight) - Knowledge will be applied as multiplier later
-    signals.push(this.getVolatilitySignal(answers.volatilityComfort));
-    signals.push(this.getLossToleranceSignal(answers.maxAcceptableLoss));
+    const volatilitySignal = this.getVolatilitySignal(answers.volatilityComfort);
+    volatilitySignal.factor = `volatility_${signalId++}`;
+    signals.push(volatilitySignal);
+    
+    const lossSignal = this.getLossToleranceSignal(answers.maxAcceptableLoss);
+    lossSignal.factor = `loss_${signalId++}`;
+    signals.push(lossSignal);
     
     // Goals & Objectives (DYNAMIC WEIGHT: 15% base, adjusted by goal)
     const goalSignal = this.getGoalSignal(answers.primaryGoal);
     goalSignal.weight = goalWeight;
+    goalSignal.factor = `goal_${signalId++}`;
     console.log("🎯 Goal signal with dynamic weight:", goalSignal);
     signals.push(goalSignal);
     
@@ -306,7 +320,7 @@ class SignalProcessor {
     if (!answers.hasInsurance) {
       console.log("Adding no_insurance negative signal");
       signals.push({
-        factor: "no_insurance",
+        factor: `insurance_${signalId++}`,
         equitySignal: -10,
         safetySignal: +10,
         weight: 0.05, // REDISTRIBUTED: 5% weight
@@ -325,6 +339,15 @@ class SignalProcessor {
     
     // Apply knowledge multiplier to all signals (not as separate weight)
     this.applyKnowledgeMultiplier(signals, answers.investmentKnowledge);
+    
+    console.log("🔍 AFTER knowledge multiplier - signals:", signals.map(s => ({
+      factor: s.factor,
+      equitySignal: s.equitySignal,
+      safetySignal: s.safetySignal,
+      weight: s.weight,
+      weightedEquity: s.equitySignal * s.weight,
+      weightedSafety: s.safetySignal * s.weight
+    })));
     
     // Apply goal-specific volatility tolerance adjustments
     this.applyGoalSpecificAdjustments(signals, answers.primaryGoal, answers.investmentHorizon);
