@@ -846,6 +846,8 @@ class SignalProcessor {
  */
 class AllocationCalculator {
   calculateDynamicBase(signals: Signal[]): { equityBase: number; safetyBase: number; riskScore: number } {
+    console.log("🧮🧮🧮 CALCULATING DYNAMIC BASE! 🧮🧮🧮");
+    
     const neutralEquity = 50; // Starting baseline
     
     // Calculate weighted equity and safety signals
@@ -854,14 +856,35 @@ class AllocationCalculator {
     let totalWeight = 0;
     
     signals.forEach(signal => {
-      totalEquitySignal += signal.equitySignal * signal.weight;
-      totalSafetySignal += signal.safetySignal * signal.weight;
+      const weightedEquity = signal.equitySignal * signal.weight;
+      const weightedSafety = signal.safetySignal * signal.weight;
+      totalEquitySignal += weightedEquity;
+      totalSafetySignal += weightedSafety;
       totalWeight += signal.weight;
+      
+      console.log(`📊 Signal ${signal.factor}:`, {
+        weight: signal.weight,
+        equity: signal.equitySignal,
+        safety: signal.safetySignal,
+        weightedEquity: weightedEquity,
+        weightedSafety: weightedSafety
+      });
+    });
+    
+    console.log("📈 Totals:", {
+      totalEquitySignal,
+      totalSafetySignal,
+      totalWeight
     });
     
     // Normalize by total weight
     const avgEquitySignal = totalEquitySignal / totalWeight;
     const avgSafetySignal = totalSafetySignal / totalWeight;
+    
+    console.log("📊 Averages:", {
+      avgEquitySignal,
+      avgSafetySignal
+    });
     
     // Calculate dynamic equity base
     let equityBase = neutralEquity + avgEquitySignal - (avgSafetySignal * 0.5);
@@ -871,8 +894,15 @@ class AllocationCalculator {
     
     const safetyBase = 100 - equityBase;
     
-    // Calculate risk score (0-100)
-    const riskScore = Math.max(10, Math.min(90, 50 + avgEquitySignal));
+    // FIXED: Calculate risk score considering BOTH equity AND safety signals
+    // Higher equity signals = higher risk, higher safety signals = lower risk
+    const riskScore = Math.max(10, Math.min(90, 50 + avgEquitySignal - (avgSafetySignal * 0.3)));
+    
+    console.log("🎯 Final Results:", {
+      equityBase: Math.round(equityBase),
+      safetyBase: Math.round(safetyBase),
+      riskScore: Math.round(riskScore * 100) / 100
+    });
     
     return { equityBase, safetyBase, riskScore };
   }
