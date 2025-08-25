@@ -2,15 +2,18 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/Card";
 import { Shield, TrendingUp, AlertTriangle, Activity } from "lucide-react";
+import { transformRiskLevel, transformRiskScore } from "../domain/languageTransform";
+import type { DisplayMode } from "../domain/languageTransform";
 
 interface RiskProfileProps {
   riskLevel?: "Conservative" | "Moderate" | "Aggressive";
   riskScore?: number;
   className?: string;
   compact?: boolean;
+  displayMode?: DisplayMode;
 }
 
-export default function RiskProfile({ riskLevel, riskScore, className = "", compact = false }: RiskProfileProps) {
+export default function RiskProfile({ riskLevel, riskScore, className = "", compact = false, displayMode = 'investor' }: RiskProfileProps) {
   if (!riskLevel && !riskScore) return null;
 
   const getRiskIcon = (level: string) => {
@@ -50,26 +53,43 @@ export default function RiskProfile({ riskLevel, riskScore, className = "", comp
   };
 
   const getRiskDescription = (level: string) => {
-    switch (level) {
-      case "Conservative": return "Lower risk, stable returns";
-      case "Moderate": return "Balanced risk and growth";
-      case "Aggressive": return "Higher risk, growth focused";
-      default: return "Risk profile";
+    if (displayMode === 'advisor') {
+      switch (level) {
+        case "Conservative": return "Lower risk, stable returns";
+        case "Moderate": return "Balanced risk and growth";
+        case "Aggressive": return "Higher risk, growth focused";
+        default: return "Risk profile";
+      }
+    } else {
+      switch (level) {
+        case "Conservative": return "You prefer stable, low-risk investments";
+        case "Moderate": return "You're comfortable with some ups and downs for growth";
+        case "Aggressive": return "You're comfortable with significant swings for higher growth potential";
+        default: return "Your investment style";
+      }
     }
   };
 
   const getScoreDescription = (score: number) => {
-    if (score <= 30) return "Low risk tolerance";
-    if (score <= 60) return "Moderate risk tolerance";
-    return "High risk tolerance";
+    if (displayMode === 'advisor') {
+      if (score <= 30) return "Low risk tolerance";
+      if (score <= 60) return "Moderate risk tolerance";
+      return "High risk tolerance";
+    } else {
+      if (score <= 30) return "You prefer safety and stability";
+      if (score <= 60) return "You're comfortable with moderate risk for growth";
+      return "You're comfortable with higher risk for maximum growth potential";
+    }
   };
 
   if (compact) {
     return (
       <div className={`text-center`}>
-        <div className="text-sm font-medium text-gray-600 mb-1">{riskLevel}</div>
+        <div className="text-sm font-medium text-gray-600 mb-1">
+          {displayMode === 'advisor' ? riskLevel : transformRiskLevel(riskLevel || '', displayMode)}
+        </div>
         <div className={`text-lg font-bold ${getRiskTextColor(riskLevel || "")}`}>
-          {riskScore ? `${riskScore}/100` : riskLevel}
+          {riskScore ? (displayMode === 'advisor' ? `${riskScore}/100` : transformRiskScore(riskScore, displayMode)) : riskLevel}
         </div>
       </div>
     );
@@ -86,9 +106,13 @@ export default function RiskProfile({ riskLevel, riskScore, className = "", comp
       <CardContent className="space-y-3">
         {riskLevel && (
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">Risk Level</span>
+            <span className="text-sm text-gray-600">
+              {displayMode === 'advisor' ? 'Risk Level' : 'Your Investment Style'}
+            </span>
             <div className={`px-3 py-1 rounded-full border ${getRiskColor(riskLevel)}`}>
-              <span className="text-sm font-medium">{riskLevel}</span>
+              <span className="text-sm font-medium">
+                {displayMode === 'advisor' ? riskLevel : transformRiskLevel(riskLevel, displayMode)}
+              </span>
             </div>
           </div>
         )}
@@ -96,8 +120,12 @@ export default function RiskProfile({ riskLevel, riskScore, className = "", comp
         {riskScore && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Risk Score</span>
-              <span className="text-lg font-semibold text-gray-900">{riskScore}/100</span>
+              <span className="text-sm text-gray-600">
+                {displayMode === 'advisor' ? 'Risk Score' : 'Your Comfort Level'}
+              </span>
+              <span className="text-lg font-semibold text-gray-900">
+                {displayMode === 'advisor' ? `${riskScore}/100` : transformRiskScore(riskScore, displayMode)}
+              </span>
             </div>
             
             {/* Risk Score Bar */}

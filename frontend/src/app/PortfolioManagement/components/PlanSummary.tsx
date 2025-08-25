@@ -11,8 +11,40 @@ import { Sparkles } from "lucide-react";
 import { Modal } from "../../components/Modal";
 import GoalsInlineModal from "./GoalsInlineModal";
 import RiskProfile from "./RiskProfile";
+import { transformText, transformRiskLevel, transformRiskScore, transformAllocationRange, transformStressTestResult } from "../domain/languageTransform";
+import type { DisplayMode } from "../domain/languageTransform";
 
-export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, onBuildBaseline, aiViewOn, onToggleAiView, aiLoading, aiExplanation, aiSummary, mode, aiDisabled, locks, onToggleLock }: { plan: any; onChangeBucketPct?: (index: number, newPct: number) => void; onEditAnswers?: () => void; onBuildBaseline?: () => void; aiViewOn?: boolean; onToggleAiView?: () => void; aiLoading?: boolean; aiExplanation?: string; aiSummary?: string; mode?: 'advisor'|'custom'; aiDisabled?: boolean; locks?: Record<string, boolean>; onToggleLock?: (cls: string)=>void }) {
+export default function PlanSummary({ 
+	plan, 
+	onChangeBucketPct, 
+	onEditAnswers, 
+	onBuildBaseline, 
+	aiViewOn, 
+	onToggleAiView, 
+	aiLoading, 
+	aiExplanation, 
+	aiSummary, 
+	mode, 
+	aiDisabled, 
+	locks, 
+	onToggleLock,
+	displayMode = 'investor'
+}: { 
+	plan: any; 
+	onChangeBucketPct?: (index: number, newPct: number) => void; 
+	onEditAnswers?: () => void; 
+	onBuildBaseline?: () => void; 
+	aiViewOn?: boolean; 
+	onToggleAiView?: () => void; 
+	aiLoading?: boolean; 
+	aiExplanation?: string; 
+	aiSummary?: string; 
+	mode?: string; 
+	aiDisabled?: boolean; 
+	locks?: Record<string, boolean>; 
+	onToggleLock?: (cls: string) => void;
+	displayMode?: 'investor' | 'advisor';
+}) {
   const { holdings, driftTolerancePct, questionnaire, activePortfolioId } = useApp() as any;
   const [edgeHit, setEdgeHit] = useState<Record<string, { edge: 'min'|'max'; val: number } | null>>({});
   const [tipFor, setTipFor] = useState<string | null>(null);
@@ -203,18 +235,28 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
         <CardHeader className="py-2">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-base">Allocation</CardTitle>
-              <CardDescription className="text-xs">Target mix and details</CardDescription>
+              <CardTitle className="text-base">
+                {displayMode === 'advisor' ? 'Allocation' : 'Your Investment Mix'}
+              </CardTitle>
+              <CardDescription className="text-xs">
+                {displayMode === 'advisor' ? 'Target mix and details' : 'How your money is divided'}
+              </CardDescription>
             </div>
             <div className="flex items-center gap-2">
               {mode !== 'custom' ? (
-                <Button variant="outline" leftIcon={<Edit3 className="h-4 w-4 text-sky-600" />} onClick={onEditAnswers}>Adjust Risk Profile</Button>
+                <Button variant="outline" leftIcon={<Edit3 className="h-4 w-4 text-sky-600" />} onClick={onEditAnswers}>
+                  {displayMode === 'advisor' ? 'Adjust Risk Profile' : 'Change Your Style'}
+                </Button>
               ) : null}
-              <Button variant="outline" leftIcon={<Target className="h-4 w-4 text-amber-600" />} onClick={()=> setGoalsOpen(true)}>Goals & Constraints</Button>
+              <Button variant="outline" leftIcon={<Target className="h-4 w-4 text-amber-600" />} onClick={()=> setGoalsOpen(true)}>
+                {displayMode === 'advisor' ? 'Goals & Constraints' : 'Your Goals & Limits'}
+              </Button>
               {mode !== 'custom' ? (
                 <div className="inline-flex items-center gap-2 ml-2">
                   <Sparkles className="h-4 w-4 text-amber-500" />
-                  <span className="text-[11px] text-muted-foreground">AI Assist</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {displayMode === 'advisor' ? 'AI Assist' : 'AI Help'}
+                  </span>
                   <button type="button" onClick={onToggleAiView} disabled={!!aiLoading || !!aiDisabled} className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${aiViewOn?"bg-gradient-to-r from-amber-500 via-fuchsia-500 to-indigo-600":"bg-muted"}`}>
                     <span className={`inline-block h-5 w-5 transform rounded-full bg-white dark:bg-zinc-900 shadow transition-transform ${aiViewOn?"translate-x-6":"translate-x-1"}`}></span>
                   </button>
@@ -230,11 +272,21 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
               <table className="w-full text-left text-xs">
                 <thead className="bg-card sticky top-0 z-10">
                   <tr>
-                    <th className="py-2 px-3 text-muted-foreground">Asset Class</th>
-                    <th className="py-2 px-3 text-muted-foreground text-right">Allocation</th>
-                    <th className="py-2 px-3 text-muted-foreground">Adjust</th>
-                    <th className="py-2 px-3 text-muted-foreground">Role</th>
-                    <th className="py-2 px-3 text-muted-foreground">Remarks</th>
+                    <th className="py-2 px-3 text-muted-foreground">
+                      {displayMode === 'advisor' ? 'Asset Class' : 'Investment Type'}
+                    </th>
+                    <th className="py-2 px-3 text-muted-foreground text-right">
+                      {displayMode === 'advisor' ? 'Allocation' : 'Percentage'}
+                    </th>
+                    <th className="py-2 px-3 text-muted-foreground">
+                      {displayMode === 'advisor' ? 'Adjust' : 'Change'}
+                    </th>
+                    <th className="py-2 px-3 text-muted-foreground">
+                      {displayMode === 'advisor' ? 'Role' : 'Purpose'}
+                    </th>
+                    <th className="py-2 px-3 text-muted-foreground">
+                      {displayMode === 'advisor' ? 'Remarks' : 'Notes'}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -328,7 +380,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
             <CardTitle className="text-sm flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <LineChart className="h-4 w-4 text-blue-500" />
-                Why This Mix?
+                {displayMode === 'advisor' ? 'Why This Mix?' : 'Why This Investment Mix?'}
               </div>
               {rationaleExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </CardTitle>
@@ -339,13 +391,13 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                 <div className="space-y-2">
                   {plan.rationale.map((reason: string, index: number) => (
                     <div key={index} className="text-xs text-muted-foreground leading-relaxed p-2 bg-muted/20 rounded">
-                      {reason}
+                      {displayMode === 'advisor' ? reason : transformText(reason, displayMode)}
                     </div>
                   ))}
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  {plan.rationale}
+                  {displayMode === 'advisor' ? plan.rationale : transformText(plan.rationale, displayMode)}
                 </p>
               )}
             </CardContent>
@@ -361,9 +413,14 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-base">
-                Rebalancing Suggestions
+                {displayMode === 'advisor' ? 'Rebalancing Suggestions' : 'Investment Adjustments'}
               </CardTitle>
-              <CardDescription className="text-xs">Based on drift tolerance of {driftTolerancePct}%</CardDescription>
+              <CardDescription className="text-xs">
+                {displayMode === 'advisor' 
+                  ? `Based on drift tolerance of ${driftTolerancePct}%`
+                  : `When your investments move more than ${driftTolerancePct}% from target`
+                }
+              </CardDescription>
             </div>
             {rebalanceExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </div>
@@ -382,13 +439,23 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
                       <div className="h-2 rounded bg-muted w-full overflow-hidden">
                         <div className={`h-2 ${item.action === 'Increase' ? 'bg-indigo-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(100, Math.max(5, Math.round((item.amount / Math.max(1, rebalance.totalCurrentValue)) * 100)))}%` }}></div>
                       </div>
-                      <div className={`text-xs ${item.action === 'Increase' ? 'text-indigo-600' : 'text-rose-600'}`}>{item.action} {item.amount.toFixed(0)}</div>
+                      <div className={`text-xs ${item.action === 'Increase' ? 'text-indigo-600' : 'text-rose-600'}`}>
+                        {displayMode === 'advisor' 
+                          ? `${item.action} ${item.amount.toFixed(0)}`
+                          : `${item.action === 'Increase' ? 'Add' : 'Reduce'} ₹${item.amount.toFixed(0)}`
+                        }
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-muted-foreground text-sm">{!plan ? "No plan yet." : "All good! No rebalancing needed."}</div>
+              <div className="text-muted-foreground text-sm">
+                {!plan 
+                  ? (displayMode === 'advisor' ? "No plan yet." : "No plan yet.")
+                  : (displayMode === 'advisor' ? "All good! No rebalancing needed." : "Great! Your investments are well balanced.")
+                }
+              </div>
             )}
           </CardContent>
         )}

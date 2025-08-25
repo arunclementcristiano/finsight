@@ -27,13 +27,20 @@ export default function Questionnaire() {
 				investmentHorizon: questionnaire.investmentHorizon as QuestionnaireAnswers["investmentHorizon"],
 				targetRetirementAge: questionnaire.targetRetirementAge as QuestionnaireAnswers["targetRetirementAge"],
 				
-				// Financial Situation
-				annualIncome: questionnaire.annualIncome as QuestionnaireAnswers["annualIncome"],
+				// Financial Situation - Enhanced with geographic context
+				annualIncome: {
+					absolute: questionnaire.annualIncome as QuestionnaireAnswers["annualIncome"]["absolute"],
+					relative: undefined, // Will be calculated by the engine
+					context: "Income meaning shifts by geography; factor in local cost of living"
+				},
 				investmentAmount: Number(questionnaire.investmentAmount) || 100000,
 				existingInvestments: questionnaire.existingInvestments as QuestionnaireAnswers["existingInvestments"],
 				emergencyFundMonths: questionnaire.emergencyFundMonths as QuestionnaireAnswers["emergencyFundMonths"],
 				dependents: questionnaire.dependents as QuestionnaireAnswers["dependents"],
 				monthlyObligations: questionnaire.monthlyObligations as QuestionnaireAnswers["monthlyObligations"],
+				
+				// Geographic Context
+				city: questionnaire.city || "Mumbai", // Default to Mumbai if not specified
 				
 				// Risk Tolerance
 				volatilityComfort: questionnaire.volatilityComfort as QuestionnaireAnswers["volatilityComfort"],
@@ -58,7 +65,7 @@ export default function Questionnaire() {
 			const requiredFields = [
 				'age', 'investmentHorizon', 'targetRetirementAge', 'annualIncome', 'investmentAmount',
 				'existingInvestments', 'emergencyFundMonths', 'dependents', 'monthlyObligations',
-				'volatilityComfort', 'maxAcceptableLoss', 'investmentKnowledge', 'previousLosses',
+				'city', 'volatilityComfort', 'maxAcceptableLoss', 'investmentKnowledge', 'previousLosses',
 				'primaryGoal', 'expectedReturn', 'liquidityNeeds', 'esgPreference', 'jobStability',
 				'withdrawalNext2Years', 'hasInsurance'
 			];

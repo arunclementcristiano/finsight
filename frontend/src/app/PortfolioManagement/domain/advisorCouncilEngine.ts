@@ -6,19 +6,71 @@
 export type AssetClass = "Stocks" | "Mutual Funds" | "Gold" | "Real Estate" | "Debt" | "Liquid";
 export type RiskLevel = "Conservative" | "Moderate" | "Aggressive";
 
+interface RiskRange {
+  min: number;
+  max: number;
+  description: string;
+  context: string;
+}
+
+const RISK_LEVELS: Record<RiskLevel, RiskRange> = {
+  Conservative: {
+    min: 0,
+    max: 39,
+    description: "Low risk appetite with focus on stability",
+    context: "Suitable for short-term needs and capital protection"
+  },
+  Moderate: {
+    min: 40,
+    max: 69,
+    description: "Balanced growth with some volatility tolerance",
+    context: "Suitable for medium-term investors"
+  },
+  Aggressive: {
+    min: 70,
+    max: 100,
+    description: "High growth focus with 15–20% volatility tolerance",
+    context: "Suitable for long-term investors comfortable with swings"
+  }
+};
+
+const getConsistentRiskProfile = (score: number) => {
+  const level = Object.entries(RISK_LEVELS).find(
+    ([, range]) => score >= range.min && score <= range.max
+  );
+  
+  if (!level) {
+    // Handle edge cases (score < 0 or > 100) - default to Moderate
+    return {
+      level: "Moderate" as RiskLevel,
+      score: Math.max(0, Math.min(100, score)),
+      ...RISK_LEVELS.Moderate
+    };
+  }
+  
+  return { level: level[0] as RiskLevel, score, ...level[1] };
+};
+
 export interface CouncilAnswers {
   // Demographics & Time Horizon (25% weight)
   age: "<25" | "25-35" | "35-45" | "45-55" | "55-65" | "65+";
   investmentHorizon: "<2 years" | "2-5 years" | "5-10 years" | "10-20 years" | "20+ years";
   targetRetirementAge: "50-55" | "55-60" | "60-65" | "65-70" | "70+";
   
-  // Financial Situation (30% weight)
-  annualIncome: "<50K" | "50K-1L" | "1L-2L" | "2L-5L" | "5L+";
+  // Financial Situation (30% weight) - Enhanced with geographic context
+  annualIncome: {
+    absolute: "<50K" | "50K-1L" | "1L-2L" | "2L-5L" | "5L+";
+    relative?: string; // "High for Tier-3, Moderate for Metro"
+    context?: string; // "Income meaning shifts by geography"
+  };
   investmentAmount: number; // Actual amount in rupees
   existingInvestments: "<1L" | "1L-5L" | "5L-20L" | "20L+";
   emergencyFundMonths: "0-1" | "2-3" | "4-6" | "7-12" | "12+";
   dependents: "0" | "1-2" | "3-4" | "5+";
   monthlyObligations: "<10K" | "10K-25K" | "25K-50K" | "50K+";
+  
+  // Geographic Context
+  city: string; // "Mumbai", "Bangalore", "Indore", "Varanasi", etc.
   
   // Risk Tolerance (25% weight)
   volatilityComfort: "panic_sell" | "very_uncomfortable" | "somewhat_concerned" | "stay_calm" | "buy_more";
@@ -39,6 +91,109 @@ export interface CouncilAnswers {
   avoidAssets?: AssetClass[];
 }
 
+/**
+ * Geographic Context System
+ * Provides city classification and relative income positioning
+ */
+type CityTier = "Tier-1" | "Tier-2" | "Tier-3" | "Metro";
+
+const CITY_CLASSIFICATIONS: Record<string, CityTier> = {
+  // Metro Cities (Highest cost of living)
+  "Mumbai": "Metro",
+  "Delhi": "Metro", 
+  "Bangalore": "Metro",
+  "Hyderabad": "Metro",
+  "Chennai": "Metro",
+  "Kolkata": "Metro",
+  "Pune": "Metro",
+  "Ahmedabad": "Metro",
+  
+  // Tier-1 Cities (High cost of living)
+  "Gurgaon": "Tier-1",
+  "Noida": "Tier-1",
+  "Thane": "Tier-1",
+  "Navi Mumbai": "Tier-1",
+  "Ghaziabad": "Tier-1",
+  "Faridabad": "Tier-1",
+  
+  // Tier-2 Cities (Moderate cost of living)
+  "Indore": "Tier-2",
+  "Bhopal": "Tier-2",
+  "Jaipur": "Tier-2",
+  "Lucknow": "Tier-2",
+  "Kanpur": "Tier-2",
+  "Nagpur": "Tier-2",
+  "Vadodara": "Tier-2",
+  "Surat": "Tier-2",
+  
+  // Tier-3 Cities (Lower cost of living)
+  "Varanasi": "Tier-3",
+  "Prayagraj": "Tier-3",
+  "Gorakhpur": "Tier-3",
+  "Bareilly": "Tier-3",
+  "Moradabad": "Tier-3",
+  "Saharanpur": "Tier-3"
+};
+
+const getCityTier = (city: string): CityTier => {
+  const normalizedCity = city.trim().toLowerCase();
+  
+  for (const [cityName, tier] of Object.entries(CITY_CLASSIFICATIONS)) {
+    if (cityName.toLowerCase() === normalizedCity) {
+      return tier;
+    }
+  }
+  
+  // Default to Tier-2 for unknown cities
+  return "Tier-2";
+};
+
+const getRelativeIncomePosition = (income: string, city: string): string => {
+  const cityTier = getCityTier(city);
+  
+  switch (cityTier) {
+    case "Metro":
+      if (income === "5L+") return "Moderate";
+      if (income === "2L-5L") return "Low";
+      if (income === "1L-2L") return "Very Low";
+      return "Very Low";
+      
+    case "Tier-1":
+      if (income === "5L+") return "High";
+      if (income === "2L-5L") return "Moderate";
+      if (income === "1L-2L") return "Low";
+      return "Low";
+      
+    case "Tier-2":
+      if (income === "5L+") return "Very High";
+      if (income === "2L-5L") return "High";
+      if (income === "1L-2L") return "Moderate";
+      return "Moderate";
+      
+    case "Tier-3":
+      if (income === "5L+") return "Very High";
+      if (income === "2L-5L") return "Very High";
+      if (income === "1L-2L") return "High";
+      return "High";
+      
+    default:
+      return "Moderate";
+  }
+};
+
+const getGeographicIncomeMultiplier = (income: any, city: string): number => {
+  const relative = getRelativeIncomePosition(income.absolute || income, city);
+  
+  switch (relative) {
+    case "Very High": return 1.2;  // Wider ranges for high relative income
+    case "High": return 1.1;
+    case "Moderate": return 1.0;
+    case "Low": return 0.9;         // Tighter ranges for low relative income
+    case "Very Low": return 0.8;    // Even tighter for very low relative income
+    default: return 1.0;
+  }
+};
+
 export interface Signal {
   factor: string;
   equitySignal: number;  // -15 to +15
@@ -51,6 +206,24 @@ export interface AllocationResult {
   allocation: Record<AssetClass, number>;
   riskScore: number;
   riskLevel: RiskLevel;
+  // Rich risk profile information
+  riskProfile: {
+    level: RiskLevel;
+    score: number;
+    min: number;
+    max: number;
+    description: string;
+    context: string;
+  };
+  // Behavioral consistency validation
+  behavioralWarnings?: Array<{
+    severity: "warning" | "critical";
+    message: string;
+    category: "risk-reward" | "timeline" | "financial-foundation" | "behavioral";
+    suggestedAction: string;
+    advisorNote?: string;
+  }>;
+  consistencyScore?: number; // 0-100, how consistent the answers are
   signals: Signal[];
   rationale: string[];
   stressTest: StressTestResult;
@@ -62,6 +235,12 @@ export interface StressTestResult {
     portfolioImpact: number;
     monthsCovered: number;
     recommendation: string;
+    // Enhanced with historical context
+    historicalDrop?: string;
+    evidence?: string;
+    recovery?: string;
+    comparison?: string; // "Your portfolio: -25% vs Historical: -38%"
+    sectorImpacts?: Record<string, number>; // For demonetization-like sector-specific events
   }>;
 }
 
@@ -71,6 +250,109 @@ export interface RebalanceAction {
   amount: number;
   reason: string;
 }
+
+/**
+ * Enhanced Stress Test Scenarios with Historical Evidence
+ * Real market events with specific drop percentages and recovery timelines
+ */
+const stressTestScenarios = {
+  "2008 Financial Crisis": { 
+    drop: { S&P500: "-37%", NIFTY: "-52%" },
+    evidence: "2008–2009 global financial crisis",
+    recovery: "3–4 years"
+  },
+  "COVID Crash": {
+    drop: { NIFTY: "-38%" },
+    evidence: "March 2020 pandemic shock",
+    recovery: "6–9 months"
+  },
+  "Dotcom Bust": {
+    drop: { NASDAQ: "-78%" },
+    evidence: "2000–2002 tech bubble burst",
+    recovery: "15 years for NASDAQ"
+  },
+  "2016 Demonetization": {
+    drop: { NIFTY: "-15%", "Real Estate": "-35%", "Gold": "-20%" },
+    evidence: "November 2016 currency ban, cash crunch",
+    recovery: "6–8 months"
+  }
+};
+
+/**
+ * Behavioral Consistency Validation System
+ * Catches contradictory answers that advisors would flag
+ */
+interface ConsistencyRule {
+  condition: (answers: CouncilAnswers) => boolean;
+  message: string;
+  severity: "warning" | "critical";
+  category: "risk-reward" | "timeline" | "financial-foundation" | "behavioral";
+  suggestedAction: string;
+  advisorNote?: string; // Additional context for advisors
+}
+
+const consistencyRules: ConsistencyRule[] = [
+  {
+    condition: (a: CouncilAnswers) => a.volatilityComfort === "panic_sell" && a.expectedReturn === "20%+",
+    message: "High return expectation with low volatility tolerance",
+    severity: "critical",
+    category: "risk-reward",
+    suggestedAction: "Clarify realistic return expectations vs risk tolerance",
+    advisorNote: "Client may not understand risk-return relationship"
+  },
+  {
+    condition: (a: CouncilAnswers) => a.investmentHorizon === "<2 years" && a.primaryGoal === "wealth_building",
+    message: "Short horizon with long-term wealth building goal",
+    severity: "warning",
+    category: "timeline",
+    suggestedAction: "Discuss timeline alignment or goal adjustment",
+    advisorNote: "Consider if client understands wealth building timelines"
+  },
+  {
+    condition: (a: CouncilAnswers) => a.maxAcceptableLoss === "5%" && a.expectedReturn === "15-20%",
+    message: "Low loss tolerance with high return expectations",
+    severity: "critical",
+    category: "risk-reward",
+    suggestedAction: "Educate on realistic risk-return trade-offs",
+    advisorNote: "Common misconception - needs education"
+  },
+  {
+    condition: (a: CouncilAnswers) => a.emergencyFundMonths === "0-1" && a.primaryGoal === "retirement",
+    message: "No emergency fund but planning for retirement",
+    severity: "critical",
+    category: "financial-foundation",
+    suggestedAction: "Prioritize emergency fund before retirement planning",
+    advisorNote: "Financial foundation must come first"
+  },
+  {
+    condition: (a: CouncilAnswers) => a.age === "65+" && a.investmentHorizon === "20+ years",
+    message: "Senior age with very long investment horizon",
+    severity: "warning",
+    category: "timeline",
+    suggestedAction: "Verify timeline expectations and health considerations",
+    advisorNote: "May indicate unrealistic expectations or family planning"
+  },
+  {
+    condition: (a: CouncilAnswers) => a.liquidityNeeds === "monthly" && a.primaryGoal === "wealth_building",
+    message: "Frequent liquidity needs may conflict with long-term wealth building",
+    severity: "warning",
+    category: "behavioral",
+    suggestedAction: "Balance liquidity needs with long-term growth strategy",
+    advisorNote: "Consider hybrid approach or goal prioritization"
+  }
+];
+
+const validateBehavioralConsistency = (answers: CouncilAnswers) => {
+  return consistencyRules
+    .filter(rule => rule.condition(answers))
+    .map(rule => ({
+      severity: rule.severity,
+      message: rule.message,
+      category: rule.category,
+      suggestedAction: rule.suggestedAction,
+      advisorNote: rule.advisorNote
+    }));
+};
 
 /**
  * Core Signal Processing Engine
@@ -641,7 +923,19 @@ class AllocationCalculator {
  * Creates advisor-quality explanations for allocation decisions
  */
 class RationaleGenerator {
-  generate(allocation: Record<AssetClass, number>, signals: Signal[], answers: CouncilAnswers, riskScore: number): string[] {
+  generate(
+    allocation: Record<AssetClass, number>, 
+    signals: Signal[], 
+    answers: CouncilAnswers, 
+    riskScore: number,
+    behavioralWarnings?: Array<{
+      severity: "warning" | "critical";
+      message: string;
+      category: string;
+      suggestedAction: string;
+      advisorNote?: string;
+    }>
+  ): string[] {
     const rationale: string[] = [];
     
     // Lead with primary driver
@@ -664,6 +958,20 @@ class RationaleGenerator {
     
     // Portfolio construction rationale
     rationale.push(this.getConstructionRationale(allocation, answers));
+    
+    // Add behavioral warnings if any exist
+    if (behavioralWarnings && behavioralWarnings.length > 0) {
+      const criticalWarnings = behavioralWarnings.filter(w => w.severity === "critical");
+      const warnings = behavioralWarnings.filter(w => w.severity === "warning");
+      
+      if (criticalWarnings.length > 0) {
+        rationale.push(`⚠️ Critical Considerations: ${criticalWarnings.map(w => w.message).join("; ")}. ${criticalWarnings[0].suggestedAction}.`);
+      }
+      
+      if (warnings.length > 0) {
+        rationale.push(`📝 Additional Considerations: ${warnings.map(w => w.message).join("; ")}. Consider discussing these with your advisor.`);
+      }
+    }
     
     return rationale;
   }
@@ -701,9 +1009,7 @@ class RationaleGenerator {
   }
   
   private getRiskLevel(riskScore: number): RiskLevel {
-    if (riskScore <= 35) return "Conservative";
-    if (riskScore <= 65) return "Moderate";
-    return "Aggressive";
+    return getConsistentRiskProfile(riskScore).level;
   }
   
   private getRiskExplanation(riskLevel: RiskLevel, allocation: Record<AssetClass, number>, answers: CouncilAnswers): string {
@@ -795,36 +1101,51 @@ class RationaleGenerator {
  */
 class StressTester {
   runStressTest(allocation: Record<AssetClass, number>, answers: CouncilAnswers): StressTestResult {
-    const scenarios = {
-      "2008 Financial Crisis": { 
-        Stocks: -45, "Mutual Funds": -38, Debt: +2, Gold: +24, "Real Estate": -25, Liquid: 0 
-      },
-      "2020 Pandemic Shock": { 
-        Stocks: -35, "Mutual Funds": -30, Debt: +8, Gold: +18, "Real Estate": -15, Liquid: 0 
-      },
-      "High Inflation (1970s-style)": { 
-        Stocks: -15, "Mutual Funds": -12, Debt: -20, Gold: +45, "Real Estate": +25, Liquid: -8 
-      },
-      "Interest Rate Spike": { 
-        Stocks: -20, "Mutual Funds": -18, Debt: -15, Gold: +5, "Real Estate": -30, Liquid: +2 
-      }
-    };
-    
     const results: Record<string, any> = {};
     const monthlyExpenses = this.estimateMonthlyExpenses(answers);
     const emergencyFundValue = this.getEmergencyFundValue(answers);
     
-    Object.entries(scenarios).forEach(([scenario, impacts]) => {
+    // Use historical scenarios instead of generic ones
+    Object.entries(stressTestScenarios).forEach(([scenarioName, scenario]) => {
       let portfolioImpact = 0;
+      const sectorImpacts: Record<string, number> = {};
       
+      // Calculate portfolio impact based on allocation and historical drops
       Object.entries(allocation).forEach(([asset, percentage]) => {
-        const impact = impacts[asset as keyof typeof impacts] || 0;
-        portfolioImpact += (percentage / 100) * (impact / 100);
+        let assetImpact = 0;
+        
+        // Get the relevant drop percentage for this asset
+        if (scenario.drop.NIFTY && (asset === "Stocks" || asset === "Mutual Funds")) {
+          assetImpact = parseFloat(scenario.drop.NIFTY.replace('%', ''));
+        } else if (scenario.drop["Real Estate"] && asset === "Real Estate") {
+          assetImpact = parseFloat(scenario.drop["Real Estate"].replace('%', ''));
+        } else if (scenario.drop.Gold && asset === "Gold") {
+          assetImpact = parseFloat(scenario.drop.Gold.replace('%', ''));
+        } else if (scenario.drop.S&P500 && asset === "Stocks") {
+          assetImpact = parseFloat(scenario.drop.S&P500.replace('%', ''));
+        } else if (scenario.drop.NASDAQ && asset === "Mutual Funds") {
+          assetImpact = parseFloat(scenario.drop.NASDAQ.replace('%', ''));
+        } else {
+          // Default impact for assets not specifically mentioned
+          assetImpact = asset === "Debt" ? -5 : asset === "Liquid" ? 0 : -15;
+        }
+        
+        const weightedImpact = (percentage / 100) * (assetImpact / 100);
+        portfolioImpact += weightedImpact;
+        
+        // Store sector-specific impacts for demonetization-like events
+        if (Math.abs(assetImpact) > 10) {
+          sectorImpacts[asset] = assetImpact;
+        }
       });
       
       const monthsCovered = monthlyExpenses > 0 ? 
         (emergencyFundValue + (portfolioImpact * answers.investmentAmount)) / monthlyExpenses : 
-        emergencyFundValue > 0 ? 12 : 0; // Fallback if no expenses data
+        emergencyFundValue > 0 ? 12 : 0;
+      
+      // Get the most relevant historical drop for comparison
+      const historicalDrop = scenario.drop.NIFTY || scenario.drop.S&P500 || scenario.drop.NASDAQ || "-20%";
+      const portfolioDrop = `${(portfolioImpact * 100).toFixed(1)}%`;
       
       let recommendation = "Portfolio shows good resilience";
       if (monthsCovered < 3) {
@@ -835,10 +1156,16 @@ class StressTester {
         recommendation = "Portfolio within acceptable risk parameters";
       }
       
-      results[scenario] = {
+      results[scenarioName] = {
         portfolioImpact: portfolioImpact * 100, // Convert to percentage
         monthsCovered: Math.max(0, monthsCovered),
-        recommendation
+        recommendation,
+        // Enhanced with historical context
+        historicalDrop: historicalDrop,
+        evidence: scenario.evidence,
+        recovery: scenario.recovery,
+        comparison: `Your portfolio: ${portfolioDrop} vs Historical: ${historicalDrop}`,
+        sectorImpacts: Object.keys(sectorImpacts).length > 0 ? sectorImpacts : undefined
       };
     });
     
@@ -855,7 +1182,7 @@ class StressTester {
       "5L+": 750000
     };
     
-    const monthlyIncome = incomeMapping[answers.annualIncome] / 12;
+    const monthlyIncome = incomeMapping[answers.annualIncome.absolute] / 12;
     
     // Estimate expenses as 60-80% of income based on dependents
     const expenseRatio = answers.dependents === "0" ? 0.6 : 
@@ -986,7 +1313,8 @@ export class AdvisorCouncilEngine {
     console.log("🚫 ALLOCATION AFTER AVOIDING:", allocation);
     
     // Step 8: Generate rationale
-    const rationale = this.rationaleGenerator.generate(allocation, signals, answers, riskScore);
+    const behavioralWarnings = validateBehavioralConsistency(answers);
+    const rationale = this.rationaleGenerator.generate(allocation, signals, answers, riskScore, behavioralWarnings);
     console.log("💭 STEP 8 - RATIONALE GENERATED:", {
       rationaleLength: rationale.length,
       rationale: rationale
@@ -1002,8 +1330,21 @@ export class AdvisorCouncilEngine {
       fullResults: stressTest
     });
     
-    // Step 10: Determine risk level
-    const riskLevel = riskScore <= 35 ? "Conservative" : riskScore <= 65 ? "Moderate" : "Aggressive";
+    // Step 10: Determine risk level with consistent mapping
+    const riskProfile = getConsistentRiskProfile(riskScore);
+    const riskLevel = riskProfile.level;
+    
+    // Step 11: Behavioral consistency validation
+    const consistencyScore = Math.max(0, 100 - (behavioralWarnings.length * 15)); // Deduct 15 points per warning
+    
+    console.log("🧠 STEP 11 - BEHAVIORAL VALIDATION:", {
+      warningsFound: behavioralWarnings.length,
+      consistencyScore: consistencyScore,
+      criticalIssues: behavioralWarnings.filter(w => w.severity === "critical").length,
+      warnings: behavioralWarnings.filter(w => w.severity === "warning").length,
+      fullWarnings: behavioralWarnings
+    });
+    
     console.log("🎯 STEP 10 - FINAL RESULTS:", {
       riskScore: riskScore,
       riskLevel: riskLevel,
@@ -1026,6 +1367,9 @@ export class AdvisorCouncilEngine {
       allocation,
       riskScore,
       riskLevel,
+      riskProfile,
+      behavioralWarnings,
+      consistencyScore,
       signals,
       rationale,
       stressTest

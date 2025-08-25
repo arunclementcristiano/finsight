@@ -67,6 +67,20 @@ export const questions: Question[] = [
     helperText: "Higher obligations reduce equity capacity."
   },
   
+  // Geographic Context
+  {
+    key: "city",
+    text: "Which city do you live in?",
+    options: [
+      "Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai", "Kolkata", "Pune", "Ahmedabad",
+      "Gurgaon", "Noida", "Thane", "Navi Mumbai", "Ghaziabad", "Faridabad",
+      "Indore", "Bhopal", "Jaipur", "Lucknow", "Kanpur", "Nagpur", "Vadodara", "Surat",
+      "Varanasi", "Prayagraj", "Gorakhpur", "Bareilly", "Moradabad", "Saharanpur",
+      "Other"
+    ],
+    helperText: "City helps determine relative income positioning and cost of living context."
+  },
+  
   // Risk Tolerance (25% weight)
   {
     key: "volatilityComfort",
