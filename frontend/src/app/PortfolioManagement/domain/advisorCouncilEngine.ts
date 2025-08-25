@@ -919,7 +919,7 @@ class AllocationCalculator {
     
     // FIXED: Calculate risk score considering BOTH equity AND safety signals
     // Higher equity signals = higher risk, higher safety signals = lower risk
-    const riskScore = Math.max(10, Math.min(90, 50 + avgEquitySignal - (avgSafetySignal * 0.3)));
+    const riskScore = Math.max(10, Math.min(90, 55 + avgEquitySignal - (avgSafetySignal * 0.3)));
     
     console.log("🎯 Final Results:", {
       equityBase: Math.round(equityBase),
