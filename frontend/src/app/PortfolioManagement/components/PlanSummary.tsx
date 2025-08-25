@@ -88,14 +88,7 @@ export default function PlanSummary({ plan, onChangeBucketPct, onEditAnswers, on
       }
     }
     
-    // Enhanced debug logging to track satellite calculation
-    console.log("🔍 SATELLITE KPI DEBUG:", {
-      allBuckets: plan?.buckets?.map((b: any) => ({ class: b.class, pct: b.pct })),
-      satelliteBreakdown: satelliteBreakdown,
-      satelliteTotal: satellite,
-      unclassifiedAssets: unclassifiedAssets,
-      calculated: { equity, defensive, satellite }
-    });
+    // Calculate satellite assets for KPI display
     
     return { 
       equity: Math.round(equity), 
