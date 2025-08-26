@@ -85,8 +85,9 @@ export interface QuestionnaireAnswers {
   maxAcceptableLoss: string;
   investmentKnowledge: string;
   
-  // Goals & Objectives (20% weight)
-  primaryGoal: string;
+  // Goals & Objectives (40% weight) - NEW: Multi-goal support
+  goals?: any[]; // Goals from Goals page
+  primaryGoal?: string; // DEPRECATED: Keep for backward compatibility
   
   // Additional Context
   hasInsurance: boolean | string;
@@ -157,7 +158,7 @@ const inferRemovedValues = (answers: QuestionnaireAnswers): InferredValues => {
   };
 
   const monthlyObligations = getMonthlyObligations(answers.annualIncome as string);
-  const liquidityNeeds = getLiquidityNeeds(answers.investmentHorizon, answers.primaryGoal);
+  const liquidityNeeds = getLiquidityNeeds(answers.investmentHorizon, answers.primaryGoal || "wealth_building");
   const jobStability = getJobStability(answers.age, answers.dependents, answers.emergencyFundMonths);
   const withdrawalNext2Years = getWithdrawalNext2Years(answers.emergencyFundMonths);
   const expectedReturn = getExpectedReturn(answers.maxAcceptableLoss, answers.volatilityComfort);
@@ -359,6 +360,10 @@ export function buildPlan(answers: QuestionnaireAnswers): AllocationPlan {
     geographicContext: inferredValues.geographicContext,
     // Handle boolean conversions
     hasInsurance: typeof answers.hasInsurance === 'boolean' ? answers.hasInsurance : answers.hasInsurance === 'Yes',
+    // 🎯 NEW: Goals support (replaces primaryGoal)
+    goals: answers.goals || [],
+    // Keep primaryGoal for backward compatibility
+    primaryGoal: answers.primaryGoal,
     avoidAssets: (() => {
       if (!answers.avoidAssets) return [];
       if (Array.isArray(answers.avoidAssets)) {

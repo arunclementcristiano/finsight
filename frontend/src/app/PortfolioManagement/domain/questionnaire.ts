@@ -6,6 +6,7 @@ interface Question {
   helperText?: string;
   maxSelect?: number;
   optional?: boolean;
+  isGoalsPage?: boolean; // Special flag for goals management question
 }
 
 export const questions: Question[] = [
@@ -69,12 +70,13 @@ export const questions: Question[] = [
     helperText: "Your familiarity with investments."
   },
   
-  // Goals & Objectives (20% weight)
+  // Goals & Objectives (40% weight) - Now handled in separate Goals page
   {
-    key: "primaryGoal",
-    text: "What is your primary investment goal?",
-    options: ["retirement", "wealth_building", "income_generation", "child_education", "home_purchase", "preservation"],
-    helperText: "Your main objective guides asset allocation."
+    key: "goalsManagement",
+    text: "Set up your investment goals",
+    options: ["goals_configured", "no_goals"],
+    helperText: "Goals drive your allocation strategy. Use the Goals page to set specific targets.",
+    isGoalsPage: true // Special flag for goals management
   },
   
   // Additional Context
