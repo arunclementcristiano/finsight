@@ -68,17 +68,7 @@ export const questions: Question[] = [
     text: "What is your investment knowledge level?",
     options: ["beginner", "some_knowledge", "experienced", "expert"],
     helperText: "Your familiarity with investments."
-  },
-  
-  // Goals & Objectives (40% weight) - Now handled in separate Goals page
-  {
-    key: "goalsManagement",
-    text: "Set up your investment goals",
-    options: ["goals_configured", "no_goals"],
-    helperText: "Goals drive your allocation strategy. Use the Goals page to set specific targets.",
-    isGoalsPage: true // Special flag for goals management
-  },
-  
+  }, 
   // Additional Context
   {
     key: "hasInsurance",

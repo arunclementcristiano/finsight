@@ -9,7 +9,6 @@ import { LineChart, Layers, Banknote, Coins, Home, Droplet, Edit3, RefreshCw, Ch
 import { Target } from "lucide-react";
 import { Sparkles } from "lucide-react";
 import { Modal } from "../../components/Modal";
-import GoalsInlineModal from "./GoalsInlineModal";
 import RiskProfile from "./RiskProfile";
 import { transformText, transformRiskLevel, transformRiskScore, transformAllocationRange, transformStressTestResult } from "../domain/languageTransform";
 
@@ -56,13 +55,13 @@ export default function PlanSummary({
   const [proposeLoading, setProposeLoading] = useState(false);
   const [proposeError, setProposeError] = useState<string | null>(null);
   const [rebalanceOn, setRebalanceOn] = useState(false);
-  const [goalsOpen, setGoalsOpen] = useState(false);
   
   // Enhanced sections expand/collapse state
   const [signalsExpanded, setSignalsExpanded] = useState(true); // Expanded by default for professional mode
   const [stressTestExpanded, setStressTestExpanded] = useState(true); // Expanded by default for professional mode
   const [rationaleExpanded, setRationaleExpanded] = useState(false);
   const [rebalanceExpanded, setRebalanceExpanded] = useState(false);
+  const [goalsPanelOpen, setGoalsPanelOpen] = useState(false);
   const [rebalanceOptionsExpanded, setRebalanceOptionsExpanded] = useState(false);
 
   useEffect(()=>{
@@ -245,8 +244,8 @@ export default function PlanSummary({
                   Adjust Risk Profile
                 </Button>
               ) : null}
-              <Button variant="outline" leftIcon={<Target className="h-4 w-4 text-amber-600" />} onClick={()=> setGoalsOpen(true)}>
-                Goals & Constraints
+              <Button variant="outline" leftIcon={<Target className="h-4 w-4 text-amber-600" />} onClick={()=> router.push("/PortfolioManagement/Goals")}>
+                Investment Goals
               </Button>
               {mode !== 'custom' ? (
                 <div className="inline-flex items-center gap-2 ml-2">
@@ -693,7 +692,6 @@ export default function PlanSummary({
         )}
       </Card>
 
-      <GoalsInlineModal open={goalsOpen} onClose={()=> setGoalsOpen(false)} onChanged={()=>{ try { const e = new Event('goals-updated'); window.dispatchEvent(e); } catch {} }} />
       <style jsx>{`
         @keyframes shake { 10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(2px); } 30%, 50%, 70% { transform: translateX(-4px); } 40%, 60% { transform: translateX(4px); } }
         .animate-shake { animation: shake 0.3s linear; }

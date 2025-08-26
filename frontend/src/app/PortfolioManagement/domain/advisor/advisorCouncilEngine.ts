@@ -13,12 +13,14 @@ import { SignalProcessor } from './signalProcessor';
 import { AllocationCalculator } from './allocationCalculator';
 import { RationaleGenerator } from './rationaleGenerator';
 import { StressTester } from './stressTester';
+import { GoalAnalyzer } from '../goalAnalyzer';
 
 export class AdvisorCouncilEngine {
   private signalProcessor = new SignalProcessor();
   private allocationCalculator = new AllocationCalculator();
   private rationaleGenerator = new RationaleGenerator();
   private stressTester = new StressTester();
+  private goalAnalyzer = new GoalAnalyzer();
   
   generateRecommendation(answers: CouncilAnswers): AllocationResult {
     console.log("🚀 ADVISOR COUNCIL ENGINE GENERATERECOMMENDATION CALLED! 🚀");
