@@ -54,6 +54,8 @@ export interface ConsistencyRule {
   message: string;
   severity: "critical" | "warning";
   category: "risk-reward" | "timeline" | "financial-foundation" | "behavioral";
+  suggestedAction: string;
+  advisorNote?: string; // Additional context for advisors
 }
 
 export interface Signal {
@@ -66,26 +68,27 @@ export interface Signal {
 
 export interface AllocationResult {
   allocation: Record<AssetClass, number>;
-  riskLevel: RiskLevel;
   riskScore: number;
-  rationale: string[];
-  signals: Signal[];
-  stressTest: StressTestResult;
-  metadata: {
-    totalEquitySignals: number;
-    totalSafetySignals: number;
-    finalAllocation: Record<AssetClass, number>;
-    allocationSummary: {
-      totalEquity: number;
-      totalSafety: number;
-      satellite: number;
-      breakdown: {
-        equity: string;
-        defensive: string;
-        satellite: string;
-      };
-    };
+  riskLevel: RiskLevel;
+  riskProfile: {
+    level: RiskLevel;
+    score: number;
+    min: number;
+    max: number;
+    description: string;
+    context: string;
   };
+  behavioralWarnings?: Array<{
+    severity: "warning" | "critical";
+    message: string;
+    category: "risk-reward" | "timeline" | "financial-foundation" | "behavioral";
+    suggestedAction: string;
+    advisorNote?: string;
+  }>;
+  consistencyScore?: number; // 0-100, how consistent the answers are
+  signals: Signal[];
+  rationale: string[];
+  stressTest: StressTestResult;
 }
 
 export interface StressTestResult {
@@ -93,13 +96,13 @@ export interface StressTestResult {
     portfolioImpact: number;
     monthsCovered: number;
     recommendation: string;
+    // Enhanced with historical context
+    historicalDrop?: string;
+    evidence?: string;
+    recovery?: string;
+    comparison?: string; // "Your portfolio: -25% vs Historical: -38%"
+    sectorImpacts?: Record<string, number>; // For demonetization-like sector-specific events
   }>;
-  worstCase: {
-    scenario: string;
-    impact: number;
-    recommendation: string;
-  };
-  summary: string;
 }
 
 export interface RebalanceAction {

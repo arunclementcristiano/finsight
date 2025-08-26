@@ -1,7 +1,7 @@
 // Enhanced Allocation Engine for Finsight Portfolio Management
 // Implements sophisticated 10-Advisor Council logic with weighted signals
 
-import { AdvisorCouncilEngine } from './advisorCouncilEngine';
+import { AdvisorCouncilEngine } from './advisor/advisorCouncilEngine';
 
 export type AssetClass = "Stocks" | "Mutual Funds" | "Gold" | "Real Estate" | "Debt" | "Liquid";
 export type RiskLevel = "Conservative" | "Moderate" | "Aggressive";

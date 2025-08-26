@@ -87,25 +87,33 @@ export const consistencyRules: ConsistencyRule[] = [
     condition: (a: CouncilAnswers) => a.investmentHorizon === "<2 years" && a.primaryGoal === "wealth_building",
     message: "Short horizon with long-term wealth building goal",
     severity: "warning",
-    category: "timeline"
+    category: "timeline",
+    suggestedAction: "Discuss timeline alignment or goal adjustment",
+    advisorNote: "Consider if client understands wealth building timelines"
   },
   {
     condition: (a: CouncilAnswers) => a.emergencyFundMonths === "0-1" && a.primaryGoal === "retirement",
     message: "No emergency fund but planning for retirement",
     severity: "critical",
-    category: "financial-foundation"
+    category: "financial-foundation",
+    suggestedAction: "Prioritize emergency fund before retirement planning",
+    advisorNote: "Financial foundation must come first"
   },
   {
     condition: (a: CouncilAnswers) => a.age === "65+" && a.investmentHorizon === "20+ years",
     message: "Senior age with very long investment horizon",
     severity: "warning",
-    category: "timeline"
+    category: "timeline",
+    suggestedAction: "Verify timeline expectations and health considerations",
+    advisorNote: "May indicate unrealistic expectations or family planning"
   },
   {
     condition: (a: CouncilAnswers) => a.liquidityNeeds === "monthly" && a.primaryGoal === "wealth_building",
     message: "Frequent liquidity needs may conflict with long-term wealth building",
     severity: "warning",
-    category: "behavioral"
+    category: "behavioral",
+    suggestedAction: "Balance liquidity needs with long-term growth strategy",
+    advisorNote: "Consider hybrid approach or goal prioritization"
   }
 ];
 
@@ -115,6 +123,8 @@ export const validateBehavioralConsistency = (answers: CouncilAnswers) => {
     .map(rule => ({
       severity: rule.severity,
       message: rule.message,
-      category: rule.category
+      category: rule.category,
+      suggestedAction: rule.suggestedAction,
+      advisorNote: rule.advisorNote
     }));
 };
