@@ -246,6 +246,22 @@ export default function PlanSummary({
               ) : null}
               <Button variant="outline" leftIcon={<Target className="h-4 w-4 text-amber-600" />} onClick={()=> router.push("/PortfolioManagement/Goals")}>
                 Investment Goals
+              {goalsPanelOpen && (
+                <div className="mt-4 p-4 border border-border rounded-lg bg-card">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium">Investment Goals</h4>
+                    <button
+                      onClick={() => setGoalsPanelOpen(false)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Goals panel will be implemented here. For now, you can manage goals in the separate Goals page.
+                  </div>
+                </div>
+              )}
               </Button>
               {mode !== 'custom' ? (
                 <div className="inline-flex items-center gap-2 ml-2">
