@@ -13,6 +13,21 @@ export interface RiskRange {
   context: string;
 }
 
+export type GoalCategory = "retirement" | "home_purchase" | "child_education" | "emergency_fund" | "wealth_building" | "custom";
+export type Priority = "high" | "medium" | "low";
+
+export interface Goal {
+  id: string;
+  name: string;
+  category: GoalCategory;
+  targetAmount: number;
+  targetDate: Date;
+  priority: Priority;
+  currentProgress?: number;
+  isActive: boolean;
+  createdAt: Date;
+}
+
 export interface CouncilAnswers {
   // Demographics & Time Horizon (25% weight)
   age: string;
@@ -29,8 +44,11 @@ export interface CouncilAnswers {
   maxAcceptableLoss: string;
   investmentKnowledge: string;
   
-  // Goals & Objectives (20% weight)
-  primaryGoal: string;
+  // 🎯 NEW: Goals & Objectives (40% weight - replaces primaryGoal)
+  goals?: Goal[];
+  
+  // 🔄 DEPRECATED: Keep for backward compatibility
+  primaryGoal?: string;
   
   // Additional Context
   hasInsurance: boolean;

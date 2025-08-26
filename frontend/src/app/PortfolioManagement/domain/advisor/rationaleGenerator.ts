@@ -3,7 +3,7 @@
  * Creates advisor-quality explanations for allocation decisions
  */
 
-import { Signal, CouncilAnswers, AssetClass, RiskLevel } from './types';
+import { Signal, CouncilAnswers, AssetClass, RiskLevel, Goal } from './types';
 import { getConsistentRiskProfile } from './config';
 
 export class RationaleGenerator {
@@ -33,8 +33,14 @@ export class RationaleGenerator {
     const riskLevel = this.getRiskLevel(riskScore);
     rationale.push(this.getRiskExplanation(riskLevel, allocation, answers));
     
-    // Goal alignment
-    rationale.push(this.getGoalAlignment(answers.primaryGoal, allocation));
+    // Goal alignment - use goals if available, fallback to primaryGoal for backward compatibility
+    if (answers.goals && answers.goals.length > 0) {
+      rationale.push(this.getGoalsAlignment(answers.goals, allocation));
+    } else if (answers.primaryGoal) {
+      rationale.push(this.getGoalAlignment(answers.primaryGoal, allocation));
+    } else {
+      rationale.push("This allocation provides a balanced approach suitable for general investment objectives.");
+    }
     
     // Address concerns or special circumstances
     const concerns = this.getSpecialCircumstances(signals, answers, allocation);
@@ -119,6 +125,51 @@ export class RationaleGenerator {
     };
     
     return goalExplanations[goal as keyof typeof goalExplanations] || "This allocation aligns with your stated investment objectives.";
+  }
+
+  private getGoalsAlignment(goals: Goal[], allocation: Record<AssetClass, number>): string {
+    const activeGoals = goals.filter(g => g.isActive);
+    
+    if (activeGoals.length === 0) {
+      return "This balanced allocation approach is suitable for general investment objectives.";
+    }
+    
+    if (activeGoals.length === 1) {
+      const goal = activeGoals[0];
+      return `This allocation is optimized for your ${goal.name} goal (₹${(goal.targetAmount / 100000).toFixed(1)}L by ${new Date(goal.targetDate).getFullYear()}).`;
+    }
+    
+    // Multiple goals - analyze priority and timeline
+    const highPriorityGoals = activeGoals.filter(g => g.priority === "high");
+    const urgentGoals = activeGoals.filter(g => {
+      const monthsToTarget = Math.round((new Date(g.targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 30.44));
+      return monthsToTarget <= 24;
+    });
+    
+    let explanation = `This allocation balances ${activeGoals.length} goals: `;
+    
+    if (urgentGoals.length > 0) {
+      const urgentNames = urgentGoals.map(g => g.name).join(", ");
+      explanation += `prioritizing near-term goals (${urgentNames}) with ${allocation.Liquid + allocation.Debt}% in stable assets, `;
+    }
+    
+    if (highPriorityGoals.length > 0) {
+      const highPriorityNames = highPriorityGoals.map(g => g.name).join(", ");
+      explanation += `emphasizing high-priority objectives (${highPriorityNames}), `;
+    }
+    
+    const longTermGoals = activeGoals.filter(g => {
+      const monthsToTarget = Math.round((new Date(g.targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 30.44));
+      return monthsToTarget > 60;
+    });
+    
+    if (longTermGoals.length > 0) {
+      explanation += `while maintaining ${allocation.Stocks + allocation["Mutual Funds"]}% equity exposure for long-term growth.`;
+    } else {
+      explanation += `with appropriate risk balance for your timeline.`;
+    }
+    
+    return explanation;
   }
   
   private getSpecialCircumstances(signals: Signal[], answers: CouncilAnswers, allocation: Record<AssetClass, number>): string | null {

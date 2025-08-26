@@ -3,9 +3,212 @@
  * Each factor contributes weighted equity/safety signals
  */
 
-import { CouncilAnswers, Signal, AssetClass } from './types';
+import { Signal, CouncilAnswers, AssetClass, Goal, GoalCategory, Priority } from './types';
 
 export class SignalProcessor {
+  // Priority weight constants
+  private static readonly PRIORITY_WEIGHTS = {
+    "high": 1.2,
+    "medium": 1.0,
+    "low": 0.8
+  } as const;
+
+  // Goal category base signals (before timeline adjustment)
+  private static readonly BASE_CATEGORY_SIGNALS = {
+    "retirement": 5,        // Moderately aggressive base
+    "wealth_building": 8,   // Aggressive base
+    "home_purchase": -3,    // Slightly conservative base
+    "child_education": 2,   // Slightly aggressive base
+    "emergency_fund": -10,  // Very conservative base
+    "custom": 0            // Neutral base
+  } as const;
+
+  /**
+   * Smooth sigmoid timeline curve for equity signal adjustment
+   * Eliminates cliff effects and provides natural transitions
+   * 
+   * Curve: y = 20 / (1 + e^(-0.1*(x-36))) - 10
+   * Range: -10 to +10, inflection point at 36 months
+   * 
+   * Timeline behavior:
+   * 0-6 months:   -8 to -6 (very conservative)
+   * 6-18 months:  -6 to -2 (conservative) 
+   * 18-36 months: -2 to 0  (neutral transition)
+   * 36-60 months: 0 to +4  (moderate growth)
+   * 60+ months:   +4 to +8 (aggressive growth)
+   */
+  private calculateSmoothTimelineSignal(monthsToTarget: number): number {
+    if (monthsToTarget <= 0) return -10; // Past due = maximum safety
+    
+    // Cap at 20 years for calculation stability
+    const x = Math.min(240, monthsToTarget);
+    
+    // Sigmoid curve: smooth transition from conservative to aggressive
+    const signal = (20 / (1 + Math.exp(-0.1 * (x - 36)))) - 10;
+    
+    // Round to 1 decimal place for cleaner signals
+    return Math.round(signal * 10) / 10;
+  }
+
+  /**
+   * Calculate urgency multiplier for goal weighting
+   * More urgent goals get higher weight in allocation decisions
+   */
+  private calculateUrgencyMultiplier(monthsToTarget: number): number {
+    if (monthsToTarget <= 0) return 1.5; // Past due = maximum urgency
+    if (monthsToTarget > 240) return 0.1; // 20+ years = minimal urgency
+    
+    // Inverse relationship: closer goals are more urgent
+    // Formula: 1.5 - (months/240) with minimum of 0.1
+    return Math.max(0.1, Math.min(1.5, 1.5 - (monthsToTarget / 240)));
+  }
+
+  /**
+   * Calculate base weight for goal based on target amount
+   * Larger goals naturally get more weight in allocation decisions
+   */
+  private calculateBaseWeight(goal: Goal): number {
+    // Normalize by 10L (1 crore) as reference point
+    const normalizedAmount = goal.targetAmount / 1000000;
+    
+    // Logarithmic scaling to prevent huge goals from dominating
+    // Weight = log(1 + amount/10L) * 0.3, capped at 1.0
+    return Math.min(1.0, Math.log(1 + normalizedAmount) * 0.3);
+  }
+
+  /**
+   * Get months until target date with error handling
+   */
+  private getMonthsUntilDate(targetDate: Date): number {
+    const now = new Date();
+    const target = new Date(targetDate);
+    
+    const diffTime = target.getTime() - now.getTime();
+    const diffMonths = diffTime / (1000 * 60 * 60 * 24 * 30.44); // Average month length
+    
+    return Math.round(diffMonths);
+  }
+
+  /**
+   * Adjust goal for current progress
+   * Reduces allocation weight for partially completed goals
+   */
+  private adjustGoalForProgress(goal: Goal): Goal & { adjustedWeight: number } {
+    if (!goal.currentProgress || goal.currentProgress <= 0) {
+      return { ...goal, adjustedWeight: 1.0 };
+    }
+    
+    // Calculate completion ratio
+    const progressRatio = Math.min(1.0, goal.currentProgress / goal.targetAmount);
+    const remainingAmount = goal.targetAmount - goal.currentProgress;
+    
+    // Reduce weight for nearly completed goals (90%+ complete get 20% weight)
+    const completionFactor = progressRatio > 0.9 ? 0.2 : (1 - progressRatio);
+    
+    return {
+      ...goal,
+      targetAmount: remainingAmount,
+      adjustedWeight: completionFactor
+    };
+  }
+
+  /**
+   * Create integrated goal signal with smooth timeline curve and priority weighting
+   */
+  private createGoalSignal(goal: Goal & { adjustedWeight: number }): Signal {
+    const monthsToTarget = this.getMonthsUntilDate(goal.targetDate);
+    
+    // 1. Base signal from goal category
+    const baseEquitySignal = SignalProcessor.BASE_CATEGORY_SIGNALS[goal.category] || 0;
+    
+    // 2. Smooth timeline adjustment (additive)
+    const timelineAdjustment = this.calculateSmoothTimelineSignal(monthsToTarget);
+    
+    // 3. Priority multiplier (multiplicative)
+    const priorityMultiplier = SignalProcessor.PRIORITY_WEIGHTS[goal.priority] || 1.0;
+    
+    // 4. Combine: (base + timeline) * priority, bounded to [-15, 15]
+    const finalEquitySignal = Math.max(-15, Math.min(15,
+      (baseEquitySignal + timelineAdjustment) * priorityMultiplier
+    ));
+    
+    // 5. Proportional safety signal (negative correlation with equity)
+    const finalSafetySignal = Math.max(-15, Math.min(15, -finalEquitySignal * 0.7));
+    
+    // 6. Calculate weight: base amount weight * urgency multiplier * progress adjustment
+    const baseWeight = this.calculateBaseWeight(goal);
+    const urgencyMultiplier = this.calculateUrgencyMultiplier(monthsToTarget);
+    const progressFactor = goal.adjustedWeight;
+    
+    const finalWeight = Math.min(1.0, baseWeight * urgencyMultiplier * progressFactor);
+    
+    // 7. Create human-readable explanation
+    const timelineDesc = monthsToTarget <= 12 ? "urgent" : 
+                        monthsToTarget <= 36 ? "medium-term" : "long-term";
+    const explanation = `${goal.name}: ₹${(goal.targetAmount / 100000).toFixed(1)}L ${timelineDesc} ${goal.category} goal (${goal.priority} priority)`;
+    
+    return {
+      factor: `goal_${goal.category}_${goal.id}`,
+      equitySignal: finalEquitySignal,
+      safetySignal: finalSafetySignal,
+      weight: finalWeight,
+      explanation
+    };
+  }
+
+  /**
+   * Process multiple goals into normalized signals
+   * Handles progress adjustment and weight normalization
+   */
+  private getGoalsSignals(goals: Goal[]): Signal[] {
+    if (!goals || goals.length === 0) {
+      // No goals = default balanced approach
+      return [{
+        factor: 'default_balanced_goal',
+        equitySignal: 0,
+        safetySignal: 0,
+        weight: 0.15, // Standard goal weight
+        explanation: 'Balanced approach with no specific goals defined'
+      }];
+    }
+    
+    // Filter active goals and adjust for progress
+    const processedGoals = goals
+      .filter(g => g.isActive)
+      .map(goal => this.adjustGoalForProgress(goal))
+      .filter(goal => goal.targetAmount > 0); // Skip completed goals
+    
+    if (processedGoals.length === 0) {
+      return this.getGoalsSignals([]); // Fall back to default
+    }
+    
+    // Create signals for each goal
+    const goalSignals = processedGoals.map(goal => this.createGoalSignal(goal));
+    
+    // Normalize weights to prevent over-allocation
+    return this.normalizeGoalSignals(goalSignals);
+  }
+
+  /**
+   * Normalize goal signal weights to fit within allocation budget
+   * Prevents goals from dominating the entire allocation decision
+   */
+  private normalizeGoalSignals(goalSignals: Signal[]): Signal[] {
+    // Calculate total weight
+    const totalWeight = goalSignals.reduce((sum, signal) => sum + signal.weight, 0);
+    
+    if (totalWeight === 0) return goalSignals;
+    
+    // Goal signals should use 40% of total allocation decision weight
+    const GOAL_WEIGHT_BUDGET = 0.4;
+    const normalizationFactor = GOAL_WEIGHT_BUDGET / totalWeight;
+    
+    return goalSignals.map(signal => ({
+      ...signal,
+      weight: signal.weight * normalizationFactor
+    }));
+  }
+
   // Helper method to safely get signal with fallback
   private getSignalSafely(
     signals: Record<string, { equity: number; safety: number; explanation: string }>,
@@ -35,28 +238,22 @@ export class SignalProcessor {
   }
   
   calculateSignals(answers: CouncilAnswers): Signal[] {
-    console.log("🚀🚀🚀 NEW ENGINE CALCULATE SIGNALS CALLED! 🚀🚀🚀");
+    console.log("🚀🚀🚀 ENHANCED GOALS-BASED ENGINE CALCULATE SIGNALS CALLED! 🚀🚀🚀");
     console.log("📋 Input answers:", answers);
     
     const signals: Signal[] = [];
     let signalId = 1;
     
-    // Calculate dynamic weights based on goal context
-    const { ageWeight, horizonWeight, goalWeight } = this.calculateDynamicWeights(answers.primaryGoal);
-    console.log("🎯 Dynamic weights calculated:", { ageWeight, horizonWeight, goalWeight });
-    
-    // Age Signals (DYNAMIC WEIGHT: 25% base, adjusted by goal)
+    // Age Signals (25% weight)
     const ageSignal = this.getAgeSignal(answers.age);
-    ageSignal.weight = ageWeight;
     ageSignal.factor = `age_${signalId++}`;
-    console.log("👴 Age signal with dynamic weight:", ageSignal);
+    console.log("👴 Age signal:", ageSignal);
     signals.push(ageSignal);
     
-    // Time Horizon (DYNAMIC WEIGHT: 25% base, adjusted by goal)
+    // Time Horizon (25% weight)
     const horizonSignal = this.getHorizonSignal(answers.investmentHorizon);
-    horizonSignal.weight = horizonWeight;
     horizonSignal.factor = `horizon_${signalId++}`;
-    console.log("⏰ Horizon signal with dynamic weight:", horizonSignal);
+    console.log("⏰ Horizon signal:", horizonSignal);
     signals.push(horizonSignal);
     
     // Financial Situation (15% weight)
@@ -77,12 +274,10 @@ export class SignalProcessor {
     lossSignal.factor = `loss_${signalId++}`;
     signals.push(lossSignal);
     
-    // Goals & Objectives (DYNAMIC WEIGHT: 15% base, adjusted by goal)
-    const goalSignal = this.getGoalSignal(answers.primaryGoal);
-    goalSignal.weight = goalWeight;
-    goalSignal.factor = `goal_${signalId++}`;
-    console.log("🎯 Goal signal with dynamic weight:", goalSignal);
-    signals.push(goalSignal);
+    // 🎯 NEW: Goals-Based Signals (40% weight budget - replaces single primaryGoal)
+    const goalSignals = this.getGoalsSignals(answers.goals || []);
+    console.log("🎯 Goals-based signals:", goalSignals);
+    signals.push(...goalSignals);
     
     // Contextual Signals (5% weight)
     if (!answers.hasInsurance) {
@@ -91,7 +286,7 @@ export class SignalProcessor {
         factor: `insurance_${signalId++}`,
         equitySignal: -10,
         safetySignal: +10,
-        weight: 0.05, // REDISTRIBUTED: 5% weight
+        weight: 0.05,
         explanation: "Lack of insurance requires more conservative positioning"
       });
     } else {
@@ -117,9 +312,6 @@ export class SignalProcessor {
       weightedSafety: s.safetySignal * s.weight
     })));
     
-    // Apply goal-specific volatility tolerance adjustments
-    this.applyGoalSpecificAdjustments(signals, answers.primaryGoal, answers.investmentHorizon);
-    
     // Debug: Log all signals and their impact
     console.log("🔍 DEBUG: All signals generated:", signals.map(s => ({
       factor: s.factor,
@@ -130,7 +322,7 @@ export class SignalProcessor {
       weightedSafety: s.safetySignal * s.weight
     })));
     
-    console.log("🚀🚀🚀 NEW ENGINE CALCULATE SIGNALS COMPLETED! 🚀🚀🚀");
+    console.log("🚀🚀🚀 ENHANCED GOALS-BASED ENGINE CALCULATE SIGNALS COMPLETED! 🚀🚀🚀");
     return signals;
   }
 
