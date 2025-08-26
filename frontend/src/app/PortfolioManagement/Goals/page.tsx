@@ -95,7 +95,7 @@ export default function GoalsPage() {
 		<div className="max-w-5xl mx-auto space-y-4">
 			<div className="flex items-center justify-between">
 				<div>
-					<h1 className="text-lg font-semibold">Goals & Constraints</h1>
+					<h1 className="text-lg font-semibold">Investment Goals</h1>
 					<p className="text-xs text-muted-foreground">Set your goals and liquidity needs. We’ll keep your plan aligned.</p>
 				</div>
 				<div className="flex items-center gap-2">
@@ -184,36 +184,6 @@ export default function GoalsPage() {
 				</CardContent>
 			</Card>
 
-			<Card>
-				<CardHeader className="py-2">
-					<CardTitle className="text-base">Constraints</CardTitle>
-					<CardDescription className="text-xs">Emergency fund and near-term liquidity.</CardDescription>
-				</CardHeader>
-				<CardContent className="pt-0 text-xs">
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-						<div className="rounded-md border border-border p-2">
-							<div className="text-[11px] text-muted-foreground">Emergency fund coverage</div>
-							<div className="mt-1 flex items-center gap-2">
-								<Shield className="h-4 w-4" />
-								<input type="number" min={0} max={24} className="w-24 rounded border border-border bg-background px-2 py-1" value={Number(c.efMonths||0)} onChange={e=> setConstraints?.(activePortfolioId||"", { efMonths: Math.max(0, Math.min(24, Math.round(Number(e.target.value)||0))) })} />
-								<span className="text-muted-foreground">months</span>
-							</div>
-						</div>
-						<div className="rounded-md border border-border p-2">
-							<div className="text-[11px] text-muted-foreground">Near-term liquidity</div>
-							<div className="mt-1 flex items-center gap-2">
-								<AlertCircle className="h-4 w-4" />
-								<input type="number" min={0} className="w-28 rounded border border-border bg-background px-2 py-1" placeholder="₹ amount" value={Number(c.liquidityAmount||0)} onChange={e=> setConstraints?.(activePortfolioId||"", { liquidityAmount: Math.max(0, Math.round(Number(e.target.value)||0)) })} />
-								<input type="number" min={0} max={36} className="w-20 rounded border border-border bg-background px-2 py-1" placeholder="months" value={Number(c.liquidityMonths||0)} onChange={e=> setConstraints?.(activePortfolioId||"", { liquidityMonths: Math.max(0, Math.min(36, Math.round(Number(e.target.value)||0))) })} />
-							</div>
-						</div>
-						<div className="rounded-md border border-border p-2">
-							<div className="text-[11px] text-muted-foreground">Notes</div>
-							<textarea className="mt-1 w-full rounded border border-border bg-background px-2 py-1" rows={2} placeholder="Any special constraints" value={c.notes||""} onChange={e=> setConstraints?.(activePortfolioId||"", { notes: e.target.value })} />
-						</div>
-					</div>
-				</CardContent>
-			</Card>
 
 			<Modal open={addOpen} onClose={()=> setAddOpen(false)} title="Add Goal" footer={(
 				<>
