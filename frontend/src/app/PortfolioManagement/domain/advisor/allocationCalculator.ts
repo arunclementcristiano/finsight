@@ -160,35 +160,73 @@ export class AllocationCalculator {
     const adjusted = { ...allocation };
     
     // Goal-specific tactical adjustments
-    switch (answers.primaryGoal) {
-      case "wealth_building":
-        // Boost equity, reduce liquid
-        adjusted.Stocks = Math.min(45, adjusted.Stocks + 5);
-        adjusted["Mutual Funds"] = Math.min(45, adjusted["Mutual Funds"] + 5);
-        adjusted.Liquid = Math.max(5, adjusted.Liquid - 10);
-        break;
-        
-      case "home_purchase":
-        // Heavy liquid, reduce everything else proportionally
-        adjusted.Liquid = Math.min(50, adjusted.Liquid + 15);
-        adjusted.Stocks = Math.max(5, adjusted.Stocks - 8);
-        adjusted["Mutual Funds"] = Math.max(5, adjusted["Mutual Funds"] - 7);
-        break;
-        
-      case "income_generation":
-        // Boost debt and dividend-paying assets
-        adjusted.Debt = Math.min(35, adjusted.Debt + 10);
-        adjusted["Mutual Funds"] = Math.min(40, adjusted["Mutual Funds"] + 5); // Dividend funds
-        adjusted.Stocks = Math.max(5, adjusted.Stocks - 15);
-        break;
-        
-      case "preservation":
-        // Ultra-conservative
-        adjusted.Debt = Math.min(40, adjusted.Debt + 10);
-        adjusted.Gold = Math.min(25, adjusted.Gold + 5);
-        adjusted.Stocks = Math.max(5, adjusted.Stocks - 10);
-        adjusted["Mutual Funds"] = Math.max(10, adjusted["Mutual Funds"] - 5);
-        break;
+    // NEW: Process goals array if available
+    if (answers.goals && answers.goals.length > 0) {
+      console.log("🎯 Processing goals for allocation:", answers.goals.length, "goals");
+      
+      // Categorize goals by timeline
+      const shortTermGoals = answers.goals.filter(g => {
+        const yearsToTarget = (new Date(g.targetDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24 * 365.25);
+        return yearsToTarget < 5 && g.isActive;
+      });
+      
+      const longTermGoals = answers.goals.filter(g => {
+        const yearsToTarget = (new Date(g.targetDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24 * 365.25);
+        return yearsToTarget > 10 && g.isActive;
+      });
+      
+      const highPriorityGoals = answers.goals.filter(g => g.priority === "high" && g.isActive);
+      
+      // Apply goal-based adjustments
+      if (shortTermGoals.length > 0) {
+        console.log("📅 Short-term goals detected, increasing safety assets");
+        adjusted.Liquid = Math.min(30, adjusted.Liquid + 5);
+        adjusted.Debt = Math.min(25, adjusted.Debt + 5);
+        adjusted.Stocks = Math.max(20, adjusted.Stocks - 5);
+        adjusted["Mutual Funds"] = Math.max(15, adjusted["Mutual Funds"] - 5);
+      }
+      
+      if (longTermGoals.length > 0) {
+        console.log("🚀 Long-term goals detected, increasing growth assets");
+        adjusted.Stocks = Math.min(50, adjusted.Stocks + 5);
+        adjusted["Mutual Funds"] = Math.min(40, adjusted["Mutual Funds"] + 5);
+        adjusted.Liquid = Math.max(5, adjusted.Liquid - 5);
+        adjusted.Debt = Math.max(5, adjusted.Debt - 5);
+      }
+      
+      if (highPriorityGoals.length > 0) {
+        console.log("⭐ High priority goals detected, increasing safety buffer");
+        adjusted.Liquid = Math.min(25, adjusted.Liquid + 3);
+        adjusted.Debt = Math.max(5, adjusted.Debt + 2);
+      }
+      
+      console.log("🎯 Allocation after goal adjustments:", adjusted);
+    } else {
+      console.log("⚠️ No goals provided, using fallback logic");
+      // Fallback: Legacy primaryGoal support for backward compatibility
+      switch (answers.primaryGoal) {
+        case "wealth_building":
+          adjusted.Stocks = Math.min(45, adjusted.Stocks + 5);
+          adjusted["Mutual Funds"] = Math.min(45, adjusted["Mutual Funds"] + 5);
+          adjusted.Liquid = Math.max(5, adjusted.Liquid - 10);
+          break;
+        case "home_purchase":
+          adjusted.Liquid = Math.min(50, adjusted.Liquid + 15);
+          adjusted.Stocks = Math.max(5, adjusted.Stocks - 8);
+          adjusted["Mutual Funds"] = Math.max(5, adjusted["Mutual Funds"] - 7);
+          break;
+        case "income_generation":
+          adjusted.Debt = Math.min(35, adjusted.Debt + 10);
+          adjusted.Stocks = Math.max(5, adjusted.Stocks - 5);
+          adjusted["Mutual Funds"] = Math.max(5, adjusted["Mutual Funds"] - 5);
+          break;
+        case "preservation":
+          adjusted.Liquid = Math.min(40, adjusted.Liquid + 10);
+          adjusted.Debt = Math.min(30, adjusted.Debt + 5);
+          adjusted.Stocks = Math.max(10, adjusted.Stocks - 10);
+          adjusted["Mutual Funds"] = Math.max(10, adjusted["Mutual Funds"] - 5);
+          break;
+      }
     }
     
     return this.normalizeAllocation(adjusted);
