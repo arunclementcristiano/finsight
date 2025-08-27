@@ -1097,44 +1097,47 @@ export default function GoalsPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <Card className="bg-white shadow-lg border-0">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 bg-blue-100 rounded-full">
-                  <Target className="h-8 w-8 text-blue-600" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 rounded-full bg-indigo-100 dark:bg-indigo-900/30">
+                  <Target className="h-6 w-6 text-indigo-600 dark:text-indigo-300" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Goals</p>
-                  <p className="text-3xl font-bold text-gray-900">{goals.length}</p>
+                  <p className="text-xs text-muted-foreground">Total Goals</p>
+                  <p className="text-lg font-semibold text-foreground">{goals.length}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white shadow-lg border-0">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 bg-green-100 rounded-full">
-                  <CheckCircle className="h-8 w-8 text-green-600" />
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+                  <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-300" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Active Goals</p>
-                  <p className="text-3xl font-bold text-gray-900">{activeGoals.length}</p>
+                  <p className="text-xs text-muted-foreground">Active Goals</p>
+                  <p className="text-lg font-semibold text-foreground">{goals.filter(g=>g.isActive).length}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white shadow-lg border-0">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 bg-purple-100 rounded-full">
-                  <DollarSign className="h-8 w-8 text-purple-600" />
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900/30">
+                  <Clock className="h-6 w-6 text-amber-600 dark:text-amber-300" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Target</p>
-                  <p className="text-3xl font-bold text-gray-900">{formatCurrency(totalTargetAmount)}</p>
+                  <p className="text-xs text-muted-foreground">Upcoming (12 mo)</p>
+                  <p className="text-lg font-semibold text-foreground">{goals.filter(g=> {
+                    const m = Math.round((new Date(g.targetDate).getTime() - Date.now())/(1000*60*60*24*30.44));
+                    return m >= 0 && m <= 12;
+                  }).length}</p>
                 </div>
               </div>
             </CardContent>

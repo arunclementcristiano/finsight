@@ -589,7 +589,15 @@ export default function PlanPage() {
 
                         <GoalsPanel
                                 isOpen={goalsPanelOpen}
-                                onClose={() => setGoalsPanelOpen(false)}
+                                onClose={() => {
+                                        setGoalsPanelOpen(false);
+                                        try {
+                                                const allocation = buildPlan(getEnhancedQuestionnaire());
+                                                setLocal(allocation);
+                                                setAiViewOn(false);
+                                                setAiSummary(undefined);
+                                        } catch {}
+                                }}
                                 onGoalsUpdated={(goals) => {
                                         console.log("Goals updated:", goals);
                                         if (mode === "advisor") {
