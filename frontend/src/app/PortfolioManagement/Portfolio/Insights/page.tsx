@@ -5,6 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../..
 import { formatNumber } from "../../../utils/format";
 import { computeRebalance } from "../../domain/rebalance";
 import { useChartThemeColors } from "../../../components/useChartTheme";
+import { Doughnut } from "react-chartjs-2";
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default function PortfolioInsightsPage() {
 	const { plan, holdings, questionnaire, profile, driftTolerancePct } = useApp() as any;
@@ -106,6 +110,31 @@ export default function PortfolioInsightsPage() {
 				</Card>
 			</div>
 
+			{/* Allocation mix donuts */}
+			{plan ? (
+				<Card>
+					<CardHeader className="py-2"><CardTitle className="text-base">Allocation Mix</CardTitle><CardDescription className="text-xs">Target vs Actual</CardDescription></CardHeader>
+					<CardContent className="pt-0">
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<div>
+								<div className="text-xs mb-2">Target</div>
+								<Doughnut data={{
+									labels: (plan?.buckets||[]).map((b:any)=> b.class),
+									datasets: [{ data: (plan?.buckets||[]).map((b:any)=> b.pct), backgroundColor: ["#6366f1","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4"], borderWidth: 0 }]
+								}} options={{ plugins: { legend: { display: false } } }} />
+							</div>
+							<div>
+								<div className="text-xs mb-2">Actual</div>
+								<Doughnut data={{
+									labels: (plan?.buckets||[]).map((b:any)=> b.class),
+									datasets: [{ data: (plan?.buckets||[]).map((b:any)=> (bucketActuals as any)[b.class] || 0), backgroundColor: ["#6366f1","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4"], borderWidth: 0 }]
+								}} options={{ plugins: { legend: { display: false } } }} />
+							</div>
+						</div>
+					</CardContent>
+				</Card>
+			) : null}
+
 			<Card>
 				<CardHeader className="py-2"><CardTitle className="text-base">Plan vs Actual by Asset Class</CardTitle><CardDescription className="text-xs">Compares your current portfolio against target</CardDescription></CardHeader>
 				<CardContent className="pt-0">
@@ -180,7 +209,7 @@ export default function PortfolioInsightsPage() {
 								<div className="h-2 w-full rounded bg-muted overflow-hidden mb-1">
 									<div className={`h-2 ${res.portfolioImpact>=0?"bg-green-500":"bg-rose-500"}`} style={{ width: `${Math.min(100, Math.max(6, Math.abs(Math.round(res.portfolioImpact))))}%` }}></div>
 								</div>
-								<div className="text-[11px] text-muted-foreground">Coverage ≈ {Number(res.monthsCovered||0).toFixed(1)} months</div>
+								<div className="text_[11px] text-muted-foreground">Coverage ≈ {Number(res.monthsCovered||0).toFixed(1)} months</div>
 								{res.historicalDrop ? <div className="text-[11px] text-muted-foreground">Historical: {res.historicalDrop}</div> : null}
 								{res.evidence ? <div className="text-[11px] text-muted-foreground">Evidence: {res.evidence}</div> : null}
 							</div>
@@ -190,7 +219,7 @@ export default function PortfolioInsightsPage() {
 			) : null}
 
 			<Card>
-				<CardHeader className="py-2"><CardTitle className="text-base">Rebalancing Suggestions</CardTitle><CardDescription className="text-xs">Based on drift tolerance of {driftTolerancePct}%</CardDescription></CardHeader>
+				<CardHeader className="py-2"><CardTitle className="text_base">Rebalancing Suggestions</CardTitle><CardDescription className="text-xs">Based on drift tolerance of {driftTolerancePct}%</CardDescription></CardHeader>
 				<CardContent className="pt-0">
 					{plan && rebalance.items.length > 0 ? (
 						<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
@@ -201,7 +230,7 @@ export default function PortfolioInsightsPage() {
 										<div className="text-muted-foreground">{item.actualPct}% → {item.targetPct}%</div>
 									</div>
 									<div className="mt-1 flex items-center gap-2">
-										<div className="h-2 rounded bg-muted w-full overflow-hidden">
+										<div className="h-2 rounded bg-muted w_full overflow-hidden">
 											<div className={`h-2 ${item.action === 'Increase' ? 'bg-indigo-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(100, Math.max(5, Math.round((item.amount / Math.max(1, rebalance.totalCurrentValue)) * 100)))}%` }}></div>
 										</div>
 										<div className={`text-xs ${item.action === 'Increase' ? 'text-indigo-600' : 'text-rose-600'}`}> {item.action} {item.amount.toFixed(0)}</div>
