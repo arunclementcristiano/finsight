@@ -8,7 +8,6 @@ export default function PortfolioModuleLayout({ children }: { children: React.Re
 	const tabs = [
 		{ name: "Overview", href: "/PortfolioManagement/Portfolio/Overview" },
 		{ name: "Plan", href: "/PortfolioManagement/Portfolio/Plan" },
-		{ name: "Goals", href: "/PortfolioManagement/Portfolio/Goals" },
 		{ name: "Holdings", href: "/PortfolioManagement/Portfolio/Holdings" },
 		{ name: "Rebalance", href: "/PortfolioManagement/Portfolio/Rebalance" },
 		{ name: "Insights", href: "/PortfolioManagement/Portfolio/Insights" },
