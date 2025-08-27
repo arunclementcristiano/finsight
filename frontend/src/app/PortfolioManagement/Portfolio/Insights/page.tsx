@@ -138,6 +138,57 @@ export default function PortfolioInsightsPage() {
 				</CardContent>
 			</Card>
 
+			{/* Signals visual */}
+			{plan?.signals?.length ? (
+				<Card>
+					<CardHeader className="py-2"><CardTitle className="text-base">Signal Analysis</CardTitle><CardDescription className="text-xs">Weighted factor impacts</CardDescription></CardHeader>
+					<CardContent className="pt-0 space-y-2">
+						{plan.signals
+							.sort((a:any,b:any)=> Math.abs(b.equitySignal*b.weight) - Math.abs(a.equitySignal*a.weight))
+							.slice(0,6)
+							.map((s:any, idx:number)=>{
+								const impact = s.equitySignal * s.weight;
+								const width = Math.min(100, Math.round(Math.abs(impact) * 10));
+								return (
+									<div key={idx} className="text-xs">
+										<div className="flex items-center justify-between mb-1">
+											<div className="font-medium capitalize">{String(s.factor||'').replace(/_/g,' ')}</div>
+											<div className={impact>=0?"text-green-600":"text-rose-600"}>{impact>=0?'+':''}{Math.round(impact)}</div>
+										</div>
+										<div className="h-2 w-full rounded bg-muted overflow-hidden">
+											<div className={`h-2 ${impact>=0?"bg-green-500":"bg-rose-500"}`} style={{ width: `${Math.max(6, width)}%` }}></div>
+										</div>
+										<div className="text-[11px] text-muted-foreground mt-1">{s.explanation}</div>
+									</div>
+								);
+							})}
+					</CardContent>
+				</Card>
+			) : null}
+
+			{/* Stress test scenarios visual */}
+			{plan?.stressTest?.scenarios ? (
+				<Card>
+					<CardHeader className="py-2"><CardTitle className="text-base">Stress Test</CardTitle><CardDescription className="text-xs">Scenario impacts and coverage</CardDescription></CardHeader>
+					<CardContent className="pt-0 grid grid-cols-1 md:grid-cols-3 gap-2">
+						{Object.entries(plan.stressTest.scenarios).slice(0,3).map(([name, res]: any)=> (
+							<div key={name} className="rounded border border-border p-2 text-xs">
+								<div className="flex items-center justify-between mb-1">
+									<div className="font-medium">{name}</div>
+									<div className={res.portfolioImpact>=0?"text-green-600":"text-rose-600"}>{res.portfolioImpact>=0?'+':''}{Number(res.portfolioImpact).toFixed(1)}%</div>
+								</div>
+								<div className="h-2 w-full rounded bg-muted overflow-hidden mb-1">
+									<div className={`h-2 ${res.portfolioImpact>=0?"bg-green-500":"bg-rose-500"}`} style={{ width: `${Math.min(100, Math.max(6, Math.abs(Math.round(res.portfolioImpact))))}%` }}></div>
+								</div>
+								<div className="text-[11px] text-muted-foreground">Coverage ≈ {Number(res.monthsCovered||0).toFixed(1)} months</div>
+								{res.historicalDrop ? <div className="text-[11px] text-muted-foreground">Historical: {res.historicalDrop}</div> : null}
+								{res.evidence ? <div className="text-[11px] text-muted-foreground">Evidence: {res.evidence}</div> : null}
+							</div>
+						))}
+					</CardContent>
+				</Card>
+			) : null}
+
 			<Card>
 				<CardHeader className="py-2"><CardTitle className="text-base">Rebalancing Suggestions</CardTitle><CardDescription className="text-xs">Based on drift tolerance of {driftTolerancePct}%</CardDescription></CardHeader>
 				<CardContent className="pt-0">
