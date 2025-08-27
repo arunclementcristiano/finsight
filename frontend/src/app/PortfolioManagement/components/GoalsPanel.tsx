@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Input } from "../../components/Input";
 import { Button } from "../../components/Button";
+import { Badge } from "../../components/Badge";
 
 interface Goal {
   id: string;
@@ -116,9 +117,19 @@ export default function GoalsPanel({ isOpen, onClose, onGoalsUpdated, baselinePl
                   </div>
                   <div className="p-4 space-y-3 text-sm">
                     <div>
-                      <div className="text-[11px] text-muted-foreground mb-1">Goal Name</div>
-                      <Input placeholder="e.g., Home Down Payment" value={form.name} onChange={(e)=> setForm({...form, name: e.target.value})} />
+                      <div className="text-[11px] text-muted-foreground mb-1">Goal</div>
+                      <select value={form.name} onChange={(e)=> setForm({...form, name: e.target.value})} className="w-full h-11 rounded-xl border border-border px-3 bg-background text-foreground">
+                        <option value="">Select goal</option>
+                        {COMMON_GOAL_NAMES.map(n => (<option key={n} value={n}>{n}</option>))}
+                        <option value="Custom">Custom</option>
+                      </select>
                     </div>
+                    {form.name === 'Custom' ? (
+                      <div>
+                        <div className="text-[11px] text-muted-foreground mb-1">Custom Name</div>
+                        <Input placeholder="Enter custom goal name" value={''} onChange={(e)=> setForm({...form, name: e.target.value})} />
+                      </div>
+                    ) : null}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <div className="text-[11px] text-muted-foreground mb-1">Target amount (₹)</div>
@@ -131,7 +142,7 @@ export default function GoalsPanel({ isOpen, onClose, onGoalsUpdated, baselinePl
                     </div>
                     <div>
                       <div className="text-[11px] text-muted-foreground mb-1">Priority</div>
-                      <select value={form.priority} onChange={(e)=> setForm({...form, priority: e.target.value as any})} className="w-full rounded-xl border border-border bg-background px-3 py-2">
+                      <select value={form.priority} onChange={(e)=> setForm({...form, priority: e.target.value as any})} className="w-full h-11 rounded-xl border border-border bg-background px-3">
                         <option value="low">Low</option>
                         <option value="medium">Medium</option>
                         <option value="high">High</option>
@@ -156,13 +167,17 @@ export default function GoalsPanel({ isOpen, onClose, onGoalsUpdated, baselinePl
                     {goals.length ? goals.map(g => (
                       <div key={g.id} className="rounded-lg border border-border p-3 text-sm">
                         <div className="flex items-center justify-between">
-                          <div className="font-medium">{g.name}</div>
-                          <div className="text-xs text-muted-foreground">{new Date(g.targetDate).toISOString().slice(0,10)}</div>
-                        </div>
-                        <div className="text-xs text-muted-foreground">Target ₹{(g.targetAmount||0).toLocaleString()} · Priority {g.priority}</div>
-                        <div className="mt-2 flex items-center gap-2">
-                          <Button variant="outline" size="sm" onClick={()=> startEdit(g)}>Edit</Button>
-                          <Button variant="danger" size="sm" onClick={()=> confirmDelete(g)}>Delete</Button>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <div className="font-medium">{g.name}</div>
+                              <Badge variant={g.priority==='high' ? 'destructive' : (g.priority==='medium' ? 'outline' : 'secondary')}>{g.priority}</Badge>
+                            </div>
+                            <div className="text-xs text-muted-foreground">Target ₹{(g.targetAmount||0).toLocaleString()} · by {new Date(g.targetDate).toISOString().slice(0,10)}</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button variant="outline" size="sm" onClick={()=> startEdit(g)}>Edit</Button>
+                            <Button variant="danger" size="sm" onClick={()=> confirmDelete(g)}>Delete</Button>
+                          </div>
                         </div>
                       </div>
                     )) : (
