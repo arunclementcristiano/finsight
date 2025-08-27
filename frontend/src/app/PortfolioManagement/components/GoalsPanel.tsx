@@ -36,10 +36,10 @@ const COMMON_GOAL_NAMES = [
 ];
 
 type Priority = "low" | "medium" | "high";
-interface GoalForm { id: string; name: string; targetAmount: string; targetDate: string; priority: Priority }
+interface GoalForm { id: string; goalType: string; customName: string; targetAmount: string; targetDate: string; priority: Priority }
 
 export default function GoalsPanel({ isOpen, onClose, onGoalsUpdated, baselinePlan, previewPlan, onDraftGoalChanged }: GoalsPanelProps) {
-  const [form, setForm] = useState<GoalForm>({ id: '', name: '', targetAmount: '', targetDate: '', priority: 'medium' });
+  const [form, setForm] = useState<GoalForm>({ id: '', goalType: '', customName: '', targetAmount: '', targetDate: '', priority: 'medium' });
   const [saving, setSaving] = useState(false);
   const [confirm, setConfirm] = useState<string | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -55,29 +55,31 @@ export default function GoalsPanel({ isOpen, onClose, onGoalsUpdated, baselinePl
   useEffect(()=>{ try { onDraftGoalChanged?.(null); } catch {} }, [isOpen, onDraftGoalChanged]);
 
   const save = async () => {
-    if (!form.name || !form.targetAmount || !form.targetDate) return;
+    const finalName = (form.goalType === 'Custom' ? form.customName : form.goalType).trim();
+    if (!finalName || !form.targetAmount || !form.targetDate) return;
     setSaving(true);
     try {
       const stored: Goal[] = (()=>{ try { return JSON.parse(localStorage.getItem('investmentGoals')||'[]'); } catch { return []; } })();
       let updated: Goal[] = [];
       if (form.id) {
-        updated = stored.map(g => g.id === form.id ? { ...g, name: form.name, targetAmount: Number(form.targetAmount)||0, targetDate: new Date(form.targetDate), priority: form.priority } : g);
+        updated = stored.map(g => g.id === form.id ? { ...g, name: finalName, targetAmount: Number(form.targetAmount)||0, targetDate: new Date(form.targetDate), priority: form.priority } : g);
         setConfirm('Goal updated');
       } else {
-        const newGoal: Goal = { id: Date.now().toString(), name: form.name, category: 'custom', targetAmount: Number(form.targetAmount)||0, targetDate: new Date(form.targetDate), priority: form.priority, currentProgress: 0, isActive: true, createdAt: new Date() };
+        const newGoal: Goal = { id: Date.now().toString(), name: finalName, category: 'custom', targetAmount: Number(form.targetAmount)||0, targetDate: new Date(form.targetDate), priority: form.priority, currentProgress: 0, isActive: true, createdAt: new Date() };
         updated = [...stored, newGoal];
         setConfirm('Goal added');
       }
       localStorage.setItem('investmentGoals', JSON.stringify(updated));
       setGoals(updated);
       onGoalsUpdated(updated);
-      setForm({ id:'', name: '', targetAmount: '', targetDate: '', priority: 'medium' });
+      setForm({ id:'', goalType: '', customName: '', targetAmount: '', targetDate: '', priority: 'medium' });
       setTimeout(()=> setConfirm(null), 1500);
     } finally { setSaving(false); }
   };
 
   function startEdit(g: Goal) {
-    setForm({ id: g.id, name: g.name, targetAmount: String(g.targetAmount||''), targetDate: (g.targetDate ? new Date(g.targetDate) : new Date()).toISOString().slice(0,10), priority: g.priority });
+    const isPreset = COMMON_GOAL_NAMES.includes(g.name);
+    setForm({ id: g.id, goalType: isPreset ? g.name : 'Custom', customName: isPreset ? '' : g.name, targetAmount: String(g.targetAmount||''), targetDate: (g.targetDate ? new Date(g.targetDate) : new Date()).toISOString().slice(0,10), priority: g.priority });
   }
 
   function confirmDelete(g: Goal) { setDeleting(g); }
@@ -108,8 +110,8 @@ export default function GoalsPanel({ isOpen, onClose, onGoalsUpdated, baselinePl
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Form */}
+              <div className="space-y-4">
+                {/* Form at top */}
                 <div className="rounded-xl border border-border bg-card">
                   <div className="p-4 border-b border-border">
                     <div className="text-sm font-medium">{form.id ? 'Edit Goal' : 'Add Goal'}</div>
@@ -118,16 +120,16 @@ export default function GoalsPanel({ isOpen, onClose, onGoalsUpdated, baselinePl
                   <div className="p-4 space-y-3 text-sm">
                     <div>
                       <div className="text-[11px] text-muted-foreground mb-1">Goal</div>
-                      <select value={form.name} onChange={(e)=> setForm({...form, name: e.target.value})} className="w-full h-11 rounded-xl border border-border px-3 bg-background text-foreground">
+                      <select value={form.goalType} onChange={(e)=> setForm({...form, goalType: e.target.value})} className="w-full h-11 rounded-xl border border-border px-3 bg-background text-foreground">
                         <option value="">Select goal</option>
                         {COMMON_GOAL_NAMES.map(n => (<option key={n} value={n}>{n}</option>))}
                         <option value="Custom">Custom</option>
                       </select>
                     </div>
-                    {form.name === 'Custom' ? (
+                    {form.goalType === 'Custom' ? (
                       <div>
                         <div className="text-[11px] text-muted-foreground mb-1">Custom Name</div>
-                        <Input placeholder="Enter custom goal name" value={''} onChange={(e)=> setForm({...form, name: e.target.value})} />
+                        <Input placeholder="Enter custom goal name" value={form.customName} onChange={(e)=> setForm({...form, customName: e.target.value})} />
                       </div>
                     ) : null}
                     <div className="grid grid-cols-2 gap-3">
@@ -151,13 +153,13 @@ export default function GoalsPanel({ isOpen, onClose, onGoalsUpdated, baselinePl
                     <div className="flex items-center justify-between pt-2">
                       <Button onClick={save} disabled={saving}>{form.id ? 'Update' : 'Save'}</Button>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" onClick={()=> setForm({ id:'', name:'', targetAmount:'', targetDate:'', priority:'medium' })}>Reset</Button>
+                        <Button variant="outline" onClick={()=> setForm({ id:'', goalType:'', customName:'', targetAmount:'', targetDate:'', priority:'medium' })}>Reset</Button>
                         <Button variant="outline" onClick={onClose}>Close</Button>
                       </div>
                     </div>
                   </div>
                 </div>
-                {/* List */}
+                {/* List below */}
                 <div className="rounded-xl border border-border bg-card">
                   <div className="p-4 border-b border-border flex items-center justify-between">
                     <div className="text-sm font-medium">Your Goals</div>
