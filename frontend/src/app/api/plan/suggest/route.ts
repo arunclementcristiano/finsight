@@ -196,9 +196,18 @@ export async function POST(req: NextRequest) {
 		if (!questionnaire || !baseline) return NextResponse.json({ error: "Missing questionnaire or baseline" }, { status: 400 });
 		const debug = (req.nextUrl?.searchParams?.get('debug') === '1');
 
+		// Goals context for prompt (optional)
+		const goalsArr = Array.isArray((questionnaire as any)?.goals) ? (questionnaire as any).goals : [];
+		const goalsText = goalsArr.length ? goalsArr.slice(0,5).map((g:any)=> {
+			const amt = Number(g.targetAmount||0) || 0;
+			const date = g.targetDate || g.date || '';
+			return `${g.name||g.category||'Goal'}: ₹${amt} by ${date}`;
+		}).join("; ") : "none";
+
 		const toArray = (v: any): string[] => Array.isArray(v) ? v : (typeof v === 'string' && v ? [v] : []);
 		const prefs = toArray(questionnaire?.emphasizeAssets).join(", ");
-		const prompt = `User profile: age=${questionnaire.ageBand||""}, horizon=${questionnaire.horizon||""}, income_stability=${questionnaire.incomeStability||""}, liabilities=${questionnaire.liabilities||""}, dependents=${questionnaire.dependents||""}, volatility=${questionnaire.volatilityComfort||""}, knowledge=${questionnaire.investmentKnowledge||""}, goal=${questionnaire.financialGoal||""}, ef6m=${questionnaire.emergencyFundSixMonths||""}, insurance=${questionnaire.insuranceCoverage||""}, tax_pref=${questionnaire.taxPreference||""}, avoid=[${prefs}].\nCurrent suggested mix: ${baseline.buckets.map(b=>`${b.class}:${b.pct}% [${b.range[0]}-${b.range[1]}]`).join(", ")}. Propose a refined mix (allowed classes only) keeping changes within per-class ranges and overall risk. Ensure Liquid remains at least 5% and totals sum to ~100%.`;
+		const prompt = `User profile: age=${questionnaire.ageBand||""}, horizon=${questionnaire.horizon||""}, income_stability=${questionnaire.incomeStability||""}, liabilities=${questionnaire.liabilities||""}, dependents=${questionnaire.dependents||""}, volatility=${questionnaire.volatilityComfort||""}, knowledge=${questionnaire.investmentKnowledge||""}, goal=${questionnaire.financialGoal||""}, ef6m=${questionnaire.emergencyFundSixMonths||""}, insurance=${questionnaire.insuranceCoverage||""}, tax_pref=${questionnaire.taxPreference||""}, avoid=[${prefs}].\nActive goals: ${goalsText}.\nCurrent suggested mix: ${baseline.buckets.map(b=>`${b.class}:${b.pct}% [${b.range[0]}-${b.range[1]}]`).join(", ")}. Propose a refined mix (allowed classes only) keeping changes within per-class ranges and overall risk. Ensure Liquid remains at least 5% and totals sum to ~100%.`;
+
 		const ai = await callGroqForAllocation(prompt);
 		if (ai?.diag?.missingKey) return NextResponse.json({ error: "Missing GROQ_API_KEY" }, { status: 400 });
 
@@ -209,7 +218,7 @@ export async function POST(req: NextRequest) {
 		const refined = clampRefined(baseForClamp, ai.buckets || []);
 		const aiMap = objFromBuckets(refined.map(r => ({ class: r.class, pct: r.pct })) as any);
 
-		// Per-asset explanations (clamp/midpoint/limited)
+		// Per-asset explanations
 		const perAsset: Record<string, string> = {};
 		(ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).forEach(k => {
 			const b = advisor[k] || 0;
@@ -240,10 +249,14 @@ export async function POST(req: NextRequest) {
 		finalNorm = normalizeTo100(finalNorm);
 		const finalInt = roundWhole(finalNorm);
 
-		// Compose response shapes
+		// Per-goal context summary (for UI)
+		const goalContext = goalsArr.length ? {
+			count: goalsArr.length,
+			examples: goalsArr.slice(0,3).map((g:any)=> ({ name: g.name || g.category, targetAmount: Number(g.targetAmount||0)||0, date: g.targetDate || g.date }))
+		} : { count: 0, examples: [] };
+
 		const advisorSafe = normalizeTo100(advisor);
 		const aiSuggestion = normalizeTo100(aiMap);
-		// Per-asset comfort ranges sourced from baseline ranges
 		const comfortRanges: Record<AllowedClass, [number, number]> = {} as any;
 		(ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).forEach(k => {
 			const [min, max] = (baseline.buckets.find(x=>x.class===k)?.range)||[0,100];
@@ -256,13 +269,14 @@ export async function POST(req: NextRequest) {
 				riskLevel: baseline?.riskLevel || "Moderate",
 				buckets: (ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).map(cls => ({ class: cls, pct: finalInt[cls], range: comfortRanges[cls], riskCategory: "", notes: "" }))
 			},
-			rationale: ai.rationale || "Refined based on your risk and preferences.",
+			rationale: ai.rationale || "Refined based on your risk and goals.",
 			confidence: typeof ai.confidence === "number" ? ai.confidence : undefined,
 			baseline_allocation: advisorSafe,
 			advisor_safe_allocation: advisorSafe,
 			ai_suggestion: aiSuggestion,
 			final_recommendation: finalInt,
 			per_asset_explanations: perAsset,
+			goal_context: goalContext,
 			explanation,
 			...(debug ? { diag: ai.diag || {} } : {})
 		});
