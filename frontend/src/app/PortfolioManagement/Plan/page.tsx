@@ -567,7 +567,7 @@ export default function PlanPage() {
 
 			<PlanSummary
 				plan={local}
-                                setGoalsPanelOpen={setGoalsPanelOpen}				onEditAnswers={()=>{ setEditAnswers({ ...(questionnaire||{}) }); setAnsStep(0); setAnswersOpen(true); }}
+				setGoalsPanelOpen={setGoalsPanelOpen}				onEditAnswers={()=>{ setEditAnswers({ ...(questionnaire||{}) }); setAnsStep(0); setAnswersOpen(true); }}
 				onBuildBaseline={()=>{ const allocation = buildPlan(questionnaire); setLocal(allocation); setAiInfo(null); setAiSummary(undefined); setAiViewOn(false); setAnswersDrift(false); setAdvisorPins({}); }}
 				onChangeBucketPct={handleChangeBucketPct}
 				aiViewOn={aiViewOn}
@@ -580,9 +580,13 @@ export default function PlanPage() {
 				locks={customLocks}
 				onToggleLock={(cls)=> { setLocalCustomLocks(prev=> ({ ...(prev||{}), [cls]: !prev?.[cls] })); try { if (activePortfolioId) setCustomLocks(activePortfolioId, { [cls]: !customLocks?.[cls] }); } catch {} }}
 			/>
+
 			{toast && (
 				<div className={`fixed bottom-4 right-4 z-50 rounded-md border px-3 py-2 text-sm shadow-lg ${toast.type==='success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : toast.type==='info' ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
 					{toast.msg}
+				</div>
+			)}
+
                         <GoalsPanel
                                 isOpen={goalsPanelOpen}
                                 onClose={() => setGoalsPanelOpen(false)}
@@ -596,8 +600,6 @@ export default function PlanPage() {
                                         }
                                 }}
                         />
-				</div>
-			)}
 		</div>
 	);
 }
