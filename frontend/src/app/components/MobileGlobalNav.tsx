@@ -15,7 +15,7 @@ export default function MobileGlobalNav() {
 			<div className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border bg-background">
 				<div className="grid grid-cols-4 text-xs">
 					<Link href="/PortfolioManagement/Dashboard" className={`flex flex-col items-center justify-center py-2 ${isActive('/PortfolioManagement/Dashboard')? 'text-indigo-600 dark:text-indigo-300' : ''}`}>🏠<span>Dashboard</span></Link>
-					<Link href="/PortfolioManagement/Plan" className={`flex flex-col items-center justify-center py-2 ${isActive('/PortfolioManagement/Plan')? 'text-indigo-600 dark:text-indigo-300' : ''}`}>📊<span>Portfolio</span></Link>
+					<Link href="/PortfolioManagement/Portfolio/Overview" className={`flex flex-col items-center justify-center py-2 ${isActive('/PortfolioManagement/Portfolio')? 'text-indigo-600 dark:text-indigo-300' : ''}`}>📊<span>Portfolio</span></Link>
 					<Link href="/ExpenseTracker" className={`flex flex-col items-center justify-center py-2 ${isActive('/ExpenseTracker')? 'text-indigo-600 dark:text-indigo-300' : ''}`}>💰<span>Expenses</span></Link>
 					<button className="flex flex-col items-center justify-center py-2" onClick={() => setOpen(true)}>☰<span>More</span></button>
 				</div>

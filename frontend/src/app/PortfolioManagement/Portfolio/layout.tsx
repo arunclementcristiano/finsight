@@ -7,10 +7,11 @@ export default function PortfolioModuleLayout({ children }: { children: React.Re
 	const pathname = usePathname();
 	const tabs = [
 		{ name: "Overview", href: "/PortfolioManagement/Portfolio/Overview" },
-		{ name: "Plan", href: "/PortfolioManagement/Plan" },
-		{ name: "Goals", href: "/PortfolioManagement/Goals" },
-		{ name: "Holdings", href: "/PortfolioManagement/AddHolding" },
-		{ name: "Rebalance", href: "/PortfolioManagement/Dashboard" },
+		{ name: "Plan", href: "/PortfolioManagement/Portfolio/Plan" },
+		{ name: "Goals", href: "/PortfolioManagement/Portfolio/Goals" },
+		{ name: "Holdings", href: "/PortfolioManagement/Portfolio/Holdings" },
+		{ name: "Rebalance", href: "/PortfolioManagement/Portfolio/Rebalance" },
+		{ name: "Insights", href: "/PortfolioManagement/Portfolio/Insights" },
 	];
 	return (
 		<div className="space-y-4">
