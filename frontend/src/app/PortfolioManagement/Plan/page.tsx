@@ -33,6 +33,16 @@ export default function PlanPage() {
 	const [customLocks, setLocalCustomLocks] = useState<Record<string, boolean>>({});
 	const [advisorPins, setAdvisorPins] = useState<Record<string, boolean>>({});
         const [goalsPanelOpen, setGoalsPanelOpen] = useState(false);
+        const [draftGoal, setDraftGoal] = useState<any | null>(null);
+        const previewPlan = useMemo(()=>{
+                try {
+                        if (!draftGoal) return null;
+                        const storedGoals = (()=>{ try { return JSON.parse(localStorage.getItem('investmentGoals')||'[]'); } catch { return []; } })();
+                        const mergedGoals = [...storedGoals, { ...draftGoal, isActive: true }];
+                        const q = { ...questionnaire, goals: mergedGoals };
+                        return buildPlan(q);
+                } catch { return null; }
+        }, [draftGoal, questionnaire]);
         const getEnhancedQuestionnaire = () => {
                 const storedGoals = localStorage.getItem("investmentGoals");
                 const goals = storedGoals ? JSON.parse(storedGoals) : [];
@@ -617,8 +627,12 @@ export default function PlanPage() {
 
                         <GoalsPanel
                                 isOpen={goalsPanelOpen}
+                                baselinePlan={local}
+                                previewPlan={previewPlan}
+                                onDraftGoalChanged={(g)=> setDraftGoal(g)}
                                 onClose={() => {
                                         setGoalsPanelOpen(false);
+                                        setDraftGoal(null);
                                         try {
                                                 const allocation = buildPlan(getEnhancedQuestionnaire());
                                                 setLocal(allocation);
@@ -628,6 +642,7 @@ export default function PlanPage() {
                                 }}
                                 onGoalsUpdated={(goals) => {
                                         console.log("Goals updated:", goals);
+                                        setDraftGoal(null);
                                         if (mode === "advisor") {
                                                 const allocation = buildPlan(getEnhancedQuestionnaire());
                                                 setLocal(allocation);
