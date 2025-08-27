@@ -189,18 +189,40 @@ export default function GoalsPanel({ isOpen, onClose, onGoalsUpdated }: GoalsPan
                   <div className="space-y-2">
                     {goals.map(goal => (
                       <div key={goal.id} className="p-2 border border-border rounded-md">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">{goal.name}</span>
-                            <span className={`px-2 py-0.5 text-[11px] rounded-full ${
-                              goal.priority === 'high' ? 'bg-rose-100 text-rose-800' :
-                              goal.priority === 'medium' ? 'bg-amber-100 text-amber-800' :
-                              'bg-emerald-100 text-emerald-800'
-                            }`}>
-                              {goal.priority}
-                            </span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          <div>
+                            <div className="text-[11px] text-muted-foreground mb-1">Name</div>
+                            <Input value={goal.name} onChange={(e)=> {
+                              const v = e.target.value; setGoals(prev=> prev.map(g=> g.id===goal.id? { ...g, name: v }: g));
+                            }} />
                           </div>
+                          <div>
+                            <div className="text-[11px] text-muted-foreground mb-1">Target amount (₹)</div>
+                            <Input type="number" value={goal.targetAmount} onChange={(e)=> {
+                              const v = Number(e.target.value||0); setGoals(prev=> prev.map(g=> g.id===goal.id? { ...g, targetAmount: v }: g));
+                            }} />
+                          </div>
+                          <div>
+                            <div className="text-[11px] text-muted-foreground mb-1">Target date</div>
+                            <Input type="date" value={new Date(goal.targetDate).toISOString().slice(0,10)} onChange={(e)=> {
+                              const v = e.target.value; setGoals(prev=> prev.map(g=> g.id===goal.id? { ...g, targetDate: new Date(v) }: g));
+                            }} />
+                          </div>
+                          <div>
+                            <div className="text-[11px] text-muted-foreground mb-1">Priority</div>
+                            <select value={goal.priority} onChange={(e)=> {
+                              const v = e.target.value as any; setGoals(prev=> prev.map(g=> g.id===goal.id? { ...g, priority: v }: g));
+                            }} className="w-full rounded border border-border bg-background px-2 py-2 text-sm">
+                              <option value="low">Low</option>
+                              <option value="medium">Medium</option>
+                              <option value="high">High</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between">
+                          <div className="text-[11px] text-muted-foreground">Created: {new Date(goal.createdAt).toLocaleDateString()}</div>
                           <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={()=> saveGoals(goals)}>Save</Button>
                             <button 
                               onClick={() => toggleGoalStatus(goal.id)}
                               className="text-[11px] text-indigo-600 hover:underline"
@@ -214,9 +236,6 @@ export default function GoalsPanel({ isOpen, onClose, onGoalsUpdated }: GoalsPan
                               Delete
                             </button>
                           </div>
-                        </div>
-                        <div className="mt-1 text-[11px] text-muted-foreground">
-                          Target: ₹{goal.targetAmount.toLocaleString()} • Date: {new Date(goal.targetDate).toLocaleDateString()}
                         </div>
                       </div>
                     ))}

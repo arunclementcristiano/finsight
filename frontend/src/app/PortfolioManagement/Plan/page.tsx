@@ -235,6 +235,14 @@ export default function PlanPage() {
 					setAiLoading(true);
 					const baseline = buildPlan(questionnaire);
 					const res = await fetch('/api/plan/suggest?debug=1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionnaire, baseline }) });
+					if (!res.ok) {
+						// Fallback to baseline if provider key missing or error
+						setLocal(baseline);
+						setAiInfo({ rationale: 'AI unavailable. Showing baseline recommendation.', confidence: undefined });
+						setAiSummary(undefined);
+						setAiViewOn(false);
+						return;
+					}
 					const data = await res.json();
 					if (data?.aiPlan?.buckets) {
 						setLocal((prev:any)=> ({ ...(prev||{}), buckets: data.aiPlan.buckets }));
@@ -242,7 +250,18 @@ export default function PlanPage() {
 						setAiCache((prev)=> ({ ...prev, [sig]: { buckets: data.aiPlan.buckets, explanation: data.explanation || data.rationale } }));
 						setAiSummary(makeSummary(baseline, data.aiPlan.buckets));
 						setAiViewOn(true);
+					} else {
+						setLocal(baseline);
+						setAiInfo({ rationale: 'AI did not return a plan. Showing baseline.', confidence: undefined });
+						setAiSummary(undefined);
+						setAiViewOn(false);
 					}
+				} catch {
+					const baseline = buildPlan(questionnaire);
+					setLocal(baseline);
+					setAiInfo({ rationale: 'AI unavailable. Showing baseline recommendation.', confidence: undefined });
+					setAiSummary(undefined);
+					setAiViewOn(false);
 				} finally { setAiLoading(false); }
 			})();
 		} else {
