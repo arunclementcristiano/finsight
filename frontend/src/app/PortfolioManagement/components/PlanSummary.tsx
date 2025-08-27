@@ -245,7 +245,15 @@ export default function PlanSummary({
                   Adjust Risk Profile
                 </Button>
               ) : null}
-              <Button variant="outline" leftIcon={<Target className="h-4 w-4 text-amber-600" />} onClick={() => { console.log("🎯 Investment Goals button clicked"); setGoalsPanelOpen?.(true); }}>
+              <Button variant="outline" leftIcon={<Target className="h-4 w-4 text-amber-600" />} onClick={() => { 
+                try {
+                  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                    router.push('/PortfolioManagement/Goals/Add');
+                  } else {
+                    setGoalsPanelOpen?.(true);
+                  }
+                } catch { setGoalsPanelOpen?.(true); }
+              }}>
                 Investment Goals
               </Button>
               {mode !== 'custom' ? (

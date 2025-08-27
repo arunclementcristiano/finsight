@@ -81,8 +81,22 @@ export default function PortfolioInsightsPage() {
 				<Card>
 					<CardHeader className="py-2"><CardTitle className="text-base">Goals Snapshot</CardTitle><CardDescription className="text-xs">Number and next dates</CardDescription></CardHeader>
 					<CardContent className="pt-0 text-sm">
-						<div>Total goals: {goals.length}</div>
-						<div className="text-foreground/80 text-xs">This is a UI snapshot placeholder</div>
+						<div className="flex items-center justify-between">
+							<div>Total goals: {goals.length}</div>
+							<a href="/PortfolioManagement/Goals" className="text-xs underline">Manage</a>
+						</div>
+						<div className="mt-2 space-y-2">
+							{goals.slice(0,3).map((g:any)=> (
+								<div key={g.id} className="rounded border border-border p-2">
+									<div className="flex items-center justify-between text-xs">
+										<div className="font-medium">{g.name}</div>
+										<div className="text-muted-foreground">{(g.targetDate||'').toString().slice(0,10)}</div>
+									</div>
+									<div className="text-[11px] text-muted-foreground">Target ₹{(g.targetAmount||0).toLocaleString()}</div>
+								</div>
+							))}
+							{goals.length === 0 ? <div className="text-xs text-muted-foreground">No goals yet.</div> : null}
+						</div>
 					</CardContent>
 				</Card>
 			</div>
