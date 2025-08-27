@@ -1,9 +1,7 @@
 "use client";
 import React from "react";
+import DashboardPage from "../../Dashboard/page";
 export default function PortfolioRebalanceWrapper() {
-	if (typeof window !== "undefined") {
-		window.location.replace('/PortfolioManagement/Dashboard');
-	}
-	return null;
+	return <DashboardPage />;
 }
 

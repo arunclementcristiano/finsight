@@ -1,9 +1,7 @@
 "use client";
 import React from "react";
+import AddHoldingPage from "../../AddHolding/page";
 export default function PortfolioHoldingsWrapper() {
-	if (typeof window !== "undefined") {
-		window.location.replace('/PortfolioManagement/AddHolding');
-	}
-	return null;
+	return <AddHoldingPage />;
 }
 

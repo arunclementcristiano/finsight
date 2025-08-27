@@ -1,9 +1,7 @@
 "use client";
 import React from "react";
+import PlanPage from "../../Plan/page";
 export default function PortfolioPlanWrapper() {
-	if (typeof window !== "undefined") {
-		window.location.replace('/PortfolioManagement/Plan');
-	}
-	return null;
+	return <PlanPage />;
 }
 

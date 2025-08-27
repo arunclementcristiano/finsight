@@ -1,9 +1,7 @@
 "use client";
 import React from "react";
+import GoalsPage from "../../Goals/page";
 export default function PortfolioGoalsWrapper() {
-	if (typeof window !== "undefined") {
-		window.location.replace('/PortfolioManagement/Goals');
-	}
-	return null;
+	return <GoalsPage />;
 }
 
