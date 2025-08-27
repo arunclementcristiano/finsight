@@ -279,7 +279,7 @@ export default function PlanSummary({
                   <tr>
                     <th className="py-2 px-3 text-muted-foreground">Asset Class</th>
                     <th className="py-2 px-3 text-muted-foreground text-right">Allocation</th>
-                    <th className="py-2 px-3 text-muted-foreground">Adjust</th>
+                    {mode==='custom' ? (<th className="py-2 px-3 text-muted-foreground">Adjust</th>) : null}
                     <th className="py-2 px-3 text-muted-foreground">Role</th>
                     <th className="py-2 px-3 text-muted-foreground">Remarks</th>
                   </tr>
@@ -289,11 +289,12 @@ export default function PlanSummary({
                     <tr key={b.class} className="border-t border-border/50">
                       <td className="py-2 px-3 font-medium"><span className="inline-flex items-center">{(() => { const common = "h-4 w-4 mr-2"; if (b.class === "Stocks") return <LineChart className={common} />; if (b.class === "Mutual Funds") return <Layers className={common} />; if (b.class === "Debt") return <Banknote className={common} />; if (b.class === "Gold") return <Coins className={common} />; if (b.class === "Real Estate") return <Home className={common} />; if (b.class === "Liquid") return <Droplet className={common} />; return <LineChart className={common} />; })()}{b.class}</span></td>
                       <td className="py-2 px-3 text-right">{Math.round(b.pct)}%</td>
+                      {mode==='custom' ? (
                       <td className="py-2 px-3">
                         <div className="group flex items-center gap-2">
                           {(() => { const maxAllowed = 100; return (
                             <>
-                              {(() => { const rawBand = (Array.isArray(b.range) ? b.range as [number,number] : [0,100]); const minBound = 0; const maxBound = mode==='custom' ? maxAllowed : 100; const bandMin = Math.round((Number(rawBand[0])||0)); const bandMax = Math.round((Number(rawBand[1])||100)); const valueNow = Number.isFinite(Number(b.pct)) ? Math.round(Number(b.pct)) : 0; const bandStart = Math.max(0, Math.min(100, bandMin)); const bandEnd = Math.max(0, Math.min(100, bandMax)); const cls = b.class; const isEdge = !!edgeHit?.[cls]; return (
+                              {(() => { const rawBand = (Array.isArray(b.range) ? b.range as [number,number] : [0,100]); const minBound = 0; const maxBound = maxAllowed; const bandMin = Math.round((Number(rawBand[0])||0)); const bandMax = Math.round((Number(rawBand[1])||100)); const valueNow = Number.isFinite(Number(b.pct)) ? Math.round(Number(b.pct)) : 0; const cls = b.class; const isEdge = !!edgeHit?.[cls]; return (
                                 <>
                                   <div className="relative w-full md:w-56">
                                     <input
@@ -305,32 +306,19 @@ export default function PlanSummary({
                                       value={valueNow}
                                       aria-label={`${b.class} allocation`}
                                       disabled={!!aiViewOn}
-                                      style={mode!=='custom' ? ({ background: `linear-gradient(to right, rgba(120,120,120,0.18) 0%, rgba(120,120,120,0.18) ${bandStart}%, rgba(99,102,241,0.25) ${bandStart}%, rgba(99,102,241,0.25) ${bandEnd}%, rgba(120,120,120,0.18) ${bandEnd}%, rgba(120,120,120,0.18) 100%)` } as any) : undefined}
                                       onChange={(e)=>{
-                                        const v = Math.round(Math.max(0, Math.min(mode==='custom' ? maxAllowed : 100, Number(e.target.value)||0)));
-                                        if (mode !== 'custom' && (v < bandMin || v > bandMax)) {
-                                          const edge = v < bandMin ? 'min' : 'max'; const val = v < bandMin ? bandMin : bandMax; setEdgeHit(prev => ({ ...(prev||{}), [cls]: { edge, val } })); setTimeout(()=> setEdgeHit(prev => ({ ...(prev||{}), [cls]: null }) ), 2000);
-                                        }
+                                        const v = Math.round(Math.max(0, Math.min(maxAllowed, Number(e.target.value)||0)));
                                         if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
                                       }}
                                     />
-                                    {mode!=='custom' && edgeHit?.[cls] ? (
-                                      <div className="absolute -bottom-5 right-0 text-[10px] px-2 py-0.5 rounded bg-rose-500 text-white shadow z-50">
-                                        {edgeHit[cls]?.edge === 'max' ? `Max reached (${edgeHit[cls]?.val}%)` : `Min reached (${edgeHit[cls]?.val}%)`}
-                                      </div>
-                                    ) : null}
                                   </div>
-                                  {mode==='custom' ? (
-                                    (()=>{ const current = Math.round(Number(b.pct)||0); const sumOthersAll = ((plan?.buckets||[]) as any[]).reduce((s:any, x:any)=> s + (x.class !== b.class ? (Number(x.pct)||0) : 0), 0); const capValue = Math.max(0, Math.floor(100 - sumOthersAll)); const incAllowed = Math.max(0, capValue - current); return (<span className="text-[10px] text-muted-foreground whitespace-nowrap">free {Math.round(incAllowed)}%</span>); })()
-                                  ) : (
-                                    (()=>{ const current = Math.round(Number(b.pct)||0); const sumOthersAll = ((plan?.buckets||[]) as any[]).reduce((s:any, x:any)=> s + (x.class !== b.class ? (Number(x.pct)||0) : 0), 0); const capValue = Math.max(0, Math.floor(100 - sumOthersAll)); const incBand = Math.max(0, bandMax - current); const incByTotal = Math.max(0, capValue - current); const incAllowed = Math.max(0, Math.min(incBand, incByTotal)); return (<span className="text-[10px] text-muted-foreground whitespace-nowrap">free {Math.round(incAllowed)}%</span>); })()
-                                  )}
                                 </>
                               ); })()}
                             </>
                           ); })()}
                         </div>
                       </td>
+                      ) : null}
                       <td className="py-2 px-3">{b.riskCategory || (b.class === 'Stocks' || b.class === 'Mutual Funds' ? 'Core' : (b.class === 'Gold' || b.class === 'Real Estate' ? 'Satellite' : (b.class === 'Debt' || b.class === 'Liquid' ? 'Defensive' : '')))}</td>
                       <td className="py-2 px-3">{b.notes || (b.class === 'Stocks' ? 'Growth focus' : b.class === 'Mutual Funds' ? 'Diversified equity' : b.class === 'Debt' ? 'Stability & income' : b.class === 'Liquid' ? 'Emergency buffer' : b.class === 'Gold' ? 'Inflation hedge' : b.class === 'Real Estate' ? 'Long-term asset' : '')}</td>
                     </tr>
