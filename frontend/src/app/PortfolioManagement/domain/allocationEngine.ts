@@ -337,7 +337,7 @@ const getSmartDynamicRange = (
 };
 
 export function buildPlan(answers: QuestionnaireAnswers): AllocationPlan {
-  console.log("🚀 Building allocation plan with new engine format:", answers);
+  console.log("🚀 Building allocation plan with new engine format:", answers); console.log("🎯 Goals data:", answers.goals);
   
   // Get inferred values for removed fields
   const inferredValues = inferRemovedValues(answers);

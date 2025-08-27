@@ -1,0 +1,696 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+
+// Simple SVG icons
+const X = () => <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>;
+const Plus = () => <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>;
+const Target = () => <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>;
+const CheckCircle = () => <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+const XCircle = () => <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+
+// Types
+type AssetClass = 'stocks' | 'mutualFunds' | 'gold' | 'realEstate' | 'debt' | 'liquid';
+type PortfolioAllocation = Record<AssetClass, number>;
+type RiskProfile = "conservative" | "balanced" | "aggressive";
+
+interface Goal {
+  id: string;
+  name: string;
+  category: "retirement" | "home_purchase" | "child_education" | "emergency_fund" | "wealth_building" | "custom";
+  targetAmount: number;
+  targetDate: Date;
+  priority: "high" | "medium" | "low";
+  currentProgress: number;
+  isActive: boolean;
+  createdAt: Date;
+  allocatedInvestments?: PortfolioAllocation;
+  allocationExplanation?: string;
+}
+
+interface GoalsPanelProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onGoalsUpdated: (goals: Goal[]) => void;
+}
+
+// Predefined goals templates
+const PREDEFINED_GOALS = [
+  {
+    name: "Retirement Fund",
+    category: "retirement" as const,
+    targetAmount: 50000000,
+    targetDate: new Date(Date.now() + 30 * 365 * 24 * 60 * 60 * 1000), // 30 years
+    description: "Build a substantial retirement corpus for financial independence"
+  },
+  {
+    name: "Home Down Payment",
+    category: "home_purchase" as const,
+    targetAmount: 20000000,
+    targetDate: new Date(Date.now() + 5 * 365 * 24 * 60 * 60 * 1000), // 5 years
+    description: "Save for your dream home down payment"
+  },
+  {
+    name: "Child Education Fund",
+    category: "child_education" as const,
+    targetAmount: 15000000,
+    targetDate: new Date(Date.now() + 15 * 365 * 24 * 60 * 60 * 1000), // 15 years
+    description: "Secure your child's future education"
+  },
+  {
+    name: "Emergency Fund",
+    category: "emergency_fund" as const,
+    targetAmount: 1000000,
+    targetDate: new Date(Date.now() + 1 * 365 * 24 * 60 * 60 * 1000), // 1 year
+    description: "Build a safety net for unexpected expenses"
+  },
+  {
+    name: "Wealth Building",
+    category: "wealth_building" as const,
+    targetAmount: 10000000,
+    targetDate: new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000), // 10 years
+    description: "Grow your wealth through strategic investments"
+  }
+];
+
+// Risk profile thresholds
+const RISK_PROFILE_THRESHOLDS = {
+  conservative: {
+    maxEquityPercentage: 0.5,
+    minDebtPercentage: 0.25,
+    targetEquityPercentage: 0.4,
+    targetDebtPercentage: 0.35
+  },
+  balanced: {
+    maxEquityPercentage: 0.7,
+    minDebtPercentage: 0.15,
+    targetEquityPercentage: 0.6,
+    targetDebtPercentage: 0.25
+  },
+  aggressive: {
+    maxEquityPercentage: 0.85,
+    minDebtPercentage: 0.08,
+    targetEquityPercentage: 0.75,
+    targetDebtPercentage: 0.15
+  }
+};
+
+export default function GoalsPanel({ isOpen, onClose, onGoalsUpdated }: GoalsPanelProps) {
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [customGoal, setCustomGoal] = useState({
+    name: '',
+    targetAmount: '',
+    targetDate: '',
+    priority: 'medium' as const,
+    category: 'custom' as const
+  });
+  const [userRiskProfile, setUserRiskProfile] = useState<RiskProfile>('balanced');
+
+  // Load goals from localStorage
+  useEffect(() => {
+    const savedGoals = localStorage.getItem('investmentGoals');
+    if (savedGoals) {
+      const parsedGoals = JSON.parse(savedGoals).map((goal: any) => ({
+        ...goal,
+        targetDate: new Date(goal.targetDate),
+        createdAt: new Date(goal.createdAt)
+      }));
+      setGoals(parsedGoals);
+    }
+  }, []);
+
+  // Save goals and trigger allocation calculation
+  const saveGoals = (newGoals: Goal[]) => {
+    console.log('💾 GoalsPanel: Saving goals:', newGoals);
+    
+    // Calculate allocations for goals that don't have them
+    const goalsWithAllocations = newGoals.map(goal => {
+      if (!goal.allocatedInvestments) {
+        console.log('🔧 Calculating allocation for goal:', goal.name);
+        const timeline = getTimelineCategory(goal.targetDate);
+        const suggestion = getGoalAllocationSuggestion(timeline, goal.priority);
+        const allocation = calculateBalancedAllocation(goal.targetAmount, suggestion);
+        const explanation = generateAllocationExplanation(goal, allocation, timeline, userRiskProfile);
+        
+        return {
+          ...goal,
+          allocatedInvestments: allocation,
+          allocationExplanation: explanation
+        };
+      }
+      return goal;
+    });
+    
+    // Apply portfolio-level reconciliation
+    const reconciledGoals = reconcilePortfolioAllocation(goalsWithAllocations, userRiskProfile);
+    
+    // Apply risk profile enforcement
+    const finalGoals = enforceRiskProfile(reconciledGoals, userRiskProfile);
+    
+    console.log('💾 Final goals with allocations:', finalGoals);
+    
+    // Save to localStorage
+    localStorage.setItem('investmentGoals', JSON.stringify(finalGoals));
+    setGoals(finalGoals);
+    
+    // Notify parent component
+    onGoalsUpdated(finalGoals);
+    
+    // Dispatch event for other components
+    window.dispatchEvent(new Event('goals-updated'));
+  };
+
+  // Add predefined goal
+  const addPredefinedGoal = () => {
+    if (!selectedTemplate) return;
+    
+    const template = PREDEFINED_GOALS.find(g => g.name === selectedTemplate);
+    if (!template) return;
+
+    const newGoal: Goal = {
+      id: Date.now().toString(),
+      name: template.name,
+      category: template.category,
+      targetAmount: template.targetAmount,
+      targetDate: template.targetDate,
+      priority: 'medium',
+      currentProgress: 0,
+      isActive: true,
+      createdAt: new Date()
+    };
+
+    const updatedGoals = [...goals, newGoal];
+    saveGoals(updatedGoals);
+    setSelectedTemplate('');
+  };
+
+  // Add custom goal
+  const addCustomGoal = () => {
+    if (!customGoal.name || !customGoal.targetAmount || !customGoal.targetDate) return;
+
+    const newGoal: Goal = {
+      id: Date.now().toString(),
+      name: customGoal.name,
+      category: customGoal.category,
+      targetAmount: Number(customGoal.targetAmount),
+      targetDate: new Date(customGoal.targetDate),
+      priority: customGoal.priority,
+      currentProgress: 0,
+      isActive: true,
+      createdAt: new Date()
+    };
+
+    const updatedGoals = [...goals, newGoal];
+    saveGoals(updatedGoals);
+    
+    // Reset form
+    setCustomGoal({
+      name: '',
+      targetAmount: '',
+      targetDate: '',
+      priority: 'medium',
+      category: 'custom'
+    });
+  };
+
+  // Delete goal
+  const deleteGoal = (goalId: string) => {
+    const updatedGoals = goals.filter(goal => goal.id !== goalId);
+    saveGoals(updatedGoals);
+  };
+
+  // Toggle goal active status
+  const toggleGoalStatus = (goalId: string) => {
+    const updatedGoals = goals.map(goal => 
+      goal.id === goalId ? { ...goal, isActive: !goal.isActive } : goal
+    );
+    saveGoals(updatedGoals);
+  };
+
+  // Allocation calculation functions
+  const getTimelineCategory = (targetDate: Date): string => {
+    const years = (targetDate.getTime() - Date.now()) / (365 * 24 * 60 * 60 * 1000);
+    if (years <= 2) return 'short-term';
+    if (years <= 5) return 'medium-term';
+    return 'long-term';
+  };
+
+  const getGoalAllocationSuggestion = (timeline: string, priority: string): PortfolioAllocation => {
+    if (timeline === 'short-term') {
+      return {
+        stocks: 0.1,
+        mutualFunds: 0.1,
+        gold: 0.05,
+        realEstate: 0.05,
+        debt: 0.4,
+        liquid: 0.3
+      };
+    } else if (timeline === 'medium-term') {
+      return {
+        stocks: 0.25,
+        mutualFunds: 0.25,
+        gold: 0.1,
+        realEstate: 0.1,
+        debt: 0.2,
+        liquid: 0.1
+      };
+    } else {
+      return {
+        stocks: 0.35,
+        mutualFunds: 0.35,
+        gold: 0.1,
+        realEstate: 0.1,
+        debt: 0.05,
+        liquid: 0.05
+      };
+    }
+  };
+
+  const calculateBalancedAllocation = (targetAmount: number, suggestion: PortfolioAllocation): PortfolioAllocation => {
+    const allocation: PortfolioAllocation = {
+      stocks: Math.round(targetAmount * suggestion.stocks),
+      mutualFunds: Math.round(targetAmount * suggestion.mutualFunds),
+      gold: Math.round(targetAmount * suggestion.gold),
+      realEstate: Math.round(targetAmount * suggestion.realEstate),
+      debt: Math.round(targetAmount * suggestion.debt),
+      liquid: Math.round(targetAmount * suggestion.liquid)
+    };
+
+    // Balance the allocation to ensure total equals targetAmount
+    const total = Object.values(allocation).reduce((sum, val) => sum + val, 0);
+    const difference = targetAmount - total;
+    
+    if (difference !== 0) {
+      // Add difference to the largest allocation
+      const largestAsset = Object.entries(allocation).sort((a, b) => b[1] - a[1])[0][0] as AssetClass;
+      allocation[largestAsset] += difference;
+    }
+
+    return allocation;
+  };
+
+  const generateAllocationExplanation = (goal: Goal, allocation: PortfolioAllocation, timeline: string, riskProfile: RiskProfile): string => {
+    const equityPercentage = ((allocation.stocks + allocation.mutualFunds) / goal.targetAmount) * 100;
+    const debtPercentage = ((allocation.debt + allocation.liquid) / goal.targetAmount) * 100;
+    const goldPercentage = (allocation.gold / goal.targetAmount) * 100;
+    const realEstatePercentage = (allocation.realEstate / goal.targetAmount) * 100;
+    
+    let explanation = `${goal.name} is a ${timeline} goal, so we allocated `;
+    
+    if (timeline === 'short-term') {
+      explanation += `${debtPercentage.toFixed(0)}% to debt and liquid assets for safety, and ${equityPercentage.toFixed(0)}% to growth assets. `;
+    } else if (timeline === 'medium-term') {
+      explanation += `${equityPercentage.toFixed(0)}% to growth assets and ${debtPercentage.toFixed(0)}% to stable assets for balance. `;
+    } else {
+      explanation += `${equityPercentage.toFixed(0)}% to growth assets for long-term appreciation, with ${debtPercentage.toFixed(0)}% in stable assets. `;
+    }
+
+    // Add diversifier explanations if >10%
+    if (goldPercentage > 10) {
+      explanation += `We've also allocated ${goldPercentage.toFixed(0)}% to gold for diversification and inflation protection. `;
+    }
+    if (realEstatePercentage > 10) {
+      explanation += `We've allocated ${realEstatePercentage.toFixed(0)}% to real estate for portfolio diversification and potential rental income. `;
+    }
+
+    explanation += `Given your ${riskProfile} risk profile, we've ensured the allocation stays within your comfort zone.`;
+    
+    return explanation;
+  };
+
+  const reconcilePortfolioAllocation = (goals: Goal[], riskProfile: RiskProfile): Goal[] => {
+    // Aggregate total allocations
+    const totalAllocation: PortfolioAllocation = {
+      stocks: 0,
+      mutualFunds: 0,
+      gold: 0,
+      realEstate: 0,
+      debt: 0,
+      liquid: 0
+    };
+
+    goals.forEach(goal => {
+      if (goal.allocatedInvestments) {
+        Object.keys(totalAllocation).forEach(asset => {
+          totalAllocation[asset as AssetClass] += goal.allocatedInvestments![asset as AssetClass];
+        });
+      }
+    });
+
+    const totalAmount = Object.values(totalAllocation).reduce((sum, val) => sum + val, 0);
+    if (totalAmount === 0) return goals;
+
+    const equityPercentage = (totalAllocation.stocks + totalAllocation.mutualFunds) / totalAmount;
+    const debtPercentage = (totalAllocation.debt + totalAllocation.liquid) / totalAmount;
+    const thresholds = RISK_PROFILE_THRESHOLDS[riskProfile];
+
+    // Check if portfolio needs adjustment
+    if (equityPercentage > thresholds.maxEquityPercentage || debtPercentage < thresholds.minDebtPercentage) {
+      return adjustToRiskProfile(goals, totalAllocation, totalAmount, thresholds, riskProfile);
+    }
+
+    return goals;
+  };
+
+  const adjustToRiskProfile = (goals: Goal[], totalAllocation: PortfolioAllocation, totalAmount: number, thresholds: any, riskProfile: RiskProfile): Goal[] => {
+    const diversificationPercentage = Math.max(
+      0,
+      1 - thresholds.targetEquityPercentage - thresholds.targetDebtPercentage
+    );
+    const diversificationPerAsset = diversificationPercentage / 2;
+
+    const targetAllocation: PortfolioAllocation = {
+      stocks: Math.round(totalAmount * thresholds.targetEquityPercentage * 0.6),
+      mutualFunds: Math.round(totalAmount * thresholds.targetEquityPercentage * 0.4),
+      gold: Math.round(totalAmount * diversificationPerAsset),
+      realEstate: Math.round(totalAmount * diversificationPerAsset),
+      debt: Math.round(totalAmount * thresholds.targetDebtPercentage * 0.6),
+      liquid: Math.round(totalAmount * thresholds.targetDebtPercentage * 0.4)
+    };
+
+    return goals.map(goal => {
+      if (!goal.allocatedInvestments) return goal;
+      
+      const goalTotal = Object.values(goal.allocatedInvestments).reduce((sum, val) => sum + val, 0);
+      const factor = goalTotal / totalAmount;
+      
+      const adjustedAllocation: PortfolioAllocation = {
+        stocks: Math.round(targetAllocation.stocks * factor),
+        mutualFunds: Math.round(targetAllocation.mutualFunds * factor),
+        gold: Math.round(targetAllocation.gold * factor),
+        realEstate: Math.round(targetAllocation.realEstate * factor),
+        debt: Math.round(targetAllocation.debt * factor),
+        liquid: Math.round(targetAllocation.liquid * factor)
+      };
+
+      const adjustedTotal = Object.values(adjustedAllocation).reduce((sum, val) => sum + val, 0);
+      const difference = goalTotal - adjustedTotal;
+      const largestAsset = Object.entries(adjustedAllocation).sort((a, b) => b[1] - a[1])[0][0] as AssetClass;
+      adjustedAllocation[largestAsset] += difference;
+
+      const timeline = getTimelineCategory(goal.targetDate);
+      const baseExplanation = generateAllocationExplanation(goal, adjustedAllocation, timeline, riskProfile);
+      const riskAdjustmentExplanation = ` Your initial allocation exceeded your ${riskProfile} risk profile, so we rebalanced to keep equity at ${thresholds.targetEquityPercentage * 100}% and debt/liquid at ${thresholds.targetDebtPercentage * 100}% as per your ${riskProfile} profile.`;
+      const explanation = baseExplanation + riskAdjustmentExplanation;
+
+      return {
+        ...goal,
+        allocatedInvestments: adjustedAllocation,
+        allocationExplanation: explanation
+      };
+    });
+  };
+
+  const enforceRiskProfile = (goals: Goal[], riskProfile: RiskProfile): Goal[] => {
+    const totalAllocation: PortfolioAllocation = {
+      stocks: 0,
+      mutualFunds: 0,
+      gold: 0,
+      realEstate: 0,
+      debt: 0,
+      liquid: 0
+    };
+
+    goals.forEach(goal => {
+      if (goal.allocatedInvestments) {
+        Object.keys(totalAllocation).forEach(asset => {
+          totalAllocation[asset as AssetClass] += goal.allocatedInvestments![asset as AssetClass];
+        });
+      }
+    });
+
+    const totalAmount = Object.values(totalAllocation).reduce((sum, val) => sum + val, 0);
+    if (totalAmount === 0) return goals;
+
+    const equityPercentage = (totalAllocation.stocks + totalAllocation.mutualFunds) / totalAmount;
+    const debtPercentage = (totalAllocation.debt + totalAllocation.liquid) / totalAmount;
+    const thresholds = RISK_PROFILE_THRESHOLDS[riskProfile];
+
+    if (equityPercentage > thresholds.maxEquityPercentage || debtPercentage < thresholds.minDebtPercentage) {
+      return adjustToRiskProfile(goals, totalAllocation, totalAmount, thresholds, riskProfile);
+    }
+
+    return goals;
+  };
+
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  const formatDate = (date: Date): string => {
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    }).format(date);
+  };
+
+  const getPriorityColor = (priority: string): string => {
+    switch (priority) {
+      case 'high': return 'bg-red-100 text-red-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'low': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'retirement': return <User className="h-4 w-4" />;
+      case 'home_purchase': return <Home className="h-4 w-4" />;
+      case 'child_education': return <GraduationCap className="h-4 w-4" />;
+      case 'emergency_fund': return <Shield className="h-4 w-4" />;
+      case 'wealth_building': return <TrendingUp className="h-4 w-4" />;
+      default: return <Target className="h-4 w-4" />;
+    }
+  };
+
+  if (!isOpen) { console.log("🚫 GoalsPanel: isOpen is false, not rendering"); return null; }
+  console.log("✅ GoalsPanel: isOpen is true, rendering panel");
+
+  if (!isOpen) { console.log("🚫 GoalsPanel: isOpen is false, not rendering"); return null; }
+  console.log("✅ GoalsPanel: isOpen is true, rendering panel");
+  return (
+    <>
+      {/* Backdrop */}
+      {isOpen && (<div className="fixed inset-0 bg-black bg-opacity-30 z-[9998]" onClick={onClose} />)}
+      
+      {/* Panel */}
+      <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-xl z-[9999] transform transition-transform duration-300 ease-in-out ${isOpen ? "translate-x-0" : "translate-x-full"}`}>
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b">
+            <h2 className="text-lg font-semibold">Investment Goals</h2>
+            <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
+              <X />
+            </button>
+          </div>
+
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            {/* Risk Profile */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Risk Profile</h3>
+              <select 
+                value={userRiskProfile} 
+                onChange={(e) => setUserRiskProfile(e.target.value as RiskProfile)}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              >
+                <option value="conservative">Conservative</option>
+                <option value="balanced">Balanced</option>
+                <option value="aggressive">Aggressive</option>
+              </select>
+            </div>
+    </>
+
+            {/* Predefined Goals */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Quick Add Goals</h3>
+              <div className="space-y-2">
+                <select 
+                  value={selectedTemplate} 
+                  onChange={(e) => setSelectedTemplate(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                >
+                  <option value="">Choose a predefined goal</option>
+                  {PREDEFINED_GOALS.map(goal => (
+                    <option key={goal.name} value={goal.name}>
+                      {goal.name}
+                    </option>
+                  ))}
+                </select>
+                <button 
+                  onClick={addPredefinedGoal} 
+                  disabled={!selectedTemplate}
+                  className="w-full p-2 bg-blue-600 text-white rounded-md disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  <Plus />
+                  Add Goal
+                </button>
+              </div>
+    </>
+            </div>
+    </>
+
+            {/* Custom Goal */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Custom Goal</h3>
+              <div className="space-y-3">
+                <input
+                  placeholder="Goal name"
+                  value={customGoal.name}
+                  onChange={(e) => setCustomGoal(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                />
+                <input
+                  type="number"
+                  placeholder="Target amount (₹)"
+                  value={customGoal.targetAmount}
+                  onChange={(e) => setCustomGoal(prev => ({ ...prev, targetAmount: e.target.value }))}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                />
+                <input
+                  type="date"
+                  value={customGoal.targetDate}
+                  onChange={(e) => setCustomGoal(prev => ({ ...prev, targetDate: e.target.value }))}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                />
+                <select 
+                  value={customGoal.priority} 
+                  onChange={(e) => setCustomGoal(prev => ({ ...prev, priority: e.target.value as any }))}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                >
+                  <option value="low">Low Priority</option>
+                  <option value="medium">Medium Priority</option>
+                  <option value="high">High Priority</option>
+                </select>
+                <button 
+                  onClick={addCustomGoal} 
+                  disabled={!customGoal.name || !customGoal.targetAmount || !customGoal.targetDate}
+                  className="w-full p-2 bg-blue-600 text-white rounded-md disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  <Plus />
+                  Add Custom Goal
+                </button>
+              </div>
+    </>
+            </div>
+    </>
+
+            {/* Current Goals */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Your Goals ({goals.length})</h3>
+              <div className="space-y-3">
+                {goals.map(goal => (
+                  <div key={goal.id} className="p-3 border border-gray-200 rounded-lg">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          {getCategoryIcon(goal.category)}
+                          <span className="font-medium">{goal.name}</span>
+                          <span className={`px-2 py-1 rounded text-xs ${getPriorityColor(goal.priority)}`}>
+                            {goal.priority}
+                          </span>
+                          {goal.isActive ? (
+                            <CheckCircle />
+                          ) : (
+                            <XCircle />
+                          )}
+                        </div>
+    </>
+                        <div className="text-sm text-gray-600 space-y-1">
+                          <div>Target: {formatCurrency(goal.targetAmount)}</div>
+                          <div>Date: {formatDate(goal.targetDate)}</div>
+                          {goal.allocationExplanation && (
+                            <div className="text-xs text-gray-500 mt-2 p-2 bg-gray-50 rounded">
+                              {goal.allocationExplanation}
+                            </div>
+    </>
+                          )}
+                        </div>
+    </>
+                      </div>
+    </>
+                      <div className="flex flex-col gap-1">
+                        <button
+                          onClick={() => toggleGoalStatus(goal.id)}
+                          className="p-1 text-sm text-blue-600 hover:bg-blue-50 rounded"
+                        >
+                          {goal.isActive ? 'Deactivate' : 'Activate'}
+                        </button>
+                        <button
+                          onClick={() => deleteGoal(goal.id)}
+                          className="p-1 text-sm text-red-600 hover:bg-red-50 rounded"
+                        >
+                          Delete
+                        </button>
+                      </div>
+    </>
+                    </div>
+    </>
+                  </div>
+    </>
+                ))}
+                {goals.length === 0 && (
+                  <div className="text-center text-gray-500 py-8">
+                    <Target />
+                    <p>No goals yet. Add your first goal to get started!</p>
+                  </div>
+    </>
+                )}
+              </div>
+    </>
+            </div>
+    </>
+          </div>
+    </>
+        </div>
+
+
+
+
+
+
+}
+
+// Simple SVG icons
+const User = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+  </svg>
+);
+
+const Home = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+  </svg>
+);
+
+const GraduationCap = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+  </svg>
+);
+
+const Shield = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+  </svg>
+);
+
+const TrendingUp = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+  </svg>
+);
+    </>
+  );
+}

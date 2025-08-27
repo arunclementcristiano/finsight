@@ -13,6 +13,7 @@ import RiskProfile from "./RiskProfile";
 import { transformText, transformRiskLevel, transformRiskScore, transformAllocationRange, transformStressTestResult } from "../domain/languageTransform";
 
 export default function PlanSummary({ 
+        setGoalsPanelOpen,
 	plan, 
 	onChangeBucketPct, 
 	onEditAnswers, 
@@ -27,7 +28,8 @@ export default function PlanSummary({
 	locks, 
 	onToggleLock
 }: { 
-	plan: any; 
+	plan: any;
+        setGoalsPanelOpen?: (open: boolean) => void; 
 	onChangeBucketPct?: (index: number, newPct: number) => void; 
 	onEditAnswers?: () => void; 
 	onBuildBaseline?: () => void; 
@@ -61,7 +63,6 @@ export default function PlanSummary({
   const [stressTestExpanded, setStressTestExpanded] = useState(true); // Expanded by default for professional mode
   const [rationaleExpanded, setRationaleExpanded] = useState(false);
   const [rebalanceExpanded, setRebalanceExpanded] = useState(false);
-  const [goalsPanelOpen, setGoalsPanelOpen] = useState(false);
   const [rebalanceOptionsExpanded, setRebalanceOptionsExpanded] = useState(false);
 
   useEffect(()=>{
@@ -244,24 +245,8 @@ export default function PlanSummary({
                   Adjust Risk Profile
                 </Button>
               ) : null}
-              <Button variant="outline" leftIcon={<Target className="h-4 w-4 text-amber-600" />} onClick={()=> router.push("/PortfolioManagement/Goals")}>
+              <Button variant="outline" leftIcon={<Target className="h-4 w-4 text-amber-600" />} onClick={() => { console.log("🎯 Investment Goals button clicked"); setGoalsPanelOpen?.(true); }}>
                 Investment Goals
-              {goalsPanelOpen && (
-                <div className="mt-4 p-4 border border-border rounded-lg bg-card">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-medium">Investment Goals</h4>
-                    <button
-                      onClick={() => setGoalsPanelOpen(false)}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Goals panel will be implemented here. For now, you can manage goals in the separate Goals page.
-                  </div>
-                </div>
-              )}
               </Button>
               {mode !== 'custom' ? (
                 <div className="inline-flex items-center gap-2 ml-2">
