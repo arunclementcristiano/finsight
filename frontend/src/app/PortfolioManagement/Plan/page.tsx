@@ -651,6 +651,14 @@ export default function PlanPage() {
                                         }
                                 }}
                         />
+
+                        {/* Mobile sticky action bar */}
+                        <div className="md:hidden fixed bottom-14 left-0 right-0 z-30 px-3">
+                          <div className="rounded-xl border border-border bg-card shadow flex items-center justify-between p-2">
+                            <Button variant="outline" size="sm" onClick={()=> setGoalsPanelOpen(true)}>Add Goal</Button>
+                            <Button size="sm" onClick={handleSaveClick}>Save Plan</Button>
+                          </div>
+                        </div>
 		</div>
 	);
 }
