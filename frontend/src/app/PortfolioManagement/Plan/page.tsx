@@ -407,6 +407,15 @@ export default function PlanPage() {
 		return () => { cancelled = true; };
 	}, [activePortfolioId]);
 
+	useEffect(() => {
+		try {
+			if (typeof window !== 'undefined') {
+				const sp = new URLSearchParams(window.location.search);
+				if (sp.get('goals') === 'open') setGoalsPanelOpen(true);
+			}
+		} catch {}
+	}, []);
+
 	function normalizeCustom(next: any, changedIndex: number, newPct: number) {
 		const buckets = [...(next?.buckets||[])];
 		if (!buckets[changedIndex]) return next;
