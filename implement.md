@@ -1,3 +1,11 @@
+## toimplement: User-driven Monthly Expense for Stress Check
+
+- Allow users to input their actual monthly expense in onboarding or settings.
+- Use this value for stress check calculations (liquid coverage months).
+- If not provided, fallback to a reasonable default (e.g., 3% of portfolio per year), but this logic should be removed for now.
+- Remove the current fixed monthly expense estimate from the stress check calculation until user input is implemented.
+
+
 FinSight – Current Implementation Overview (planenhancement)
 
 This document captures what is implemented across frontend, backend, APIs, infra, data models, and UX flows as of now. It is designed to bootstrap another AI/developer to continue seamlessly.

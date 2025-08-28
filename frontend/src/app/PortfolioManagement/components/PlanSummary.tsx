@@ -15,6 +15,7 @@ import { transformText, transformRiskLevel, transformRiskScore, transformAllocat
 
 export default function PlanSummary({ 
 	plan, 
+  setGoalsPanelOpen,
 	onChangeBucketPct, 
 	onEditAnswers, 
 	onBuildBaseline, 
@@ -27,8 +28,10 @@ export default function PlanSummary({
 	aiDisabled, 
 	locks, 
 	onToggleLock
+
 }: { 
 	plan: any; 
+  setGoalsPanelOpen?: (open: boolean) => void;
 	onChangeBucketPct?: (index: number, newPct: number) => void; 
 	onEditAnswers?: () => void; 
 	onBuildBaseline?: () => void; 
@@ -208,24 +211,6 @@ export default function PlanSummary({
 
   return (
     <div className="space-y-3">
-      {/* Additional Metrics */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-lg border border-border bg-card p-3 text-center">
-          <div className="text-xs text-muted-foreground mb-1">Real Estate</div>
-          <div className="text-lg font-semibold text-foreground mb-1">{kpiExtras.rePct}%</div>
-          <div className="text-[10px] text-muted-foreground">Household</div>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-3 text-center">
-          <div className="text-xs text-muted-foreground mb-1">Rebalance Cost</div>
-          <div className="text-lg font-semibold text-foreground mb-1">₹{kpiExtras.estCost.toLocaleString()}</div>
-          <div className="text-[10px] text-muted-foreground">Turnover {kpiExtras.turnover}%</div>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-3 text-center">
-          <div className="text-xs text-muted-foreground mb-1">Portfolio Status</div>
-          <div className="text-lg font-semibold text-foreground mb-1">Active</div>
-          <div className="text-[10px] text-muted-foreground">Monitoring</div>
-        </div>
-      </div>
       <Card>
         <CardHeader className="py-2">
           <div className="flex items-center justify-between">
@@ -243,9 +228,11 @@ export default function PlanSummary({
                   Adjust Risk Profile
                 </Button>
               ) : null}
-              <Button variant="outline" leftIcon={<Target className="h-4 w-4 text-amber-600" />} onClick={()=> setGoalsOpen(true)}>
-                Goals & Constraints
-              </Button>
+              {mode !== 'custom' && (
+                <Button variant="outline" leftIcon={<Target className="h-4 w-4 text-amber-600" />} onClick={()=> { if (setGoalsPanelOpen) setGoalsPanelOpen(true); else setGoalsOpen(true); }}>
+                  Investment Goals
+                </Button>
+              )}
               {mode !== 'custom' ? (
                 <div className="inline-flex items-center gap-2 ml-2">
                   <Sparkles className="h-4 w-4 text-amber-500" />
@@ -349,7 +336,7 @@ export default function PlanSummary({
       </Card>
 
       {/* Enhanced Why This Mix - Right after allocation table */}
-      {plan?.rationale && (Array.isArray(plan.rationale) ? plan.rationale.length > 0 : plan.rationale.length > 100) && (
+      {mode !== 'custom' && plan?.rationale && (Array.isArray(plan.rationale) ? plan.rationale.length > 0 : plan.rationale.length > 100) && (
         <Card className="mt-4">
           <CardHeader 
             className="cursor-pointer" 

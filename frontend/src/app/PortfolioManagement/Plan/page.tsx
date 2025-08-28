@@ -598,6 +598,7 @@ export default function PlanPage() {
 						helperText={(questions[ansStep] as any)?.helperText}
 						maxSelect={(questions[ansStep] as any)?.maxSelect}
 						compact
+						type={(questions[ansStep] as any)?.type}
 					/>
 					<div className="flex items-center justify-between">
 						<Button variant="outline" onClick={()=> setAnsStep(s=> Math.max(0, s-1))} disabled={ansStep===0}>Back</Button>
