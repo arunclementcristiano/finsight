@@ -28,7 +28,7 @@ export default function RootLayout({
 	// Global nav (max 6)
 	const navItems = [
 		{ name: "Dashboard", href: "/PortfolioManagement/Dashboard" },
-		{ name: "Portfolio", href: "/PortfolioManagement/Portfolio/Overview" },
+		{ name: "Portfolio", href: "/PortfolioManagement/Portfolio/Plan" },
 		{ name: "Expenses", href: "/ExpenseTracker" },
 		{ name: "Transactions", href: "/PortfolioManagement/Transactions" },
 		{ name: "Reports & Insights", href: "/PortfolioManagement/Insights" },

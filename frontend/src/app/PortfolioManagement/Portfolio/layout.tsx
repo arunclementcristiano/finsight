@@ -3,15 +3,24 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
 export default function PortfolioModuleLayout({ children }: { children: React.ReactNode }) {
 	const pathname = usePathname();
+	const router = useRouter();
 	const tabs = [
-		{ name: "Overview", href: "/PortfolioManagement/Portfolio/Overview" },
 		{ name: "Plan", href: "/PortfolioManagement/Portfolio/Plan" },
 		{ name: "Holdings", href: "/PortfolioManagement/Portfolio/Holdings" },
-		{ name: "Rebalance", href: "/PortfolioManagement/Portfolio/Rebalance" },
 		{ name: "Insights", href: "/PortfolioManagement/Portfolio/Insights" },
 	];
+
+	useEffect(() => {
+		if (pathname === "/PortfolioManagement/Portfolio" || pathname === "/PortfolioManagement/Portfolio/") {
+			router.replace("/PortfolioManagement/Portfolio/Plan");
+		}
+	}, [pathname, router]);
+
 	return (
 		<div className="space-y-4">
 			{/* Module subnav */}

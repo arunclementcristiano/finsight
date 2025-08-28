@@ -15,6 +15,7 @@ export default function AddGoalMobilePage() {
 			const updated = [...stored, newGoal];
 			localStorage.setItem('investmentGoals', JSON.stringify(updated));
 			setConfirm(`Saved ${newGoal.name}`);
+			try { window.dispatchEvent(new Event('goals-updated')); } catch {}
 			setTimeout(()=>{ window.history.back(); }, 700);
 		} catch {}
 	}

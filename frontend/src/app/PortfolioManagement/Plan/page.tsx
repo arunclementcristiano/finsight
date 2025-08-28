@@ -43,14 +43,26 @@ export default function PlanPage() {
                         return buildPlan(q);
                 } catch { return null; }
         }, [draftGoal, questionnaire]);
-        const getEnhancedQuestionnaire = () => {
-                const storedGoals = localStorage.getItem("investmentGoals");
-                const goals = storedGoals ? JSON.parse(storedGoals) : [];
-                return {
-                        ...questionnaire,
-                        goals: goals
-                };
-        };
+	const getEnhancedQuestionnaire = () => {
+		const storedGoals = localStorage.getItem("investmentGoals");
+		const goals = storedGoals ? JSON.parse(storedGoals) : [];
+		return {
+			...questionnaire,
+			goals: goals
+		};
+	};
+
+	// Listen for goals-updated event and recalculate plan
+	useEffect(() => {
+		function handleGoalsUpdated() {
+			const enhancedQ = getEnhancedQuestionnaire();
+			const newPlan = buildPlan(enhancedQ);
+			setPlan(newPlan);
+			setLocal(newPlan);
+		}
+		window.addEventListener("goals-updated", handleGoalsUpdated);
+		return () => window.removeEventListener("goals-updated", handleGoalsUpdated);
+	}, [questionnaire]);
 	
 	// Always use professional mode
 	const displayMode = 'advisor';
@@ -649,6 +661,8 @@ export default function PlanPage() {
                                                 setAiViewOn(false);
                                                 setAiSummary(undefined);
                                         }
+										   // Always dispatch event so PlanPage updates after edit/delete
+										   try { window.dispatchEvent(new Event('goals-updated')); } catch {}
                                 }}
                         />
 

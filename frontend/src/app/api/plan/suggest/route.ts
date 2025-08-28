@@ -223,7 +223,9 @@ export async function POST(req: NextRequest) {
 		(ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).forEach(k => {
 			const b = advisor[k] || 0;
 			const aRaw = (()=>{ const e = (ai.buckets||[]).find(x=> (x.class||"").toLowerCase()===k.toLowerCase()); return Number.isFinite(e?.pct) ? Number(e!.pct) : b; })();
-			const [min, max] = (baseline.buckets.find(x=>x.class===k)?.range)||[0,100];
+			const foundBucket = baseline.buckets.find(x=>x.class===k);
+			const rangeArr = Array.isArray(foundBucket?.range) ? foundBucket.range : [0,100];
+			const [min, max] = rangeArr;
 			if (aRaw < min) perAsset[k] = `AI below comfort; clamped to ${min}%`;
 			else if (aRaw > max) perAsset[k] = `AI above comfort; clamped to ${max}%`;
 			else perAsset[k] = `Within comfort; blended with baseline`;
@@ -259,15 +261,25 @@ export async function POST(req: NextRequest) {
 		const aiSuggestion = normalizeTo100(aiMap);
 		const comfortRanges: Record<AllowedClass, [number, number]> = {} as any;
 		(ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).forEach(k => {
-			const [min, max] = (baseline.buckets.find(x=>x.class===k)?.range)||[0,100];
+			const foundBucket = baseline.buckets.find(x=>x.class===k);
+			const rangeArr = Array.isArray(foundBucket?.range) ? foundBucket.range : [0,100];
+			const [min, max] = rangeArr;
 			comfortRanges[k] = [Math.round(min), Math.round(max)];
 		});
 		const explanation = `Applied comfort zones from baseline; blended with AI via ±${cap}% cap/midpoint.`;
 
+		// Only include range in output buckets if mode is custom
+		const mode = (baseline as any)?.mode || (baseline as any)?.origin || "engine";
+		let bucketsOut;
+		if (mode === "custom") {
+			bucketsOut = (ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).map(cls => ({ class: cls, pct: finalInt[cls], range: comfortRanges[cls], riskCategory: "", notes: "" }));
+		} else {
+			bucketsOut = (ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).map(cls => ({ class: cls, pct: finalInt[cls], riskCategory: "", notes: "" }));
+		}
 		return NextResponse.json({
 			aiPlan: {
 				riskLevel: baseline?.riskLevel || "Moderate",
-				buckets: (ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).map(cls => ({ class: cls, pct: finalInt[cls], range: comfortRanges[cls], riskCategory: "", notes: "" }))
+				buckets: bucketsOut
 			},
 			rationale: ai.rationale || "Refined based on your risk and goals.",
 			confidence: typeof ai.confidence === "number" ? ai.confidence : undefined,
@@ -281,6 +293,18 @@ export async function POST(req: NextRequest) {
 			...(debug ? { diag: ai.diag || {} } : {})
 		});
 	} catch (err: any) {
-		return NextResponse.json({ error: "Failed to suggest plan" }, { status: 502 });
+		// Log error to server console for debugging
+		console.error('AI plan suggest error:', err);
+		// If debug=1, include error details in response
+		const debug = (req.nextUrl?.searchParams?.get('debug') === '1');
+		const errorPayload: any = { error: "Failed to suggest plan" };
+		if (debug) {
+			errorPayload.details = {
+				message: err?.message,
+				stack: err?.stack,
+				raw: String(err)
+			};
+		}
+		return NextResponse.json(errorPayload, { status: 502 });
 	}
 }

@@ -9,11 +9,11 @@ import { LineChart, Layers, Banknote, Coins, Home, Droplet, Edit3, RefreshCw, Ch
 import { Target } from "lucide-react";
 import { Sparkles } from "lucide-react";
 import { Modal } from "../../components/Modal";
+import GoalsPanel from "./GoalsPanel";
 import RiskProfile from "./RiskProfile";
 import { transformText, transformRiskLevel, transformRiskScore, transformAllocationRange, transformStressTestResult } from "../domain/languageTransform";
 
 export default function PlanSummary({ 
-        setGoalsPanelOpen,
 	plan, 
 	onChangeBucketPct, 
 	onEditAnswers, 
@@ -28,8 +28,7 @@ export default function PlanSummary({
 	locks, 
 	onToggleLock
 }: { 
-	plan: any;
-        setGoalsPanelOpen?: (open: boolean) => void; 
+	plan: any; 
 	onChangeBucketPct?: (index: number, newPct: number) => void; 
 	onEditAnswers?: () => void; 
 	onBuildBaseline?: () => void; 
@@ -57,10 +56,9 @@ export default function PlanSummary({
   const [proposeLoading, setProposeLoading] = useState(false);
   const [proposeError, setProposeError] = useState<string | null>(null);
   const [rebalanceOn, setRebalanceOn] = useState(false);
+  const [goalsOpen, setGoalsOpen] = useState(false);
   
   // Enhanced sections expand/collapse state
-  const [signalsExpanded, setSignalsExpanded] = useState(true); // Expanded by default for professional mode
-  const [stressTestExpanded, setStressTestExpanded] = useState(true); // Expanded by default for professional mode
   const [rationaleExpanded, setRationaleExpanded] = useState(false);
   const [rebalanceExpanded, setRebalanceExpanded] = useState(false);
   const [rebalanceOptionsExpanded, setRebalanceOptionsExpanded] = useState(false);
@@ -245,16 +243,8 @@ export default function PlanSummary({
                   Adjust Risk Profile
                 </Button>
               ) : null}
-              <Button variant="outline" leftIcon={<Target className="h-4 w-4 text-amber-600" />} onClick={() => { 
-                try {
-                  if (typeof window !== 'undefined' && window.innerWidth < 768) {
-                    router.push('/PortfolioManagement/Goals/Add');
-                  } else {
-                    setGoalsPanelOpen?.(true);
-                  }
-                } catch { setGoalsPanelOpen?.(true); }
-              }}>
-                Investment Goals
+              <Button variant="outline" leftIcon={<Target className="h-4 w-4 text-amber-600" />} onClick={()=> setGoalsOpen(true)}>
+                Goals & Constraints
               </Button>
               {mode !== 'custom' ? (
                 <div className="inline-flex items-center gap-2 ml-2">
@@ -279,7 +269,7 @@ export default function PlanSummary({
                   <tr>
                     <th className="py-2 px-3 text-muted-foreground">Asset Class</th>
                     <th className="py-2 px-3 text-muted-foreground text-right">Allocation</th>
-                    {mode==='custom' ? (<th className="py-2 px-3 text-muted-foreground">Adjust</th>) : null}
+                    <th className="py-2 px-3 text-muted-foreground">Adjust</th>
                     <th className="py-2 px-3 text-muted-foreground">Role</th>
                     <th className="py-2 px-3 text-muted-foreground">Remarks</th>
                   </tr>
@@ -289,12 +279,11 @@ export default function PlanSummary({
                     <tr key={b.class} className="border-t border-border/50">
                       <td className="py-2 px-3 font-medium"><span className="inline-flex items-center">{(() => { const common = "h-4 w-4 mr-2"; if (b.class === "Stocks") return <LineChart className={common} />; if (b.class === "Mutual Funds") return <Layers className={common} />; if (b.class === "Debt") return <Banknote className={common} />; if (b.class === "Gold") return <Coins className={common} />; if (b.class === "Real Estate") return <Home className={common} />; if (b.class === "Liquid") return <Droplet className={common} />; return <LineChart className={common} />; })()}{b.class}</span></td>
                       <td className="py-2 px-3 text-right">{Math.round(b.pct)}%</td>
-                      {mode==='custom' ? (
                       <td className="py-2 px-3">
                         <div className="group flex items-center gap-2">
                           {(() => { const maxAllowed = 100; return (
                             <>
-                              {(() => { const rawBand = (Array.isArray(b.range) ? b.range as [number,number] : [0,100]); const minBound = 0; const maxBound = maxAllowed; const bandMin = Math.round((Number(rawBand[0])||0)); const bandMax = Math.round((Number(rawBand[1])||100)); const valueNow = Number.isFinite(Number(b.pct)) ? Math.round(Number(b.pct)) : 0; const cls = b.class; const isEdge = !!edgeHit?.[cls]; return (
+                              {(() => { const rawBand = (Array.isArray(b.range) ? b.range as [number,number] : [0,100]); const minBound = 0; const maxBound = mode==='custom' ? maxAllowed : 100; const bandMin = Math.round((Number(rawBand[0])||0)); const bandMax = Math.round((Number(rawBand[1])||100)); const valueNow = Number.isFinite(Number(b.pct)) ? Math.round(Number(b.pct)) : 0; const bandStart = Math.max(0, Math.min(100, bandMin)); const bandEnd = Math.max(0, Math.min(100, bandMax)); const cls = b.class; const isEdge = !!edgeHit?.[cls]; return (
                                 <>
                                   <div className="relative w-full md:w-56">
                                     <input
@@ -306,19 +295,30 @@ export default function PlanSummary({
                                       value={valueNow}
                                       aria-label={`${b.class} allocation`}
                                       disabled={!!aiViewOn}
+                                      style={mode!=='custom' ? ({ background: `linear-gradient(to right, rgba(120,120,120,0.18) 0%, rgba(120,120,120,0.18) ${bandStart}%, rgba(99,102,241,0.25) ${bandStart}%, rgba(99,102,241,0.25) ${bandEnd}%, rgba(120,120,120,0.18) ${bandEnd}%, rgba(120,120,120,0.18) 100%)` } as any) : undefined}
                                       onChange={(e)=>{
-                                        const v = Math.round(Math.max(0, Math.min(maxAllowed, Number(e.target.value)||0)));
+                                        const v = Math.round(Math.max(0, Math.min(mode==='custom' ? maxAllowed : 100, Number(e.target.value)||0)));
+                                        if (mode !== 'custom' && (v < bandMin || v > bandMax)) {
+                                          const edge = v < bandMin ? 'min' : 'max'; const val = v < bandMin ? bandMin : bandMax; setEdgeHit(prev => ({ ...(prev||{}), [cls]: { edge, val } })); setTimeout(()=> setEdgeHit(prev => ({ ...(prev||{}), [cls]: null }) ), 2000);
+                                        }
                                         if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x:any)=> x.class===b.class), v);
                                       }}
                                     />
+                                    {mode!=='custom' && edgeHit?.[cls] ? (
+                                      <div className="absolute -bottom-5 right-0 text-[10px] px-2 py-0.5 rounded bg-rose-500 text-white shadow z-50">
+                                        {edgeHit[cls]?.edge === 'max' ? `Max reached (${edgeHit[cls]?.val}%)` : `Min reached (${edgeHit[cls]?.val}%)`}
+                                      </div>
+                                    ) : null}
                                   </div>
+                                  {mode==='custom' ? (
+                                    (()=>{ const current = Math.round(Number(b.pct)||0); const sumOthersAll = ((plan?.buckets||[]) as any[]).reduce((s:any, x:any)=> s + (x.class !== b.class ? (Number(x.pct)||0) : 0), 0); const capValue = Math.max(0, Math.floor(100 - sumOthersAll)); const incAllowed = Math.max(0, capValue - current); return (<span className="text-[10px] text-muted-foreground whitespace-nowrap">free {Math.round(incAllowed)}%</span>); })()
+                                  ) : null}
                                 </>
                               ); })()}
                             </>
                           ); })()}
                         </div>
                       </td>
-                      ) : null}
                       <td className="py-2 px-3">{b.riskCategory || (b.class === 'Stocks' || b.class === 'Mutual Funds' ? 'Core' : (b.class === 'Gold' || b.class === 'Real Estate' ? 'Satellite' : (b.class === 'Debt' || b.class === 'Liquid' ? 'Defensive' : '')))}</td>
                       <td className="py-2 px-3">{b.notes || (b.class === 'Stocks' ? 'Growth focus' : b.class === 'Mutual Funds' ? 'Diversified equity' : b.class === 'Debt' ? 'Stability & income' : b.class === 'Liquid' ? 'Emergency buffer' : b.class === 'Gold' ? 'Inflation hedge' : b.class === 'Real Estate' ? 'Long-term asset' : '')}</td>
                     </tr>
@@ -340,12 +340,7 @@ export default function PlanSummary({
               </div>
             ) : null}
 
-            {stress ? (
-              <div className="mt-3 rounded-md border border-border p-3">
-                <div className="text-xs font-semibold mb-1">Stress check</div>
-                <div className="text-[11px] text-muted-foreground">If equity falls 20%, portfolio impact ≈ {stress.impact.toLocaleString()} · Liquid covers ≈ {stress.months} months at a typical spend rate.</div>
-              </div>
-            ) : null}
+            {/* Stress check removed for Advisor/AI/engine view as per requirements. */}
             </>
           ) : (
             <div className="text-muted-foreground text-sm">No plan yet.</div>
@@ -388,55 +383,7 @@ export default function PlanSummary({
         </Card>
       )}
 
-      <Card>
-        <CardHeader 
-          className="py-2 cursor-pointer" 
-          onClick={() => setRebalanceExpanded(!rebalanceExpanded)}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">
-                Rebalancing Suggestions
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Based on drift tolerance of {driftTolerancePct}%
-              </CardDescription>
-            </div>
-            {rebalanceExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </div>
-        </CardHeader>
-        {rebalanceExpanded && (
-          <CardContent className="pt-0">
-            {plan && rebalance.items.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                {rebalance.items.map((item) => (
-                  <div key={item.class} className="rounded-lg border border-border p-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="font-medium">{item.class}</div>
-                      <div className="text-muted-foreground">{item.actualPct}% → {item.targetPct}%</div>
-                    </div>
-                    <div className="mt-1 flex items-center gap-2">
-                      <div className="h-2 rounded bg-muted w-full overflow-hidden">
-                        <div className={`h-2 ${item.action === 'Increase' ? 'bg-indigo-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(100, Math.max(5, Math.round((item.amount / Math.max(1, rebalance.totalCurrentValue)) * 100)))}%` }}></div>
-                      </div>
-                      <div className={`text-xs ${item.action === 'Increase' ? 'text-indigo-600' : 'text-rose-600'}`}>
-                        {item.action} {item.amount.toFixed(0)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-muted-foreground text-sm">
-                {!plan 
-                  ? "No plan yet."
-                  : "All good! No rebalancing needed."
-                }
-              </div>
-            )}
-          </CardContent>
-        )}
-      </Card>
+  {/* Rebalancing Suggestions moved to Insights view. */}
 
       <Modal open={rebalanceOpen} onClose={()=> setRebalanceOpen(false)} title="Rebalance Proposal" footer={(
         <>
@@ -494,116 +441,7 @@ export default function PlanSummary({
         </div>
       </Modal>
 
-      {/* Enhanced Features from 10-Advisor Council Engine */}
-      <Card className="mt-4">
-        <CardHeader 
-          className="cursor-pointer" 
-          onClick={() => setSignalsExpanded(!signalsExpanded)}
-        >
-          <CardTitle className="text-sm flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-yellow-500" />
-              Signal Analysis
-            </div>
-            {signalsExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Factors that influenced your allocation
-          </CardDescription>
-        </CardHeader>
-        {signalsExpanded && (
-          <CardContent className="space-y-2">
-            {plan?.signals && plan.signals.length > 0 ? (
-              plan.signals
-                .sort((a: any, b: any) => Math.abs(b.equitySignal * b.weight) - Math.abs(a.equitySignal * a.weight))
-                .slice(0, 5)
-                .map((signal: any, index: number) => {
-                  const impact = signal.equitySignal * signal.weight;
-                  const isPositive = impact > 0;
-                  
-                  return (
-                    <div key={index} className="flex items-center justify-between p-2 bg-muted/20 rounded text-xs">
-                      <div className="flex-1">
-                        <div className="font-medium capitalize">
-                          {signal.factor?.replace(/_/g, ' ') || 'Unknown Factor'}
-                        </div>
-                        <div className="text-muted-foreground text-[11px]">
-                          {signal.explanation}
-                        </div>
-                      </div>
-                      <div className={`text-right font-semibold ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                        {isPositive ? '+' : ''}{Math.round(impact)}
-                      </div>
-                    </div>
-                  );
-                })
-            ) : (
-              <div className="text-xs text-muted-foreground p-2 bg-muted/20 rounded">
-                No signal data available. Complete the questionnaire to generate allocation signals.
-              </div>
-            )}
-          </CardContent>
-        )}
-      </Card>
-
-      <Card className="mt-4">
-        <CardHeader 
-          className="cursor-pointer" 
-          onClick={() => setStressTestExpanded(!stressTestExpanded)}
-        >
-          <CardTitle className="text-sm flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Target className="h-4 w-4 text-orange-500" />
-              Stress Test Results
-            </div>
-            {stressTestExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </CardTitle>
-          <CardDescription className="text-xs">
-            How your portfolio might perform in market downturns
-          </CardDescription>
-        </CardHeader>
-        {stressTestExpanded && (
-          <CardContent className="space-y-3">
-            {plan?.stressTest && Object.keys(plan.stressTest.scenarios).length > 0 ? (
-              Object.entries(plan.stressTest.scenarios).slice(0, 3).map(([scenario, result]: [string, any]) => (
-                <div key={scenario} className="p-2 border rounded text-xs">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="font-medium">{scenario}</div>
-                    <div className={`font-semibold ${
-                      result.portfolioImpact > 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {result.portfolioImpact > 0 ? '+' : ''}{result.portfolioImpact.toFixed(1)}%
-                    </div>
-                  </div>
-                  <div className="text-muted-foreground text-[11px]">
-                    Emergency coverage: {result.monthsCovered.toFixed(1)} months
-                  </div>
-                  {result.historicalDrop && (
-                    <div className="text-muted-foreground text-[11px] mt-1">
-                      Historical drop: {result.historicalDrop}
-                    </div>
-                  )}
-                  {result.evidence && (
-                    <div className="text-muted-foreground text-[11px]">
-                      Evidence: {result.evidence}
-                    </div>
-                  )}
-                  {result.recovery && (
-                    <div className="text-muted-foreground text-[11px]">
-                      Recovery: {result.recovery}
-                    </div>
-                  )}
-                </div>
-              ))
-            ) : (
-              <div className="text-xs text-muted-foreground p-2 bg-muted/20 rounded">
-                No stress test data available. Complete the questionnaire to generate stress test scenarios.
-              </div>
-            )}
-          </CardContent>
-        )}
-      </Card>
-
+      {/* Rebalance Options Section */}
       {/* Rebalance Options Section */}
       <Card className="mt-4">
         <CardHeader 
@@ -689,6 +527,7 @@ export default function PlanSummary({
         )}
       </Card>
 
+  <GoalsPanel isOpen={goalsOpen} onClose={()=> setGoalsOpen(false)} onGoalsUpdated={()=>{}} />
       <style jsx>{`
         @keyframes shake { 10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(2px); } 30%, 50%, 70% { transform: translateX(-4px); } 40%, 60% { transform: translateX(4px); } }
         .animate-shake { animation: shake 0.3s linear; }
