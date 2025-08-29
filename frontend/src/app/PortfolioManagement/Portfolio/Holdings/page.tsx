@@ -14,7 +14,7 @@ import {
   ChevronDown,
   ChevronRight
 } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 type InstrumentType = 'stocks' | 'mutual_funds' | 'debt_bonds' | 'liquid_fd' | 'gold' | 'real_estate';
 
@@ -96,6 +96,7 @@ export default function PortfolioHoldingsDashboard() {
   const [showModal, setShowModal] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<InstrumentType>>(new Set(['stocks']));
   const [editingHolding, setEditingHolding] = useState<PortfolioHolding | null>(null);
+  const [chartType, setChartType] = useState<'pie'|'bar'>('pie');
 
   // Form state for different instruments
   const [stockForm, setStockForm] = useState({
@@ -334,6 +335,32 @@ export default function PortfolioHoldingsDashboard() {
       value,
       color: colors[index % colors.length],
     }));
+  };
+
+  const getRoleForInstrument = (id: InstrumentType) => {
+    if (id === 'stocks' || id === 'mutual_funds') return 'Equity';
+    if (id === 'debt_bonds' || id === 'liquid_fd') return 'Defensive';
+    return 'Satellite';
+  };
+
+  const getByRole = () => {
+    const acc: Record<string, number> = { Equity: 0, Defensive: 0, Satellite: 0 };
+    portfolioHoldings.forEach(h => {
+      const role = getRoleForInstrument(h.instrumentType);
+      // reuse value calculation from calculatePortfolioValue branches
+      let v = 0;
+      switch (h.instrumentType) {
+        case 'stocks': v = (h as any).unitsHeld * (h as any).buyPrice; break;
+        case 'mutual_funds': v = (h as any).unitsOrAmount * (h as any).navAtPurchase; break;
+        case 'debt_bonds': v = (h as any).unitsPurchased * (h as any).faceValue; break;
+        case 'liquid_fd': v = (h as any).depositAmount; break;
+        case 'gold': v = (h as any).quantity * (h as any).buyPrice; break;
+        case 'real_estate': v = (h as any).currentValue; break;
+      }
+      acc[role] += v || 0;
+    });
+    const total = Object.values(acc).reduce((s,n)=>s+n,0) || 1;
+    return Object.entries(acc).map(([role, value]) => ({ role, value, pct: (value/total)*100 }));
   };
 
   const renderDynamicForm = () => {
@@ -855,6 +882,19 @@ export default function PortfolioHoldingsDashboard() {
               </h3>
               <form onSubmit={handleSubmit}>
                 {renderDynamicForm()}
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Invested / Current fields with helper text and conditional required */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Invested Amount {(selectedInstrument==='gold'||selectedInstrument==='real_estate'||selectedInstrument==='debt_bonds'||selectedInstrument==='liquid_fd') ? '*' : ''}</label>
+                    <input type="number" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white" required={(selectedInstrument==='gold'||selectedInstrument==='real_estate'||selectedInstrument==='debt_bonds'||selectedInstrument==='liquid_fd')} onChange={()=>{}} placeholder="Enter invested amount" />
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Gold/Real Estate/Debt/Liquid require invested amount.</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Current Value {(selectedInstrument==='debt_bonds'||selectedInstrument==='liquid_fd') ? '*' : '(optional)'}</label>
+                    <input type="number" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white" required={(selectedInstrument==='debt_bonds'||selectedInstrument==='liquid_fd')} onChange={()=>{}} placeholder="Enter current value" />
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Debt/Liquid require current value for accurate P/L.</p>
+                  </div>
+                </div>
                 <div className="mt-6 flex justify-end space-x-3">
                   <button
                     type="button"
@@ -884,116 +924,90 @@ export default function PortfolioHoldingsDashboard() {
                 </div>
                 
                 <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50 dark:bg-gray-700">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 text-xs uppercase tracking-wide">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Type
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Name
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Details
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Value
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Date
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                          Actions
-                        </th>
+                        <th className="px-4 py-2 text-left">Asset</th>
+                        <th className="px-4 py-2 text-left">Class</th>
+                        <th className="px-4 py-2 text-right">Invested</th>
+                        <th className="px-4 py-2 text-right">Current</th>
+                        <th className="px-4 py-2 text-right">P/L</th>
+                        <th className="px-4 py-2 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                       {portfolioHoldings.map(holding => {
                         const instrument = instruments.find(i => i.id === holding.instrumentType);
                         const Icon = instrument?.icon || TrendingUp;
-                        
-                        let value = 0;
-                        let details = '';
-                        let date = '';
-                        
+
+                        let invested = 0;
+                        let current = 0;
+                        let name = '';
+
                         switch (holding.instrumentType) {
-                          case 'stocks':
+                          case 'stocks': {
                             const stock = holding as StockHolding;
-                            value = stock.unitsHeld * stock.buyPrice;
-                            details = `${stock.stockSymbol} • ${stock.unitsHeld} units @ ₹${stock.buyPrice}`;
-                            date = stock.purchaseDate;
+                            invested = stock.unitsHeld * stock.buyPrice;
+                            current = invested; // no live price; preserving logic
+                            name = stock.companyName;
                             break;
-                          case 'mutual_funds':
+                          }
+                          case 'mutual_funds': {
                             const mf = holding as MutualFundHolding;
-                            value = mf.unitsOrAmount * mf.navAtPurchase;
-                            details = `${mf.fundType} • ${mf.unitsOrAmount} units @ NAV ₹${mf.navAtPurchase}`;
-                            date = mf.purchaseDate;
+                            invested = mf.unitsOrAmount * mf.navAtPurchase;
+                            current = invested; // preserving logic
+                            name = mf.fundName;
                             break;
-                          case 'debt_bonds':
+                          }
+                          case 'debt_bonds': {
                             const bond = holding as DebtBondHolding;
-                            value = bond.unitsPurchased * bond.faceValue;
-                            details = `${bond.issuer} • ${bond.unitsPurchased} units @ ₹${bond.faceValue} • ${bond.couponRate}%`;
-                            date = bond.maturityDate;
+                            invested = bond.unitsPurchased * bond.faceValue;
+                            current = invested; // unless provided elsewhere
+                            name = bond.bondName;
                             break;
-                          case 'liquid_fd':
+                          }
+                          case 'liquid_fd': {
                             const fd = holding as LiquidFDHolding;
-                            value = fd.depositAmount;
-                            details = `${fd.bankName} • ${fd.interestRate}% • ${fd.tenure} months`;
-                            date = fd.maturityDate;
+                            invested = fd.depositAmount;
+                            current = fd.depositAmount; // required via form
+                            name = fd.bankName;
                             break;
-                          case 'gold':
+                          }
+                          case 'gold': {
                             const gold = holding as GoldHolding;
-                            value = gold.quantity * gold.buyPrice;
-                            details = `${gold.goldType} • ${gold.quantity} grams @ ₹${gold.buyPrice}`;
-                            date = gold.purchaseDate;
+                            invested = gold.quantity * gold.buyPrice;
+                            current = invested; // optional appreciation not tracked here
+                            name = 'Gold Investment';
                             break;
-                          case 'real_estate':
+                          }
+                          case 'real_estate': {
                             const re = holding as RealEstateHolding;
-                            value = re.currentValue;
-                            details = `${re.location} • Purchase: ₹${re.purchaseValue.toLocaleString()}`;
-                            date = re.purchaseDate;
+                            invested = re.purchaseValue;
+                            current = re.currentValue;
+                            name = re.propertyName;
                             break;
+                          }
                         }
-                        
+                        const pl = (current || 0) - (invested || 0);
+
                         return (
                           <tr key={holding.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center space-x-3">
+                            <td className="px-4 py-2 whitespace-nowrap">
+                              <div className="flex items-center gap-3">
                                 <div className={`p-2 rounded-lg ${instrument?.color || 'bg-gray-500'} text-white`}>
                                   <Icon size={16} />
                                 </div>
-                                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                  {instrument?.name}
-                                </span>
+                                <div className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[16ch]">
+                                  {name}
+                                </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                {holding.instrumentType === 'stocks' && (holding as StockHolding).companyName}
-                                {holding.instrumentType === 'mutual_funds' && (holding as MutualFundHolding).fundName}
-                                {holding.instrumentType === 'debt_bonds' && (holding as DebtBondHolding).bondName}
-                                {holding.instrumentType === 'liquid_fd' && (holding as LiquidFDHolding).bankName}
-                                {holding.instrumentType === 'gold' && 'Gold Investment'}
-                                {holding.instrumentType === 'real_estate' && (holding as RealEstateHolding).propertyName}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="text-sm text-gray-500 dark:text-gray-400">
-                                {details}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-semibold text-green-600 dark:text-green-400">
-                                ₹{value.toLocaleString()}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-500 dark:text-gray-400">
-                                {new Date(date).toLocaleDateString()}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center space-x-2">
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{instrument?.name}</td>
+                            <td className="px-4 py-2 whitespace-nowrap text-right text-sm">₹{Math.round(invested).toLocaleString()}</td>
+                            <td className="px-4 py-2 whitespace-nowrap text-right text-sm">₹{Math.round(current).toLocaleString()}</td>
+                            <td className={`px-4 py-2 whitespace-nowrap text-right text-sm ${pl>=0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>₹{Math.round(pl).toLocaleString()}</td>
+                            <td className="px-4 py-2 whitespace-nowrap text-right">
+                              <div className="inline-flex items-center gap-2">
                                 <button
                                   onClick={() => editHolding(holding)}
                                   className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
@@ -1021,43 +1035,54 @@ export default function PortfolioHoldingsDashboard() {
           {/* Right Panel - Portfolio Summary */}
           <div className="col-span-3">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Portfolio Summary</h3>
-              
-              <div className="text-center mb-6">
-                <div className="text-3xl font-bold text-gray-900 dark:text-white">
-                  ₹{calculatePortfolioValue().toLocaleString()}
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Allocation</h3>
+                <div className="inline-flex items-center gap-1 rounded-md border border-gray-200 dark:border-gray-700 p-1">
+                  <button onClick={()=> setChartType('pie')} className={`h-8 px-3 rounded-md text-sm ${chartType==='pie' ? 'bg-gray-100 dark:bg-gray-700' : ''}`}>Pie</button>
+                  <button onClick={()=> setChartType('bar')} className={`h-8 px-3 rounded-md text-sm ${chartType==='bar' ? 'bg-gray-100 dark:bg-gray-700' : ''}`}>Bar</button>
                 </div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">Total Portfolio Value</div>
               </div>
 
-              {portfolioHoldings.length > 0 && (
-                <div className="h-64 mb-6">
-                  <ResponsiveContainer width="100%" height="100%">
+              <div className="h-64 mb-6">
+                <ResponsiveContainer width="100%" height="100%">
+                  {chartType==='pie' ? (
                     <PieChart>
-                      <Pie
-                        data={getChartData()}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        dataKey="value"
-                      >
-                        {getChartData().map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
+                      <Pie data={getChartData()} cx="50%" cy="50%" innerRadius={50} outerRadius={90} dataKey="value" paddingAngle={2} cornerRadius={8}>
+                        {getChartData().map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
                       </Pie>
-                      <Tooltip 
-                        formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Value']}
-                        contentStyle={{
-                          backgroundColor: 'rgb(31, 41, 55)',
-                          border: '1px solid rgb(75, 85, 99)',
-                          borderRadius: '8px',
-                          color: 'white'
-                        }}
-                      />
+                      <Tooltip formatter={(value: number) => [`₹${Number(value).toLocaleString()}`, 'Value']} contentStyle={{ borderRadius: 12, border: '1px solid rgba(148,163,184,0.2)' }} />
+                      <Legend verticalAlign="bottom" align="center" iconType="circle" wrapperStyle={{ paddingTop: 8 }} />
                     </PieChart>
-                  </ResponsiveContainer>
+                  ) : (
+                    <BarChart data={getChartData()} margin={{ left: 8, right: 8, top: 8, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                      <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 12 }} />
+                      <Tooltip formatter={(v: any) => `₹${Math.round(v as number).toLocaleString()}`} contentStyle={{ borderRadius: 12, border: '1px solid rgba(148,163,184,0.2)' }} />
+                      <Bar dataKey="value" radius={[6,6,0,0]}>
+                        {getChartData().map((entry, index) => (<Cell key={`bar-${index}`} fill={entry.color} />))}
+                      </Bar>
+                    </BarChart>
+                  )}
+                </ResponsiveContainer>
+              </div>
+
+              <div className="mb-6">
+                <div className="text-sm font-medium text-gray-900 dark:text-white mb-2">By Investment Role</div>
+                <div className="space-y-3">
+                  {getByRole().map(r => (
+                    <div key={r.role}>
+                      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+                        <span>{r.role}</span>
+                        <span>{r.pct.toFixed(1)}%</span>
+                      </div>
+                      <div className="h-2 rounded-md bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                        <div className="h-full rounded-md" style={{ width: `${r.pct}%`, backgroundColor: r.role==='Equity' ? '#3B82F6' : r.role==='Defensive' ? '#10B981' : '#F59E0B' }} />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              )}
+              </div>
 
               <div className="space-y-3">
                 {instruments.map(instrument => {
@@ -1139,6 +1164,19 @@ export default function PortfolioHoldingsDashboard() {
 
               <form onSubmit={handleSubmit}>
                 {renderDynamicForm()}
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Invested / Current fields with helper text and conditional required */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Invested Amount {(selectedInstrument==='gold'||selectedInstrument==='real_estate'||selectedInstrument==='debt_bonds'||selectedInstrument==='liquid_fd') ? '*' : ''}</label>
+                    <input type="number" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white" required={(selectedInstrument==='gold'||selectedInstrument==='real_estate'||selectedInstrument==='debt_bonds'||selectedInstrument==='liquid_fd')} onChange={()=>{}} placeholder="Enter invested amount" />
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Gold/Real Estate/Debt/Liquid require invested amount.</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Current Value {(selectedInstrument==='debt_bonds'||selectedInstrument==='liquid_fd') ? '*' : '(optional)'}</label>
+                    <input type="number" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white" required={(selectedInstrument==='debt_bonds'||selectedInstrument==='liquid_fd')} onChange={()=>{}} placeholder="Enter current value" />
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Debt/Liquid require current value for accurate P/L.</p>
+                  </div>
+                </div>
                 <div className="mt-6 flex justify-end space-x-3">
                   <button
                     type="button"
