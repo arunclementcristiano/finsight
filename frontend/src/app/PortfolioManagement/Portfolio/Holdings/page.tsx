@@ -1,7 +1,7 @@
 "use client";
 import React, { useMemo, useState } from "react";
 import { useApp, type Holding } from "../../../store";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Plus, Edit2, Trash2, X } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 
@@ -86,6 +86,19 @@ export default function PortfolioHoldingsPage() {
 		return Object.entries(map).map(([k, v]) => ({ name: k as AssetClass, value: v, color: CLASS_COLORS[k as AssetClass].chart }));
 	}, [holdings]);
 
+	const [chartType, setChartType] = useState<'pie'|'bar'>('pie');
+
+	const byRole = useMemo(() => {
+		const acc: Record<'Equity'|'Defensive'|'Satellite', number> = { Equity: 0, Defensive: 0, Satellite: 0 };
+		(holdings || []).forEach((h: Holding) => {
+			acc[getRoleForAssetClass(h.instrumentClass)] += computeHoldingValue(h);
+		});
+		const total = Object.values(acc).reduce((s, n) => s + n, 0) || 1;
+		return (
+			Object.entries(acc) as Array<["Equity"|"Defensive"|"Satellite", number]>
+		).map(([role, value]) => ({ role, value, pct: (value/total)*100 }));
+	}, [holdings]);
+
 	function resetForm() {
 		setForm({ instrumentClass: "Stocks", name: "", symbol: "", units: "", price: "", investedAmount: "", currentValue: "" });
 		setEditingId(null);
@@ -122,6 +135,15 @@ export default function PortfolioHoldingsPage() {
 			investedAmount: form.investedAmount ? Number(form.investedAmount) : undefined,
 			currentValue: form.currentValue ? Number(form.currentValue) : undefined,
 		};
+
+		// Per-asset required validation
+		const ic = form.instrumentClass;
+		if ((ic === 'Gold' || ic === 'Real Estate')) {
+			if (!payload.name || !(payload.investedAmount && payload.investedAmount > 0)) return;
+		}
+		if ((ic === 'Debt' || ic === 'Liquid')) {
+			if (!payload.name || !(payload.investedAmount && payload.investedAmount > 0) || !(payload.currentValue && payload.currentValue >= 0)) return;
+		}
 
 		if (editingId) updateHolding(editingId, payload);
 		else addHolding(payload);
@@ -188,49 +210,46 @@ export default function PortfolioHoldingsPage() {
 							<table className="w-full text-sm">
 								<thead className="bg-muted/80 supports-[backdrop-filter]:bg-muted/60 backdrop-blur text-muted-foreground text-xs uppercase tracking-wide">
 									<tr>
-										<th className="text-left px-4 py-3">Name</th>
-										<th className="text-left px-4 py-3">Class</th>
-										<th className="text-left px-4 py-3 hidden md:table-cell">Role</th>
-										<th className="text-right px-4 py-3 hidden md:table-cell">Units</th>
-										<th className="text-right px-4 py-3 hidden md:table-cell">Buy Price</th>
-										<th className="text-right px-4 py-3">Invested</th>
-										<th className="text-right px-4 py-3">Current</th>
-										<th className="text-right px-4 py-3">Actions</th>
+										<th className="text-left px-4 py-2">Asset</th>
+										<th className="text-left px-4 py-2">Class</th>
+										<th className="text-right px-4 py-2">Invested</th>
+										<th className="text-right px-4 py-2">Current</th>
+										<th className="text-right px-4 py-2">P/L</th>
+										<th className="text-right px-4 py-2">Actions</th>
 									</tr>
 								</thead>
 								<tbody className="divide-y divide-border">
 									{(holdings || []).length === 0 ? (
 										<tr>
-											<td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">No holdings yet. Click “Add Holding”.</td>
+											<td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">No holdings yet. Click “Add Holding”.</td>
 										</tr>
 									) : (
 										(visibleHoldings || []).map((h: Holding) => {
 											const value = computeHoldingValue(h);
 											const invested = typeof h.investedAmount === "number" ? h.investedAmount : (h.units && h.price ? h.units * h.price : undefined);
 											const cls = CLASS_COLORS[h.instrumentClass];
-											const role = getRoleForAssetClass(h.instrumentClass);
 											return (
-												<tr key={h.id} className="hover:bg-muted transition-colors">
-													<td className="px-4 py-3">
-														<div className="font-medium text-foreground">{h.name}</div>
+												<tr key={h.id} className="hover:bg-muted/60 transition-colors">
+													<td className="px-4 py-2">
+														<div className="font-medium text-foreground truncate max-w-[16ch]">{h.name}</div>
 														{h.symbol ? (<div className="text-xs text-muted-foreground">{h.symbol}</div>) : null}
 													</td>
-													<td className="px-4 py-3">
-														<span className={`inline-flex items-center px-2 py-1 rounded-md text-xs ${cls.bg} ${cls.text}`}>{h.instrumentClass}</span>
+													<td className="px-4 py-2">
+														<span className={`inline-flex items-center px-2 py-1 rounded-md text-[11px] ${cls.bg} ${cls.text}`}>{h.instrumentClass}</span>
 													</td>
-													<td className="px-4 py-3 hidden md:table-cell">
-														<span className="inline-flex items-center px-2 py-1 rounded-md text-xs bg-muted text-foreground/80">{role}</span>
+													<td className="px-4 py-2 text-right">{invested != null ? `₹${Math.round(invested).toLocaleString()}` : "—"}</td>
+													<td className="px-4 py-2 text-right">{value != null ? `₹${Math.round(value).toLocaleString()}` : "—"}</td>
+													<td className="px-4 py-2 text-right">
+														<div className="text-sm font-semibold {totalPL >= 0 ? 'text-emerald-600' : 'text-rose-600'}">
+															{(invested != null && value != null) ? `₹${Math.round((value as number) - (invested as number)).toLocaleString()}` : '—'}
+														</div>
 													</td>
-													<td className="px-4 py-3 text-right hidden md:table-cell">{h.units != null ? h.units : "—"}</td>
-													<td className="px-4 py-3 text-right hidden md:table-cell">{h.price != null ? `₹${h.price.toLocaleString()}` : "—"}</td>
-													<td className="px-4 py-3 text-right">{invested != null ? `₹${Math.round(invested).toLocaleString()}` : "—"}</td>
-													<td className="px-4 py-3 text-right">{value != null ? `₹${Math.round(value).toLocaleString()}` : "—"}</td>
-													<td className="px-4 py-3 text-right">
+													<td className="px-4 py-2 text-right">
 														<div className="inline-flex items-center gap-2">
-															<button onClick={() => openEdit(h)} className="p-1 rounded hover:bg-muted" aria-label="Edit">
+															<button onClick={() => openEdit(h)} className="p-1.5 rounded-md hover:bg-muted shadow-sm" aria-label="Edit">
 																<Edit2 size={16} className="text-foreground/80" />
 															</button>
-															<button onClick={() => deleteHolding(h.id)} className="p-1 rounded hover:bg-muted" aria-label="Delete">
+															<button onClick={() => deleteHolding(h.id)} className="p-1.5 rounded-md hover:bg-muted shadow-sm" aria-label="Delete">
 																<Trash2 size={16} className="text-rose-600" />
 															</button>
 														</div>
@@ -261,21 +280,54 @@ export default function PortfolioHoldingsPage() {
 					<div className="lg:col-span-4 space-y-6">
 						<div className="rounded-2xl border border-border bg-card/90 backdrop-blur p-5 shadow-sm">
 							<div className="flex items-center justify-between mb-3">
-								<div className="font-medium text-foreground">Allocation by Asset Class</div>
-								<div className="text-xs text-muted-foreground">Based on current value or invested</div>
+								<div className="font-medium text-foreground">Allocation</div>
+								<div className="inline-flex items-center gap-1 rounded-md border border-border bg-background p-1">
+									<button onClick={()=> setChartType('pie')} className={`h-8 px-3 rounded-md text-sm ${chartType==='pie' ? 'bg-muted' : ''}`}>Pie</button>
+									<button onClick={()=> setChartType('bar')} className={`h-8 px-3 rounded-md text-sm ${chartType==='bar' ? 'bg-muted' : ''}`}>Bar</button>
+								</div>
 							</div>
 							<div className="h-72">
 								<ResponsiveContainer width="100%" height="100%">
-									<PieChart>
-										<Pie data={byClass} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={2} cornerRadius={8}>
-											{byClass.map((entry, index) => (
-												<Cell key={`cell-${index}`} fill={entry.color} />
-											))}
-										</Pie>
-										<Tooltip formatter={(v: any) => `₹${Math.round(v as number).toLocaleString()}`} contentStyle={{ borderRadius: 12, border: '1px solid rgba(148,163,184,0.2)' }} />
-										<Legend verticalAlign="bottom" align="center" iconType="circle" wrapperStyle={{ paddingTop: 8 }} />
-									</PieChart>
+									{chartType==='pie' ? (
+										<PieChart>
+											<Pie data={byClass} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={2} cornerRadius={8}>
+												{byClass.map((entry, index) => (
+													<Cell key={`cell-${index}`} fill={entry.color} />
+												))}
+											</Pie>
+											<Tooltip formatter={(v: any) => `₹${Math.round(v as number).toLocaleString()}`} contentStyle={{ borderRadius: 12, border: '1px solid rgba(148,163,184,0.2)' }} />
+											<Legend verticalAlign="bottom" align="center" iconType="circle" wrapperStyle={{ paddingTop: 8 }} />
+										</PieChart>
+									) : (
+										<BarChart data={byClass} margin={{ left: 8, right: 8, top: 8, bottom: 8 }}>
+											<CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+											<XAxis dataKey="name" tick={{ fontSize: 12 }} />
+											<YAxis tick={{ fontSize: 12 }} />
+											<Tooltip formatter={(v: any) => `₹${Math.round(v as number).toLocaleString()}`} contentStyle={{ borderRadius: 12, border: '1px solid rgba(148,163,184,0.2)' }} />
+											<Bar dataKey="value" radius={[6,6,0,0]}>
+												{byClass.map((entry, index) => (
+													<Cell key={`bar-${index}`} fill={entry.color} />
+												))}
+											</Bar>
+										</BarChart>
+									)}
 								</ResponsiveContainer>
+							</div>
+						</div>
+						<div className="rounded-2xl border border-border bg-card/90 backdrop-blur p-5 shadow-sm">
+							<div className="font-medium text-foreground mb-3">By Investment Role</div>
+							<div className="space-y-3">
+								{byRole.map(r => (
+									<div key={r.role}>
+										<div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+											<span>{r.role}</span>
+											<span>{r.pct.toFixed(1)}%</span>
+										</div>
+										<div className="h-2 rounded-md bg-muted overflow-hidden">
+											<div className={`h-full rounded-md`} style={{ width: `${r.pct}%`, backgroundColor: r.role==='Equity' ? '#3B82F6' : r.role==='Defensive' ? '#10B981' : '#F59E0B' }} />
+										</div>
+									</div>
+								))}
 							</div>
 						</div>
 					</div>
@@ -305,6 +357,7 @@ export default function PortfolioHoldingsPage() {
 							<div className="col-span-1">
 								<label className="block text-xs text-muted-foreground mb-1">Name</label>
 								<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground" />
+								<div className="mt-1 text-[11px] text-muted-foreground">Required for all assets.</div>
 							</div>
 							<div className="col-span-1">
 								<label className="block text-xs text-muted-foreground mb-1">Symbol (optional)</label>
@@ -319,12 +372,14 @@ export default function PortfolioHoldingsPage() {
 								<input type="number" inputMode="decimal" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground" />
 							</div>
 							<div className="col-span-1">
-								<label className="block text-xs text-muted-foreground mb-1">Invested Amount (optional)</label>
-								<input type="number" inputMode="decimal" value={form.investedAmount} onChange={(e) => setForm({ ...form, investedAmount: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground" />
+								<label className="block text-xs text-muted-foreground mb-1">Invested Amount {form.instrumentClass==='Gold'||form.instrumentClass==='Real Estate'||form.instrumentClass==='Debt'||form.instrumentClass==='Liquid' ? '*' : ''}</label>
+								<input type="number" inputMode="decimal" value={form.investedAmount} onChange={(e) => setForm({ ...form, investedAmount: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground" required={form.instrumentClass==='Gold'||form.instrumentClass==='Real Estate'||form.instrumentClass==='Debt'||form.instrumentClass==='Liquid'} />
+								<div className="mt-1 text-[11px] text-muted-foreground">Gold/Real Estate/Debt/Liquid require invested amount.</div>
 							</div>
 							<div className="col-span-1">
-								<label className="block text-xs text-muted-foreground mb-1">Current Value (optional)</label>
-								<input type="number" inputMode="decimal" value={form.currentValue} onChange={(e) => setForm({ ...form, currentValue: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground" />
+								<label className="block text-xs text-muted-foreground mb-1">Current Value {form.instrumentClass==='Debt'||form.instrumentClass==='Liquid' ? '*' : '(optional)'}</label>
+								<input type="number" inputMode="decimal" value={form.currentValue} onChange={(e) => setForm({ ...form, currentValue: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground" required={form.instrumentClass==='Debt'||form.instrumentClass==='Liquid'} />
+								<div className="mt-1 text-[11px] text-muted-foreground">Debt/Liquid require current value for accurate P/L.</div>
 							</div>
 
 							<div className="col-span-1 md:col-span-2 flex items-center justify-end gap-3 pt-2">
