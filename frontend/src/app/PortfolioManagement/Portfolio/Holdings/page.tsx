@@ -51,6 +51,8 @@ export default function PortfolioHoldingsPage() {
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [page, setPage] = useState(1);
 	const [pageSize, setPageSize] = useState(10);
+	const [roleFilter, setRoleFilter] = useState<'All'|'Equity'|'Defensive'|'Satellite'>('All');
+	const [classFilter, setClassFilter] = useState<'All'|AssetClass>('All');
 	const [form, setForm] = useState<{
 		instrumentClass: AssetClass;
 		name: string;
@@ -69,9 +71,14 @@ export default function PortfolioHoldingsPage() {
 	const totalPages = useMemo(() => Math.max(1, Math.ceil((holdings?.length || 0) / pageSize)), [holdings, pageSize]);
 	const visibleHoldings = useMemo(() => {
 		const list: Holding[] = holdings || [];
+		const filtered = list.filter(h => {
+			const byClass = classFilter === 'All' ? true : h.instrumentClass === classFilter;
+			const byRole = roleFilter === 'All' ? true : getRoleForAssetClass(h.instrumentClass) === roleFilter;
+			return byClass && byRole;
+		});
 		const start = (page - 1) * pageSize;
-		return list.slice(start, start + pageSize);
-	}, [holdings, page, pageSize]);
+		return filtered.slice(start, start + pageSize);
+	}, [holdings, page, pageSize, roleFilter, classFilter]);
 
 	const byClass = useMemo(() => {
 		const map: Record<string, number> = {};
@@ -137,7 +144,7 @@ export default function PortfolioHoldingsPage() {
 				</div>
 
 				{/* KPI Row */}
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6 sticky top-0 z-10 bg-background/80 backdrop-blur py-1">
 					<div className="rounded-xl border border-border bg-card p-4">
 						<div className="text-sm text-muted-foreground">Total Value</div>
 						<div className="text-2xl font-semibold text-foreground mt-1">₹{Math.round(totalValue).toLocaleString()}</div>
@@ -160,9 +167,22 @@ export default function PortfolioHoldingsPage() {
 				<div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
 					{/* Left: Table */}
 					<div className="lg:col-span-8 rounded-xl border border-border bg-card overflow-hidden">
-						<div className="px-4 py-3 border-b border-border flex items-center justify-between">
+						<div className="px-4 py-3 border-b border-border flex items-center justify-between sticky top-0 bg-card/95 backdrop-blur">
 							<div className="font-medium text-foreground">All Holdings</div>
-							<div className="text-xs text-muted-foreground">Compact view</div>
+							<div className="flex items-center gap-2">
+								<select value={roleFilter} onChange={(e)=> { setPage(1); setRoleFilter(e.target.value as any); }} className="h-8 rounded-md border border-border bg-background px-2 text-sm text-foreground">
+									<option value="All">All Roles</option>
+									<option value="Equity">Equity</option>
+									<option value="Defensive">Defensive</option>
+									<option value="Satellite">Satellite</option>
+								</select>
+								<select value={classFilter} onChange={(e)=> { setPage(1); setClassFilter(e.target.value as any); }} className="h-8 rounded-md border border-border bg-background px-2 text-sm text-foreground">
+									<option value="All">All Classes</option>
+									{Object.keys(CLASS_COLORS).map(k => (
+										<option key={k} value={k}>{k}</option>
+									))}
+								</select>
+							</div>
 						</div>
 						<div className="overflow-x-auto">
 							<table className="w-full text-sm">
