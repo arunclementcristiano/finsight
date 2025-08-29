@@ -90,104 +90,107 @@ export default function PortfolioHoldingsPage() {
 	}
 
 	return (
-		<div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+		<div className="min-h-screen bg-background">
 			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 				<div className="flex items-center justify-between">
 					<div>
-						<h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Holdings</h1>
-						<p className="text-sm text-gray-600 dark:text-gray-400">Capture your investments and view allocation.</p>
+						<h1 className="text-2xl font-bold text-foreground">Holdings</h1>
+						<p className="text-sm text-muted-foreground">Capture your investments and view allocation.</p>
 					</div>
 					<button onClick={openCreate} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-4 py-2">
 						<Plus size={18} /> Add Holding
 					</button>
 				</div>
 
-				{/* KPI + Chart */}
-				<div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-					<div className="col-span-1 lg:col-span-1 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
-						<div className="text-sm text-gray-500 dark:text-gray-400">Total Value</div>
-						<div className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mt-1">₹{Math.round(totalValue).toLocaleString()}</div>
-						<div className="text-xs text-gray-500 dark:text-gray-500 mt-2">{holdings?.length || 0} holdings</div>
-					</div>
-					<div className="col-span-1 lg:col-span-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
-						<div className="flex items-center justify-between mb-3">
-							<div className="font-medium text-gray-900 dark:text-gray-100">Allocation by Asset Class</div>
-							<div className="text-xs text-gray-500 dark:text-gray-400">Based on current value or invested</div>
+				{/* Table left, KPI + Chart right */}
+				<div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
+					{/* Left: Table */}
+					<div className="lg:col-span-8 rounded-xl border border-border bg-card overflow-hidden">
+						<div className="px-4 py-3 border-b border-border flex items-center justify-between">
+							<div className="font-medium text-foreground">All Holdings</div>
+							<div className="text-xs text-muted-foreground">Compact view</div>
 						</div>
-						<div className="h-64">
-							<ResponsiveContainer width="100%" height="100%">
-								<PieChart>
-									<Pie data={byClass} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={3} cornerRadius={6}>
-										{byClass.map((entry, index) => (
-											<Cell key={`cell-${index}`} fill={entry.color} />
-										))}
-									</Pie>
-									<Tooltip formatter={(v: any) => `₹${Math.round(v as number).toLocaleString()}`} />
-									<Legend />
-								</PieChart>
-							</ResponsiveContainer>
-						</div>
-					</div>
-				</div>
-
-				{/* Table */}
-				<div className="mt-8 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
-					<div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
-						<div className="font-medium text-gray-900 dark:text-gray-100">All Holdings</div>
-						<div className="text-xs text-gray-500 dark:text-gray-400">Compact view</div>
-					</div>
-					<div className="overflow-x-auto">
-						<table className="w-full text-sm">
-							<thead className="bg-gray-50 dark:bg-gray-800/60 text-gray-600 dark:text-gray-300">
-								<tr>
-									<th className="text-left px-4 py-3">Name</th>
-									<th className="text-left px-4 py-3">Class</th>
-									<th className="text-right px-4 py-3 hidden md:table-cell">Units</th>
-									<th className="text-right px-4 py-3 hidden md:table-cell">Buy Price</th>
-									<th className="text-right px-4 py-3">Invested</th>
-									<th className="text-right px-4 py-3">Current</th>
-									<th className="text-right px-4 py-3">Actions</th>
-								</tr>
-							</thead>
-							<tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-								{(holdings || []).length === 0 ? (
+						<div className="overflow-x-auto">
+							<table className="w-full text-sm">
+								<thead className="bg-muted text-foreground/80">
 									<tr>
-										<td colSpan={7} className="px-4 py-10 text-center text-gray-500 dark:text-gray-400">No holdings yet. Click “Add Holding”.</td>
+										<th className="text-left px-4 py-3">Name</th>
+										<th className="text-left px-4 py-3">Class</th>
+										<th className="text-right px-4 py-3 hidden md:table-cell">Units</th>
+										<th className="text-right px-4 py-3 hidden md:table-cell">Buy Price</th>
+										<th className="text-right px-4 py-3">Invested</th>
+										<th className="text-right px-4 py-3">Current</th>
+										<th className="text-right px-4 py-3">Actions</th>
 									</tr>
-								) : (
-									(holdings || []).map((h: Holding) => {
-										const value = computeHoldingValue(h);
-										const invested = typeof h.investedAmount === "number" ? h.investedAmount : (h.units && h.price ? h.units * h.price : undefined);
-										const cls = CLASS_COLORS[h.instrumentClass];
-										return (
-											<tr key={h.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/60">
-												<td className="px-4 py-3">
-													<div className="font-medium text-gray-900 dark:text-gray-100">{h.name}</div>
-													{h.symbol ? (<div className="text-xs text-gray-500 dark:text-gray-400">{h.symbol}</div>) : null}
-												</td>
-												<td className="px-4 py-3">
-													<span className={`inline-flex items-center px-2 py-1 rounded-md text-xs ${cls.bg} ${cls.text}`}>{h.instrumentClass}</span>
-												</td>
-												<td className="px-4 py-3 text-right hidden md:table-cell">{h.units != null ? h.units : "—"}</td>
-												<td className="px-4 py-3 text-right hidden md:table-cell">{h.price != null ? `₹${h.price.toLocaleString()}` : "—"}</td>
-												<td className="px-4 py-3 text-right">{invested != null ? `₹${Math.round(invested).toLocaleString()}` : "—"}</td>
-												<td className="px-4 py-3 text-right">{value != null ? `₹${Math.round(value).toLocaleString()}` : "—"}</td>
-												<td className="px-4 py-3 text-right">
-													<div className="inline-flex items-center gap-2">
-														<button onClick={() => openEdit(h)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Edit">
-															<Edit2 size={16} className="text-gray-600 dark:text-gray-300" />
-														</button>
-														<button onClick={() => deleteHolding(h.id)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Delete">
-															<Trash2 size={16} className="text-rose-600" />
-														</button>
-													</div>
-												</td>
-											</tr>
-										);
-									})
-								)}
+								</thead>
+								<tbody className="divide-y divide-border">
+									{(holdings || []).length === 0 ? (
+										<tr>
+											<td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">No holdings yet. Click “Add Holding”.</td>
+										</tr>
+									) : (
+										(holdings || []).map((h: Holding) => {
+											const value = computeHoldingValue(h);
+											const invested = typeof h.investedAmount === "number" ? h.investedAmount : (h.units && h.price ? h.units * h.price : undefined);
+											const cls = CLASS_COLORS[h.instrumentClass];
+											return (
+												<tr key={h.id} className="hover:bg-muted/50">
+													<td className="px-4 py-3">
+														<div className="font-medium text-foreground">{h.name}</div>
+														{h.symbol ? (<div className="text-xs text-muted-foreground">{h.symbol}</div>) : null}
+													</td>
+													<td className="px-4 py-3">
+														<span className={`inline-flex items-center px-2 py-1 rounded-md text-xs ${cls.bg} ${cls.text}`}>{h.instrumentClass}</span>
+													</td>
+													<td className="px-4 py-3 text-right hidden md:table-cell">{h.units != null ? h.units : "—"}</td>
+													<td className="px-4 py-3 text-right hidden md:table-cell">{h.price != null ? `₹${h.price.toLocaleString()}` : "—"}</td>
+													<td className="px-4 py-3 text-right">{invested != null ? `₹${Math.round(invested).toLocaleString()}` : "—"}</td>
+													<td className="px-4 py-3 text-right">{value != null ? `₹${Math.round(value).toLocaleString()}` : "—"}</td>
+													<td className="px-4 py-3 text-right">
+														<div className="inline-flex items-center gap-2">
+															<button onClick={() => openEdit(h)} className="p-1 rounded hover:bg-muted" aria-label="Edit">
+																<Edit2 size={16} className="text-foreground/80" />
+															</button>
+															<button onClick={() => deleteHolding(h.id)} className="p-1 rounded hover:bg-muted" aria-label="Delete">
+																<Trash2 size={16} className="text-rose-600" />
+															</button>
+														</div>
+													</td>
+												</tr>
+											);
+										})
+									)}
 							</tbody>
 						</table>
+						</div>
+					</div>
+
+					{/* Right: KPI + Chart stacked */}
+					<div className="lg:col-span-4 space-y-6">
+						<div className="rounded-xl border border-border bg-card p-4">
+							<div className="text-sm text-muted-foreground">Total Value</div>
+							<div className="text-2xl font-semibold text-foreground mt-1">₹{Math.round(totalValue).toLocaleString()}</div>
+							<div className="text-xs text-muted-foreground mt-2">{holdings?.length || 0} holdings</div>
+						</div>
+						<div className="rounded-xl border border-border bg-card p-4">
+							<div className="flex items-center justify-between mb-3">
+								<div className="font-medium text-foreground">Allocation by Asset Class</div>
+								<div className="text-xs text-muted-foreground">Based on current value or invested</div>
+							</div>
+							<div className="h-64">
+								<ResponsiveContainer width="100%" height="100%">
+									<PieChart>
+										<Pie data={byClass} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={3} cornerRadius={6}>
+											{byClass.map((entry, index) => (
+												<Cell key={`cell-${index}`} fill={entry.color} />
+											))}
+										</Pie>
+										<Tooltip formatter={(v: any) => `₹${Math.round(v as number).toLocaleString()}`} />
+										<Legend />
+									</PieChart>
+								</ResponsiveContainer>
+							</div>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -196,49 +199,49 @@ export default function PortfolioHoldingsPage() {
 			{isModalOpen && (
 				<div className="fixed inset-0 z-50">
 					<div className="absolute inset-0 bg-black/40" onClick={() => { setIsModalOpen(false); resetForm(); }} />
-					<div className="absolute inset-x-0 top-10 mx-auto w-[95%] max-w-2xl rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xl">
-						<div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
-							<div className="font-medium text-gray-900 dark:text-gray-100">{editingId ? "Edit Holding" : "Add Holding"}</div>
-							<button onClick={() => { setIsModalOpen(false); resetForm(); }} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Close">
-								<X size={18} className="text-gray-600 dark:text-gray-300" />
+					<div className="absolute inset-x-0 top-10 mx-auto w-[95%] max-w-2xl rounded-xl border border-border bg-card shadow-xl">
+						<div className="px-4 py-3 border-b border-border flex items-center justify-between">
+							<div className="font-medium text-foreground">{editingId ? "Edit Holding" : "Add Holding"}</div>
+							<button onClick={() => { setIsModalOpen(false); resetForm(); }} className="p-1 rounded hover:bg-muted" aria-label="Close">
+								<X size={18} className="text-foreground/80" />
 							</button>
 						</div>
 						<form onSubmit={submitForm} className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
 							<div className="col-span-1">
-								<label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Asset Class</label>
-								<select value={form.instrumentClass} onChange={(e) => setForm({ ...form, instrumentClass: e.target.value as AssetClass })} className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100">
+								<label className="block text-xs text-muted-foreground mb-1">Asset Class</label>
+								<select value={form.instrumentClass} onChange={(e) => setForm({ ...form, instrumentClass: e.target.value as AssetClass })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground">
 									{Object.keys(CLASS_COLORS).map((k) => (
 										<option key={k} value={k}>{k}</option>
 									))}
 								</select>
 							</div>
 							<div className="col-span-1">
-								<label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Name</label>
-								<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100" />
+								<label className="block text-xs text-muted-foreground mb-1">Name</label>
+								<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground" />
 							</div>
 							<div className="col-span-1">
-								<label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Symbol (optional)</label>
-								<input value={form.symbol} onChange={(e) => setForm({ ...form, symbol: e.target.value })} className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100" />
+								<label className="block text-xs text-muted-foreground mb-1">Symbol (optional)</label>
+								<input value={form.symbol} onChange={(e) => setForm({ ...form, symbol: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground" />
 							</div>
 							<div className="col-span-1">
-								<label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Units (optional)</label>
-								<input type="number" inputMode="decimal" value={form.units} onChange={(e) => setForm({ ...form, units: e.target.value })} className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100" />
+								<label className="block text-xs text-muted-foreground mb-1">Units (optional)</label>
+								<input type="number" inputMode="decimal" value={form.units} onChange={(e) => setForm({ ...form, units: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground" />
 							</div>
 							<div className="col-span-1">
-								<label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Buy Price (optional)</label>
-								<input type="number" inputMode="decimal" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100" />
+								<label className="block text-xs text-muted-foreground mb-1">Buy Price (optional)</label>
+								<input type="number" inputMode="decimal" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground" />
 							</div>
 							<div className="col-span-1">
-								<label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Invested Amount (optional)</label>
-								<input type="number" inputMode="decimal" value={form.investedAmount} onChange={(e) => setForm({ ...form, investedAmount: e.target.value })} className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100" />
+								<label className="block text-xs text-muted-foreground mb-1">Invested Amount (optional)</label>
+								<input type="number" inputMode="decimal" value={form.investedAmount} onChange={(e) => setForm({ ...form, investedAmount: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground" />
 							</div>
 							<div className="col-span-1">
-								<label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Current Value (optional)</label>
-								<input type="number" inputMode="decimal" value={form.currentValue} onChange={(e) => setForm({ ...form, currentValue: e.target.value })} className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100" />
+								<label className="block text-xs text-muted-foreground mb-1">Current Value (optional)</label>
+								<input type="number" inputMode="decimal" value={form.currentValue} onChange={(e) => setForm({ ...form, currentValue: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground" />
 							</div>
 
 							<div className="col-span-1 md:col-span-2 flex items-center justify-end gap-3 pt-2">
-								<button type="button" onClick={() => { setIsModalOpen(false); resetForm(); }} className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800">Cancel</button>
+								<button type="button" onClick={() => { setIsModalOpen(false); resetForm(); }} className="px-4 py-2 rounded-lg border border-border text-foreground hover:bg-muted">Cancel</button>
 								<button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white">{editingId ? "Save Changes" : "Add Holding"}</button>
 							</div>
 						</form>
