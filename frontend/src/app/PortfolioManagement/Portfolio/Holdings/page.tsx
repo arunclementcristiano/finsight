@@ -138,24 +138,24 @@ export default function PortfolioHoldingsPage() {
 						<h1 className="text-2xl font-bold text-foreground">Holdings</h1>
 						<p className="text-sm text-muted-foreground">Capture your investments and view allocation.</p>
 					</div>
-					<button onClick={openCreate} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-4 py-2">
+					<button onClick={openCreate} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
 						<Plus size={18} /> Add Holding
 					</button>
 				</div>
 
 				{/* KPI Row */}
 				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6 sticky top-0 z-10 bg-background/80 backdrop-blur py-1">
-					<div className="rounded-xl border border-border bg-card p-4">
+					<div className="rounded-2xl border border-border bg-card/90 backdrop-blur p-5 shadow-sm">
 						<div className="text-sm text-muted-foreground">Total Value</div>
-						<div className="text-2xl font-semibold text-foreground mt-1">₹{Math.round(totalValue).toLocaleString()}</div>
+						<div className="text-2xl font-semibold text-foreground mt-1 tracking-tight">₹{Math.round(totalValue).toLocaleString()}</div>
 					</div>
 					<div className="rounded-xl border border-border bg-card p-4">
 						<div className="text-sm text-muted-foreground">Invested</div>
 						<div className="text-2xl font-semibold text-foreground mt-1">₹{Math.round(totalInvested).toLocaleString()}</div>
 					</div>
-					<div className="rounded-xl border border-border bg-card p-4">
+					<div className="rounded-2xl border border-border bg-card/90 backdrop-blur p-5 shadow-sm">
 						<div className="text-sm text-muted-foreground">P/L</div>
-						<div className={`text-2xl font-semibold mt-1 ${totalPL >= 0 ? "text-emerald-600" : "text-rose-600"}`}>₹{Math.round(totalPL).toLocaleString()}</div>
+						<div className={`text-2xl font-semibold mt-1 tracking-tight ${totalPL >= 0 ? "text-emerald-600" : "text-rose-600"}`}>₹{Math.round(totalPL).toLocaleString()}</div>
 					</div>
 					<div className="rounded-xl border border-border bg-card p-4">
 						<div className="text-sm text-muted-foreground">P/L %</div>
@@ -166,17 +166,17 @@ export default function PortfolioHoldingsPage() {
 				{/* Table left, KPI + Chart right */}
 				<div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
 					{/* Left: Table */}
-					<div className="lg:col-span-8 rounded-xl border border-border bg-card overflow-hidden">
-						<div className="px-4 py-3 border-b border-border flex items-center justify-between sticky top-0 bg-card/95 backdrop-blur">
+					<div className="lg:col-span-8 rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+						<div className="px-4 py-3 border-b border-border flex items-center justify-between sticky top-0 z-10 bg-card/95 backdrop-blur">
 							<div className="font-medium text-foreground">All Holdings</div>
 							<div className="flex items-center gap-2">
-								<select value={roleFilter} onChange={(e)=> { setPage(1); setRoleFilter(e.target.value as any); }} className="h-8 rounded-md border border-border bg-background px-2 text-sm text-foreground">
+								<select value={roleFilter} onChange={(e)=> { setPage(1); setRoleFilter(e.target.value as any); }} className="h-8 rounded-md border border-border bg-background px-2 text-sm text-foreground shadow-sm hover:border-foreground/20">
 									<option value="All">All Roles</option>
 									<option value="Equity">Equity</option>
 									<option value="Defensive">Defensive</option>
 									<option value="Satellite">Satellite</option>
 								</select>
-								<select value={classFilter} onChange={(e)=> { setPage(1); setClassFilter(e.target.value as any); }} className="h-8 rounded-md border border-border bg-background px-2 text-sm text-foreground">
+								<select value={classFilter} onChange={(e)=> { setPage(1); setClassFilter(e.target.value as any); }} className="h-8 rounded-md border border-border bg-background px-2 text-sm text-foreground shadow-sm hover:border-foreground/20">
 									<option value="All">All Classes</option>
 									{Object.keys(CLASS_COLORS).map(k => (
 										<option key={k} value={k}>{k}</option>
@@ -186,7 +186,7 @@ export default function PortfolioHoldingsPage() {
 						</div>
 						<div className="overflow-x-auto">
 							<table className="w-full text-sm">
-								<thead className="bg-muted text-foreground/80">
+								<thead className="bg-muted/80 supports-[backdrop-filter]:bg-muted/60 backdrop-blur text-muted-foreground text-xs uppercase tracking-wide">
 									<tr>
 										<th className="text-left px-4 py-3">Name</th>
 										<th className="text-left px-4 py-3">Class</th>
@@ -210,7 +210,7 @@ export default function PortfolioHoldingsPage() {
 											const cls = CLASS_COLORS[h.instrumentClass];
 											const role = getRoleForAssetClass(h.instrumentClass);
 											return (
-												<tr key={h.id} className="hover:bg-muted/50">
+												<tr key={h.id} className="hover:bg-muted transition-colors">
 													<td className="px-4 py-3">
 														<div className="font-medium text-foreground">{h.name}</div>
 														{h.symbol ? (<div className="text-xs text-muted-foreground">{h.symbol}</div>) : null}
@@ -245,35 +245,35 @@ export default function PortfolioHoldingsPage() {
 						<div className="px-4 py-3 border-t border-border flex items-center justify-between">
 							<div className="text-xs text-muted-foreground">Page {page} of {totalPages}</div>
 							<div className="flex items-center gap-2">
-								<select value={pageSize} onChange={(e)=> { setPage(1); setPageSize(Number(e.target.value) || 10); }} className="h-8 rounded-md border border-border bg-background px-2 text-sm text-foreground">
+								<select value={pageSize} onChange={(e)=> { setPage(1); setPageSize(Number(e.target.value) || 10); }} className="h-8 rounded-md border border-border bg-background px-2 text-sm text-foreground shadow-sm hover:border-foreground/20">
 									<option value={10}>10 / page</option>
 									<option value={25}>25 / page</option>
 									<option value={50}>50 / page</option>
 								</select>
 								<div className="h-8 w-px bg-border" />
-								<button disabled={page<=1} onClick={()=> setPage(p=> Math.max(1, p-1))} className="h-8 px-3 rounded-md border border-border text-sm disabled:opacity-50">Prev</button>
-								<button disabled={page>=totalPages} onClick={()=> setPage(p=> Math.min(totalPages, p+1))} className="h-8 px-3 rounded-md border border-border text-sm disabled:opacity-50">Next</button>
+								<button disabled={page<=1} onClick={()=> setPage(p=> Math.max(1, p-1))} className="h-8 px-3 rounded-md border border-border text-sm disabled:opacity-50 shadow-sm hover:border-foreground/20">Prev</button>
+								<button disabled={page>=totalPages} onClick={()=> setPage(p=> Math.min(totalPages, p+1))} className="h-8 px-3 rounded-md border border-border text-sm disabled:opacity-50 shadow-sm hover:border-foreground/20">Next</button>
 							</div>
 						</div>
 					</div>
 
 					{/* Right: KPI + Chart stacked */}
 					<div className="lg:col-span-4 space-y-6">
-						<div className="rounded-xl border border-border bg-card p-4">
+						<div className="rounded-2xl border border-border bg-card/90 backdrop-blur p-5 shadow-sm">
 							<div className="flex items-center justify-between mb-3">
 								<div className="font-medium text-foreground">Allocation by Asset Class</div>
 								<div className="text-xs text-muted-foreground">Based on current value or invested</div>
 							</div>
-							<div className="h-64">
+							<div className="h-72">
 								<ResponsiveContainer width="100%" height="100%">
 									<PieChart>
-										<Pie data={byClass} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={3} cornerRadius={6}>
+										<Pie data={byClass} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={2} cornerRadius={8}>
 											{byClass.map((entry, index) => (
 												<Cell key={`cell-${index}`} fill={entry.color} />
 											))}
 										</Pie>
-										<Tooltip formatter={(v: any) => `₹${Math.round(v as number).toLocaleString()}`} />
-										<Legend />
+										<Tooltip formatter={(v: any) => `₹${Math.round(v as number).toLocaleString()}`} contentStyle={{ borderRadius: 12, border: '1px solid rgba(148,163,184,0.2)' }} />
+										<Legend verticalAlign="bottom" align="center" iconType="circle" wrapperStyle={{ paddingTop: 8 }} />
 									</PieChart>
 								</ResponsiveContainer>
 							</div>
