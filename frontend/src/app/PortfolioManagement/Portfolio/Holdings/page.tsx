@@ -23,10 +23,34 @@ function computeHoldingValue(h: Holding): number {
 	return 0;
 }
 
+function computeInvestedAmount(h: Holding): number {
+	if (typeof h.investedAmount === "number" && !Number.isNaN(h.investedAmount)) return h.investedAmount;
+	if (typeof h.units === "number" && typeof h.price === "number") return h.units * h.price;
+	return 0;
+}
+
+function getRoleForAssetClass(asset: AssetClass): "Equity" | "Defensive" | "Satellite" {
+	switch (asset) {
+		case "Stocks":
+		case "Mutual Funds":
+			return "Equity";
+		case "Debt":
+		case "Liquid":
+			return "Defensive";
+		case "Gold":
+		case "Real Estate":
+			return "Satellite";
+		default:
+			return "Defensive";
+	}
+}
+
 export default function PortfolioHoldingsPage() {
 	const { holdings, addHolding, updateHolding, deleteHolding } = useApp() as any;
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingId, setEditingId] = useState<string | null>(null);
+	const [page, setPage] = useState(1);
+	const [pageSize, setPageSize] = useState(10);
 	const [form, setForm] = useState<{
 		instrumentClass: AssetClass;
 		name: string;
@@ -38,6 +62,16 @@ export default function PortfolioHoldingsPage() {
 	}>({ instrumentClass: "Stocks", name: "", symbol: "", units: "", price: "", investedAmount: "", currentValue: "" });
 
 	const totalValue = useMemo(() => (holdings || []).reduce((s: number, h: Holding) => s + computeHoldingValue(h), 0), [holdings]);
+	const totalInvested = useMemo(() => (holdings || []).reduce((s: number, h: Holding) => s + computeInvestedAmount(h), 0), [holdings]);
+	const totalPL = useMemo(() => totalValue - totalInvested, [totalValue, totalInvested]);
+	const totalPLPct = useMemo(() => (totalInvested > 0 ? (totalPL / totalInvested) * 100 : 0), [totalPL, totalInvested]);
+
+	const totalPages = useMemo(() => Math.max(1, Math.ceil((holdings?.length || 0) / pageSize)), [holdings, pageSize]);
+	const visibleHoldings = useMemo(() => {
+		const list: Holding[] = holdings || [];
+		const start = (page - 1) * pageSize;
+		return list.slice(start, start + pageSize);
+	}, [holdings, page, pageSize]);
 
 	const byClass = useMemo(() => {
 		const map: Record<string, number> = {};
@@ -102,6 +136,26 @@ export default function PortfolioHoldingsPage() {
 					</button>
 				</div>
 
+				{/* KPI Row */}
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+					<div className="rounded-xl border border-border bg-card p-4">
+						<div className="text-sm text-muted-foreground">Total Value</div>
+						<div className="text-2xl font-semibold text-foreground mt-1">₹{Math.round(totalValue).toLocaleString()}</div>
+					</div>
+					<div className="rounded-xl border border-border bg-card p-4">
+						<div className="text-sm text-muted-foreground">Invested</div>
+						<div className="text-2xl font-semibold text-foreground mt-1">₹{Math.round(totalInvested).toLocaleString()}</div>
+					</div>
+					<div className="rounded-xl border border-border bg-card p-4">
+						<div className="text-sm text-muted-foreground">P/L</div>
+						<div className={`text-2xl font-semibold mt-1 ${totalPL >= 0 ? "text-emerald-600" : "text-rose-600"}`}>₹{Math.round(totalPL).toLocaleString()}</div>
+					</div>
+					<div className="rounded-xl border border-border bg-card p-4">
+						<div className="text-sm text-muted-foreground">P/L %</div>
+						<div className={`text-2xl font-semibold mt-1 ${totalPLPct >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{totalInvested > 0 ? `${totalPLPct.toFixed(2)}%` : "—"}</div>
+					</div>
+				</div>
+
 				{/* Table left, KPI + Chart right */}
 				<div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
 					{/* Left: Table */}
@@ -116,6 +170,7 @@ export default function PortfolioHoldingsPage() {
 									<tr>
 										<th className="text-left px-4 py-3">Name</th>
 										<th className="text-left px-4 py-3">Class</th>
+										<th className="text-left px-4 py-3 hidden md:table-cell">Role</th>
 										<th className="text-right px-4 py-3 hidden md:table-cell">Units</th>
 										<th className="text-right px-4 py-3 hidden md:table-cell">Buy Price</th>
 										<th className="text-right px-4 py-3">Invested</th>
@@ -126,13 +181,14 @@ export default function PortfolioHoldingsPage() {
 								<tbody className="divide-y divide-border">
 									{(holdings || []).length === 0 ? (
 										<tr>
-											<td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">No holdings yet. Click “Add Holding”.</td>
+											<td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">No holdings yet. Click “Add Holding”.</td>
 										</tr>
 									) : (
-										(holdings || []).map((h: Holding) => {
+										(visibleHoldings || []).map((h: Holding) => {
 											const value = computeHoldingValue(h);
 											const invested = typeof h.investedAmount === "number" ? h.investedAmount : (h.units && h.price ? h.units * h.price : undefined);
 											const cls = CLASS_COLORS[h.instrumentClass];
+											const role = getRoleForAssetClass(h.instrumentClass);
 											return (
 												<tr key={h.id} className="hover:bg-muted/50">
 													<td className="px-4 py-3">
@@ -141,6 +197,9 @@ export default function PortfolioHoldingsPage() {
 													</td>
 													<td className="px-4 py-3">
 														<span className={`inline-flex items-center px-2 py-1 rounded-md text-xs ${cls.bg} ${cls.text}`}>{h.instrumentClass}</span>
+													</td>
+													<td className="px-4 py-3 hidden md:table-cell">
+														<span className="inline-flex items-center px-2 py-1 rounded-md text-xs bg-muted text-foreground/80">{role}</span>
 													</td>
 													<td className="px-4 py-3 text-right hidden md:table-cell">{h.units != null ? h.units : "—"}</td>
 													<td className="px-4 py-3 text-right hidden md:table-cell">{h.price != null ? `₹${h.price.toLocaleString()}` : "—"}</td>
@@ -157,21 +216,29 @@ export default function PortfolioHoldingsPage() {
 														</div>
 													</td>
 												</tr>
-											);
-										})
-									)}
+										);
+									})
+								)}
 							</tbody>
 						</table>
+						</div>
+						<div className="px-4 py-3 border-t border-border flex items-center justify-between">
+							<div className="text-xs text-muted-foreground">Page {page} of {totalPages}</div>
+							<div className="flex items-center gap-2">
+								<select value={pageSize} onChange={(e)=> { setPage(1); setPageSize(Number(e.target.value) || 10); }} className="h-8 rounded-md border border-border bg-background px-2 text-sm text-foreground">
+									<option value={10}>10 / page</option>
+									<option value={25}>25 / page</option>
+									<option value={50}>50 / page</option>
+								</select>
+								<div className="h-8 w-px bg-border" />
+								<button disabled={page<=1} onClick={()=> setPage(p=> Math.max(1, p-1))} className="h-8 px-3 rounded-md border border-border text-sm disabled:opacity-50">Prev</button>
+								<button disabled={page>=totalPages} onClick={()=> setPage(p=> Math.min(totalPages, p+1))} className="h-8 px-3 rounded-md border border-border text-sm disabled:opacity-50">Next</button>
+							</div>
 						</div>
 					</div>
 
 					{/* Right: KPI + Chart stacked */}
 					<div className="lg:col-span-4 space-y-6">
-						<div className="rounded-xl border border-border bg-card p-4">
-							<div className="text-sm text-muted-foreground">Total Value</div>
-							<div className="text-2xl font-semibold text-foreground mt-1">₹{Math.round(totalValue).toLocaleString()}</div>
-							<div className="text-xs text-muted-foreground mt-2">{holdings?.length || 0} holdings</div>
-						</div>
 						<div className="rounded-xl border border-border bg-card p-4">
 							<div className="flex items-center justify-between mb-3">
 								<div className="font-medium text-foreground">Allocation by Asset Class</div>
