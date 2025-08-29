@@ -1,373 +1,1165 @@
-"use client";
-import React, { useMemo, useState } from "react";
-import { Button } from "../../components/Button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "../../components/Card";
-import { useApp } from "../../store";
-import type { AssetClass } from "../../PortfolioManagement/domain/allocationEngine";
-import { v4 as uuidv4 } from "uuid";
-import { formatCurrency, formatNumber } from "../../utils/format";
-import { Banknote, BarChart3, IndianRupee, Percent, Layers, ChevronLeft, ChevronRight } from "lucide-react";
-import { cn } from "../../components/utils";
+'use client';
+import React, { useState } from 'react';
+import { useApp } from '../../store';
+import { 
+  Plus, 
+  TrendingUp, 
+  Building, 
+  Coins, 
+  DollarSign, 
+  Home,
+  Landmark,
+  Edit2,
+  Trash2,
+  X,
+  ChevronDown,
+  ChevronRight
+} from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
-type EntryMode = "units" | "amount";
+type InstrumentType = 'stocks' | 'mutual_funds' | 'debt_bonds' | 'liquid_fd' | 'gold' | 'real_estate';
 
-interface HoldingFormState {
-	instrumentClass: AssetClass | "";
-	name: string;
-	symbol: string;
-	units: string;
-	price: string;
-	investedAmount: string;
-	currentValue: string;
+interface BaseHolding {
+  id: string;
+  instrumentType: InstrumentType;
+  createdAt: string;
 }
 
-const instrumentOptions: AssetClass[] = ["Stocks", "Mutual Funds", "Gold", "Real Estate", "Debt", "Liquid"];
-
-export default function AddHoldingPage() {
-	const { addHolding, profile } = useApp();
-	const currency = profile.currency || "INR";
-	const [mode, setMode] = useState<EntryMode>("units");
-	const [form, setForm] = useState<HoldingFormState>({ instrumentClass: "", name: "", symbol: "", units: "", price: "", investedAmount: "", currentValue: "" });
-	const [submitted, setSubmitted] = useState(false);
-	const [tab, setTab] = useState<"holdings" | "add">("holdings");
-	const [showImport, setShowImport] = useState(false);
-
-	function onChange<K extends keyof HoldingFormState>(key: K) {
-		return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-			setForm(prev => ({ ...prev, [key]: e.target.value }));
-		};
-	}
-
-	const numeric = React.useMemo(() => {
-		const n = { units: parseFloat(form.units), price: parseFloat(form.price), investedAmount: parseFloat(form.investedAmount), currentValue: parseFloat(form.currentValue) };
-		return {
-			units: Number.isFinite(n.units) ? n.units : NaN,
-			price: Number.isFinite(n.price) ? n.price : NaN,
-			investedAmount: Number.isFinite(n.investedAmount) ? n.investedAmount : NaN,
-			currentValue: Number.isFinite(n.currentValue) ? n.currentValue : NaN,
-		};
-	}, [form]);
-
-	const computed = React.useMemo(() => {
-		const totalByUnits = !Number.isNaN(numeric.units) && !Number.isNaN(numeric.price) ? numeric.units * numeric.price : NaN;
-		const totalByAmount = !Number.isNaN(numeric.currentValue) ? numeric.currentValue : NaN;
-		const invested = mode === "units" ? (!Number.isNaN(totalByUnits) ? totalByUnits : NaN) : (!Number.isNaN(numeric.investedAmount) ? numeric.investedAmount : NaN);
-		const current = mode === "units" ? totalByUnits : totalByAmount;
-		const pnl = !Number.isNaN(invested) && !Number.isNaN(current) ? current - invested : NaN;
-		const pnlPct = !Number.isNaN(invested) && invested > 0 && !Number.isNaN(current) ? ((current - invested) / invested) * 100 : NaN;
-		return { invested, current, pnl, pnlPct };
-	}, [numeric, mode]);
-
-	const errors = React.useMemo(() => {
-		const e: Partial<Record<keyof HoldingFormState | "_form", string>> = {};
-		if (!form.instrumentClass) e.instrumentClass = "Select an instrument class";
-		if (!form.name.trim()) e.name = "Enter a name";
-		if (mode === "units") {
-			if (Number.isNaN(numeric.units) || numeric.units <= 0) e.units = "Enter units > 0";
-			if (Number.isNaN(numeric.price) || numeric.price <= 0) e.price = "Enter price > 0";
-		} else {
-			if (Number.isNaN(numeric.investedAmount) || numeric.investedAmount < 0) e.investedAmount = "Enter invested amount ≥ 0";
-			if (Number.isNaN(numeric.currentValue) || numeric.currentValue <= 0) e.currentValue = "Enter current value > 0";
-		}
-		return e;
-	}, [form, mode, numeric]);
-
-	const isValid = React.useMemo(() => Object.keys(errors).length === 0, [errors]);
-
-	function handleSubmit(e: React.FormEvent) {
-		e.preventDefault();
-		if (!isValid) return;
-		const id = uuidv4();
-		addHolding({
-			id,
-			instrumentClass: form.instrumentClass as AssetClass,
-			name: form.name.trim(),
-			symbol: form.symbol.trim() || undefined,
-			units: mode === "units" && !Number.isNaN(numeric.units) ? numeric.units : undefined,
-			price: mode === "units" && !Number.isNaN(numeric.price) ? numeric.price : undefined,
-			investedAmount: !Number.isNaN(computed.invested) ? Number(computed.invested.toFixed(2)) : undefined,
-			currentValue: !Number.isNaN(computed.current) ? Number(computed.current.toFixed(2)) : undefined,
-		});
-		setSubmitted(true);
-	}
-
-	function resetForm() {
-		setForm({ instrumentClass: "", name: "", symbol: "", units: "", price: "", investedAmount: "", currentValue: "" });
-		setSubmitted(false);
-	}
-
-	return (
-		<div className="space-y-4">
-			<div className="flex items-center gap-2 border-b border-border">
-				<button onClick={() => setTab("holdings")} className={`px-4 py-2 text-sm rounded-t-md transition-colors ${tab === "holdings" ? "text-indigo-600 border-b-2 border-indigo-600 -mb-px" : "text-foreground hover:bg-muted"}`}>Holdings</button>
-				<button onClick={() => setTab("add")} className={`px-4 py-2 text-sm rounded-t-md transition-colors ${tab === "add" ? "text-indigo-600 border-b-2 border-indigo-600 -mb-px" : "text-foreground hover:bg-muted"}`}>Add Holding</button>
-			</div>
-
-			{tab === "holdings" && (
-				<HoldingsTableWithPagination onImport={() => setShowImport(true)} />
-			)}
-
-			{tab === "add" && (
-				<div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-					<div className="flex flex-col gap-6 order-1 xl:order-none">
-						<Card>
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2"><Layers className="h-5 w-5 text-indigo-600" /> Add Holding</CardTitle>
-								<CardDescription>Record a new asset in your portfolio. Choose how you'd like to enter values.</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<div className="mb-4 inline-flex rounded-xl border border-border bg-card p-1 transition-colors">
-									<button type="button" className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === "units" ? "bg-gradient-to-r from-emerald-500 to-indigo-600 text-white" : "text-foreground hover:bg-muted"}`} onClick={() => setMode("units")}>
-										By Units
-									</button>
-									<button type="button" className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === "amount" ? "bg-gradient-to-r from-emerald-500 to-indigo-600 text-white" : "text-foreground hover:bg-muted"}`} onClick={() => setMode("amount")}>
-										By Amount
-									</button>
-								</div>
-
-								<form onSubmit={handleSubmit} className="space-y-5">
-									<div>
-										<label className="block text-sm font-medium text-muted-foreground mb-1">Instrument Class</label>
-										<select value={form.instrumentClass} onChange={onChange("instrumentClass")} className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors">
-											<option value="">Select</option>
-											{instrumentOptions.map(opt => (<option key={opt} value={opt}>{opt}</option>))}
-										</select>
-										{errors.instrumentClass ? <p className="mt-1 text-sm text-rose-600">{errors.instrumentClass}</p> : null}
-									</div>
-
-									<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-										<div>
-											<label className="block text-sm font-medium text-muted-foreground mb-1">Name</label>
-											<input value={form.name} onChange={onChange("name")} className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="e.g., Reliance Industries" />
-											{errors.name ? <p className="mt-1 text-sm text-rose-600">{errors.name}</p> : null}
-										</div>
-										<div>
-											<label className="block text-sm font-medium text-muted-foreground mb-1">Symbol (optional)</label>
-											<input value={form.symbol} onChange={onChange("symbol")} className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="e.g., RELIANCE" />
-										</div>
-									</div>
-
-									{mode === "units" ? (
-										<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-											<div>
-												<label className="block text-sm font-medium text-muted-foreground mb-1">Units</label>
-												<div className="relative">
-													<input inputMode="decimal" type="number" step="0.0001" value={form.units} onChange={onChange("units")} className="w-full h-11 rounded-xl border border-border pl-3 pr-10 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
-													<BarChart3 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-												</div>
-												{errors.units ? <p className="mt-1 text-sm text-rose-600">{errors.units}</p> : null}
-											</div>
-											<div>
-												<label className="block text-sm font-medium text-muted-foreground mb-1">Price</label>
-												<div className="relative">
-													<input inputMode="decimal" type="number" step="0.01" value={form.price} onChange={onChange("price")} className="w-full h-11 rounded-xl border border-border pl-9 pr-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
-													<IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-												</div>
-												{errors.price ? <p className="mt-1 text-sm text-rose-600">{errors.price}</p> : null}
-											</div>
-										</div>
-									) : (
-										<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-											<div>
-												<label className="block text-sm font-medium text-muted-foreground mb-1">Invested Amount</label>
-												<div className="relative">
-													<input inputMode="decimal" type="number" step="0.01" value={form.investedAmount} onChange={onChange("investedAmount")} className="w-full h-11 rounded-xl border border-border pl-9 pr-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
-													<Banknote className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-												</div>
-												{errors.investedAmount ? <p className="mt-1 text-sm text-rose-600">{errors.investedAmount}</p> : null}
-											</div>
-											<div>
-												<label className="block text-sm font-medium text-muted-foreground mb-1">Current Value</label>
-												<div className="relative">
-													<input inputMode="decimal" type="number" step="0.01" value={form.currentValue} onChange={onChange("currentValue")} className="w-full h-11 rounded-xl border border-border pl-9 pr-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
-													<IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-												</div>
-												{errors.currentValue ? <p className="mt-1 text-sm text-rose-600">{errors.currentValue}</p> : null}
-											</div>
-										</div>
-									)}
-
-								<CardFooter className="pt-2 flex items-center gap-3">
-									<Button type="submit" disabled={!isValid} className="min-w-[160px]">Save Holding</Button>
-									<Button type="button" variant="outline" onClick={resetForm}>Reset</Button>
-									{submitted && (<span className="text-sm text-emerald-600">Saved!</span>)}
-								</CardFooter>
-							</form>
-						</CardContent>
-					</Card>
-					</div>
-					<div className="flex flex-col gap-6 order-none xl:order-1">
-						<Card className="xl:sticky xl:top-20">
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2"><TrendingUpIcon /> Live Summary</CardTitle>
-								<CardDescription>Real-time preview updates as you type.</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-									<SummaryStat label="Invested" value={formatCurrency(computed.invested, currency)} icon={<Banknote className="h-4 w-4" />} />
-									<SummaryStat label="Current" value={formatCurrency(computed.current, currency)} icon={<IndianRupee className="h-4 w-4" />} />
-									<SummaryStat label="P/L" value={Number.isNaN(computed.pnl) ? "—" : `${formatCurrency(computed.pnl, currency)} (${Number.isNaN(computed.pnlPct) ? "—" : formatNumber(computed.pnlPct, 2)}%)`} icon={<Percent className="h-4 w-4" />} valueClassName={computed.pnl > 0 ? "text-emerald-600" : computed.pnl < 0 ? "text-rose-600" : ""} />
-								</div>
-							</CardContent>
-						</Card>
-					</div>
-				</div>
-			)}
-
-			{showImport && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-					<div className="w-full max-w-md rounded-xl border border-border bg-card p-5 text-foreground">
-						<div className="flex items-center justify-between mb-3">
-							<h3 className="text-lg font-semibold">Import Holdings</h3>
-							<button className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-muted" onClick={() => setShowImport(false)}>✕</button>
-						</div>
-						<div className="space-y-3">
-							<input type="file" className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground" />
-							<p className="text-sm text-muted-foreground">CSV/XLSX supported. This is a UI stub.</p>
-							<div className="flex justify-end gap-2 pt-2">
-								<Button variant="outline" onClick={() => setShowImport(false)}>Cancel</Button>
-								<Button onClick={() => setShowImport(false)}>Continue</Button>
-							</div>
-						</div>
-					</div>
-				</div>
-			)}
-		</div>
-	);
+interface StockHolding extends BaseHolding {
+  instrumentType: 'stocks';
+  companyName: string;
+  stockSymbol: string;
+  unitsHeld: number;
+  buyPrice: number;
+  purchaseDate: string;
 }
 
-function SummaryStat({ label, value, icon, valueClassName = "" }: { label: string; value: string; icon?: React.ReactNode; valueClassName?: string }) {
-	return (
-		<div className="rounded-xl border border-border p-4 bg-card transition-colors">
-			<div className="flex items-center gap-2 mb-1 text-muted-foreground">
-				<span className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-muted text-foreground/80">{icon}</span>
-				<span className="text-sm">{label}</span>
-			</div>
-			<div className={`text-xl font-semibold ${valueClassName}`}>{value}</div>
-		</div>
-	);
+interface MutualFundHolding extends BaseHolding {
+  instrumentType: 'mutual_funds';
+  fundName: string;
+  fundType: string;
+  unitsOrAmount: number;
+  navAtPurchase: number;
+  purchaseDate: string;
 }
 
-function TrendingUpIcon() {
-	return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-indigo-100 text-indigo-700"> <BarChart3 className="h-4 w-4" /> </span>;
+interface DebtBondHolding extends BaseHolding {
+  instrumentType: 'debt_bonds';
+  bondName: string;
+  issuer: string;
+  faceValue: number;
+  unitsPurchased: number;
+  couponRate: number;
+  maturityDate: string;
 }
 
-function HoldingsTableWithPagination({ onImport }: { onImport?: () => void }) {
-	const { holdings, deleteHolding, profile } = useApp();
-	const currency = profile.currency || "INR";
-	const [page, setPage] = useState(1);
-	const [pageSize, setPageSize] = useState(8);
+interface LiquidFDHolding extends BaseHolding {
+  instrumentType: 'liquid_fd';
+  bankName: string;
+  depositAmount: number;
+  interestRate: number;
+  tenure: number;
+  maturityDate: string;
+}
 
-	function classTextColor(cls: AssetClass) {
-		switch (cls) {
-			case "Stocks": return "text-indigo-600 dark:text-indigo-300";
-			case "Mutual Funds": return "text-emerald-600 dark:text-emerald-300";
-			case "Gold": return "text-amber-600 dark:text-amber-300";
-			case "Real Estate": return "text-violet-600 dark:text-violet-300";
-			case "Debt": return "text-sky-600 dark:text-sky-300";
-			case "Liquid": return "text-cyan-600 dark:text-cyan-300";
-			default: return "";
-		}
-	}
+interface GoldHolding extends BaseHolding {
+  instrumentType: 'gold';
+  goldType: string;
+  quantity: number;
+  buyPrice: number;
+  purchaseDate: string;
+}
 
-	const totals = useMemo(() => {
-		let invested = 0, current = 0;
-		for (const h of holdings) {
-			const inv = typeof h.investedAmount === 'number' ? h.investedAmount : (typeof h.units === 'number' && typeof h.price === 'number' ? h.units * h.price : 0);
-			const cur = typeof h.currentValue === 'number' ? h.currentValue : inv;
-			invested += inv; current += cur;
-		}
-		const pnl = current - invested;
-		const pnlPct = invested > 0 ? (pnl / invested) * 100 : 0;
-		return { invested, current, pnl, pnlPct };
-	}, [holdings]);
+interface RealEstateHolding extends BaseHolding {
+  instrumentType: 'real_estate';
+  propertyName: string;
+  location: string;
+  purchaseValue: number;
+  currentValue: number;
+  rentalIncome: number;
+  purchaseDate: string;
+}
 
-	const totalPages = Math.max(1, Math.ceil(holdings.length / pageSize));
-	const startIdx = (page - 1) * pageSize;
-	const pageRows = holdings.slice(startIdx, startIdx + pageSize);
+type PortfolioHolding = StockHolding | MutualFundHolding | DebtBondHolding | LiquidFDHolding | GoldHolding | RealEstateHolding;
 
-	function prev() { setPage(p => Math.max(1, p - 1)); }
-	function next() { setPage(p => Math.min(totalPages, p + 1)); }
+const instruments = [
+  { id: 'stocks', name: 'Stocks', icon: TrendingUp, color: 'bg-blue-500', textColor: 'text-blue-600' },
+  { id: 'mutual_funds', name: 'Mutual Funds', icon: Building, color: 'bg-green-500', textColor: 'text-green-600' },
+  { id: 'debt_bonds', name: 'Debt/Bonds', icon: DollarSign, color: 'bg-purple-500', textColor: 'text-purple-600' },
+  { id: 'liquid_fd', name: 'Liquid/FD', icon: Landmark, color: 'bg-orange-500', textColor: 'text-orange-600' },
+  { id: 'gold', name: 'Gold', icon: Coins, color: 'bg-yellow-500', textColor: 'text-yellow-600' },
+  { id: 'real_estate', name: 'Real Estate', icon: Home, color: 'bg-red-500', textColor: 'text-red-600' },
+];
 
-	return (
-		<Card className="flex flex-col">
-			<CardHeader className="flex-shrink-0">
-				<div className="flex items-center justify-between gap-3">
-					<div>
-						<CardTitle>Your Holdings</CardTitle>
-						<CardDescription>Overview of positions you have added</CardDescription>
-					</div>
-					<div className="flex items-center gap-2">
-						<Button onClick={onImport} className="h-9" leftIcon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M21 21H3"/></svg>}>Import</Button>
-					</div>
-				</div>
-			</CardHeader>
-			<CardContent>
-				{holdings.length === 0 ? (
-					<div className="text-foreground/80">No holdings yet. Add your first holding using the form.</div>
-				) : (
-					<>
-						<div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-							<div className="rounded-xl border border-border p-3">
-								<div className="text-xs text-foreground/80">Total Invested</div>
-								<div className="text-lg font-semibold">{formatNumber(totals.invested, 2)}</div>
-							</div>
-							<div className="rounded-xl border border-border p-3">
-								<div className="text-xs text-foreground/80">Total Current</div>
-								<div className="text-lg font-semibold">{formatNumber(totals.current, 2)}</div>
-							</div>
-							<div className="rounded-xl border border-border p-3">
-								<div className="text-xs text-foreground/80">P/L</div>
-								<div className={cn("text-lg font-semibold", totals.pnlPct >= 0 ? "text-emerald-600" : "text-rose-600")}>{formatNumber(totals.pnlPct, 2)}%</div>
-							</div>
-						</div>
-						<table className="w-full text-left border rounded-xl overflow-hidden border-border text-sm">
-							<thead className="bg-card sticky top-0 z-10">
-								<tr>
-									<th className="px-3 py-2 border-b">Class</th>
-									<th className="px-3 py-2 border-b">Name / Symbol</th>
-									<th className="px-3 py-2 border-b text-right">Units</th>
-									<th className="px-3 py-2 border-b text-right">Price</th>
-									<th className="px-3 py-2 border-b text-right">Invested</th>
-									<th className="px-3 py-2 border-b text-right">Current</th>
-									<th className="px-3 py-2 border-b text-right">P/L</th>
-									<th className="px-3 py-2 border-b">Actions</th>
-								</tr>
-							</thead>
-							<tbody>
-								{pageRows.map(h => {
-									const invested = h.investedAmount ?? (h.units && h.price ? h.units * h.price : 0);
-									const current = h.currentValue ?? invested;
-									const pnl = current - invested;
-									const pnlPct = invested > 0 ? (pnl / invested) * 100 : 0;
-									return (
-										<tr key={h.id} className="border-b align-top">
-											<td className={cn("px-3 py-2 whitespace-nowrap font-semibold", classTextColor(h.instrumentClass))}>{h.instrumentClass}</td>
-											<td className="px-3 py-2">
-												<div className="font-medium leading-tight">{h.name}</div>
-												<div className="text-foreground/80 text-xs leading-tight">{h.symbol || "—"}</div>
-											</td>
-											<td className="px-3 py-2 text-right">{typeof h.units === "number" ? formatNumber(h.units, 2) : "—"}</td>
-											<td className="px-3 py-2 text-right">{typeof h.price === "number" ? formatNumber(h.price, 2) : "—"}</td>
-											<td className="px-3 py-2 text-right">{formatNumber(invested, 2)}</td>
-											<td className="px-3 py-2 text-right">{formatNumber(current, 2)}</td>
-											<td className="px-3 py-2 text-right"><span className={cn("font-semibold", pnlPct >= 0 ? "text-emerald-600" : "text-rose-600")}>{formatNumber(pnlPct, 2)}%</span></td>
-											<td className="px-3 py-2"><button className="text-xs text-rose-600 hover:underline" onClick={() => deleteHolding(h.id)}>Delete</button></td>
-										</tr>
-									);
-								})}
-							</tbody>
-						</table>
-					</>
-				)}
-			</CardContent>
-			<CardFooter className="flex items-center justify-between gap-3 flex-shrink-0">
-				<div className="text-sm text-foreground/80">Page {page} of {totalPages}</div>
-				<div className="flex items-center gap-2">
-					<Button variant="outline" size="sm" onClick={prev} disabled={page === 1} leftIcon={<ChevronLeft className="h-4 w-4" />}>Prev</Button>
-					<Button variant="outline" size="sm" onClick={next} disabled={page === totalPages}><ChevronRight className="h-4 w-4 mr-2" />Next</Button>
-				</div>
-			</CardFooter>
-		</Card>
-	);
+export default function PortfolioHoldingsDashboard() {
+  const [portfolioHoldings, setPortfolioHoldings] = useState<PortfolioHolding[]>([]);
+  const [selectedInstrument, setSelectedInstrument] = useState<InstrumentType>('stocks');
+  const [showModal, setShowModal] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Set<InstrumentType>>(new Set(['stocks']));
+  const [editingHolding, setEditingHolding] = useState<PortfolioHolding | null>(null);
+
+  // Form state for different instruments
+  const [stockForm, setStockForm] = useState({
+    companyName: '', stockSymbol: '', unitsHeld: '', buyPrice: '', purchaseDate: ''
+  });
+  const [mutualFundForm, setMutualFundForm] = useState({
+    fundName: '', fundType: '', unitsOrAmount: '', navAtPurchase: '', purchaseDate: ''
+  });
+  const [debtBondForm, setDebtBondForm] = useState({
+    bondName: '', issuer: '', faceValue: '', unitsPurchased: '', couponRate: '', maturityDate: ''
+  });
+  const [liquidFDForm, setLiquidFDForm] = useState({
+    bankName: '', depositAmount: '', interestRate: '', tenure: '', maturityDate: ''
+  });
+  const [goldForm, setGoldForm] = useState({
+    goldType: '', quantity: '', buyPrice: '', purchaseDate: ''
+  });
+  const [realEstateForm, setRealEstateForm] = useState({
+    propertyName: '', location: '', purchaseValue: '', currentValue: '', rentalIncome: '', purchaseDate: ''
+  });
+
+  const resetForms = () => {
+    setStockForm({ companyName: '', stockSymbol: '', unitsHeld: '', buyPrice: '', purchaseDate: '' });
+    setMutualFundForm({ fundName: '', fundType: '', unitsOrAmount: '', navAtPurchase: '', purchaseDate: '' });
+    setDebtBondForm({ bondName: '', issuer: '', faceValue: '', unitsPurchased: '', couponRate: '', maturityDate: '' });
+    setLiquidFDForm({ bankName: '', depositAmount: '', interestRate: '', tenure: '', maturityDate: '' });
+    setGoldForm({ goldType: '', quantity: '', buyPrice: '', purchaseDate: '' });
+    setRealEstateForm({ propertyName: '', location: '', purchaseValue: '', currentValue: '', rentalIncome: '', purchaseDate: '' });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const baseHolding = {
+      id: editingHolding?.id || Date.now().toString(),
+      createdAt: editingHolding?.createdAt || new Date().toISOString(),
+      instrumentType: selectedInstrument,
+    };
+
+    let newHolding: PortfolioHolding;
+
+    switch (selectedInstrument) {
+      case 'stocks':
+        newHolding = {
+          ...baseHolding,
+          instrumentType: 'stocks',
+          companyName: stockForm.companyName,
+          stockSymbol: stockForm.stockSymbol,
+          unitsHeld: parseFloat(stockForm.unitsHeld),
+          buyPrice: parseFloat(stockForm.buyPrice),
+          purchaseDate: stockForm.purchaseDate,
+        } as StockHolding;
+        break;
+      case 'mutual_funds':
+        newHolding = {
+          ...baseHolding,
+          instrumentType: 'mutual_funds',
+          fundName: mutualFundForm.fundName,
+          fundType: mutualFundForm.fundType,
+          unitsOrAmount: parseFloat(mutualFundForm.unitsOrAmount),
+          navAtPurchase: parseFloat(mutualFundForm.navAtPurchase),
+          purchaseDate: mutualFundForm.purchaseDate,
+        } as MutualFundHolding;
+        break;
+      case 'debt_bonds':
+        newHolding = {
+          ...baseHolding,
+          instrumentType: 'debt_bonds',
+          bondName: debtBondForm.bondName,
+          issuer: debtBondForm.issuer,
+          faceValue: parseFloat(debtBondForm.faceValue),
+          unitsPurchased: parseFloat(debtBondForm.unitsPurchased),
+          couponRate: parseFloat(debtBondForm.couponRate),
+          maturityDate: debtBondForm.maturityDate,
+        } as DebtBondHolding;
+        break;
+      case 'liquid_fd':
+        newHolding = {
+          ...baseHolding,
+          instrumentType: 'liquid_fd',
+          bankName: liquidFDForm.bankName,
+          depositAmount: parseFloat(liquidFDForm.depositAmount),
+          interestRate: parseFloat(liquidFDForm.interestRate),
+          tenure: parseFloat(liquidFDForm.tenure),
+          maturityDate: liquidFDForm.maturityDate,
+        } as LiquidFDHolding;
+        break;
+      case 'gold':
+        newHolding = {
+          ...baseHolding,
+          instrumentType: 'gold',
+          goldType: goldForm.goldType,
+          quantity: parseFloat(goldForm.quantity),
+          buyPrice: parseFloat(goldForm.buyPrice),
+          purchaseDate: goldForm.purchaseDate,
+        } as GoldHolding;
+        break;
+      case 'real_estate':
+        newHolding = {
+          ...baseHolding,
+          instrumentType: 'real_estate',
+          propertyName: realEstateForm.propertyName,
+          location: realEstateForm.location,
+          purchaseValue: parseFloat(realEstateForm.purchaseValue),
+          currentValue: parseFloat(realEstateForm.currentValue),
+          rentalIncome: parseFloat(realEstateForm.rentalIncome || '0'),
+          purchaseDate: realEstateForm.purchaseDate,
+        } as RealEstateHolding;
+        break;
+      default:
+        return;
+    }
+
+    if (editingHolding) {
+      setPortfolioHoldings(prev => prev.map(h => h.id === editingHolding.id ? newHolding : h));
+    } else {
+      setPortfolioHoldings(prev => [...prev, newHolding]);
+    }
+
+    setShowModal(false);
+    setEditingHolding(null);
+    resetForms();
+  };
+
+  const deleteHolding = (id: string) => {
+    setPortfolioHoldings(prev => prev.filter(h => h.id !== id));
+  };
+
+  const editHolding = (holding: PortfolioHolding) => {
+    setEditingHolding(holding);
+    setSelectedInstrument(holding.instrumentType);
+    
+    // Populate forms based on type
+    switch (holding.instrumentType) {
+      case 'stocks':
+        const stock = holding as StockHolding;
+        setStockForm({
+          companyName: stock.companyName,
+          stockSymbol: stock.stockSymbol,
+          unitsHeld: stock.unitsHeld.toString(),
+          buyPrice: stock.buyPrice.toString(),
+          purchaseDate: stock.purchaseDate,
+        });
+        break;
+      // Add other cases as needed
+    }
+    
+    setShowModal(true);
+  };
+
+  const toggleGroup = (instrumentType: InstrumentType) => {
+    setExpandedGroups(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(instrumentType)) {
+        newSet.delete(instrumentType);
+      } else {
+        newSet.add(instrumentType);
+      }
+      return newSet;
+    });
+  };
+
+  const getHoldingsByInstrument = (instrumentType: InstrumentType) => {
+    return portfolioHoldings.filter(h => h.instrumentType === instrumentType);
+  };
+
+  const calculatePortfolioValue = () => {
+    return portfolioHoldings.reduce((total, holding) => {
+      switch (holding.instrumentType) {
+        case 'stocks':
+          const stock = holding as StockHolding;
+          return total + (stock.unitsHeld * stock.buyPrice);
+        case 'mutual_funds':
+          const mf = holding as MutualFundHolding;
+          return total + (mf.unitsOrAmount * mf.navAtPurchase);
+        case 'debt_bonds':
+          const bond = holding as DebtBondHolding;
+          return total + (bond.unitsPurchased * bond.faceValue);
+        case 'liquid_fd':
+          const fd = holding as LiquidFDHolding;
+          return total + fd.depositAmount;
+        case 'gold':
+          const gold = holding as GoldHolding;
+          return total + (gold.quantity * gold.buyPrice);
+        case 'real_estate':
+          const re = holding as RealEstateHolding;
+          return total + re.currentValue;
+        default:
+          return total;
+      }
+    }, 0);
+  };
+
+  const getChartData = () => {
+    const data: { [key: string]: number } = {};
+    
+    portfolioHoldings.forEach(holding => {
+      const instrument = instruments.find(i => i.id === holding.instrumentType);
+      if (!instrument) return;
+      
+      let value = 0;
+      switch (holding.instrumentType) {
+        case 'stocks':
+          const stock = holding as StockHolding;
+          value = stock.unitsHeld * stock.buyPrice;
+          break;
+        case 'mutual_funds':
+          const mf = holding as MutualFundHolding;
+          value = mf.unitsOrAmount * mf.navAtPurchase;
+          break;
+        case 'debt_bonds':
+          const bond = holding as DebtBondHolding;
+          value = bond.unitsPurchased * bond.faceValue;
+          break;
+        case 'liquid_fd':
+          const fd = holding as LiquidFDHolding;
+          value = fd.depositAmount;
+          break;
+        case 'gold':
+          const gold = holding as GoldHolding;
+          value = gold.quantity * gold.buyPrice;
+          break;
+        case 'real_estate':
+          const re = holding as RealEstateHolding;
+          value = re.currentValue;
+          break;
+      }
+      
+      data[instrument.name] = (data[instrument.name] || 0) + value;
+    });
+
+    const colors = ['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#6366F1'];
+    
+    return Object.entries(data).map(([name, value], index) => ({
+      name,
+      value,
+      color: colors[index % colors.length],
+    }));
+  };
+
+  const renderDynamicForm = () => {
+    switch (selectedInstrument) {
+      case 'stocks':
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Company Name
+                </label>
+                <input
+                  type="text"
+                  value={stockForm.companyName}
+                  onChange={e => setStockForm({...stockForm, companyName: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Stock Symbol
+                </label>
+                <input
+                  type="text"
+                  value={stockForm.stockSymbol}
+                  onChange={e => setStockForm({...stockForm, stockSymbol: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Units Held
+                </label>
+                <input
+                  type="number"
+                  value={stockForm.unitsHeld}
+                  onChange={e => setStockForm({...stockForm, unitsHeld: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Buy Price (₹)
+                </label>
+                <input
+                  type="number"
+                  value={stockForm.buyPrice}
+                  onChange={e => setStockForm({...stockForm, buyPrice: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Purchase Date
+              </label>
+              <input
+                type="date"
+                value={stockForm.purchaseDate}
+                onChange={e => setStockForm({...stockForm, purchaseDate: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                required
+              />
+            </div>
+          </div>
+        );
+
+      case 'mutual_funds':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Fund Name
+              </label>
+              <input
+                type="text"
+                value={mutualFundForm.fundName}
+                onChange={e => setMutualFundForm({...mutualFundForm, fundName: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Fund Type
+              </label>
+              <select
+                value={mutualFundForm.fundType}
+                onChange={e => setMutualFundForm({...mutualFundForm, fundType: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                required
+              >
+                <option value="">Select Fund Type</option>
+                <option value="Equity">Equity</option>
+                <option value="Debt">Debt</option>
+                <option value="Hybrid">Hybrid</option>
+                <option value="Index">Index</option>
+                <option value="ELSS">ELSS</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Units/Amount Invested
+                </label>
+                <input
+                  type="number"
+                  value={mutualFundForm.unitsOrAmount}
+                  onChange={e => setMutualFundForm({...mutualFundForm, unitsOrAmount: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  NAV at Purchase
+                </label>
+                <input
+                  type="number"
+                  value={mutualFundForm.navAtPurchase}
+                  onChange={e => setMutualFundForm({...mutualFundForm, navAtPurchase: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Purchase Date
+              </label>
+              <input
+                type="date"
+                value={mutualFundForm.purchaseDate}
+                onChange={e => setMutualFundForm({...mutualFundForm, purchaseDate: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                required
+              />
+            </div>
+          </div>
+        );
+
+      case 'debt_bonds':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Bond Name
+              </label>
+              <input
+                type="text"
+                value={debtBondForm.bondName}
+                onChange={e => setDebtBondForm({...debtBondForm, bondName: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Issuer
+              </label>
+              <input
+                type="text"
+                value={debtBondForm.issuer}
+                onChange={e => setDebtBondForm({...debtBondForm, issuer: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Face Value (₹)
+                </label>
+                <input
+                  type="number"
+                  value={debtBondForm.faceValue}
+                  onChange={e => setDebtBondForm({...debtBondForm, faceValue: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Units Purchased
+                </label>
+                <input
+                  type="number"
+                  value={debtBondForm.unitsPurchased}
+                  onChange={e => setDebtBondForm({...debtBondForm, unitsPurchased: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Coupon Rate (%)
+                </label>
+                <input
+                  type="number"
+                  value={debtBondForm.couponRate}
+                  onChange={e => setDebtBondForm({...debtBondForm, couponRate: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Maturity Date
+                </label>
+                <input
+                  type="date"
+                  value={debtBondForm.maturityDate}
+                  onChange={e => setDebtBondForm({...debtBondForm, maturityDate: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'liquid_fd':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Bank/Institution Name
+              </label>
+              <input
+                type="text"
+                value={liquidFDForm.bankName}
+                onChange={e => setLiquidFDForm({...liquidFDForm, bankName: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Deposit Amount (₹)
+              </label>
+              <input
+                type="number"
+                value={liquidFDForm.depositAmount}
+                onChange={e => setLiquidFDForm({...liquidFDForm, depositAmount: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Interest Rate (%)
+                </label>
+                <input
+                  type="number"
+                  value={liquidFDForm.interestRate}
+                  onChange={e => setLiquidFDForm({...liquidFDForm, interestRate: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Tenure (months)
+                </label>
+                <input
+                  type="number"
+                  value={liquidFDForm.tenure}
+                  onChange={e => setLiquidFDForm({...liquidFDForm, tenure: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Maturity Date
+              </label>
+              <input
+                type="date"
+                value={liquidFDForm.maturityDate}
+                onChange={e => setLiquidFDForm({...liquidFDForm, maturityDate: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                required
+              />
+            </div>
+          </div>
+        );
+
+      case 'gold':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Gold Type
+              </label>
+              <select
+                value={goldForm.goldType}
+                onChange={e => setGoldForm({...goldForm, goldType: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                required
+              >
+                <option value="">Select Gold Type</option>
+                <option value="Physical">Physical Gold</option>
+                <option value="ETF">Gold ETF</option>
+                <option value="Digital Gold">Digital Gold</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Quantity (grams/units)
+                </label>
+                <input
+                  type="number"
+                  value={goldForm.quantity}
+                  onChange={e => setGoldForm({...goldForm, quantity: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Buy Price (₹)
+                </label>
+                <input
+                  type="number"
+                  value={goldForm.buyPrice}
+                  onChange={e => setGoldForm({...goldForm, buyPrice: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Purchase Date
+              </label>
+              <input
+                type="date"
+                value={goldForm.purchaseDate}
+                onChange={e => setGoldForm({...goldForm, purchaseDate: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                required
+              />
+            </div>
+          </div>
+        );
+
+      case 'real_estate':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Property Name
+              </label>
+              <input
+                type="text"
+                value={realEstateForm.propertyName}
+                onChange={e => setRealEstateForm({...realEstateForm, propertyName: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Location
+              </label>
+              <input
+                type="text"
+                value={realEstateForm.location}
+                onChange={e => setRealEstateForm({...realEstateForm, location: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Purchase Value (₹)
+                </label>
+                <input
+                  type="number"
+                  value={realEstateForm.purchaseValue}
+                  onChange={e => setRealEstateForm({...realEstateForm, purchaseValue: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Current Value (₹)
+                </label>
+                <input
+                  type="number"
+                  value={realEstateForm.currentValue}
+                  onChange={e => setRealEstateForm({...realEstateForm, currentValue: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Rental Income (₹/month)
+                </label>
+                <input
+                  type="number"
+                  value={realEstateForm.rentalIncome}
+                  onChange={e => setRealEstateForm({...realEstateForm, rentalIncome: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  placeholder="Optional"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Purchase Date
+                </label>
+                <input
+                  type="date"
+                  value={realEstateForm.purchaseDate}
+                  onChange={e => setRealEstateForm({...realEstateForm, purchaseDate: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+        );
+
+      // Add other instrument forms here...
+      default:
+        return <div>Form for {selectedInstrument} coming soon...</div>;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+      {/* Header */}
+      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">My Portfolio</h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">Track and manage all your investments in one place</p>
+            </div>
+            <button
+              onClick={() => {
+                setEditingHolding(null);
+                resetForms();
+                setShowModal(true);
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors shadow-lg"
+            >
+              <Plus size={20} />
+              <span>Add Holding</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-12 gap-8">
+          {/* Left Sidebar - Instrument Picker */}
+          <div className="col-span-3">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Instruments</h3>
+              <div className="space-y-2">
+                {instruments.map(instrument => {
+                  const Icon = instrument.icon;
+                  const count = getHoldingsByInstrument(instrument.id as InstrumentType).length;
+                  return (
+                    <button
+                      key={instrument.id}
+                      onClick={() => setSelectedInstrument(instrument.id as InstrumentType)}
+                      className={`w-full p-3 rounded-lg border-2 transition-all duration-200 text-left ${
+                        selectedInstrument === instrument.id
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                          : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className={`p-2 rounded-lg ${instrument.color} text-white`}>
+                            <Icon size={16} />
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white text-sm">
+                              {instrument.name}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              {count} holdings
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Center Panel - Dynamic Form */}
+          <div className="col-span-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Add {instruments.find(i => i.id === selectedInstrument)?.name}
+              </h3>
+              <form onSubmit={handleSubmit}>
+                {renderDynamicForm()}
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => resetForms()}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    Reset
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Add Holding
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Holdings Table View */}
+            {portfolioHoldings.length > 0 && (
+              <div className="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">All Holdings</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    {portfolioHoldings.length} total holdings
+                  </p>
+                </div>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 dark:bg-gray-700">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Type
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Details
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Value
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Date
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      {portfolioHoldings.map(holding => {
+                        const instrument = instruments.find(i => i.id === holding.instrumentType);
+                        const Icon = instrument?.icon || TrendingUp;
+                        
+                        let value = 0;
+                        let details = '';
+                        let date = '';
+                        
+                        switch (holding.instrumentType) {
+                          case 'stocks':
+                            const stock = holding as StockHolding;
+                            value = stock.unitsHeld * stock.buyPrice;
+                            details = `${stock.stockSymbol} • ${stock.unitsHeld} units @ ₹${stock.buyPrice}`;
+                            date = stock.purchaseDate;
+                            break;
+                          case 'mutual_funds':
+                            const mf = holding as MutualFundHolding;
+                            value = mf.unitsOrAmount * mf.navAtPurchase;
+                            details = `${mf.fundType} • ${mf.unitsOrAmount} units @ NAV ₹${mf.navAtPurchase}`;
+                            date = mf.purchaseDate;
+                            break;
+                          case 'debt_bonds':
+                            const bond = holding as DebtBondHolding;
+                            value = bond.unitsPurchased * bond.faceValue;
+                            details = `${bond.issuer} • ${bond.unitsPurchased} units @ ₹${bond.faceValue} • ${bond.couponRate}%`;
+                            date = bond.maturityDate;
+                            break;
+                          case 'liquid_fd':
+                            const fd = holding as LiquidFDHolding;
+                            value = fd.depositAmount;
+                            details = `${fd.bankName} • ${fd.interestRate}% • ${fd.tenure} months`;
+                            date = fd.maturityDate;
+                            break;
+                          case 'gold':
+                            const gold = holding as GoldHolding;
+                            value = gold.quantity * gold.buyPrice;
+                            details = `${gold.goldType} • ${gold.quantity} grams @ ₹${gold.buyPrice}`;
+                            date = gold.purchaseDate;
+                            break;
+                          case 'real_estate':
+                            const re = holding as RealEstateHolding;
+                            value = re.currentValue;
+                            details = `${re.location} • Purchase: ₹${re.purchaseValue.toLocaleString()}`;
+                            date = re.purchaseDate;
+                            break;
+                        }
+                        
+                        return (
+                          <tr key={holding.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center space-x-3">
+                                <div className={`p-2 rounded-lg ${instrument?.color || 'bg-gray-500'} text-white`}>
+                                  <Icon size={16} />
+                                </div>
+                                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {instrument?.name}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                {holding.instrumentType === 'stocks' && (holding as StockHolding).companyName}
+                                {holding.instrumentType === 'mutual_funds' && (holding as MutualFundHolding).fundName}
+                                {holding.instrumentType === 'debt_bonds' && (holding as DebtBondHolding).bondName}
+                                {holding.instrumentType === 'liquid_fd' && (holding as LiquidFDHolding).bankName}
+                                {holding.instrumentType === 'gold' && 'Gold Investment'}
+                                {holding.instrumentType === 'real_estate' && (holding as RealEstateHolding).propertyName}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-sm text-gray-500 dark:text-gray-400">
+                                {details}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-semibold text-green-600 dark:text-green-400">
+                                ₹{value.toLocaleString()}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-500 dark:text-gray-400">
+                                {new Date(date).toLocaleDateString()}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  onClick={() => editHolding(holding)}
+                                  className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                                >
+                                  <Edit2 size={16} />
+                                </button>
+                                <button
+                                  onClick={() => deleteHolding(holding.id)}
+                                  className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right Panel - Portfolio Summary */}
+          <div className="col-span-3">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Portfolio Summary</h3>
+              
+              <div className="text-center mb-6">
+                <div className="text-3xl font-bold text-gray-900 dark:text-white">
+                  ₹{calculatePortfolioValue().toLocaleString()}
+                </div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">Total Portfolio Value</div>
+              </div>
+
+              {portfolioHoldings.length > 0 && (
+                <div className="h-64 mb-6">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={getChartData()}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        dataKey="value"
+                      >
+                        {getChartData().map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Value']}
+                        contentStyle={{
+                          backgroundColor: 'rgb(31, 41, 55)',
+                          border: '1px solid rgb(75, 85, 99)',
+                          borderRadius: '8px',
+                          color: 'white'
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                {instruments.map(instrument => {
+                  const holdings = getHoldingsByInstrument(instrument.id as InstrumentType);
+                  if (holdings.length === 0) return null;
+
+                  const Icon = instrument.icon;
+                  return (
+                    <div key={instrument.id} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className={`p-1 rounded ${instrument.color} text-white`}>
+                          <Icon size={12} />
+                        </div>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">{instrument.name}</span>
+                      </div>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        {holdings.length}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  {editingHolding ? 'Edit' : 'Add'} {instruments.find(i => i.id === selectedInstrument)?.name}
+                </h2>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-500 dark:text-gray-400"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              {/* Instrument Selection */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Select Instrument Type
+                </label>
+                <div className="grid grid-cols-3 gap-3">
+                  {instruments.map(instrument => {
+                    const Icon = instrument.icon;
+                    return (
+                      <button
+                        key={instrument.id}
+                        type="button"
+                        onClick={() => setSelectedInstrument(instrument.id as InstrumentType)}
+                        className={`p-3 rounded-lg border-2 transition-all duration-200 ${
+                          selectedInstrument === instrument.id
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                            : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                        }`}
+                      >
+                        <div className="flex flex-col items-center space-y-2">
+                          <div className={`p-2 rounded-lg ${instrument.color} text-white`}>
+                            <Icon size={20} />
+                          </div>
+                          <span className="text-xs font-medium text-gray-900 dark:text-white">
+                            {instrument.name}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <form onSubmit={handleSubmit}>
+                {renderDynamicForm()}
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    {editingHolding ? 'Update' : 'Add'} Holding
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

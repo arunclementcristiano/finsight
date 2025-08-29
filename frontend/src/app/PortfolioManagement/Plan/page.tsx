@@ -539,8 +539,8 @@ export default function PlanPage() {
 		);
 	}
 
-	return (
-		<div className="max-w-4xl mx-auto space-y-4">
+       return (
+	       <div className="max-w-full space-y-4 pl-2">
 			<div className="flex items-center justify-between">
 				<div className="flex items-center gap-2">
 					<div className="text-sm text-muted-foreground">Allocation Plan</div>
