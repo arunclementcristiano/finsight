@@ -309,6 +309,27 @@ export default function HoldingsPage() {
 		return allocationArray;
 	}, [holdings]);
 
+	// Portfolio role allocation data for pie chart
+	const portfolioRoleData = useMemo(() => {
+		if (!holdings || holdings.length === 0) return [];
+
+		const roleMap = new Map<string, number>();
+
+		holdings.forEach(holding => {
+			const role = getRoleForAssetClass(holding.instrumentClass);
+			const currentValue = computeHoldingValue(holding);
+			roleMap.set(role, (roleMap.get(role) || 0) + currentValue);
+		});
+
+		const roleArray = Array.from(roleMap.entries()).map(([name, value]) => ({
+			name,
+			value,
+			color: name === 'Equity' ? '#3B82F6' : name === 'Defensive' ? '#10B981' : '#F43F5E'
+		})).sort((a, b) => b.value - a.value);
+
+		return roleArray;
+	}, [holdings]);
+
 	function resetForm() {
 		setForm({ instrumentClass: "Stocks", name: "", symbol: "", units: "", price: "", investedAmount: "", currentValue: "" });
 		setEditingId(null);
@@ -389,7 +410,7 @@ export default function HoldingsPage() {
 					<h1 className="text-2xl font-bold text-foreground">Holdings</h1>
 					<p className="text-sm text-muted-foreground">Capture your investments and view allocation.</p>
 				</div>
-				<button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+				<button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105">
 					<Plus size={18} /> Add Holding
 				</button>
 			</div>
@@ -432,7 +453,9 @@ export default function HoldingsPage() {
 									<thead>
 										<tr className="border-b border-border">
 											<th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Instrument</th>
-											<th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Asset Class</th>
+											<th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Asset Class</th>
+											<th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Units</th>
+											<th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Price</th>
 											<th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Current Value</th>
 											<th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Invested Amount</th>
 											<th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">P/L</th>
@@ -456,7 +479,7 @@ export default function HoldingsPage() {
 															)}
 														</div>
 													</td>
-													<td className="py-3 px-3 text-right">
+													<td className="py-3 px-3 text-left">
 														<span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
 															CLASS_COLORS[holding.instrumentClass as keyof typeof CLASS_COLORS]?.bg || 'bg-gray-100 dark:bg-gray-800'
 														} ${
@@ -465,13 +488,14 @@ export default function HoldingsPage() {
 															{holding.instrumentClass}
 														</span>
 													</td>
+													<td className="py-3 px-3 text-left">
+														<div className="font-medium text-foreground">{holding.units?.toFixed(2) || '0.00'}</div>
+													</td>
+													<td className="py-3 px-3 text-left">
+														<div className="font-medium text-foreground">₹{holding.price?.toLocaleString() || '0.00'}</div>
+													</td>
 													<td className="py-3 px-3 text-right">
 														<div className="font-medium text-foreground">₹{currentValue.toLocaleString()}</div>
-														{holding.units && holding.price && (
-															<div className="text-sm text-muted-foreground">
-																{holding.units.toFixed(2)} units @ ₹{holding.price.toLocaleString()}
-															</div>
-														)}
 													</td>
 													<td className="py-3 px-3 text-right">
 														<div className="font-medium text-foreground">₹{investedAmount.toLocaleString()}</div>
@@ -525,54 +549,118 @@ export default function HoldingsPage() {
 					</div>
 					<div className="p-4">
 						{holdings && holdings.length > 0 ? (
-							<div className="space-y-4">
-								{/* Pie Chart */}
-								<div className="h-48 flex items-center justify-center">
-									<ResponsiveContainer width="100%" height="100%">
-										<PieChart>
-											<Pie
-												data={portfolioAllocationData}
-												cx="50%"
-												cy="50%"
-												innerRadius={35}
-												outerRadius={70}
-												paddingAngle={3}
-												dataKey="value"
-											>
-												{portfolioAllocationData.map((entry, index) => (
-													<Cell key={`cell-${index}`} fill={entry.color} />
-												))}
-											</Pie>
-											<Tooltip 
-												formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Value']}
-												labelFormatter={(label) => `${label}`}
-												contentStyle={{
-													backgroundColor: 'hsl(var(--card))',
-													border: '1px solid hsl(var(--border))',
-													borderRadius: '8px',
-													boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-												}}
-											/>
-										</PieChart>
-									</ResponsiveContainer>
+							<div className="space-y-6">
+								{/* Asset Class Pie Chart */}
+								<div>
+									<div className="text-sm font-medium text-muted-foreground mb-3 text-center">By Asset Class</div>
+									<div className="h-40 flex items-center justify-center">
+										<ResponsiveContainer width="100%" height="100%">
+											<PieChart>
+												<Pie
+													data={portfolioAllocationData}
+													cx="50%"
+													cy="50%"
+													innerRadius={30}
+													outerRadius={60}
+													paddingAngle={3}
+													dataKey="value"
+												>
+													{portfolioAllocationData.map((entry, index) => (
+														<Cell key={`cell-${index}`} fill={entry.color} />
+													))}
+												</Pie>
+												<Tooltip 
+													formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Value']}
+													labelFormatter={(label) => `${label}`}
+													contentStyle={{
+														backgroundColor: 'hsl(var(--card))',
+														border: '1px solid hsl(var(--border))',
+														borderRadius: '8px',
+														boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+													}}
+												/>
+											</PieChart>
+										</ResponsiveContainer>
+									</div>
 								</div>
 								
-								{/* Allocation Summary */}
-								<div className="space-y-2">
-									{portfolioAllocationData.map((item, index) => (
-										<div key={index} className="flex items-center justify-between text-sm">
-											<div className="flex items-center gap-2">
-												<div 
-													className="w-3 h-3 rounded-full" 
-													style={{ backgroundColor: item.color }}
-												></div>
-												<span className="text-foreground font-medium">{item.name}</span>
-											</div>
-											<div className="text-muted-foreground font-medium">
-												{((item.value / totalValue) * 100).toFixed(1)}%
-											</div>
+								{/* Portfolio Role Pie Chart */}
+								<div>
+									<div className="text-sm font-medium text-muted-foreground mb-3 text-center">By Portfolio Role</div>
+									<div className="h-40 flex items-center justify-center">
+										<ResponsiveContainer width="100%" height="100%">
+											<PieChart>
+												<Pie
+													data={portfolioRoleData}
+													cx="50%"
+													cy="50%"
+													innerRadius={30}
+													outerRadius={60}
+													paddingAngle={3}
+													dataKey="value"
+												>
+													{portfolioRoleData.map((entry, index) => (
+														<Cell key={`cell-${index}`} fill={entry.color} />
+													))}
+												</Pie>
+												<Tooltip 
+													formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Value']}
+													labelFormatter={(label) => `${label}`}
+													contentStyle={{
+														backgroundColor: 'hsl(var(--card))',
+														border: '1px solid hsl(var(--border))',
+														borderRadius: '8px',
+														boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+													}}
+												/>
+											</PieChart>
+										</ResponsiveContainer>
+									</div>
+								</div>
+								
+								{/* Combined Allocation Summary */}
+								<div className="space-y-4">
+									{/* Asset Class Summary */}
+									<div>
+										<div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Asset Class</div>
+										<div className="space-y-2">
+											{portfolioAllocationData.map((item, index) => (
+												<div key={index} className="flex items-center justify-between text-sm">
+													<div className="flex items-center gap-2">
+														<div 
+															className="w-3 h-3 rounded-full" 
+															style={{ backgroundColor: item.color }}
+														></div>
+														<span className="text-foreground font-medium">{item.name}</span>
+													</div>
+													<div className="text-muted-foreground font-medium">
+														{((item.value / totalValue) * 100).toFixed(1)}%
+													</div>
+												</div>
+											))}
 										</div>
-									))}
+									</div>
+									
+									{/* Portfolio Role Summary */}
+									<div>
+										<div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Portfolio Role</div>
+										<div className="space-y-2">
+											{portfolioRoleData.map((item, index) => (
+												<div key={index} className="flex items-center justify-between text-sm">
+													<div className="flex items-center gap-2">
+														<div 
+															className="w-3 h-3 rounded-full" 
+															style={{ backgroundColor: item.color }}
+														></div>
+														<span className="text-foreground font-medium">{item.name}</span>
+													</div>
+													<div className="text-muted-foreground font-medium">
+														{((item.value / totalValue) * 100).toFixed(1)}%
+													</div>
+												</div>
+											))}
+										</div>
+									</div>
 								</div>
 							</div>
 						) : (
