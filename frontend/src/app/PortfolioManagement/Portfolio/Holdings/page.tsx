@@ -23,11 +23,37 @@ interface HoldingFormState {
 	currentValue: string;
 }
 
-// Role-based instrument type mapping
-const roleInstrumentTypes: Record<PortfolioRole, string[]> = {
-	Equity: ["Stocks", "Equity Mutual Funds", "Equity ETFs"],
-	Defensive: ["Bonds", "Debt Mutual Funds", "Liquid Mutual Funds", "Cash"],
-	Satellite: ["Gold ETFs", "Gold Mutual Funds", "Physical Gold", "REITs", "Properties"]
+// Auto-mapping function for instrument type to AssetClass
+function mapInstrumentTypeToAssetClass(instrumentType: string): AssetClass {
+	if (instrumentType.includes("Mutual Fund") || instrumentType.includes("MF")) return "Mutual Funds";
+	if (instrumentType.includes("Gold")) return "Gold";
+	if (instrumentType.includes("Real Estate") || instrumentType.includes("REIT") || instrumentType.includes("Property")) return "Real Estate";
+	if (instrumentType.includes("Bond") || instrumentType.includes("Debt")) return "Debt";
+	if (instrumentType.includes("Liquid") || instrumentType.includes("Cash")) return "Liquid";
+	if (instrumentType.includes("Stock") || instrumentType.includes("ETF")) return "Stocks";
+	return "Stocks"; // Default fallback
+}
+
+// Role-based instrument type mapping with better categorization
+const roleInstrumentTypes: Record<PortfolioRole, { label: string; value: string; category: string }[]> = {
+	Equity: [
+		{ label: "Stocks", value: "Stocks", category: "Equity" },
+		{ label: "Equity MF", value: "Equity Mutual Funds", category: "Equity" },
+		{ label: "Equity ETF", value: "Equity ETFs", category: "Equity" }
+	],
+	Defensive: [
+		{ label: "Bonds", value: "Bonds", category: "Debt" },
+		{ label: "Debt MF", value: "Debt Mutual Funds", category: "Debt" },
+		{ label: "Liquid MF", value: "Liquid Mutual Funds", category: "Liquid" },
+		{ label: "Cash", value: "Cash", category: "Liquid" }
+	],
+	Satellite: [
+		{ label: "Gold ETF", value: "Gold ETFs", category: "Gold" },
+		{ label: "Gold MF", value: "Gold Mutual Funds", category: "Gold" },
+		{ label: "Physical Gold", value: "Physical Gold", category: "Gold" },
+		{ label: "REIT", value: "REITs", category: "Real Estate" },
+		{ label: "Property", value: "Properties", category: "Real Estate" }
+	]
 };
 
 // Mock NAVALL data structure for demonstration
@@ -213,13 +239,8 @@ export default function HoldingsPage() {
 		e.preventDefault();
 		if (!isValid) return;
 		
-		// Map instrument type to AssetClass for compatibility
-		let assetClass: AssetClass = "Stocks";
-		if (form.instrumentType.includes("Mutual Fund")) assetClass = "Mutual Funds";
-		else if (form.instrumentType.includes("Gold")) assetClass = "Gold";
-		else if (form.instrumentType.includes("Real Estate") || form.instrumentType.includes("REIT") || form.instrumentType.includes("Property")) assetClass = "Real Estate";
-		else if (form.instrumentType.includes("Bond") || form.instrumentType.includes("Debt")) assetClass = "Debt";
-		else if (form.instrumentType.includes("Liquid") || form.instrumentType.includes("Cash")) assetClass = "Liquid";
+		// Auto-map instrument type to AssetClass
+		const assetClass = mapInstrumentTypeToAssetClass(form.instrumentType);
 		
 		const id = uuidv4();
 		addHolding({
@@ -438,30 +459,43 @@ export default function HoldingsPage() {
 
 			{/* Add Holding Modal */}
 			{showAddModal && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-					<div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl border border-border bg-card p-6 text-foreground">
-						<div className="flex items-center justify-between mb-6">
-							<h3 className="text-xl font-semibold">Add New Holding</h3>
-							<button className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-muted" onClick={() => setShowAddModal(false)}>
-								<X className="h-5 w-5" />
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+					<div className="w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-2xl p-8 text-foreground">
+						<div className="flex items-center justify-between mb-8">
+							<div>
+								<h3 className="text-2xl font-bold text-gray-900">Add New Holding</h3>
+								<p className="text-gray-600 mt-1">Select portfolio role and instrument details</p>
+							</div>
+							<button 
+								className="h-10 w-10 inline-flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors" 
+								onClick={() => setShowAddModal(false)}
+							>
+								<X className="h-5 w-5 text-gray-500" />
 							</button>
 						</div>
 						
-						<form onSubmit={handleSubmit} className="space-y-6">
+						<form onSubmit={handleSubmit} className="space-y-8">
+							{/* Progress Indicator */}
+							<div className="flex items-center gap-2 mb-6">
+								<div className={cn("h-2 w-2 rounded-full", form.portfolioRole ? "bg-emerald-500" : "bg-gray-300")}></div>
+								<div className={cn("h-2 w-2 rounded-full", form.instrumentType ? "bg-emerald-500" : "bg-gray-300")}></div>
+								<div className={cn("h-2 w-2 rounded-full", form.instrumentName ? "bg-emerald-500" : "bg-gray-300")}></div>
+								<div className={cn("h-2 w-2 rounded-full", (form.units || form.investedAmount) ? "bg-emerald-500" : "bg-gray-300")}></div>
+							</div>
 							{/* Portfolio Role Selection */}
 							<div>
 								<label className="block text-sm font-medium text-muted-foreground mb-3">Portfolio Role</label>
-								<div className="flex gap-2">
+								<div className="flex gap-2 flex-wrap">
 									{(["Equity", "Defensive", "Satellite"] as PortfolioRole[]).map(role => (
 										<button
 											key={role}
 											type="button"
 											onClick={() => onChange("portfolioRole")({ target: { value: role } } as any)}
 											className={cn(
-												"px-4 py-2 rounded-full text-sm font-medium transition-colors",
+												"px-6 py-3 rounded-full text-sm font-medium transition-all duration-200 shadow-sm",
 												form.portfolioRole === role
-													? "bg-indigo-600 text-white"
-													: "bg-muted text-foreground hover:bg-muted/80"
+													? "bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-md scale-105"
+													: "bg-white border-2 border-gray-200 text-gray-700 hover:border-indigo-300 hover:shadow-md"
 											)}
 										>
 											{role}
@@ -474,17 +508,24 @@ export default function HoldingsPage() {
 							{/* Instrument Type Selection */}
 							{form.portfolioRole && (
 								<div>
-									<label className="block text-sm font-medium text-muted-foreground mb-2">Instrument Type</label>
-									<select 
-										value={form.instrumentType} 
-										onChange={onChange("instrumentType")} 
-										className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
-									>
-										<option value="">Select instrument type</option>
+									<label className="block text-sm font-medium text-muted-foreground mb-3">Instrument Type</label>
+									<div className="flex gap-2 flex-wrap">
 										{roleInstrumentTypes[form.portfolioRole].map(type => (
-											<option key={type} value={type}>{type}</option>
+											<button
+												key={type.value}
+												type="button"
+												onClick={() => onChange("instrumentType")({ target: { value: type.value } } as any)}
+												className={cn(
+													"px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 shadow-sm",
+													form.instrumentType === type.value
+														? "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-md scale-105"
+														: "bg-white border-2 border-gray-200 text-gray-700 hover:border-emerald-300 hover:shadow-md"
+												)}
+											>
+												{type.label}
+											</button>
 										))}
-									</select>
+									</div>
 									{errors.instrumentType ? <p className="mt-1 text-sm text-rose-600">{errors.instrumentType}</p> : null}
 								</div>
 							)}
@@ -671,43 +712,59 @@ export default function HoldingsPage() {
 
 							{/* Summary Preview */}
 							{form.instrumentName && (form.units || form.investedAmount) && (
-								<Card className="bg-muted/50">
-									<CardContent className="p-4">
-										<h4 className="font-medium mb-3">Summary Preview</h4>
-										<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-											<SummaryStat 
-												label="Invested" 
-												value={formatCurrency(computed.invested, currency)} 
-												icon={<Banknote className="h-4 w-4" />} 
-											/>
-											<SummaryStat 
-												label="Current" 
-												value={formatCurrency(computed.current, currency)} 
-												icon={<IndianRupee className="h-4 w-4" />} 
-											/>
-											<SummaryStat 
-												label="P/L" 
-												value={Number.isNaN(computed.pnl) ? "—" : `${formatCurrency(computed.pnl, currency)} (${Number.isNaN(computed.pnlPct) ? "—" : formatNumber(computed.pnlPct, 2)}%)`} 
-												icon={<Percent className="h-4 w-4" />} 
-												valueClassName={computed.pnl > 0 ? "text-emerald-600" : computed.pnl < 0 ? "text-rose-600" : ""} 
-											/>
-										</div>
-									</CardContent>
-								</Card>
+								<div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6">
+									<h4 className="font-semibold text-blue-900 mb-4 flex items-center gap-2">
+										<BarChart3 className="h-5 w-5" />
+										Summary Preview
+									</h4>
+									<div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+										<SummaryStat 
+											label="Invested" 
+											value={formatCurrency(computed.invested, currency)} 
+											icon={<Banknote className="h-5 w-5" />} 
+										/>
+										<SummaryStat 
+											label="Current" 
+											value={formatCurrency(computed.current, currency)} 
+											icon={<IndianRupee className="h-5 w-5" />} 
+										/>
+										<SummaryStat 
+											label="P/L" 
+											value={Number.isNaN(computed.pnl) ? "—" : `${formatCurrency(computed.pnl, currency)} (${Number.isNaN(computed.pnlPct) ? "—" : formatNumber(computed.pnlPct, 2)}%)`} 
+											icon={<Percent className="h-5 w-5" />} 
+											valueClassName={computed.pnl > 0 ? "text-emerald-600" : computed.pnl < 0 ? "text-rose-600" : ""} 
+										/>
+									</div>
+								</div>
 							)}
 
 							{/* Form Actions */}
-							<CardFooter className="pt-2 flex items-center gap-3 px-0">
-								<Button type="submit" disabled={!isValid} className="min-w-[160px]">
-									{submitted ? "Saved!" : "Save Holding"}
+							<div className="flex items-center justify-between pt-6 border-t border-gray-200">
+								<div className="flex items-center gap-3">
+									<Button type="button" variant="outline" onClick={resetForm} className="px-6 py-2">
+										Reset Form
+									</Button>
+									<Button type="button" variant="outline" onClick={() => setShowAddModal(false)} className="px-6 py-2">
+										Cancel
+									</Button>
+								</div>
+								<Button 
+									type="submit" 
+									disabled={!isValid} 
+									className="min-w-[180px] px-8 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+								>
+									{submitted ? (
+										<span className="flex items-center gap-2">
+											✓ Saved Successfully!
+										</span>
+									) : (
+										<span className="flex items-center gap-2">
+											<Layers className="h-4 w-4" />
+											Save Holding
+										</span>
+									)}
 								</Button>
-								<Button type="button" variant="outline" onClick={resetForm}>
-									Reset
-								</Button>
-								<Button type="button" variant="outline" onClick={() => setShowAddModal(false)}>
-									Cancel
-								</Button>
-							</CardFooter>
+							</div>
 						</form>
 					</div>
 				</div>
@@ -718,12 +775,12 @@ export default function HoldingsPage() {
 
 function SummaryStat({ label, value, icon, valueClassName = "" }: { label: string; value: string; icon?: React.ReactNode; valueClassName?: string }) {
 	return (
-		<div className="rounded-xl border border-border p-3 bg-card transition-colors">
-			<div className="flex items-center gap-2 mb-1 text-muted-foreground">
-				<span className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-muted text-foreground/80">{icon}</span>
-				<span className="text-xs">{label}</span>
+		<div className="bg-white rounded-xl border border-blue-200 p-4 shadow-sm transition-all duration-200 hover:shadow-md">
+			<div className="flex items-center gap-3 mb-2">
+				<span className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-blue-100 text-blue-600">{icon}</span>
+				<span className="text-sm font-medium text-blue-700">{label}</span>
 			</div>
-			<div className={`text-sm font-semibold ${valueClassName}`}>{value}</div>
+			<div className={`text-2xl font-bold text-gray-900 ${valueClassName}`}>{value}</div>
 		</div>
 	);
 }
