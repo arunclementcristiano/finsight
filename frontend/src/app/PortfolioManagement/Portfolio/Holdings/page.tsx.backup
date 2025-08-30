@@ -177,11 +177,9 @@ export default function PortfolioHoldingsPage() {
 							const nav = parseFloat(parts[4]?.trim());
 							
 							if (schemeCode && schemeName && !isNaN(nav)) {
-								// Use a simpler approach to avoid regex issues
-								const cleanName = schemeName.replace('- Direct Plan', '').replace('Growth', '').trim();
 								funds.push({
 									schemeCode,
-									name: cleanName,
+									name: schemeName.replace(/- Direct Plan.*Growth/i, '').trim(),
 									fullName: schemeName,
 									currentNAV: nav
 								});
