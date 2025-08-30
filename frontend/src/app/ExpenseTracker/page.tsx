@@ -616,7 +616,7 @@ export default function ExpenseTrackerPage() {
             {(monthlyCategorySpend.arr).length > 0 ? (
               <div className="space-y-3">
                 {(monthlyCategorySpend.arr).map(([cat, spent]) => {
-                  const budget = (defaultCategoryBudgets?.[cat]) || 0;
+                  const budget = getMonthlyBudgetFor(currentYm, cat);
                   const pct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
                   const warn = pct >= 80 && pct < 100;
                   const alert = pct >= 100;
