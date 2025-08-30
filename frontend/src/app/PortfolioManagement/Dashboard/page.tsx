@@ -74,7 +74,7 @@ export default function DashboardPage() {
 				<KPI title="Invested" value={formatCurrency(totalInvested, currency)} icon={<Target className="h-5 w-5 text-emerald-600" />} />
 				<KPI title="P/L" value={`${formatCurrency(pnl, currency)} (${formatNumber(pnlPct, 2)}%)`} icon={pnl >= 0 ? <ArrowUpRight className="h-5 w-5 text-emerald-600" /> : <ArrowDownRight className="h-5 w-5 text-rose-600" />} valueClassName={pnl >= 0 ? "text-emerald-700" : "text-rose-700"} />
 				<div className="flex gap-2">
-					<Button className="w-full" leftIcon={<PlusCircle className="h-4 w-4" />} onClick={() => window.location.assign("/PortfolioManagement/AddHolding")}>Add Holding</Button>
+					<Button className="w-full" leftIcon={<PlusCircle className="h-4 w-4" />} onClick={() => window.location.assign("/PortfolioManagement/Portfolio/Holdings")}>Add Holding</Button>
 				</div>
 			</div>
 
