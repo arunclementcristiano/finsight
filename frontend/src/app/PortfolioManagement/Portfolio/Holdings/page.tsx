@@ -437,198 +437,405 @@ export default function HoldingsPage() {
 			{isModalOpen && (
 				<div className="fixed inset-0 z-50">
 					<div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setIsModalOpen(false); resetForm(); }} />
-					<div className="absolute inset-x-0 top-10 mx-auto w-[95%] max-w-5xl rounded-2xl border border-border bg-card shadow-2xl">
+					<div className="absolute inset-x-0 top-10 mx-auto w-[95%] max-w-6xl rounded-2xl border border-border bg-card shadow-2xl">
+						{/* Header */}
 						<div className="px-6 py-4 border-b border-border flex items-center justify-between">
 							<div>
 								<div className="text-xl font-bold text-foreground">{editingId ? "Edit Holding" : "Add New Holding"}</div>
-								<div className="text-sm text-muted-foreground mt-1">Select portfolio role and instrument details</div>
+								<div className="text-sm text-muted-foreground mt-1">Select instrument type and enter details</div>
 							</div>
 							<button onClick={() => { setIsModalOpen(false); resetForm(); }} className="p-2 rounded-full hover:bg-muted transition-colors" aria-label="Close">
 								<X size={20} className="text-muted-foreground" />
 							</button>
 						</div>
 						
-						<form onSubmit={submitForm} className="p-6 space-y-8">
-							{/* Portfolio Role Selection */}
-							<div>
-								<label className="block text-sm font-medium text-foreground mb-4">Portfolio Role</label>
-								<div className="flex gap-3 flex-wrap">
-									{(['Equity', 'Defensive', 'Satellite'] as const).map(role => (
-										<button
-											key={role}
-											type="button"
-											onClick={() => {
-												setSelectedRole(role);
-												setSelectedInstrumentType(null);
-												setForm({ ...form, name: "", symbol: "" });
-											}}
-											className={`px-6 py-3 rounded-full text-sm font-medium transition-all duration-200 shadow-sm ${
-												selectedRole === role
-													? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md scale-105"
-													: "bg-card border-2 border-border text-foreground hover:border-blue-300 hover:shadow-md"
-											}`}
-										>
-											{role}
-										</button>
-									))}
-								</div>
-							</div>
+						<div className="flex min-h-[600px]">
+							{/* Left Column - Instrument Type Selection */}
+							<div className="w-1/3 border-r border-border bg-muted/20">
+								<div className="p-6">
+									<h3 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wide">Instrument Type</h3>
+									<div className="space-y-3">
+										{/* Equity Section */}
+										<div>
+											<div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Equity</div>
+											<div className="space-y-2">
+												<button
+													type="button"
+													onClick={() => {
+														setSelectedRole('Equity');
+														setSelectedInstrumentType('Stocks');
+														setForm({ ...form, name: "", symbol: "" });
+													}}
+													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
+														selectedRole === 'Equity' && selectedInstrumentType === 'Stocks'
+															? "bg-primary text-primary-foreground shadow-lg scale-105"
+															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
+													}`}
+												>
+													<div className="font-medium">Stocks</div>
+													<div className="text-xs opacity-80">Individual company shares</div>
+												</button>
+												<button
+													type="button"
+													onClick={() => {
+														setSelectedRole('Equity');
+														setSelectedInstrumentType('Equity MF');
+														setForm({ ...form, name: "", symbol: "" });
+													}}
+													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
+														selectedRole === 'Equity' && selectedInstrumentType === 'Equity MF'
+															? "bg-primary text-primary-foreground shadow-lg scale-105"
+															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
+													}`}
+												>
+													<div className="font-medium">Equity MF</div>
+													<div className="text-xs opacity-80">Equity mutual funds</div>
+												</button>
+												<button
+													type="button"
+													onClick={() => {
+														setSelectedRole('Equity');
+														setSelectedInstrumentType('Equity ETF');
+														setForm({ ...form, name: "", symbol: "" });
+													}}
+													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
+														selectedRole === 'Equity' && selectedInstrumentType === 'Equity ETF'
+															? "bg-primary text-primary-foreground shadow-lg scale-105"
+															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
+													}`}
+												>
+													<div className="font-medium">Equity ETF</div>
+													<div className="text-xs opacity-80">Exchange traded funds</div>
+												</button>
+											</div>
+										</div>
 
-							{/* Instrument Type Selection */}
-							{selectedRole && (
-								<div>
-									<label className="block text-sm font-medium text-foreground mb-4">Instrument Type</label>
-									<div className="flex gap-3 flex-wrap">
-										{ROLE_INSTRUMENT_TYPES[selectedRole].map(type => (
-											<button
-												key={type.value}
-												type="button"
-												onClick={() => {
-													setSelectedInstrumentType(type.value);
-													setForm({ ...form, name: "", symbol: "" });
-												}}
-												className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 shadow-sm ${
-													selectedInstrumentType === type.value
-														? "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-md scale-105"
-														: "bg-card border-2 border-border text-foreground hover:border-emerald-300 hover:shadow-md"
-												}`}
-											>
-												{type.label}
-											</button>
-										))}
+										{/* Defensive Section */}
+										<div>
+											<div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Defensive</div>
+											<div className="space-y-2">
+												<button
+													type="button"
+													onClick={() => {
+														setSelectedRole('Defensive');
+														setSelectedInstrumentType('Bonds');
+														setForm({ ...form, name: "", symbol: "" });
+													}}
+													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
+														selectedRole === 'Defensive' && selectedInstrumentType === 'Bonds'
+															? "bg-primary text-primary-foreground shadow-lg scale-105"
+															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
+													}`}
+												>
+													<div className="font-medium">Bonds</div>
+													<div className="text-xs opacity-80">Government & corporate bonds</div>
+												</button>
+												<button
+													type="button"
+													onClick={() => {
+														setSelectedRole('Defensive');
+														setSelectedInstrumentType('Debt MF');
+														setForm({ ...form, name: "", symbol: "" });
+													}}
+													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
+														selectedRole === 'Defensive' && selectedInstrumentType === 'Debt MF'
+															? "bg-primary text-primary-foreground shadow-lg scale-105"
+															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
+													}`}
+												>
+													<div className="font-medium">Debt MF</div>
+													<div className="text-xs opacity-80">Debt mutual funds</div>
+												</button>
+												<button
+													type="button"
+													onClick={() => {
+														setSelectedRole('Defensive');
+														setSelectedInstrumentType('Liquid MF');
+														setForm({ ...form, name: "", symbol: "" });
+													}}
+													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
+														selectedRole === 'Defensive' && selectedInstrumentType === 'Liquid MF'
+															? "bg-primary text-primary-foreground shadow-lg scale-105"
+															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
+													}`}
+												>
+													<div className="font-medium">Liquid MF</div>
+													<div className="text-xs opacity-80">Liquid & overnight funds</div>
+												</button>
+												<button
+													type="button"
+													onClick={() => {
+														setSelectedRole('Defensive');
+														setSelectedInstrumentType('Cash');
+														setForm({ ...form, name: "", symbol: "" });
+													}}
+													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
+														selectedRole === 'Defensive' && selectedInstrumentType === 'Cash'
+															? "bg-primary text-primary-foreground shadow-lg scale-105"
+															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
+													}`}
+												>
+													<div className="font-medium">Cash</div>
+													<div className="text-xs opacity-80">Cash & equivalents</div>
+												</button>
+											</div>
+										</div>
+
+										{/* Satellite Section */}
+										<div>
+											<div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Satellite</div>
+											<div className="space-y-2">
+												<button
+													type="button"
+													onClick={() => {
+														setSelectedRole('Satellite');
+														setSelectedInstrumentType('Gold ETF');
+														setForm({ ...form, name: "", symbol: "" });
+													}}
+													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
+														selectedRole === 'Satellite' && selectedInstrumentType === 'Gold ETF'
+															? "bg-primary text-primary-foreground shadow-lg scale-105"
+															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
+													}`}
+												>
+													<div className="font-medium">Gold ETF</div>
+													<div className="text-xs opacity-80">Gold exchange traded funds</div>
+												</button>
+												<button
+													type="button"
+													onClick={() => {
+														setSelectedRole('Satellite');
+														setSelectedInstrumentType('Gold MF');
+														setForm({ ...form, name: "", symbol: "" });
+													}}
+													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
+														selectedRole === 'Satellite' && selectedInstrumentType === 'Gold MF'
+															? "bg-primary text-primary-foreground shadow-lg scale-105"
+															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
+													}`}
+												>
+													<div className="font-medium">Gold MF</div>
+													<div className="text-xs opacity-80">Gold mutual funds</div>
+												</button>
+												<button
+													type="button"
+													onClick={() => {
+														setSelectedRole('Satellite');
+														setSelectedInstrumentType('Physical Gold');
+														setForm({ ...form, name: "", symbol: "" });
+													}}
+													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
+														selectedRole === 'Satellite' && selectedInstrumentType === 'Physical Gold'
+															? "bg-primary text-primary-foreground shadow-lg scale-105"
+															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
+													}`}
+												>
+													<div className="font-medium">Physical Gold</div>
+													<div className="text-xs opacity-80">Physical gold holdings</div>
+												</button>
+												<button
+													type="button"
+													onClick={() => {
+														setSelectedRole('Satellite');
+														setSelectedInstrumentType('REITs');
+														setForm({ ...form, name: "", symbol: "" });
+													}}
+													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
+														selectedRole === 'Satellite' && selectedInstrumentType === 'REITs'
+															? "bg-primary text-primary-foreground shadow-lg scale-105"
+															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
+													}`}
+												>
+													<div className="font-medium">REITs</div>
+													<div className="text-xs opacity-80">Real estate investment trusts</div>
+												</button>
+												<button
+													type="button"
+													onClick={() => {
+														setSelectedRole('Satellite');
+														setSelectedInstrumentType('Properties');
+														setForm({ ...form, name: "", symbol: "" });
+													}}
+													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
+														selectedRole === 'Satellite' && selectedInstrumentType === 'Properties'
+															? "bg-primary text-primary-foreground shadow-lg scale-105"
+															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
+													}`}
+												>
+													<div className="font-medium">Properties</div>
+													<div className="text-xs opacity-80">Real estate properties</div>
+												</button>
+											</div>
+										</div>
 									</div>
 								</div>
-							)}
-
-							{/* Instrument Name with Autocomplete */}
-							{selectedInstrumentType && (
-								<div>
-									<label className="block text-sm font-medium text-foreground mb-2">Instrument Name *</label>
-									
-									{/* Stock Autocomplete */}
-									{selectedInstrumentType === 'Stocks' && (
-										<div className="relative">
-											<input
-												value={stockSearchTerm}
-												onChange={(e) => {
-													setStockSearchTerm(e.target.value);
-													filterStockOptions(e.target.value);
-												}}
-												onFocus={() => filterStockOptions(stockSearchTerm)}
-												className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-												placeholder="Search for stocks..."
-											/>
-											{showStockDropdown && (
-												<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-auto">
-													{filteredStockOptions.map((stock) => (
-														<div
-															key={stock.symbol}
-															onClick={() => {
-																setSelectedStock(stock);
-																setStockSearchTerm(stock.name);
-																setForm({ ...form, name: stock.name, symbol: stock.symbol, price: stock.price.toString() });
-																setShowStockDropdown(false);
-															}}
-															className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
-														>
-															<div className="font-medium">{stock.name}</div>
-															<div className="text-sm text-muted-foreground">{stock.symbol} • ₹{stock.price}</div>
-														</div>
-													))}
-												</div>
-											)}
-										</div>
-									)}
-
-									{/* Mutual Fund Autocomplete */}
-									{selectedInstrumentType.includes('MF') && (
-										<div className="relative">
-											<input
-												value={mfSearchTerm}
-												onChange={(e) => {
-													setMfSearchTerm(e.target.value);
-													filterMFOptions(e.target.value);
-												}}
-												onFocus={() => filterMFOptions(mfSearchTerm)}
-												className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-												placeholder="Search for mutual funds..."
-											/>
-											{showMFDropdown && (
-												<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-auto">
-													{filteredMFOptions.map((fund) => (
-														<div
-															key={fund.schemeCode}
-															onClick={() => {
-																setSelectedMF(fund);
-																setMfSearchTerm(fund.name);
-																setForm({ ...form, name: fund.name, symbol: fund.schemeCode });
-																setShowMFDropdown(false);
-															}}
-															className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
-														>
-															<div className="font-medium">{fund.name}</div>
-															<div className="text-sm text-muted-foreground">NAV: ₹{fund.currentNAV}</div>
-														</div>
-													))}
-												</div>
-											)}
-										</div>
-									)}
-
-									{/* Manual Input for Other Types */}
-									{!selectedInstrumentType.includes('MF') && selectedInstrumentType !== 'Stocks' && (
-										<input
-											value={form.name}
-											onChange={(e) => setForm({ ...form, name: e.target.value })}
-											required
-											className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-											placeholder="Enter instrument name"
-										/>
-									)}
-								</div>
-							)}
-
-							{/* Amount/Units Input */}
-							{selectedInstrumentType && form.name && (
-								<div>
-									<label className="block text-sm font-medium text-foreground mb-2">Amount *</label>
-									<input
-										type="number"
-										value={form.investedAmount}
-										onChange={(e) => setForm({ ...form, investedAmount: e.target.value })}
-										required
-										className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-										placeholder="Enter invested amount"
-									/>
-								</div>
-							)}
-
-							{/* Form Actions */}
-							<div className="flex items-center justify-between pt-6 border-t border-border">
-								<div className="flex items-center gap-3">
-									<button
-										type="button"
-										onClick={() => { setIsModalOpen(false); resetForm(); }}
-										className="px-6 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors"
-									>
-										Cancel
-									</button>
-									<button
-										type="button"
-										onClick={resetForm}
-										className="px-6 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors"
-									>
-										Reset Form
-									</button>
-								</div>
-								<button
-									type="submit"
-									className="min-w-[180px] px-8 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
-								>
-									{editingId ? "Save Changes" : "Add Holding"}
-								</button>
 							</div>
-						</form>
+
+							{/* Right Column - Form */}
+							<div className="w-2/3 p-6">
+								{selectedInstrumentType ? (
+									<form onSubmit={submitForm} className="space-y-8">
+										{/* Portfolio Role Display */}
+										<div>
+											<label className="block text-sm font-medium text-foreground mb-3">Portfolio Role</label>
+											<div className="flex gap-3">
+												{['Equity', 'Defensive', 'Satellite'].map(role => (
+													<button
+														key={role}
+														type="button"
+														className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+															selectedRole === role
+																? "bg-blue-600 text-white shadow-md"
+																: "bg-muted text-muted-foreground"
+														}`}
+													>
+														{role}
+													</button>
+												))}
+											</div>
+										</div>
+
+										{/* Instrument Name */}
+										<div>
+											<label className="block text-sm font-medium text-foreground mb-2">Instrument Name *</label>
+											
+											{/* Stock Autocomplete */}
+											{selectedInstrumentType === 'Stocks' && (
+												<div className="relative">
+													<input
+														value={stockSearchTerm}
+														onChange={(e) => {
+															setStockSearchTerm(e.target.value);
+															filterStockOptions(e.target.value);
+														}}
+														onFocus={() => filterStockOptions(stockSearchTerm)}
+														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+														placeholder="Search for stocks..."
+													/>
+													{showStockDropdown && (
+														<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-auto">
+															{filteredStockOptions.map((stock) => (
+																<div
+																	key={stock.symbol}
+																	onClick={() => {
+																		setSelectedStock(stock);
+																		setStockSearchTerm(stock.name);
+																		setForm({ ...form, name: stock.name, symbol: stock.symbol, price: stock.price.toString() });
+																		setShowStockDropdown(false);
+																	}}
+																	className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
+																>
+																	<div className="font-medium">{stock.name}</div>
+																	<div className="text-sm text-muted-foreground">{stock.symbol} • ₹{stock.price}</div>
+																</div>
+															))}
+														</div>
+													)}
+												</div>
+											)}
+
+											{/* Mutual Fund Autocomplete */}
+											{selectedInstrumentType.includes('MF') && (
+												<div className="relative">
+													<input
+														value={mfSearchTerm}
+														onChange={(e) => {
+															setMfSearchTerm(e.target.value);
+															filterMFOptions(e.target.value);
+														}}
+														onFocus={() => filterMFOptions(mfSearchTerm)}
+														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+														placeholder="Search for mutual funds..."
+													/>
+													{showMFDropdown && (
+														<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-auto">
+															{filteredMFOptions.map((fund) => (
+																<div
+																	key={fund.schemeCode}
+																	onClick={() => {
+																		setSelectedMF(fund);
+																		setMfSearchTerm(fund.name);
+																		setForm({ ...form, name: fund.name, symbol: fund.schemeCode });
+																		setShowMFDropdown(false);
+																	}}
+																	className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
+																>
+																	<div className="font-medium">{fund.name}</div>
+																	<div className="text-sm text-muted-foreground">NAV: ₹{fund.currentNAV}</div>
+																</div>
+															))}
+														</div>
+													)}
+												</div>
+											)}
+
+											{/* Manual Input for Other Types */}
+											{!selectedInstrumentType.includes('MF') && selectedInstrumentType !== 'Stocks' && (
+												<input
+													value={form.name}
+													onChange={(e) => setForm({ ...form, name: e.target.value })}
+													required
+													className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+													placeholder="Enter instrument name"
+												/>
+											)}
+										</div>
+
+										{/* Amount Input */}
+										{form.name && (
+											<div>
+												<label className="block text-sm font-medium text-foreground mb-2">Amount *</label>
+												<div className="relative">
+													<span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground">₹</span>
+													<input
+														type="number"
+														value={form.investedAmount}
+														onChange={(e) => setForm({ ...form, investedAmount: e.target.value })}
+														required
+														className="w-full rounded-lg border border-border bg-background pl-8 pr-3 py-2 text-sm text-foreground"
+														placeholder="0.00"
+													/>
+												</div>
+											</div>
+										)}
+
+										{/* Form Actions */}
+										<div className="flex items-center justify-between pt-8 border-t border-border">
+											<div className="flex items-center gap-3">
+												<button
+													type="button"
+													onClick={() => { setIsModalOpen(false); resetForm(); }}
+													className="px-6 py-2 rounded-lg text-foreground hover:bg-muted transition-colors"
+												>
+													Cancel
+												</button>
+												<button
+													type="button"
+													onClick={resetForm}
+													className="px-6 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors"
+												>
+													Reset Form
+												</button>
+											</div>
+											<button
+												type="submit"
+												className="min-w-[180px] px-8 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+											>
+												{editingId ? "Save Changes" : "Add Holding"}
+											</button>
+										</div>
+									</form>
+								) : (
+									<div className="flex items-center justify-center h-full">
+										<div className="text-center text-muted-foreground">
+											<div className="text-4xl mb-4">📊</div>
+											<div className="text-lg font-medium mb-2">Select Instrument Type</div>
+											<div className="text-sm">Choose an instrument type from the left menu to get started</div>
+										</div>
+									</div>
+								)}
+							</div>
+						</div>
 					</div>
 				</div>
 			)}
