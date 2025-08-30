@@ -427,31 +427,92 @@ export default function HoldingsPage() {
 					</div>
 					<div className="p-4">
 						{holdings && holdings.length > 0 ? (
-							<div className="space-y-3">
-								{holdings.map((holding) => (
-									<div key={holding.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
-										<div>
-											<div className="font-medium">{holding.name}</div>
-											{holding.symbol && <div className="text-sm text-muted-foreground">{holding.symbol}</div>}
-										</div>
-										<div className="text-right">
-											<div className="font-medium">₹{computeHoldingValue(holding).toLocaleString()}</div>
-											<div className="text-sm text-muted-foreground">{holding.instrumentClass}</div>
-										</div>
-										<div className="flex gap-2">
-											<button onClick={() => openEdit(holding)} className="p-2 rounded hover:bg-muted">
-												<Edit2 size={16} />
-											</button>
-											<button onClick={() => handleDeleteHolding(holding.id)} className="p-2 rounded hover:bg-muted text-rose-600">
-												<Trash2 size={16} />
-											</button>
-										</div>
-									</div>
-								))}
+							<div className="overflow-x-auto">
+								<table className="w-full">
+									<thead>
+										<tr className="border-b border-border">
+											<th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Instrument</th>
+											<th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Asset Class</th>
+											<th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Current Value</th>
+											<th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Invested Amount</th>
+											<th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">P/L</th>
+											<th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Actions</th>
+										</tr>
+									</thead>
+									<tbody>
+										{holdings.map((holding) => {
+											const currentValue = computeHoldingValue(holding);
+											const investedAmount = computeInvestedAmount(holding);
+											const pl = currentValue - investedAmount;
+											const plPercent = investedAmount > 0 ? (pl / investedAmount) * 100 : 0;
+											
+											return (
+												<tr key={holding.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+													<td className="py-3 px-3">
+														<div>
+															<div className="font-medium text-foreground">{holding.name}</div>
+															{holding.symbol && (
+																<div className="text-sm text-muted-foreground">{holding.symbol}</div>
+															)}
+														</div>
+													</td>
+													<td className="py-3 px-3 text-right">
+														<span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+															CLASS_COLORS[holding.instrumentClass as keyof typeof CLASS_COLORS]?.bg || 'bg-gray-100 dark:bg-gray-800'
+														} ${
+															CLASS_COLORS[holding.instrumentClass as keyof typeof CLASS_COLORS]?.text || 'text-gray-700 dark:text-gray-300'
+														}`}>
+															{holding.instrumentClass}
+														</span>
+													</td>
+													<td className="py-3 px-3 text-right">
+														<div className="font-medium text-foreground">₹{currentValue.toLocaleString()}</div>
+														{holding.units && holding.price && (
+															<div className="text-sm text-muted-foreground">
+																{holding.units.toFixed(2)} units @ ₹{holding.price.toLocaleString()}
+															</div>
+														)}
+													</td>
+													<td className="py-3 px-3 text-right">
+														<div className="font-medium text-foreground">₹{investedAmount.toLocaleString()}</div>
+													</td>
+													<td className="py-3 px-3 text-right">
+														<div className={`font-medium ${pl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+															₹{pl.toLocaleString()}
+														</div>
+														<div className={`text-sm ${pl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+															{plPercent >= 0 ? '+' : ''}{plPercent.toFixed(2)}%
+														</div>
+													</td>
+													<td className="py-3 px-3 text-center">
+														<div className="flex items-center justify-center gap-2">
+															<button 
+																onClick={() => openEdit(holding)} 
+																className="p-2 rounded-lg hover:bg-muted transition-colors text-blue-600 hover:text-blue-700"
+																title="Edit"
+															>
+																<Edit2 size={16} />
+															</button>
+															<button 
+																onClick={() => handleDeleteHolding(holding.id)} 
+																className="p-2 rounded-lg hover:bg-muted transition-colors text-rose-600 hover:text-rose-700"
+																title="Delete"
+															>
+																<Trash2 size={16} />
+															</button>
+														</div>
+													</td>
+												</tr>
+											);
+										})}
+									</tbody>
+								</table>
 							</div>
 						) : (
 							<div className="text-center py-8 text-muted-foreground">
-								No holdings yet. Click "Add Holding" to get started.
+								<div className="text-4xl mb-2">📊</div>
+								<div className="text-lg font-medium mb-2">No holdings yet</div>
+								<div className="text-sm">Click "Add Holding" to get started with your portfolio</div>
 							</div>
 						)}
 					</div>
@@ -466,16 +527,16 @@ export default function HoldingsPage() {
 						{holdings && holdings.length > 0 ? (
 							<div className="space-y-4">
 								{/* Pie Chart */}
-								<div className="h-48">
+								<div className="h-48 flex items-center justify-center">
 									<ResponsiveContainer width="100%" height="100%">
 										<PieChart>
 											<Pie
 												data={portfolioAllocationData}
 												cx="50%"
 												cy="50%"
-												innerRadius={40}
-												outerRadius={80}
-												paddingAngle={2}
+												innerRadius={35}
+												outerRadius={70}
+												paddingAngle={3}
 												dataKey="value"
 											>
 												{portfolioAllocationData.map((entry, index) => (
@@ -485,8 +546,13 @@ export default function HoldingsPage() {
 											<Tooltip 
 												formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Value']}
 												labelFormatter={(label) => `${label}`}
+												contentStyle={{
+													backgroundColor: 'hsl(var(--card))',
+													border: '1px solid hsl(var(--border))',
+													borderRadius: '8px',
+													boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+												}}
 											/>
-											<Legend />
 										</PieChart>
 									</ResponsiveContainer>
 								</div>
@@ -500,9 +566,9 @@ export default function HoldingsPage() {
 													className="w-3 h-3 rounded-full" 
 													style={{ backgroundColor: item.color }}
 												></div>
-												<span className="text-foreground">{item.name}</span>
+												<span className="text-foreground font-medium">{item.name}</span>
 											</div>
-											<div className="text-muted-foreground">
+											<div className="text-muted-foreground font-medium">
 												{((item.value / totalValue) * 100).toFixed(1)}%
 											</div>
 										</div>
@@ -537,26 +603,28 @@ export default function HoldingsPage() {
 						
 						{/* Portfolio Role Selection - Top Row */}
 						<div className="px-6 py-3 border-b border-border">
-							<label className="block text-sm font-medium text-foreground mb-2">Portfolio Role</label>
-							<div className="flex gap-2">
-								{(['Equity', 'Defensive', 'Satellite'] as const).map(role => (
-									<button
-										key={role}
-										type="button"
-										onClick={() => {
-											setSelectedRole(role);
-											setSelectedInstrumentType(null);
-											setForm({ ...form, name: "", symbol: "" });
-										}}
-										className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-											selectedRole === role
-												? "bg-primary text-primary-foreground shadow-md scale-105"
-												: "bg-muted text-muted-foreground hover:bg-muted/80"
-										}`}
-									>
-										{role}
-									</button>
-								))}
+							<div className="text-center">
+								<label className="block text-sm font-medium text-foreground mb-3">Portfolio Role</label>
+								<div className="flex items-center justify-center gap-3">
+									{(['Equity', 'Defensive', 'Satellite'] as const).map(role => (
+										<button
+											key={role}
+											type="button"
+											onClick={() => {
+												setSelectedRole(role);
+												setSelectedInstrumentType(null);
+												setForm({ ...form, name: "", symbol: "" });
+											}}
+											className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 transform ${
+												selectedRole === role
+													? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg scale-105 ring-2 ring-blue-500/30"
+													: "bg-muted text-muted-foreground hover:bg-muted/80 hover:scale-102"
+											}`}
+										>
+											{role}
+										</button>
+									))}
+								</div>
 							</div>
 						</div>
 						
@@ -576,14 +644,14 @@ export default function HoldingsPage() {
 															setSelectedInstrumentType(type.value);
 															setForm({ ...form, name: "", symbol: "" });
 														}}
-														className={`w-full text-left px-3 py-2 rounded-lg transition-all duration-200 ${
+														className={`w-full text-left px-3 py-2 rounded-lg transition-all duration-300 transform ${
 															selectedInstrumentType === type.value
-																? "bg-primary text-primary-foreground shadow-lg scale-105"
-																: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
+																? "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg scale-105 ring-2 ring-emerald-500/30"
+																: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30 hover:scale-102"
 														}`}
 													>
 														<div className="font-medium text-sm">{type.label}</div>
-														<div className="text-xs opacity-80">{type.category}</div>
+														<div className={`text-xs ${selectedInstrumentType === type.value ? 'text-emerald-100' : 'opacity-80'}`}>{type.category}</div>
 													</button>
 												))}
 											</div>
