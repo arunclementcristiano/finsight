@@ -16,6 +16,28 @@ const CLASS_COLORS: Record<AssetClass, { bg: string; text: string; chart: string
 	"Real Estate": { bg: "bg-rose-100 dark:bg-rose-900/30", text: "text-rose-700 dark:text-rose-300", chart: "#F43F5E" },
 };
 
+// Role-based instrument type mapping
+const ROLE_INSTRUMENT_TYPES = {
+	Equity: [
+		{ label: "Stocks", value: "Stocks", category: "Stocks" },
+		{ label: "Equity MF", value: "Equity MF", category: "Mutual Funds" },
+		{ label: "Equity ETF", value: "Equity ETF", category: "Stocks" }
+	],
+	Defensive: [
+		{ label: "Debt MF", value: "Debt MF", category: "Mutual Funds" },
+		{ label: "Liquid MF", value: "Liquid MF", category: "Mutual Funds" },
+		{ label: "Bonds", value: "Bonds", category: "Debt" },
+		{ label: "Cash", value: "Cash", category: "Liquid" }
+	],
+	Satellite: [
+		{ label: "Gold MF", value: "Gold MF", category: "Mutual Funds" },
+		{ label: "Gold ETF", value: "Gold ETF", category: "Stocks" },
+		{ label: "Physical Gold", value: "Physical Gold", category: "Gold" },
+		{ label: "REITs", value: "REITs", category: "Real Estate" },
+		{ label: "Properties", value: "Properties", category: "Real Estate" }
+	]
+};
+
 function computeHoldingValue(h: Holding): number {
 	if (typeof h.currentValue === "number" && !Number.isNaN(h.currentValue)) return h.currentValue;
 	if (typeof h.units === "number" && typeof h.price === "number") return h.units * h.price;
@@ -45,6 +67,17 @@ function getRoleForAssetClass(asset: AssetClass): "Equity" | "Defensive" | "Sate
 	}
 }
 
+// Auto-map instrument type to AssetClass
+function mapInstrumentTypeToAssetClass(instrumentType: string): AssetClass {
+	if (instrumentType.includes("MF")) return "Mutual Funds";
+	if (instrumentType.includes("Gold")) return "Gold";
+	if (instrumentType.includes("Real Estate") || instrumentType.includes("REIT") || instrumentType.includes("Property")) return "Real Estate";
+	if (instrumentType.includes("Bond") || instrumentType.includes("Debt")) return "Debt";
+	if (instrumentType.includes("Liquid") || instrumentType.includes("Cash")) return "Liquid";
+	if (instrumentType.includes("Stock") || instrumentType.includes("ETF")) return "Stocks";
+	return "Stocks"; // Default fallback
+}
+
 export default function PortfolioHoldingsPage() {
 	const { holdings, addHolding, updateHolding, deleteHolding } = useApp() as any;
 	const [isModalOpen, setIsModalOpen] = useState(false);
@@ -53,6 +86,12 @@ export default function PortfolioHoldingsPage() {
 	const [pageSize, setPageSize] = useState(10);
 	const [roleFilter, setRoleFilter] = useState<'All'|'Equity'|'Defensive'|'Satellite'>('All');
 	const [classFilter, setClassFilter] = useState<'All'|AssetClass>('All');
+	
+	// New state for role-based flow
+	const [selectedRole, setSelectedRole] = useState<'Equity'|'Defensive'|'Satellite' | null>(null);
+	const [selectedInstrumentType, setSelectedInstrumentType] = useState<string | null>(null);
+	const [entryMode, setEntryMode] = useState<'units' | 'amount'>('units');
+	
 	const [form, setForm] = useState<{
 		instrumentClass: AssetClass;
 		name: string;
@@ -238,6 +277,10 @@ export default function PortfolioHoldingsPage() {
 		setMfCurrentValue(null);
 		setMfGainLoss(null);
 		setMfGainLossPercent(null);
+		// Reset role-based state
+		setSelectedRole(null);
+		setSelectedInstrumentType(null);
+		setEntryMode('units');
 	}
 
 	function openCreate() {
@@ -261,9 +304,16 @@ export default function PortfolioHoldingsPage() {
 
 	function submitForm(e: React.FormEvent) {
 		e.preventDefault();
+		
+		// Auto-map instrument type to AssetClass if using role-based flow
+		let instrumentClass = form.instrumentClass;
+		if (selectedInstrumentType) {
+			instrumentClass = mapInstrumentTypeToAssetClass(selectedInstrumentType);
+		}
+		
 		const payload: Holding = {
 			id: editingId || uuidv4(),
-			instrumentClass: form.instrumentClass,
+			instrumentClass,
 			name: form.name.trim(),
 			symbol: form.symbol?.trim() || undefined,
 			units: form.units ? Number(form.units) : undefined,
@@ -287,7 +337,7 @@ export default function PortfolioHoldingsPage() {
 						<h1 className="text-2xl font-bold text-foreground">Holdings</h1>
 						<p className="text-sm text-muted-foreground">Capture your investments and view allocation.</p>
 					</div>
-					<button onClick={() => { window.location.assign("/PortfolioManagement/AddHolding"); }} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+					<button onClick={openCreate} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
 						<Plus size={18} /> Add Holding
 					</button>
 				</div>
@@ -434,27 +484,87 @@ export default function PortfolioHoldingsPage() {
 			{/* Modal */}
 			{isModalOpen && (
 				<div className="fixed inset-0 z-50">
-					<div className="absolute inset-0 bg-black/40" onClick={() => { setIsModalOpen(false); resetForm(); }} />
-					<div className="absolute inset-x-0 top-10 mx-auto w-[95%] max-w-2xl rounded-xl border border-border bg-card shadow-xl">
-						<div className="px-4 py-3 border-b border-border flex items-center justify-between">
-							<div className="font-medium text-foreground">{editingId ? "Edit Holding" : "Add Holding"}</div>
-							<button onClick={() => { setIsModalOpen(false); resetForm(); }} className="p-1 rounded hover:bg-muted" aria-label="Close">
-								<X size={18} className="text-foreground/80" />
+					<div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setIsModalOpen(false); resetForm(); }} />
+					<div className="absolute inset-x-0 top-10 mx-auto w-[95%] max-w-5xl rounded-2xl border border-gray-200 bg-white shadow-2xl">
+						<div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+							<div>
+								<div className="text-xl font-bold text-gray-900">{editingId ? "Edit Holding" : "Add New Holding"}</div>
+								<div className="text-sm text-gray-600 mt-1">Select portfolio role and instrument details</div>
+							</div>
+							<button onClick={() => { setIsModalOpen(false); resetForm(); }} className="p-2 rounded-full hover:bg-gray-100 transition-colors" aria-label="Close">
+								<X size={20} className="text-gray-500" />
 							</button>
 						</div>
-						<form onSubmit={submitForm} className="p-4 space-y-4">
-							{/* Asset Class */}
+						
+						{/* Progress Indicator */}
+						<div className="px-6 py-4 border-b border-gray-100">
+							<div className="flex items-center gap-3">
+								<div className={`h-3 w-3 rounded-full transition-all duration-300 ${selectedRole ? "bg-emerald-500 scale-125" : "bg-gray-300"}`}></div>
+								<div className={`h-3 w-3 rounded-full transition-all duration-300 ${selectedInstrumentType ? "bg-emerald-500 scale-125" : "bg-gray-300"}`}></div>
+								<div className={`h-3 w-3 rounded-full transition-all duration-300 ${form.name ? "bg-emerald-500 scale-125" : "bg-gray-300"}`}></div>
+								<div className={`h-3 w-3 rounded-full transition-all duration-300 ${(form.units || form.investedAmount) ? "bg-emerald-500 scale-125" : "bg-gray-300"}`}></div>
+							</div>
+						</div>
+						
+						<form onSubmit={submitForm} className="p-6 space-y-8">
+							{/* Portfolio Role Selection */}
 							<div>
-								<label className="block text-xs text-muted-foreground mb-1">Asset Class</label>
-								<select value={form.instrumentClass} onChange={(e) => setForm({ ...form, instrumentClass: e.target.value as AssetClass })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground">
-									{Object.keys(CLASS_COLORS).map((k) => (
-										<option key={k} value={k}>{k}</option>
+								<label className="block text-sm font-medium text-gray-700 mb-4">Portfolio Role</label>
+								<div className="flex gap-3 flex-wrap">
+									{(['Equity', 'Defensive', 'Satellite'] as const).map(role => (
+										<button
+											key={role}
+											type="button"
+											onClick={() => {
+												setSelectedRole(role);
+												setSelectedInstrumentType(null);
+												setForm({ ...form, name: "", symbol: "" });
+											}}
+											className={`px-6 py-3 rounded-full text-sm font-medium transition-all duration-200 shadow-sm ${
+												selectedRole === role
+													? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md scale-105"
+													: "bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-300 hover:shadow-md"
+											}`}
+										>
+											{role}
+										</button>
 									))}
-								</select>
+								</div>
 							</div>
 
-							{/* Enhanced Stock Search - Only for Stocks */}
-							{form.instrumentClass === "Stocks" ? (
+							{/* Instrument Type Selection */}
+							{selectedRole && (
+								<div>
+									<label className="block text-sm font-medium text-gray-700 mb-4">Instrument Type</label>
+									<div className="flex gap-3 flex-wrap">
+										{ROLE_INSTRUMENT_TYPES[selectedRole].map(type => (
+											<button
+												key={type.value}
+												type="button"
+												onClick={() => {
+													setSelectedInstrumentType(type.value);
+													setForm({ ...form, name: "", symbol: "" });
+												}}
+												className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 shadow-sm ${
+													selectedInstrumentType === type.value
+														? "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-md scale-105"
+														: "bg-white border-2 border-gray-200 text-gray-700 hover:border-emerald-300 hover:shadow-md"
+												}`}
+											>
+												{type.label}
+											</button>
+										))}
+									</div>
+								</div>
+							)}
+
+							{/* Instrument Name Selection */}
+							{selectedInstrumentType && (
+								<div>
+									<label className="block text-sm font-medium text-gray-700 mb-3">Instrument Name</label>
+									
+									{/* For Stocks and Mutual Funds - use autocomplete */}
+									{(selectedInstrumentType === "Stocks" || selectedInstrumentType.includes("MF")) ? (
 								<div className="space-y-4">
 									{/* Stock Search */}
 									<div className="relative">
@@ -825,9 +935,30 @@ export default function PortfolioHoldingsPage() {
 								</div>
 							)}
 
-							<div className="flex items-center justify-end gap-3 pt-4">
-								<button type="button" onClick={() => { setIsModalOpen(false); resetForm(); }} className="px-4 py-2 rounded-lg border border-border text-foreground hover:bg-muted">Cancel</button>
-								<button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white">{editingId ? "Save Changes" : "Add Holding"}</button>
+							{/* Form Actions */}
+							<div className="flex items-center justify-between pt-6 border-t border-gray-200">
+								<div className="flex items-center gap-3">
+									<button 
+										type="button" 
+										onClick={() => { setIsModalOpen(false); resetForm(); }} 
+										className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+									>
+										Cancel
+									</button>
+									<button 
+										type="button" 
+										onClick={resetForm} 
+										className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+									>
+										Reset Form
+									</button>
+								</div>
+								<button 
+									type="submit" 
+									className="min-w-[180px] px-8 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+								>
+									{editingId ? "Save Changes" : "Add Holding"}
+								</button>
 							</div>
 						</form>
 					</div>
