@@ -287,6 +287,28 @@ export default function HoldingsPage() {
 	const totalPL = useMemo(() => totalValue - totalInvested, [totalValue, totalInvested]);
 	const totalPLPct = useMemo(() => (totalInvested > 0 ? (totalPL / totalInvested) * 100 : 0), [totalPL, totalInvested]);
 
+	// Portfolio allocation data for pie chart
+	const portfolioAllocationData = useMemo(() => {
+		if (!holdings || holdings.length === 0) return [];
+		
+		const allocationMap = new Map<string, number>();
+		
+		holdings.forEach(holding => {
+			const assetClass = holding.instrumentClass;
+			const currentValue = computeHoldingValue(holding);
+			allocationMap.set(assetClass, (allocationMap.get(assetClass) || 0) + currentValue);
+		});
+		
+		// Convert to array and sort by value
+		const allocationArray = Array.from(allocationMap.entries()).map(([name, value]) => ({
+			name,
+			value,
+			color: CLASS_COLORS[name as keyof typeof CLASS_COLORS]?.chart || '#6B7280'
+		})).sort((a, b) => b.value - a.value);
+		
+		return allocationArray;
+	}, [holdings]);
+
 	function resetForm() {
 		setForm({ instrumentClass: "Stocks", name: "", symbol: "", units: "", price: "", investedAmount: "", currentValue: "" });
 		setEditingId(null);
@@ -396,40 +418,104 @@ export default function HoldingsPage() {
 				</div>
 			</div>
 
-			{/* Holdings Table */}
-			<div className="rounded-2xl border border-border bg-card">
-				<div className="px-4 py-3 border-b border-border">
-					<div className="font-medium text-foreground">All Holdings</div>
+			{/* Holdings Table with Pie Chart */}
+			<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+				{/* Holdings List - Takes 2 columns */}
+				<div className="lg:col-span-2 rounded-2xl border border-border bg-card">
+					<div className="px-4 py-3 border-b border-border">
+						<div className="font-medium text-foreground">All Holdings</div>
+					</div>
+					<div className="p-4">
+						{holdings && holdings.length > 0 ? (
+							<div className="space-y-3">
+								{holdings.map((holding) => (
+									<div key={holding.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
+										<div>
+											<div className="font-medium">{holding.name}</div>
+											{holding.symbol && <div className="text-sm text-muted-foreground">{holding.symbol}</div>}
+										</div>
+										<div className="text-right">
+											<div className="font-medium">₹{computeHoldingValue(holding).toLocaleString()}</div>
+											<div className="text-sm text-muted-foreground">{holding.instrumentClass}</div>
+										</div>
+										<div className="flex gap-2">
+											<button onClick={() => openEdit(holding)} className="p-2 rounded hover:bg-muted">
+												<Edit2 size={16} />
+											</button>
+											<button onClick={() => handleDeleteHolding(holding.id)} className="p-2 rounded hover:bg-muted text-rose-600">
+												<Trash2 size={16} />
+											</button>
+										</div>
+									</div>
+								))}
+							</div>
+						) : (
+							<div className="text-center py-8 text-muted-foreground">
+								No holdings yet. Click "Add Holding" to get started.
+							</div>
+						)}
+					</div>
 				</div>
-				<div className="p-4">
-					{holdings && holdings.length > 0 ? (
-						<div className="space-y-3">
-							{holdings.map((holding) => (
-								<div key={holding.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
-									<div>
-										<div className="font-medium">{holding.name}</div>
-										{holding.symbol && <div className="text-sm text-muted-foreground">{holding.symbol}</div>}
-									</div>
-									<div className="text-right">
-										<div className="font-medium">₹{computeHoldingValue(holding).toLocaleString()}</div>
-										<div className="text-sm text-muted-foreground">{holding.instrumentClass}</div>
-									</div>
-									<div className="flex gap-2">
-										<button onClick={() => openEdit(holding)} className="p-2 rounded hover:bg-muted">
-											<Edit2 size={16} />
-										</button>
-										<button onClick={() => handleDeleteHolding(holding.id)} className="p-2 rounded hover:bg-muted text-rose-600">
-											<Trash2 size={16} />
-										</button>
-									</div>
+
+				{/* Portfolio Allocation Pie Chart - Takes 1 column */}
+				<div className="rounded-2xl border border-border bg-card">
+					<div className="px-4 py-3 border-b border-border">
+						<div className="font-medium text-foreground">Portfolio Allocation</div>
+					</div>
+					<div className="p-4">
+						{holdings && holdings.length > 0 ? (
+							<div className="space-y-4">
+								{/* Pie Chart */}
+								<div className="h-48">
+									<ResponsiveContainer width="100%" height="100%">
+										<PieChart>
+											<Pie
+												data={portfolioAllocationData}
+												cx="50%"
+												cy="50%"
+												innerRadius={40}
+												outerRadius={80}
+												paddingAngle={2}
+												dataKey="value"
+											>
+												{portfolioAllocationData.map((entry, index) => (
+													<Cell key={`cell-${index}`} fill={entry.color} />
+												))}
+											</Pie>
+											<Tooltip 
+												formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Value']}
+												labelFormatter={(label) => `${label}`}
+											/>
+											<Legend />
+										</PieChart>
+									</ResponsiveContainer>
 								</div>
-							))}
-						</div>
-					) : (
-						<div className="text-center py-8 text-muted-foreground">
-							No holdings yet. Click "Add Holding" to get started.
-						</div>
-					)}
+								
+								{/* Allocation Summary */}
+								<div className="space-y-2">
+									{portfolioAllocationData.map((item, index) => (
+										<div key={index} className="flex items-center justify-between text-sm">
+											<div className="flex items-center gap-2">
+												<div 
+													className="w-3 h-3 rounded-full" 
+													style={{ backgroundColor: item.color }}
+												></div>
+												<span className="text-foreground">{item.name}</span>
+											</div>
+											<div className="text-muted-foreground">
+												{((item.value / totalValue) * 100).toFixed(1)}%
+											</div>
+										</div>
+									))}
+								</div>
+							</div>
+						) : (
+							<div className="text-center py-8 text-muted-foreground">
+								<div className="text-4xl mb-2">📊</div>
+								<div className="text-sm">No data to display</div>
+							</div>
+						)}
+					</div>
 				</div>
 			</div>
 
@@ -437,22 +523,22 @@ export default function HoldingsPage() {
 			{isModalOpen && (
 				<div className="fixed inset-0 z-50">
 					<div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setIsModalOpen(false); resetForm(); }} />
-					<div className="absolute inset-x-0 top-10 mx-auto w-[95%] max-w-6xl rounded-2xl border border-border bg-card shadow-2xl">
+					<div className="absolute inset-x-0 top-20 mx-auto w-[90%] max-w-4xl rounded-2xl border border-border bg-card shadow-2xl">
 						{/* Header */}
 						<div className="px-6 py-4 border-b border-border flex items-center justify-between">
 							<div>
-								<div className="text-xl font-bold text-foreground">{editingId ? "Edit Holding" : "Add New Holding"}</div>
+								<div className="text-lg font-bold text-foreground">{editingId ? "Edit Holding" : "Add New Holding"}</div>
 								<div className="text-sm text-muted-foreground mt-1">Select portfolio role and instrument details</div>
 							</div>
 							<button onClick={() => { setIsModalOpen(false); resetForm(); }} className="p-2 rounded-full hover:bg-muted transition-colors" aria-label="Close">
-								<X size={20} className="text-muted-foreground" />
+								<X size={18} className="text-muted-foreground" />
 							</button>
 						</div>
 						
 						{/* Portfolio Role Selection - Top Row */}
-						<div className="px-6 py-4 border-b border-border">
-							<label className="block text-sm font-medium text-foreground mb-3">Portfolio Role</label>
-							<div className="flex gap-3">
+						<div className="px-6 py-3 border-b border-border">
+							<label className="block text-sm font-medium text-foreground mb-2">Portfolio Role</label>
+							<div className="flex gap-2">
 								{(['Equity', 'Defensive', 'Satellite'] as const).map(role => (
 									<button
 										key={role}
@@ -462,7 +548,7 @@ export default function HoldingsPage() {
 											setSelectedInstrumentType(null);
 											setForm({ ...form, name: "", symbol: "" });
 										}}
-										className={`px-6 py-3 rounded-full text-sm font-medium transition-all duration-200 ${
+										className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
 											selectedRole === role
 												? "bg-primary text-primary-foreground shadow-md scale-105"
 												: "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -474,14 +560,14 @@ export default function HoldingsPage() {
 							</div>
 						</div>
 						
-						<div className="flex min-h-[500px]">
+						<div className="flex min-h-[400px]">
 							{/* Left Column - Dynamic Instrument Type Selection */}
-							<div className="w-1/3 border-r border-border bg-muted/20">
-								<div className="p-6">
+							<div className="w-2/5 border-r border-border bg-muted/20">
+								<div className="p-4">
 									{selectedRole ? (
 										<>
-											<h3 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wide">Instrument Type</h3>
-											<div className="space-y-3">
+											<h3 className="text-sm font-semibold text-foreground mb-3 uppercase tracking-wide">Instrument Type</h3>
+											<div className="space-y-2">
 												{ROLE_INSTRUMENT_TYPES[selectedRole].map(type => (
 													<button
 														key={type.value}
@@ -490,13 +576,13 @@ export default function HoldingsPage() {
 															setSelectedInstrumentType(type.value);
 															setForm({ ...form, name: "", symbol: "" });
 														}}
-														className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
+														className={`w-full text-left px-3 py-2 rounded-lg transition-all duration-200 ${
 															selectedInstrumentType === type.value
 																? "bg-primary text-primary-foreground shadow-lg scale-105"
 																: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
 														}`}
 													>
-														<div className="font-medium">{type.label}</div>
+														<div className="font-medium text-sm">{type.label}</div>
 														<div className="text-xs opacity-80">{type.category}</div>
 													</button>
 												))}
@@ -505,9 +591,9 @@ export default function HoldingsPage() {
 									) : (
 										<div className="flex items-center justify-center h-full">
 											<div className="text-center text-muted-foreground">
-												<div className="text-4xl mb-4">📊</div>
-												<div className="text-lg font-medium mb-2">Select Portfolio Role</div>
-												<div className="text-sm">Choose a portfolio role above to see available instruments</div>
+												<div className="text-3xl mb-3">📊</div>
+												<div className="text-base font-medium mb-1">Select Portfolio Role</div>
+												<div className="text-xs">Choose a portfolio role above to see available instruments</div>
 											</div>
 										</div>
 									)}
@@ -515,9 +601,9 @@ export default function HoldingsPage() {
 							</div>
 
 							{/* Right Column - Form */}
-							<div className="w-2/3 p-6">
+							<div className="w-3/5 p-4">
 								{selectedInstrumentType ? (
-									<form onSubmit={submitForm} className="space-y-8">
+									<form onSubmit={submitForm} className="space-y-6">
 										{/* Instrument Name */}
 										<div>
 											<label className="block text-sm font-medium text-foreground mb-2">Instrument Name *</label>
@@ -536,7 +622,7 @@ export default function HoldingsPage() {
 														placeholder="Search for stocks..."
 													/>
 													{showStockDropdown && (
-														<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-auto">
+														<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-auto">
 															{filteredStockOptions.map((stock) => (
 																<div
 																	key={stock.symbol}
@@ -545,11 +631,11 @@ export default function HoldingsPage() {
 																		setStockSearchTerm(stock.name);
 																		setForm({ ...form, name: stock.name, symbol: stock.symbol, price: stock.price.toString() });
 																		setShowStockDropdown(false);
-													}}
+																	}}
 																	className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
 																>
-																	<div className="font-medium">{stock.name}</div>
-																	<div className="text-sm text-muted-foreground">{stock.symbol} • ₹{stock.price}</div>
+																	<div className="font-medium text-sm">{stock.name}</div>
+																	<div className="text-xs text-muted-foreground">{stock.symbol} • ₹{stock.price}</div>
 																</div>
 															))}
 														</div>
@@ -571,7 +657,7 @@ export default function HoldingsPage() {
 														placeholder="Search for mutual funds..."
 													/>
 													{showMFDropdown && (
-														<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-auto">
+														<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-auto">
 															{filteredMFOptions.map((fund) => (
 																<div
 																	key={fund.schemeCode}
@@ -583,8 +669,8 @@ export default function HoldingsPage() {
 																	}}
 																	className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
 																>
-																	<div className="font-medium">{fund.name}</div>
-																	<div className="text-sm text-muted-foreground">NAV: ₹{fund.currentNAV}</div>
+																	<div className="font-medium text-sm">{fund.name}</div>
+																	<div className="text-xs text-muted-foreground">NAV: ₹{fund.currentNAV}</div>
 																</div>
 															))}
 														</div>
@@ -623,26 +709,26 @@ export default function HoldingsPage() {
 										)}
 
 										{/* Form Actions */}
-										<div className="flex items-center justify-between pt-8 border-t border-border">
-											<div className="flex items-center gap-3">
+										<div className="flex items-center justify-between pt-6 border-t border-border">
+											<div className="flex items-center gap-2">
 												<button
 													type="button"
 													onClick={() => { setIsModalOpen(false); resetForm(); }}
-													className="px-6 py-2 rounded-lg text-foreground hover:bg-muted transition-colors"
+													className="px-4 py-2 rounded-lg text-foreground hover:bg-muted transition-colors text-sm"
 												>
 													Cancel
 												</button>
 												<button
 													type="button"
 													onClick={resetForm}
-													className="px-6 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors"
+													className="px-4 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors text-sm"
 												>
-													Reset Form
+													Reset
 												</button>
 											</div>
 											<button
 												type="submit"
-												className="min-w-[180px] px-8 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+												className="min-w-[140px] px-6 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 text-sm"
 											>
 												{editingId ? "Save Changes" : "Add Holding"}
 											</button>
@@ -651,9 +737,9 @@ export default function HoldingsPage() {
 								) : (
 									<div className="flex items-center justify-center h-full">
 										<div className="text-center text-muted-foreground">
-											<div className="text-4xl mb-4">📋</div>
-											<div className="text-lg font-medium mb-2">Select Instrument Type</div>
-											<div className="text-sm">Choose an instrument type from the left menu to continue</div>
+											<div className="text-3xl mb-3">📋</div>
+											<div className="text-base font-medium mb-1">Select Instrument Type</div>
+											<div className="text-xs">Choose an instrument type from the left menu to continue</div>
 										</div>
 									</div>
 								)}
