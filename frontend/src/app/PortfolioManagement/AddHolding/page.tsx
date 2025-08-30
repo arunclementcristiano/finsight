@@ -3,10 +3,11 @@ import React, { useMemo, useState } from "react";
 import { Button } from "../../components/Button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "../../components/Card";
 import { useApp } from "../../store";
+import { useRouter } from "next/navigation";
 import type { AssetClass } from "../../PortfolioManagement/domain/allocationEngine";
 import { v4 as uuidv4 } from "uuid";
 import { formatCurrency, formatNumber } from "../../utils/format";
-import { Banknote, BarChart3, IndianRupee, Percent, Layers, ChevronLeft, ChevronRight } from "lucide-react";
+import { Banknote, BarChart3, IndianRupee, Percent, Layers, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { cn } from "../../components/utils";
 
 type EntryMode = "units" | "amount";
@@ -25,11 +26,12 @@ const instrumentOptions: AssetClass[] = ["Stocks", "Mutual Funds", "Gold", "Real
 
 export default function AddHoldingPage() {
 	const { addHolding, profile } = useApp();
+	const router = useRouter();
 	const currency = profile.currency || "INR";
 	const [mode, setMode] = useState<EntryMode>("units");
 	const [form, setForm] = useState<HoldingFormState>({ instrumentClass: "", name: "", symbol: "", units: "", price: "", investedAmount: "", currentValue: "" });
 	const [submitted, setSubmitted] = useState(false);
-	const [tab, setTab] = useState<"holdings" | "add">("holdings");
+	const [tab, setTab] = useState<"holdings" | "add">("add");
 	const [showImport, setShowImport] = useState(false);
 
 	function onChange<K extends keyof HoldingFormState>(key: K) {
@@ -101,6 +103,12 @@ export default function AddHoldingPage() {
 			<div className="flex items-center gap-2 border-b border-border">
 				<button onClick={() => setTab("holdings")} className={`px-4 py-2 text-sm rounded-t-md transition-colors ${tab === "holdings" ? "text-indigo-600 border-b-2 border-indigo-600 -mb-px" : "text-foreground hover:bg-muted"}`}>Holdings</button>
 				<button onClick={() => setTab("add")} className={`px-4 py-2 text-sm rounded-t-md transition-colors ${tab === "add" ? "text-indigo-600 border-b-2 border-indigo-600 -mb-px" : "text-foreground hover:bg-muted"}`}>Add Holding</button>
+				<button 
+					onClick={() => router.push("/PortfolioManagement/Portfolio/Holdings")} 
+					className="px-4 py-2 text-sm rounded-t-md transition-colors text-emerald-600 hover:bg-emerald-50 flex items-center gap-2"
+				>
+					New Holdings Page <ArrowRight className="h-4 w-4" />
+				</button>
 			</div>
 
 			{tab === "holdings" && (
