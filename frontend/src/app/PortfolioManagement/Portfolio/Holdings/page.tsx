@@ -9,7 +9,7 @@ import { v4 as uuidv4 } from "uuid";
 // Asset class colors for charts
 const CLASS_COLORS = {
 	"Stocks": { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-300", chart: "#3B82F6" },
-	"Mutual Funds": { bg: "bg-emerald-100 dark:bg-emerald-900/30", text: "text-emerald-700 dark:text-emerald-300", chart: "#10B981" },
+	"Mutual Funds": { bg: "bg-emerald-100 dark:bg-emerald-900/30", text: "text-emerald-700 dark:text-blue-300", chart: "#10B981" },
 	"Debt": { bg: "bg-purple-100 dark:bg-purple-900/30", text: "text-purple-700 dark:text-purple-300", chart: "#8B5CF6" },
 	"Liquid": { bg: "bg-orange-100 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-300", chart: "#F59E0B" },
 	"Gold": { bg: "bg-yellow-100 dark:bg-yellow-900/30", text: "text-yellow-700 dark:text-yellow-300", chart: "#EAB308" },
@@ -134,7 +134,7 @@ export default function HoldingsPage() {
 	const [mfGainLoss, setMfGainLoss] = useState<number | null>(null);
 	const [mfGainLossPercent, setMfGainLossPercent] = useState<number | null>(null);
 
-	// Load mutual fund data from AMFI NAV file
+	// Load mutual fund data from AMFI NAV file with proper filtering
 	React.useEffect(() => {
 		async function loadMFData() {
 			try {
@@ -154,11 +154,29 @@ export default function HoldingsPage() {
 							if (schemeCode && schemeName && !isNaN(nav)) {
 								// Use a simpler approach to avoid regex issues
 								const cleanName = schemeName.replace('- Direct Plan', '').replace('Growth', '').trim();
+								
+								// Categorize the fund based on name and category
+								let fundType = 'Equity MF';
+								if (schemeName.toLowerCase().includes('debt') || schemeName.toLowerCase().includes('income') || schemeName.toLowerCase().includes('bond') || schemeName.toLowerCase().includes('gilt')) {
+									fundType = 'Debt MF';
+								} else if (schemeName.toLowerCase().includes('liquid') || schemeName.toLowerCase().includes('overnight')) {
+									fundType = 'Liquid MF';
+								} else if (schemeName.toLowerCase().includes('gold')) {
+									fundType = 'Gold MF';
+								} else if (schemeName.toLowerCase().includes('etf')) {
+									if (schemeName.toLowerCase().includes('gold')) {
+										fundType = 'Gold ETF';
+									} else {
+										fundType = 'Equity ETF';
+									}
+								}
+								
 								funds.push({
 									schemeCode,
 									name: cleanName,
 									fullName: schemeName,
-									currentNAV: nav
+									currentNAV: nav,
+									fundType
 								});
 							}
 						}
@@ -176,16 +194,67 @@ export default function HoldingsPage() {
 		loadMFData();
 	}, []);
 
+	// Filter stock options
+	const filterStockOptions = (term: string): void => {
+		if (term.trim() === "") {
+			setFilteredStockOptions([]);
+			setShowStockDropdown(false);
+		} else {
+			const filtered = stockOptions.filter(option =>
+				option.name.toLowerCase().includes(term.toLowerCase()) ||
+				option.symbol.toLowerCase().includes(term.toLowerCase())
+			);
+			setFilteredStockOptions(filtered.slice(0, 10));
+			setShowStockDropdown(filtered.length > 0);
+		}
+	};
+
 	const filterMFOptions = (term: string): void => {
 		if (term.trim() === "") {
 			setFilteredMFOptions([]);
 			setShowMFDropdown(false);
 		} else {
-			const filtered = mfOptions.filter(option =>
+			// Filter based on selected instrument type
+			let filtered = mfOptions;
+			
+			if (selectedInstrumentType === 'Equity MF') {
+				filtered = mfOptions.filter(option => 
+					option.fundType === 'Equity MF' &&
+					!option.fullName.toLowerCase().includes('debt') &&
+					!option.fullName.toLowerCase().includes('liquid') &&
+					!option.fullName.toLowerCase().includes('overnight') &&
+					!option.fullName.toLowerCase().includes('gilt') &&
+					!option.fullName.toLowerCase().includes('gold')
+				);
+			} else if (selectedInstrumentType === 'Debt MF') {
+				filtered = mfOptions.filter(option => 
+					option.fundType === 'Debt MF'
+				);
+			} else if (selectedInstrumentType === 'Liquid MF') {
+				filtered = mfOptions.filter(option => 
+					option.fundType === 'Liquid MF'
+				);
+			} else if (selectedInstrumentType === 'Gold MF') {
+				filtered = mfOptions.filter(option => 
+					option.fundType === 'Gold MF'
+				);
+			} else if (selectedInstrumentType === 'Equity ETF') {
+				filtered = mfOptions.filter(option => 
+					option.fundType === 'Equity ETF'
+				);
+			} else if (selectedInstrumentType === 'Gold ETF') {
+				filtered = mfOptions.filter(option => 
+					option.fundType === 'Gold ETF'
+				);
+			}
+			
+			// Then filter by search term
+			filtered = filtered.filter(option =>
 				option.name.toLowerCase().includes(term.toLowerCase()) ||
 				option.fullName.toLowerCase().includes(term.toLowerCase())
 			);
-			setFilteredMFOptions(filtered.slice(0, 10)); // Limit to 10 results
+			
+			setFilteredMFOptions(filtered.slice(0, 10));
 			setShowMFDropdown(filtered.length > 0);
 		}
 	};
@@ -368,21 +437,21 @@ export default function HoldingsPage() {
 			{isModalOpen && (
 				<div className="fixed inset-0 z-50">
 					<div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setIsModalOpen(false); resetForm(); }} />
-					<div className="absolute inset-x-0 top-10 mx-auto w-[95%] max-w-5xl rounded-2xl border border-gray-200 bg-white shadow-2xl">
-						<div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+					<div className="absolute inset-x-0 top-10 mx-auto w-[95%] max-w-5xl rounded-2xl border border-border bg-card shadow-2xl">
+						<div className="px-6 py-4 border-b border-border flex items-center justify-between">
 							<div>
-								<div className="text-xl font-bold text-gray-900">{editingId ? "Edit Holding" : "Add New Holding"}</div>
-								<div className="text-sm text-gray-600 mt-1">Select portfolio role and instrument details</div>
+								<div className="text-xl font-bold text-foreground">{editingId ? "Edit Holding" : "Add New Holding"}</div>
+								<div className="text-sm text-muted-foreground mt-1">Select portfolio role and instrument details</div>
 							</div>
-							<button onClick={() => { setIsModalOpen(false); resetForm(); }} className="p-2 rounded-full hover:bg-gray-100 transition-colors" aria-label="Close">
-								<X size={20} className="text-gray-500" />
+							<button onClick={() => { setIsModalOpen(false); resetForm(); }} className="p-2 rounded-full hover:bg-muted transition-colors" aria-label="Close">
+								<X size={20} className="text-muted-foreground" />
 							</button>
 						</div>
 						
 						<form onSubmit={submitForm} className="p-6 space-y-8">
 							{/* Portfolio Role Selection */}
 							<div>
-								<label className="block text-sm font-medium text-gray-700 mb-4">Portfolio Role</label>
+								<label className="block text-sm font-medium text-foreground mb-4">Portfolio Role</label>
 								<div className="flex gap-3 flex-wrap">
 									{(['Equity', 'Defensive', 'Satellite'] as const).map(role => (
 										<button
@@ -396,7 +465,7 @@ export default function HoldingsPage() {
 											className={`px-6 py-3 rounded-full text-sm font-medium transition-all duration-200 shadow-sm ${
 												selectedRole === role
 													? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md scale-105"
-													: "bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-300 hover:shadow-md"
+													: "bg-card border-2 border-border text-foreground hover:border-blue-300 hover:shadow-md"
 											}`}
 										>
 											{role}
@@ -408,7 +477,7 @@ export default function HoldingsPage() {
 							{/* Instrument Type Selection */}
 							{selectedRole && (
 								<div>
-									<label className="block text-sm font-medium text-gray-700 mb-4">Instrument Type</label>
+									<label className="block text-sm font-medium text-foreground mb-4">Instrument Type</label>
 									<div className="flex gap-3 flex-wrap">
 										{ROLE_INSTRUMENT_TYPES[selectedRole].map(type => (
 											<button
@@ -421,7 +490,7 @@ export default function HoldingsPage() {
 												className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 shadow-sm ${
 													selectedInstrumentType === type.value
 														? "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-md scale-105"
-														: "bg-white border-2 border-gray-200 text-gray-700 hover:border-emerald-300 hover:shadow-md"
+														: "bg-card border-2 border-border text-foreground hover:border-emerald-300 hover:shadow-md"
 												}`}
 											>
 												{type.label}
@@ -431,49 +500,123 @@ export default function HoldingsPage() {
 								</div>
 							)}
 
-							{/* Instrument Name */}
+							{/* Instrument Name with Autocomplete */}
 							{selectedInstrumentType && (
 								<div>
-									<label className="block text-sm font-medium text-gray-700 mb-2">Instrument Name *</label>
-									<input
-										value={form.name}
-										onChange={(e) => setForm({ ...form, name: e.target.value })}
-										required
-										className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-										placeholder="Enter instrument name"
-									/>
+									<label className="block text-sm font-medium text-foreground mb-2">Instrument Name *</label>
+									
+									{/* Stock Autocomplete */}
+									{selectedInstrumentType === 'Stocks' && (
+										<div className="relative">
+											<input
+												value={stockSearchTerm}
+												onChange={(e) => {
+													setStockSearchTerm(e.target.value);
+													filterStockOptions(e.target.value);
+												}}
+												onFocus={() => filterStockOptions(stockSearchTerm)}
+												className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+												placeholder="Search for stocks..."
+											/>
+											{showStockDropdown && (
+												<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-auto">
+													{filteredStockOptions.map((stock) => (
+														<div
+															key={stock.symbol}
+															onClick={() => {
+																setSelectedStock(stock);
+																setStockSearchTerm(stock.name);
+																setForm({ ...form, name: stock.name, symbol: stock.symbol, price: stock.price.toString() });
+																setShowStockDropdown(false);
+															}}
+															className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
+														>
+															<div className="font-medium">{stock.name}</div>
+															<div className="text-sm text-muted-foreground">{stock.symbol} • ₹{stock.price}</div>
+														</div>
+													))}
+												</div>
+											)}
+										</div>
+									)}
+
+									{/* Mutual Fund Autocomplete */}
+									{selectedInstrumentType.includes('MF') && (
+										<div className="relative">
+											<input
+												value={mfSearchTerm}
+												onChange={(e) => {
+													setMfSearchTerm(e.target.value);
+													filterMFOptions(e.target.value);
+												}}
+												onFocus={() => filterMFOptions(mfSearchTerm)}
+												className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+												placeholder="Search for mutual funds..."
+											/>
+											{showMFDropdown && (
+												<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-auto">
+													{filteredMFOptions.map((fund) => (
+														<div
+															key={fund.schemeCode}
+															onClick={() => {
+																setSelectedMF(fund);
+																setMfSearchTerm(fund.name);
+																setForm({ ...form, name: fund.name, symbol: fund.schemeCode });
+																setShowMFDropdown(false);
+															}}
+															className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
+														>
+															<div className="font-medium">{fund.name}</div>
+															<div className="text-sm text-muted-foreground">NAV: ₹{fund.currentNAV}</div>
+														</div>
+													))}
+												</div>
+											)}
+										</div>
+									)}
+
+									{/* Manual Input for Other Types */}
+									{!selectedInstrumentType.includes('MF') && selectedInstrumentType !== 'Stocks' && (
+										<input
+											value={form.name}
+											onChange={(e) => setForm({ ...form, name: e.target.value })}
+											required
+											className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+											placeholder="Enter instrument name"
+										/>
+									)}
 								</div>
 							)}
 
 							{/* Amount/Units Input */}
 							{selectedInstrumentType && form.name && (
 								<div>
-									<label className="block text-sm font-medium text-gray-700 mb-2">Amount *</label>
+									<label className="block text-sm font-medium text-foreground mb-2">Amount *</label>
 									<input
 										type="number"
 										value={form.investedAmount}
 										onChange={(e) => setForm({ ...form, investedAmount: e.target.value })}
 										required
-										className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+										className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
 										placeholder="Enter invested amount"
 									/>
 								</div>
 							)}
 
 							{/* Form Actions */}
-							<div className="flex items-center justify-between pt-6 border-t border-gray-200">
+							<div className="flex items-center justify-between pt-6 border-t border-border">
 								<div className="flex items-center gap-3">
 									<button
 										type="button"
 										onClick={() => { setIsModalOpen(false); resetForm(); }}
-										className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+										className="px-6 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors"
 									>
 										Cancel
 									</button>
 									<button
 										type="button"
 										onClick={resetForm}
-										className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+										className="px-6 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors"
 									>
 										Reset Form
 									</button>
