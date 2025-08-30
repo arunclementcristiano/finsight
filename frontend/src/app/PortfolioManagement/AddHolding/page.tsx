@@ -168,6 +168,7 @@ export default function AddHolding() {
 							)}
 						</div>
 					)}
+				</div>
 			)}
 
 			{/* Mutual Funds */}
