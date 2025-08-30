@@ -287,7 +287,7 @@ export default function PortfolioHoldingsPage() {
 						<h1 className="text-2xl font-bold text-foreground">Holdings</h1>
 						<p className="text-sm text-muted-foreground">Capture your investments and view allocation.</p>
 					</div>
-					<button onClick={openCreate} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+					<button onClick={() => { window.location.assign("/PortfolioManagement/AddHolding"); }} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
 						<Plus size={18} /> Add Holding
 					</button>
 				</div>
