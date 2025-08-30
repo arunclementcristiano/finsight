@@ -442,232 +442,75 @@ export default function HoldingsPage() {
 						<div className="px-6 py-4 border-b border-border flex items-center justify-between">
 							<div>
 								<div className="text-xl font-bold text-foreground">{editingId ? "Edit Holding" : "Add New Holding"}</div>
-								<div className="text-sm text-muted-foreground mt-1">Select instrument type and enter details</div>
+								<div className="text-sm text-muted-foreground mt-1">Select portfolio role and instrument details</div>
 							</div>
 							<button onClick={() => { setIsModalOpen(false); resetForm(); }} className="p-2 rounded-full hover:bg-muted transition-colors" aria-label="Close">
 								<X size={20} className="text-muted-foreground" />
 							</button>
 						</div>
 						
-						<div className="flex min-h-[600px]">
-							{/* Left Column - Instrument Type Selection */}
+						{/* Portfolio Role Selection - Top Row */}
+						<div className="px-6 py-4 border-b border-border">
+							<label className="block text-sm font-medium text-foreground mb-3">Portfolio Role</label>
+							<div className="flex gap-3">
+								{(['Equity', 'Defensive', 'Satellite'] as const).map(role => (
+									<button
+										key={role}
+										type="button"
+										onClick={() => {
+											setSelectedRole(role);
+											setSelectedInstrumentType(null);
+											setForm({ ...form, name: "", symbol: "" });
+										}}
+										className={`px-6 py-3 rounded-full text-sm font-medium transition-all duration-200 ${
+											selectedRole === role
+												? "bg-primary text-primary-foreground shadow-md scale-105"
+												: "bg-muted text-muted-foreground hover:bg-muted/80"
+										}`}
+									>
+										{role}
+									</button>
+								))}
+							</div>
+						</div>
+						
+						<div className="flex min-h-[500px]">
+							{/* Left Column - Dynamic Instrument Type Selection */}
 							<div className="w-1/3 border-r border-border bg-muted/20">
 								<div className="p-6">
-									<h3 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wide">Instrument Type</h3>
-									<div className="space-y-3">
-										{/* Equity Section */}
-										<div>
-											<div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Equity</div>
-											<div className="space-y-2">
-												<button
-													type="button"
-													onClick={() => {
-														setSelectedRole('Equity');
-														setSelectedInstrumentType('Stocks');
-														setForm({ ...form, name: "", symbol: "" });
-													}}
-													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
-														selectedRole === 'Equity' && selectedInstrumentType === 'Stocks'
-															? "bg-primary text-primary-foreground shadow-lg scale-105"
-															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
-													}`}
-												>
-													<div className="font-medium">Stocks</div>
-													<div className="text-xs opacity-80">Individual company shares</div>
-												</button>
-												<button
-													type="button"
-													onClick={() => {
-														setSelectedRole('Equity');
-														setSelectedInstrumentType('Equity MF');
-														setForm({ ...form, name: "", symbol: "" });
-													}}
-													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
-														selectedRole === 'Equity' && selectedInstrumentType === 'Equity MF'
-															? "bg-primary text-primary-foreground shadow-lg scale-105"
-															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
-													}`}
-												>
-													<div className="font-medium">Equity MF</div>
-													<div className="text-xs opacity-80">Equity mutual funds</div>
-												</button>
-												<button
-													type="button"
-													onClick={() => {
-														setSelectedRole('Equity');
-														setSelectedInstrumentType('Equity ETF');
-														setForm({ ...form, name: "", symbol: "" });
-													}}
-													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
-														selectedRole === 'Equity' && selectedInstrumentType === 'Equity ETF'
-															? "bg-primary text-primary-foreground shadow-lg scale-105"
-															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
-													}`}
-												>
-													<div className="font-medium">Equity ETF</div>
-													<div className="text-xs opacity-80">Exchange traded funds</div>
-												</button>
+									{selectedRole ? (
+										<>
+											<h3 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wide">Instrument Type</h3>
+											<div className="space-y-3">
+												{ROLE_INSTRUMENT_TYPES[selectedRole].map(type => (
+													<button
+														key={type.value}
+														type="button"
+														onClick={() => {
+															setSelectedInstrumentType(type.value);
+															setForm({ ...form, name: "", symbol: "" });
+														}}
+														className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
+															selectedInstrumentType === type.value
+																? "bg-primary text-primary-foreground shadow-lg scale-105"
+																: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
+														}`}
+													>
+														<div className="font-medium">{type.label}</div>
+														<div className="text-xs opacity-80">{type.category}</div>
+													</button>
+												))}
+											</div>
+										</>
+									) : (
+										<div className="flex items-center justify-center h-full">
+											<div className="text-center text-muted-foreground">
+												<div className="text-4xl mb-4">📊</div>
+												<div className="text-lg font-medium mb-2">Select Portfolio Role</div>
+												<div className="text-sm">Choose a portfolio role above to see available instruments</div>
 											</div>
 										</div>
-
-										{/* Defensive Section */}
-										<div>
-											<div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Defensive</div>
-											<div className="space-y-2">
-												<button
-													type="button"
-													onClick={() => {
-														setSelectedRole('Defensive');
-														setSelectedInstrumentType('Bonds');
-														setForm({ ...form, name: "", symbol: "" });
-													}}
-													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
-														selectedRole === 'Defensive' && selectedInstrumentType === 'Bonds'
-															? "bg-primary text-primary-foreground shadow-lg scale-105"
-															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
-													}`}
-												>
-													<div className="font-medium">Bonds</div>
-													<div className="text-xs opacity-80">Government & corporate bonds</div>
-												</button>
-												<button
-													type="button"
-													onClick={() => {
-														setSelectedRole('Defensive');
-														setSelectedInstrumentType('Debt MF');
-														setForm({ ...form, name: "", symbol: "" });
-													}}
-													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
-														selectedRole === 'Defensive' && selectedInstrumentType === 'Debt MF'
-															? "bg-primary text-primary-foreground shadow-lg scale-105"
-															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
-													}`}
-												>
-													<div className="font-medium">Debt MF</div>
-													<div className="text-xs opacity-80">Debt mutual funds</div>
-												</button>
-												<button
-													type="button"
-													onClick={() => {
-														setSelectedRole('Defensive');
-														setSelectedInstrumentType('Liquid MF');
-														setForm({ ...form, name: "", symbol: "" });
-													}}
-													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
-														selectedRole === 'Defensive' && selectedInstrumentType === 'Liquid MF'
-															? "bg-primary text-primary-foreground shadow-lg scale-105"
-															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
-													}`}
-												>
-													<div className="font-medium">Liquid MF</div>
-													<div className="text-xs opacity-80">Liquid & overnight funds</div>
-												</button>
-												<button
-													type="button"
-													onClick={() => {
-														setSelectedRole('Defensive');
-														setSelectedInstrumentType('Cash');
-														setForm({ ...form, name: "", symbol: "" });
-													}}
-													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
-														selectedRole === 'Defensive' && selectedInstrumentType === 'Cash'
-															? "bg-primary text-primary-foreground shadow-lg scale-105"
-															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
-													}`}
-												>
-													<div className="font-medium">Cash</div>
-													<div className="text-xs opacity-80">Cash & equivalents</div>
-												</button>
-											</div>
-										</div>
-
-										{/* Satellite Section */}
-										<div>
-											<div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Satellite</div>
-											<div className="space-y-2">
-												<button
-													type="button"
-													onClick={() => {
-														setSelectedRole('Satellite');
-														setSelectedInstrumentType('Gold ETF');
-														setForm({ ...form, name: "", symbol: "" });
-													}}
-													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
-														selectedRole === 'Satellite' && selectedInstrumentType === 'Gold ETF'
-															? "bg-primary text-primary-foreground shadow-lg scale-105"
-															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
-													}`}
-												>
-													<div className="font-medium">Gold ETF</div>
-													<div className="text-xs opacity-80">Gold exchange traded funds</div>
-												</button>
-												<button
-													type="button"
-													onClick={() => {
-														setSelectedRole('Satellite');
-														setSelectedInstrumentType('Gold MF');
-														setForm({ ...form, name: "", symbol: "" });
-													}}
-													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
-														selectedRole === 'Satellite' && selectedInstrumentType === 'Gold MF'
-															? "bg-primary text-primary-foreground shadow-lg scale-105"
-															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
-													}`}
-												>
-													<div className="font-medium">Gold MF</div>
-													<div className="text-xs opacity-80">Gold mutual funds</div>
-												</button>
-												<button
-													type="button"
-													onClick={() => {
-														setSelectedRole('Satellite');
-														setSelectedInstrumentType('Physical Gold');
-														setForm({ ...form, name: "", symbol: "" });
-													}}
-													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
-														selectedRole === 'Satellite' && selectedInstrumentType === 'Physical Gold'
-															? "bg-primary text-primary-foreground shadow-lg scale-105"
-															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
-													}`}
-												>
-													<div className="font-medium">Physical Gold</div>
-													<div className="text-xs opacity-80">Physical gold holdings</div>
-												</button>
-												<button
-													type="button"
-													onClick={() => {
-														setSelectedRole('Satellite');
-														setSelectedInstrumentType('REITs');
-														setForm({ ...form, name: "", symbol: "" });
-													}}
-													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
-														selectedRole === 'Satellite' && selectedInstrumentType === 'REITs'
-															? "bg-primary text-primary-foreground shadow-lg scale-105"
-															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
-													}`}
-												>
-													<div className="font-medium">REITs</div>
-													<div className="text-xs opacity-80">Real estate investment trusts</div>
-												</button>
-												<button
-													type="button"
-													onClick={() => {
-														setSelectedRole('Satellite');
-														setSelectedInstrumentType('Properties');
-														setForm({ ...form, name: "", symbol: "" });
-													}}
-													className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${
-														selectedRole === 'Satellite' && selectedInstrumentType === 'Properties'
-															? "bg-primary text-primary-foreground shadow-lg scale-105"
-															: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30"
-													}`}
-												>
-													<div className="font-medium">Properties</div>
-													<div className="text-xs opacity-80">Real estate properties</div>
-												</button>
-											</div>
-										</div>
-									</div>
+									)}
 								</div>
 							</div>
 
@@ -675,26 +518,6 @@ export default function HoldingsPage() {
 							<div className="w-2/3 p-6">
 								{selectedInstrumentType ? (
 									<form onSubmit={submitForm} className="space-y-8">
-										{/* Portfolio Role Display */}
-										<div>
-											<label className="block text-sm font-medium text-foreground mb-3">Portfolio Role</label>
-											<div className="flex gap-3">
-												{['Equity', 'Defensive', 'Satellite'].map(role => (
-													<button
-														key={role}
-														type="button"
-														className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-															selectedRole === role
-																? "bg-blue-600 text-white shadow-md"
-																: "bg-muted text-muted-foreground"
-														}`}
-													>
-														{role}
-													</button>
-												))}
-											</div>
-										</div>
-
 										{/* Instrument Name */}
 										<div>
 											<label className="block text-sm font-medium text-foreground mb-2">Instrument Name *</label>
@@ -722,7 +545,7 @@ export default function HoldingsPage() {
 																		setStockSearchTerm(stock.name);
 																		setForm({ ...form, name: stock.name, symbol: stock.symbol, price: stock.price.toString() });
 																		setShowStockDropdown(false);
-																	}}
+													}}
 																	className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
 																>
 																	<div className="font-medium">{stock.name}</div>
@@ -828,9 +651,9 @@ export default function HoldingsPage() {
 								) : (
 									<div className="flex items-center justify-center h-full">
 										<div className="text-center text-muted-foreground">
-											<div className="text-4xl mb-4">📊</div>
+											<div className="text-4xl mb-4">📋</div>
 											<div className="text-lg font-medium mb-2">Select Instrument Type</div>
-											<div className="text-sm">Choose an instrument type from the left menu to get started</div>
+											<div className="text-sm">Choose an instrument type from the left menu to continue</div>
 										</div>
 									</div>
 								)}
