@@ -62,5 +62,5 @@ src/output.css
 # Terraform
 terraform/.terraform*
 terraform/terraform.tfstate*
-
+terraform/build/
 frontend/.env

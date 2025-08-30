@@ -130,4 +130,3 @@ output "user_budgets_table_name" {
 output "invest_table_name" {
   value = aws_dynamodb_table.invest.name
 }
-

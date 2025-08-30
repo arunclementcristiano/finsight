@@ -61,8 +61,25 @@ resource "aws_iam_role_policy" "lambda_ddb_access" {
         aws_dynamodb_table.category_rules.arn,
         aws_dynamodb_table.user_budgets.arn,
         aws_dynamodb_table.invest.arn,
+        "${aws_dynamodb_table.expenses.arn}/index/userId-date-index",
         "${aws_dynamodb_table.invest.arn}/index/*"
       ]
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "lambda_kms_access" {
+  name = "${var.lambda_name}-kms-access"
+  role = aws_iam_role.lambda_exec.id
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement: [{
+      Effect: "Allow",
+      Action: [
+        "kms:Decrypt",
+        "kms:DescribeKey"
+      ],
+      Resource: "arn:aws:kms:*:*:key/*"
     }]
   })
 }
@@ -120,14 +137,15 @@ resource "aws_apigatewayv2_integration" "lambda" {
 resource "aws_apigatewayv2_route" "routes_public" {
   for_each = toset([
     "POST /add",
-    "PUT /add",
+    "PUT /add", 
     "POST /list",
     "POST /edit",
     "POST /delete",
     "POST /summary/monthly",
     "POST /summary/category",
     "GET /budgets",
-    "PUT /budgets"
+    "PUT /budgets",
+    "GET /health"
   ])
   api_id    = aws_apigatewayv2_api.http.id
   route_key = each.value
