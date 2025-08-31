@@ -468,14 +468,14 @@ export default function HoldingsPage() {
 									<table className="w-full">
 										<thead>
 											<tr className="border-b border-border">
-												<th className="py-3 px-3 text-sm font-semibold text-muted-foreground text-left tracking-wide">Instrument</th>
-												<th className="py-3 px-3 text-sm font-semibold text-muted-foreground text-left tracking-wide">Asset Class</th>
-												<th className="py-3 px-3 text-sm font-semibold text-muted-foreground text-left tracking-wide">Units</th>
-												<th className="py-3 px-3 text-sm font-semibold text-muted-foreground text-left tracking-wide">Price</th>
-												<th className="py-3 px-3 text-sm font-semibold text-muted-foreground text-right tracking-wide">Current Value</th>
-												<th className="py-3 px-3 text-sm font-semibold text-muted-foreground text-right tracking-wide">Invested Amount</th>
-												<th className="py-3 px-3 text-sm font-semibold text-muted-foreground text-right tracking-wide">P/L</th>
-												<th className="py-3 px-3 text-sm font-semibold text-muted-foreground text-center tracking-wide">Actions</th>
+												<th className="py-2 px-2 text-xs font-semibold text-muted-foreground text-left tracking-wide">Instrument</th>
+												<th className="py-2 px-2 text-xs font-semibold text-muted-foreground text-left tracking-wide">Asset Class</th>
+												<th className="py-2 px-2 text-xs font-semibold text-muted-foreground text-left tracking-wide">Units</th>
+												<th className="py-2 px-2 text-xs font-semibold text-muted-foreground text-left tracking-wide">Price</th>
+												<th className="py-2 px-2 text-xs font-semibold text-muted-foreground text-right tracking-wide">Current Value</th>
+												<th className="py-2 px-2 text-xs font-semibold text-muted-foreground text-right tracking-wide">Invested Amount</th>
+												<th className="py-2 px-2 text-xs font-semibold text-muted-foreground text-right tracking-wide">P/L</th>
+												<th className="py-2 px-2 text-xs font-semibold text-muted-foreground text-center tracking-wide">Actions</th>
 											</tr>
 										</thead>
 										<tbody>
@@ -487,16 +487,16 @@ export default function HoldingsPage() {
 												
 												return (
 													<tr key={holding.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-														<td className="py-3 px-3">
+														<td className="py-2 px-2">
 															<div>
-																<div className="font-semibold text-foreground text-base">{holding.name}</div>
+																<div className="font-medium text-foreground text-sm">{holding.name}</div>
 																{holding.symbol && (
-																	<div className="text-sm text-muted-foreground font-medium">{holding.symbol}</div>
+																	<div className="text-xs text-muted-foreground font-medium">{holding.symbol}</div>
 																)}
 															</div>
 														</td>
-														<td className="py-3 px-3 text-left">
-															<span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
+														<td className="py-2 px-2 text-left">
+															<span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-semibold ${
 																CLASS_COLORS[holding.instrumentClass as keyof typeof CLASS_COLORS]?.bg || 'bg-gray-100 dark:bg-gray-800'
 															} ${
 																CLASS_COLORS[holding.instrumentClass as keyof typeof CLASS_COLORS]?.text || 'text-gray-700 dark:text-gray-300'
@@ -504,41 +504,41 @@ export default function HoldingsPage() {
 																{holding.instrumentClass}
 															</span>
 														</td>
-														<td className="py-3 px-3 text-left">
-															<div className="font-semibold text-foreground text-base">{holding.units?.toFixed(2) || '0.00'}</div>
+														<td className="py-2 px-2 text-left">
+															<div className="font-medium text-foreground text-sm">{holding.units?.toFixed(2) || '0.00'}</div>
 														</td>
-														<td className="py-3 px-3 text-left">
-															<div className="font-semibold text-foreground text-base">₹{holding.price?.toLocaleString() || '0.00'}</div>
+														<td className="py-2 px-2 text-left">
+															<div className="font-medium text-foreground text-sm">₹{holding.price?.toLocaleString() || '0.00'}</div>
 														</td>
-														<td className="py-3 px-3 text-right">
-															<div className="font-semibold text-foreground text-base">₹{currentValue.toLocaleString()}</div>
+														<td className="py-2 px-2 text-right">
+															<div className="font-medium text-foreground text-sm">₹{currentValue.toLocaleString()}</div>
 														</td>
-														<td className="py-3 px-3 text-right">
-															<div className="font-semibold text-foreground text-base">₹{investedAmount.toLocaleString()}</div>
+														<td className="py-2 px-2 text-right">
+															<div className="font-medium text-foreground text-sm">₹{investedAmount.toLocaleString()}</div>
 														</td>
-														<td className="py-3 px-3 text-right">
-															<div className={`font-semibold text-base ${pl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+														<td className="py-2 px-2 text-right">
+															<div className={`font-medium text-sm ${pl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
 																₹{pl.toLocaleString()}
 															</div>
-															<div className={`text-sm font-medium ${pl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+															<div className={`text-xs font-medium ${pl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
 																{plPercent >= 0 ? '+' : ''}{plPercent.toFixed(2)}%
 															</div>
 														</td>
-														<td className="py-3 px-3 text-center">
-															<div className="flex items-center justify-center gap-2">
+														<td className="py-2 px-2 text-center">
+															<div className="flex items-center justify-center gap-1">
 																<button 
 																	onClick={() => openEdit(holding)} 
-																	className="p-2 rounded-lg hover:bg-muted transition-colors text-blue-600 hover:text-blue-700"
+																	className="p-1.5 rounded-md hover:bg-muted transition-colors text-blue-600 hover:text-blue-700"
 																	title="Edit"
 																>
-																	<Edit2 size={16} />
+																	<Edit2 size={14} />
 																</button>
 																<button 
 																	onClick={() => handleDeleteHolding(holding.id)} 
-																	className="p-2 rounded-lg hover:bg-muted transition-colors text-rose-600 hover:text-rose-700"
+																	className="p-1.5 rounded-md hover:bg-muted transition-colors text-rose-600 hover:text-rose-700"
 																	title="Delete"
 																>
-																	<Trash2 size={16} />
+																	<Trash2 size={14} />
 																</button>
 															</div>
 														</td>
@@ -551,15 +551,15 @@ export default function HoldingsPage() {
 								
 								{/* Pagination Controls */}
 								{totalPages > 1 && (
-									<div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
-										<div className="text-sm text-muted-foreground">
+									<div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
+										<div className="text-xs text-muted-foreground">
 											Showing {startIndex + 1} to {Math.min(endIndex, holdings.length)} of {holdings.length} holdings
 										</div>
 										<div className="flex items-center gap-2">
 											<button
 												onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
 												disabled={currentPage === 1}
-												className="px-3 py-2 text-sm font-medium text-foreground bg-card border border-border rounded-lg hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+												className="px-2 py-1.5 text-xs font-medium text-foreground bg-card border border-border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 											>
 												Previous
 											</button>
@@ -569,7 +569,7 @@ export default function HoldingsPage() {
 													<button
 														key={page}
 														onClick={() => setCurrentPage(page)}
-														className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+														className={`px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
 															currentPage === page
 																? 'bg-primary text-primary-foreground'
 																: 'text-foreground bg-card border border-border hover:bg-muted'
@@ -583,7 +583,7 @@ export default function HoldingsPage() {
 											<button
 												onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
 												disabled={currentPage === totalPages}
-												className="px-3 py-2 text-sm font-medium text-foreground bg-card border border-border rounded-lg hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+												className="px-2 py-1.5 text-xs font-medium text-foreground bg-card border border-border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 											>
 												Next
 											</button>
