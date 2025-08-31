@@ -6,7 +6,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Ba
 import { Plus, Edit2, Trash2, X, Search, TrendingUp, BarChart3, PieChart as PieChartIcon } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { Card as PlanCard, CardContent as PlanCardContent, CardHeader as PlanCardHeader, CardTitle as PlanCardTitle } from "../../../components/Card";
-import { Button as PlanButton } from "../../../components/Button";
+import { Button } from "../../../components/Button";
 
 // Asset class colors for charts
 const CLASS_COLORS = {
@@ -92,8 +92,8 @@ export default function HoldingsPage() {
 	const [currentPage, setCurrentPage] = useState(1);
 	const itemsPerPage = 10;
 	
-	// New state for role-based flow
-	const [selectedRole, setSelectedRole] = useState<'Equity' | 'Defensive' | 'Satellite' | null>(null);
+	// New state for asset class-based flow
+	const [selectedRole, setSelectedRole] = useState<'Stocks' | 'Mutual Funds' | 'ETF' | 'Gold' | 'Real Estate' | null>(null);
 	const [selectedInstrumentType, setSelectedInstrumentType] = useState<string | null>(null);
 	const [entryMode, setEntryMode] = useState<'units' | 'amount'>('units');
 	
@@ -126,7 +126,8 @@ export default function HoldingsPage() {
 		units: "",
 		price: "",
 		investedAmount: "",
-		currentValue: ""
+		currentValue: "",
+		propertyType: ""
 	});
 	
 	// Mutual Fund functionality
@@ -140,60 +141,37 @@ export default function HoldingsPage() {
 	const [mfGainLoss, setMfGainLoss] = useState<number | null>(null);
 	const [mfGainLossPercent, setMfGainLossPercent] = useState<number | null>(null);
 
-	// Load mutual fund data from AMFI NAV file with proper filtering
+	// Load mutual fund data from DynamoDB table
 	React.useEffect(() => {
 		async function loadMFData() {
 			try {
-				const response = await fetch('/navall.txt');
-				const text = await response.text();
-				const lines = text.split('\n');
-				const funds: any[] = [];
+				const response = await fetch('/api/mutual-funds');
+				const data = await response.json();
 				
-				for (const line of lines) {
-					if (line.includes('Direct Plan') && line.includes('Growth') && line.includes(';')) {
-						const parts = line.split(';');
-						if (parts.length >= 5) {
-							const schemeCode = parts[0]?.trim();
-							const schemeName = parts[3]?.trim();
-							const nav = parseFloat(parts[4]?.trim());
-							
-							if (schemeCode && schemeName && !isNaN(nav)) {
-								// Use a simpler approach to avoid regex issues
-								const cleanName = schemeName.replace('- Direct Plan', '').replace('Growth', '').trim();
-								
-								// Categorize the fund based on name and category
-								let fundType = 'Equity MF';
-								if (schemeName.toLowerCase().includes('debt') || schemeName.toLowerCase().includes('income') || schemeName.toLowerCase().includes('bond') || schemeName.toLowerCase().includes('gilt')) {
-									fundType = 'Debt MF';
-								} else if (schemeName.toLowerCase().includes('liquid') || schemeName.toLowerCase().includes('overnight')) {
-									fundType = 'Liquid MF';
-								} else if (schemeName.toLowerCase().includes('gold')) {
-									fundType = 'Gold MF';
-								} else if (schemeName.toLowerCase().includes('etf')) {
-									if (schemeName.toLowerCase().includes('gold')) {
-										fundType = 'Gold ETF';
-									} else {
-										fundType = 'Equity ETF';
-									}
-								}
-								
-								funds.push({
-									schemeCode,
-									name: cleanName,
-									fullName: schemeName,
-									currentNAV: nav,
-									fundType
-								});
-							}
-						}
-					}
+				if (data.success && data.funds) {
+					// Transform the data to match our expected format
+					const funds = data.funds.map((fund: any) => ({
+						schemeCode: fund.scheme_code || fund.schemeCode,
+						name: fund.fund_name || fund.name,
+						fullName: fund.scheme_name || fund.fullName,
+						currentNAV: parseFloat(fund.nav) || 0,
+						fundType: fund.allocation_class || 'Equity MF',
+						allocationClass: fund.allocation_class || 'Equity'
+					}));
+					
+					// Sort by name for better UX
+					funds.sort((a: any, b: any) => a.name.localeCompare(b.name));
+					setMfOptions(funds);
 				}
-				
-				// Sort by name for better UX
-				funds.sort((a, b) => a.name.localeCompare(b.name));
-				setMfOptions(funds);
 			} catch (error) {
-				console.error('Error loading MF data:', error);
+				console.error('Error loading MF data from DynamoDB:', error);
+				// Fallback to mock data if API fails
+				const mockFunds = [
+					{ schemeCode: 'MOCK001', name: 'HDFC Mid-Cap Opportunities Fund', fullName: 'HDFC Mid-Cap Opportunities Fund - Direct Plan - Growth', currentNAV: 45.67, fundType: 'Equity MF', allocationClass: 'Equity' },
+					{ schemeCode: 'MOCK002', name: 'ICICI Prudential Bluechip Fund', fullName: 'ICICI Prudential Bluechip Fund - Direct Plan - Growth', currentNAV: 52.34, fundType: 'Equity MF', allocationClass: 'Equity' },
+					{ schemeCode: 'MOCK003', name: 'SBI Gold Fund', fullName: 'SBI Gold Fund - Direct Plan - Growth', currentNAV: 23.45, fundType: 'Gold MF', allocationClass: 'Gold' }
+				];
+				setMfOptions(mockFunds);
 			}
 		}
 		
@@ -220,38 +198,12 @@ export default function HoldingsPage() {
 			setFilteredMFOptions([]);
 			setShowMFDropdown(false);
 		} else {
-			// Filter based on selected instrument type
+			// Filter based on selected asset class
 			let filtered = mfOptions;
 			
-			if (selectedInstrumentType === 'Equity MF') {
-				filtered = mfOptions.filter(option => 
-					option.fundType === 'Equity MF' &&
-					!option.fullName.toLowerCase().includes('debt') &&
-					!option.fullName.toLowerCase().includes('liquid') &&
-					!option.fullName.toLowerCase().includes('overnight') &&
-					!option.fullName.toLowerCase().includes('gilt') &&
-					!option.fullName.toLowerCase().includes('gold')
-				);
-			} else if (selectedInstrumentType === 'Debt MF') {
-				filtered = mfOptions.filter(option => 
-					option.fundType === 'Debt MF'
-				);
-			} else if (selectedInstrumentType === 'Liquid MF') {
-				filtered = mfOptions.filter(option => 
-					option.fundType === 'Liquid MF'
-				);
-			} else if (selectedInstrumentType === 'Gold MF') {
-				filtered = mfOptions.filter(option => 
-					option.fundType === 'Gold MF'
-				);
-			} else if (selectedInstrumentType === 'Equity ETF') {
-				filtered = mfOptions.filter(option => 
-					option.fundType === 'Equity ETF'
-				);
-			} else if (selectedInstrumentType === 'Gold ETF') {
-				filtered = mfOptions.filter(option => 
-					option.fundType === 'Gold ETF'
-				);
+			if (selectedRole === 'Mutual Funds') {
+				// Show all mutual funds when Mutual Funds is selected
+				filtered = mfOptions;
 			}
 			
 			// Then filter by search term
@@ -350,7 +302,7 @@ export default function HoldingsPage() {
 	}, [holdings?.length]);
 
 	function resetForm() {
-		setForm({ instrumentClass: "Stocks", name: "", symbol: "", units: "", price: "", investedAmount: "", currentValue: "" });
+		setForm({ instrumentClass: "Stocks", name: "", symbol: "", units: "", price: "", investedAmount: "", currentValue: "", propertyType: "" });
 		setEditingId(null);
 		// Reset stock functionality
 		setStockSearchTerm("");
@@ -378,11 +330,17 @@ export default function HoldingsPage() {
 		
 		if (!form.name.trim()) return;
 		
+		// Map selected asset class to instrument class
+		let instrumentClass: AssetClass = "Stocks";
+		if (selectedRole === 'Stocks') instrumentClass = "Stocks";
+		else if (selectedRole === 'Mutual Funds') instrumentClass = "Mutual Funds";
+		else if (selectedRole === 'ETF') instrumentClass = "Stocks"; // ETFs are typically equity-based
+		else if (selectedRole === 'Gold') instrumentClass = "Gold";
+		else if (selectedRole === 'Real Estate') instrumentClass = "Real Estate";
+		
 		const holding: Holding = {
 			id: editingId || uuidv4(),
-			instrumentClass: selectedRole && selectedInstrumentType 
-				? mapInstrumentTypeToAssetClass(selectedInstrumentType)
-				: form.instrumentClass,
+			instrumentClass: instrumentClass,
 			name: form.name.trim(),
 			symbol: form.symbol.trim() || undefined,
 			units: form.units ? parseFloat(form.units) : undefined,
@@ -410,7 +368,8 @@ export default function HoldingsPage() {
 			units: holding.units?.toString() || "",
 			price: holding.price?.toString() || "",
 			investedAmount: holding.investedAmount?.toString() || "",
-			currentValue: holding.currentValue?.toString() || ""
+			currentValue: holding.currentValue?.toString() || "",
+			propertyType: (holding as any).propertyType || ""
 		});
 		setIsModalOpen(true);
 	}
@@ -429,14 +388,14 @@ export default function HoldingsPage() {
 					<h1 className="text-lg font-semibold tracking-tight">Holdings</h1>
 					<p className="text-sm text-muted-foreground">Capture your investments and view allocation.</p>
 				</div>
-				<PlanButton 
+				<Button 
 					onClick={() => setIsModalOpen(true)} 
-					variant="primary" 
+					variant="outline" 
 					size="md"
-					leftIcon={<TrendingUp size={18} />}
+					leftIcon={<Plus size={18} />}
 				>
 					Add Holding
-				</PlanButton>
+				</Button>
 			</div>
 			
 			{/* KPI Row */}
@@ -752,30 +711,30 @@ export default function HoldingsPage() {
 							</button>
 						</div>
 						
-						{/* Portfolio Role Selection - Top Row */}
+						{/* Asset Class Selection - Top Row */}
 						<div className="px-6 py-3 border-b border-border">
 							<div className="text-center">
 								<label className="block text-sm font-medium text-foreground mb-3 flex items-center justify-center gap-2">
-									<TrendingUp size={16} />
-									Portfolio Role
+									<BarChart3 size={16} />
+									Asset Class
 								</label>
 								<div className="flex items-center justify-center gap-3">
-									{(['Equity', 'Defensive', 'Satellite'] as const).map(role => (
+									{(['Stocks', 'Mutual Funds', 'ETF', 'Gold', 'Real Estate'] as const).map(assetClass => (
 										<button
-											key={role}
+											key={assetClass}
 											type="button"
 											onClick={() => {
-												setSelectedRole(role);
+												setSelectedRole(assetClass as any);
 												setSelectedInstrumentType(null);
 												setForm({ ...form, name: "", symbol: "" });
 											}}
 											className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 transform ${
-												selectedRole === role
+												selectedRole === assetClass
 													? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg scale-105 ring-2 ring-blue-500/30"
 													: "bg-muted text-muted-foreground hover:bg-muted/80 hover:scale-102"
 											}`}
 										>
-											{role}
+											{assetClass}
 										</button>
 									))}
 								</div>
@@ -783,154 +742,384 @@ export default function HoldingsPage() {
 						</div>
 						
 						<div className="flex min-h-[400px]">
-							{/* Left Column - Dynamic Instrument Type Selection */}
+							{/* Left Column - Asset Class Details */}
 							<div className="w-2/5 border-r border-border bg-muted/20">
 								<div className="p-4">
 									{selectedRole ? (
 										<>
 											<h3 className="text-sm font-semibold text-foreground mb-3 uppercase tracking-wide flex items-center gap-2">
-										<BarChart3 size={16} />
-										Instrument Type
-									</h3>
-											<div className="space-y-2">
-												{ROLE_INSTRUMENT_TYPES[selectedRole].map(type => (
-													<button
-														key={type.value}
-														type="button"
-														onClick={() => {
-															setSelectedInstrumentType(type.value);
-															setForm({ ...form, name: "", symbol: "" });
-														}}
-														className={`w-full text-left px-3 py-2 rounded-lg transition-all duration-300 transform ${
-															selectedInstrumentType === type.value
-																? "bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg scale-105 ring-2 ring-emerald-500/30"
-																: "bg-card border border-border text-foreground hover:bg-muted hover:border-primary/30 hover:scale-102"
-														}`}
-													>
-														<div className="font-medium text-sm">{type.label}</div>
-														<div className={`text-xs ${selectedInstrumentType === type.value ? 'text-emerald-100' : 'opacity-80'}`}>{type.category}</div>
-													</button>
-												))}
+												<BarChart3 size={16} />
+												{selectedRole} Details
+											</h3>
+											<div className="space-y-4">
+												{/* Stocks */}
+												{selectedRole === 'Stocks' && (
+													<div className="space-y-3">
+														<div className="text-sm text-muted-foreground">
+															Enter stock details including symbol and quantity
+														</div>
+														<div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+															<div className="text-xs font-medium text-blue-700 dark:text-blue-300">Fields Required:</div>
+															<div className="text-xs text-blue-600 dark:text-blue-400 mt-1">• Stock Name</div>
+															<div className="text-xs text-blue-600 dark:text-blue-400">• Symbol (Optional)</div>
+															<div className="text-xs text-blue-600 dark:text-blue-400">• Units/Quantity</div>
+															<div className="text-xs text-blue-600 dark:text-blue-400">• Current Price</div>
+														</div>
+													</div>
+												)}
+												
+												{/* Mutual Funds */}
+												{selectedRole === 'Mutual Funds' && (
+													<div className="space-y-3">
+														<div className="text-sm text-muted-foreground">
+															Select from available mutual fund schemes
+														</div>
+														<div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg">
+															<div className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Fields Required:</div>
+															<div className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">• Fund Name (Auto-suggest)</div>
+															<div className="text-xs text-emerald-600 dark:text-emerald-400">• Units</div>
+															<div className="text-xs text-emerald-600 dark:text-emerald-400">• NAV</div>
+														</div>
+													</div>
+												)}
+												
+												{/* ETF */}
+												{selectedRole === 'ETF' && (
+													<div className="space-y-3">
+														<div className="text-sm text-muted-foreground">
+															Enter ETF details including symbol and quantity
+														</div>
+														<div className="p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
+															<div className="text-xs font-medium text-purple-700 dark:text-purple-300">Fields Required:</div>
+															<div className="text-xs text-purple-600 dark:text-purple-400 mt-1">• ETF Name</div>
+															<div className="text-xs text-purple-600 dark:text-purple-400">• Symbol (Optional)</div>
+															<div className="text-xs text-purple-600 dark:text-purple-400">• Units</div>
+															<div className="text-xs text-purple-600 dark:text-purple-400">• Current Price</div>
+														</div>
+													</div>
+												)}
+												
+												{/* Gold */}
+												{selectedRole === 'Gold' && (
+													<div className="space-y-3">
+														<div className="text-sm text-muted-foreground">
+															Enter gold investment details
+														</div>
+														<div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
+															<div className="text-xs font-medium text-yellow-700 dark:text-yellow-300">Fields Required:</div>
+															<div className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">• Gold Type</div>
+															<div className="text-xs text-yellow-600 dark:text-yellow-400">• Quantity (grams)</div>
+															<div className="text-xs text-yellow-600 dark:text-yellow-400">• Price per gram</div>
+														</div>
+													</div>
+												)}
+												
+												{/* Real Estate */}
+												{selectedRole === 'Real Estate' && (
+													<div className="space-y-3">
+														<div className="text-sm text-muted-foreground">
+															Enter real estate investment details
+														</div>
+														<div className="p-3 bg-rose-50 dark:bg-rose-950/20 rounded-lg">
+															<div className="text-xs font-medium text-rose-700 dark:text-rose-300">Fields Required:</div>
+															<div className="text-xs text-rose-600 dark:text-rose-400 mt-1">• Property Name</div>
+															<div className="text-xs text-rose-600 dark:text-rose-400">• Property Type</div>
+															<div className="text-xs text-rose-600 dark:text-rose-400">• Investment Amount</div>
+														</div>
+													</div>
+												)}
 											</div>
 										</>
 									) : (
 										<div className="flex items-center justify-center h-full">
 											<div className="text-center text-muted-foreground">
 												<div className="text-3xl mb-3">📊</div>
-												<div className="text-base font-medium mb-1">Select Portfolio Role</div>
-												<div className="text-xs">Choose a portfolio role above to see available instruments</div>
+												<div className="text-base font-medium mb-1">Select Asset Class</div>
+												<div className="text-xs">Choose an asset class above to see required fields</div>
 											</div>
 										</div>
 									)}
 								</div>
 							</div>
 
-							{/* Right Column - Form */}
+														{/* Right Column - Form */}
 							<div className="w-3/5 p-4">
-								{selectedInstrumentType ? (
+								{selectedRole ? (
 									<form onSubmit={submitForm} className="space-y-6">
-										{/* Instrument Name */}
-										<div>
-											<label className="block text-sm font-medium text-foreground mb-2">Instrument Name *</label>
-											
-											{/* Stock Autocomplete */}
-											{selectedInstrumentType === 'Stocks' && (
-												<div className="relative">
+										{/* Stocks Form */}
+										{selectedRole === 'Stocks' && (
+											<>
+												<div>
+													<label className="block text-sm font-medium text-foreground mb-2">Stock Name *</label>
 													<input
-														value={stockSearchTerm}
-														onChange={(e) => {
-															setStockSearchTerm(e.target.value);
-															filterStockOptions(e.target.value);
-														}}
-														onFocus={() => filterStockOptions(stockSearchTerm)}
+														value={form.name}
+														onChange={(e) => setForm({ ...form, name: e.target.value })}
+														required
 														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-														placeholder="Search for stocks..."
+														placeholder="Enter stock name"
 													/>
-													{showStockDropdown && (
-														<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-auto">
-															{filteredStockOptions.map((stock) => (
-																<div
-																	key={stock.symbol}
-																	onClick={() => {
-																		setSelectedStock(stock);
-																		setStockSearchTerm(stock.name);
-																		setForm({ ...form, name: stock.name, symbol: stock.symbol, price: stock.price.toString() });
-																		setShowStockDropdown(false);
-																	}}
-																	className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
-																>
-																	<div className="font-medium text-sm">{stock.name}</div>
-																	<div className="text-xs text-muted-foreground">{stock.symbol} • ₹{stock.price}</div>
-																</div>
-															))}
-														</div>
-													)}
 												</div>
-											)}
-
-											{/* Mutual Fund Autocomplete */}
-											{selectedInstrumentType.includes('MF') && (
-												<div className="relative">
+												
+												<div>
+													<label className="block text-sm font-medium text-foreground mb-2">Symbol (Optional)</label>
 													<input
-														value={mfSearchTerm}
-														onChange={(e) => {
-															setMfSearchTerm(e.target.value);
-															filterMFOptions(e.target.value);
-														}}
-														onFocus={() => filterMFOptions(mfSearchTerm)}
+														value={form.symbol || ''}
+														onChange={(e) => setForm({ ...form, symbol: e.target.value })}
 														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-														placeholder="Search for mutual funds..."
+														placeholder="e.g., RELIANCE, TCS"
 													/>
-													{showMFDropdown && (
-														<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-auto">
-															{filteredMFOptions.map((fund) => (
-																<div
-																	key={fund.schemeCode}
-																	onClick={() => {
-																		setSelectedMF(fund);
-																		setMfSearchTerm(fund.name);
-																		setForm({ ...form, name: fund.name, symbol: fund.schemeCode });
-																		setShowMFDropdown(false);
-																	}}
-																	className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
-																>
-																	<div className="font-medium text-sm">{fund.name}</div>
-																	<div className="text-xs text-muted-foreground">NAV: ₹{fund.currentNAV}</div>
-																</div>
-															))}
-														</div>
-													)}
 												</div>
-											)}
-
-											{/* Manual Input for Other Types */}
-											{!selectedInstrumentType.includes('MF') && selectedInstrumentType !== 'Stocks' && (
-												<input
-													value={form.name}
-													onChange={(e) => setForm({ ...form, name: e.target.value })}
-													required
-													className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-													placeholder="Enter instrument name"
-												/>
-											)}
-										</div>
-
-										{/* Amount Input */}
-										{form.name && (
-											<div>
-												<label className="block text-sm font-medium text-foreground mb-2">Amount *</label>
-												<div className="relative">
-													<span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground">₹</span>
+												
+												<div>
+													<label className="block text-sm font-medium text-foreground mb-2">Units/Quantity *</label>
 													<input
 														type="number"
-														value={form.investedAmount}
-														onChange={(e) => setForm({ ...form, investedAmount: e.target.value })}
+														value={form.units || ''}
+														onChange={(e) => setForm({ ...form, units: e.target.value })}
 														required
-														className="w-full rounded-lg border border-border bg-background pl-8 pr-3 py-2 text-sm text-foreground"
-														placeholder="0.00"
+														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+														placeholder="0"
+														step="0.01"
 													/>
 												</div>
-											</div>
+												
+												<div>
+													<label className="block text-sm font-medium text-foreground mb-2">Current Price per Unit *</label>
+													<div className="relative">
+														<span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground">₹</span>
+														<input
+															type="number"
+															value={form.price || ''}
+															onChange={(e) => setForm({ ...form, price: e.target.value })}
+															required
+															className="w-full rounded-lg border border-border bg-background pl-8 pr-3 py-2 text-sm text-foreground"
+															placeholder="0.00"
+															step="0.01"
+														/>
+													</div>
+												</div>
+											</>
+										)}
+
+										{/* Mutual Funds Form */}
+										{selectedRole === 'Mutual Funds' && (
+											<>
+												<div>
+													<label className="block text-sm font-medium text-foreground mb-2">Fund Name *</label>
+													<div className="relative">
+														<input
+															value={mfSearchTerm}
+															onChange={(e) => {
+																setMfSearchTerm(e.target.value);
+																filterMFOptions(e.target.value);
+															}}
+															onFocus={() => filterMFOptions(mfSearchTerm)}
+															className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+															placeholder="Search for mutual funds..."
+														/>
+														{showMFDropdown && (
+															<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-auto">
+																{filteredMFOptions.map((fund) => (
+																	<div
+																		key={fund.schemeCode}
+																		onClick={() => {
+																			setSelectedMF(fund);
+																			setMfSearchTerm(fund.name);
+																			setForm({ ...form, name: fund.name, symbol: fund.schemeCode });
+																			setShowMFDropdown(false);
+																		}}
+																		className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
+																	>
+																		<div className="font-medium text-sm">{fund.name}</div>
+																		<div className="text-xs text-muted-foreground">NAV: ₹{fund.currentNAV}</div>
+																	</div>
+																))}
+															</div>
+														)}
+													</div>
+												</div>
+												
+												<div>
+													<label className="block text-sm font-medium text-foreground mb-2">Units *</label>
+													<input
+														type="number"
+														value={form.units || ''}
+														onChange={(e) => setForm({ ...form, units: e.target.value })}
+														required
+														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+														placeholder="0"
+														step="0.01"
+													/>
+												</div>
+												
+												<div>
+													<label className="block text-sm font-medium text-foreground mb-2">NAV *</label>
+													<div className="relative">
+														<span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground">₹</span>
+														<input
+															type="number"
+															value={form.price || ''}
+															onChange={(e) => setForm({ ...form, price: e.target.value })}
+															required
+															className="w-full rounded-lg border border-border bg-background pl-8 pr-3 py-2 text-sm text-foreground"
+															placeholder="0.00"
+														/>
+													</div>
+												</div>
+											</>
+										)}
+
+										{/* ETF Form */}
+										{selectedRole === 'ETF' && (
+											<>
+												<div>
+													<label className="block text-sm font-medium text-foreground mb-2">ETF Name *</label>
+													<input
+														value={form.name}
+														onChange={(e) => setForm({ ...form, name: e.target.value })}
+														required
+														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+														placeholder="Enter ETF name"
+													/>
+												</div>
+												
+												<div>
+													<label className="block text-sm font-medium text-foreground mb-2">Symbol (Optional)</label>
+													<input
+														value={form.symbol || ''}
+														onChange={(e) => setForm({ ...form, symbol: e.target.value })}
+														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+														placeholder="e.g., NIFTYBEES, GOLDBEES"
+													/>
+												</div>
+												
+												<div>
+													<label className="block text-sm font-medium text-foreground mb-2">Units *</label>
+													<input
+														type="number"
+														value={form.units || ''}
+														onChange={(e) => setForm({ ...form, units: e.target.value })}
+														required
+														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+														placeholder="0"
+														step="0.01"
+													/>
+												</div>
+												
+												<div>
+													<label className="block text-sm font-medium text-foreground mb-2">Current Price per Unit *</label>
+													<div className="relative">
+														<span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground">₹</span>
+														<input
+															type="number"
+															value={form.price || ''}
+															onChange={(e) => setForm({ ...form, price: e.target.value })}
+															required
+															className="w-full rounded-lg border border-border bg-background pl-8 pr-3 py-2 text-sm text-foreground"
+															placeholder="0.00"
+															step="0.01"
+														/>
+													</div>
+												</div>
+											</>
+										)}
+
+										{/* Gold Form */}
+										{selectedRole === 'Gold' && (
+											<>
+												<div>
+													<label className="block text-sm font-medium text-foreground mb-2">Gold Type *</label>
+													<select
+														value={form.name}
+														onChange={(e) => setForm({ ...form, name: e.target.value })}
+														required
+														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+													>
+														<option value="">Select gold type</option>
+														<option value="Physical Gold">Physical Gold</option>
+														<option value="Gold ETF">Gold ETF</option>
+														<option value="Gold Mutual Fund">Gold Mutual Fund</option>
+														<option value="Sovereign Gold Bond">Sovereign Gold Bond</option>
+													</select>
+												</div>
+												
+												<div>
+													<label className="block text-sm font-medium text-foreground mb-2">Quantity (grams) *</label>
+													<input
+														type="number"
+														value={form.units || ''}
+														onChange={(e) => setForm({ ...form, units: e.target.value })}
+														required
+														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+														placeholder="0"
+														step="0.01"
+													/>
+												</div>
+												
+												<div>
+													<label className="block text-sm font-medium text-foreground mb-2">Price per Gram *</label>
+													<div className="relative">
+														<span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground">₹</span>
+														<input
+															type="number"
+															value={form.price || ''}
+															onChange={(e) => setForm({ ...form, price: e.target.value })}
+															required
+															className="w-full rounded-lg border border-border bg-background pl-8 pr-3 py-2 text-sm text-foreground"
+															placeholder="0.00"
+															step="0.01"
+														/>
+													</div>
+												</div>
+											</>
+										)}
+
+										{/* Real Estate Form */}
+										{selectedRole === 'Real Estate' && (
+											<>
+												<div>
+													<label className="block text-sm font-medium text-foreground mb-2">Property Name *</label>
+													<input
+														value={form.name}
+														onChange={(e) => setForm({ ...form, name: e.target.value })}
+														required
+														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+														placeholder="Enter property name"
+													/>
+												</div>
+												
+												<div>
+													<label className="block text-sm font-medium text-foreground mb-2">Property Type *</label>
+													<select
+														value={form.propertyType || ''}
+														onChange={(e) => setForm({ ...form, propertyType: e.target.value })}
+														required
+														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+													>
+														<option value="">Select property type</option>
+														<option value="Residential">Residential</option>
+														<option value="Commercial">Commercial</option>
+														<option value="Land">Land</option>
+														<option value="REIT">REIT</option>
+													</select>
+												</div>
+												
+												<div>
+													<label className="block text-sm font-medium text-foreground mb-2">Investment Amount *</label>
+													<div className="relative">
+														<span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground">₹</span>
+														<input
+															type="number"
+															value={form.investedAmount || ''}
+															onChange={(e) => setForm({ ...form, investedAmount: e.target.value })}
+															required
+															className="w-full rounded-lg border border-border bg-background pl-8 pr-3 py-2 text-sm text-foreground"
+															placeholder="0.00"
+															step="0.01"
+														/>
+													</div>
+												</div>
+											</>
 										)}
 
 										{/* Form Actions */}
