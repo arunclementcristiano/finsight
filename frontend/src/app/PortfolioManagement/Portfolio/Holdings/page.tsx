@@ -5,6 +5,8 @@ import type { AssetClass } from "../../domain/allocationEngine";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { Plus, Edit2, Trash2, X, Search } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
+import { Card as PlanCard, CardContent as PlanCardContent, CardHeader as PlanCardHeader, CardTitle as PlanCardTitle } from "../../../components/Card";
+import { Button as PlanButton } from "../../../components/Button";
 
 // Asset class colors for charts
 const CLASS_COLORS = {
@@ -422,60 +424,73 @@ export default function HoldingsPage() {
 			{/* Header */}
 			<div className="flex items-center justify-between">
 				<div>
-					<h1 className="text-2xl font-bold text-foreground">Holdings</h1>
+					<h1 className="text-lg font-semibold tracking-tight">Holdings</h1>
 					<p className="text-sm text-muted-foreground">Capture your investments and view allocation.</p>
 				</div>
-				<button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105">
-					<Plus size={18} /> Add Holding
-				</button>
+				<PlanButton 
+					onClick={() => setIsModalOpen(true)} 
+					variant="primary" 
+					size="md"
+					leftIcon={<Plus size={18} />}
+				>
+					Add Holding
+				</PlanButton>
 			</div>
 			
 			{/* KPI Row */}
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-				<div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-					<div className="text-sm text-muted-foreground">Total Value</div>
-					<div className="text-2xl font-semibold text-foreground mt-1">₹{Math.round(totalValue).toLocaleString()}</div>
-				</div>
-				<div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-					<div className="text-sm text-muted-foreground">Invested</div>
-					<div className="text-2xl font-semibold text-foreground mt-1">₹{Math.round(totalInvested).toLocaleString()}</div>
-				</div>
-				<div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-					<div className="text-sm text-muted-foreground">P/L</div>
-					<div className={`text-2xl font-semibold mt-1 ${totalPL >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-						₹{Math.round(totalPL).toLocaleString()}
-					</div>
-				</div>
-				<div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-					<div className="text-sm text-muted-foreground">P/L %</div>
-					<div className={`text-2xl font-semibold mt-1 ${totalPLPct >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-						{totalPLPct >= 0 ? `${totalPLPct.toFixed(2)}%` : "—"}
-					</div>
-				</div>
+				<PlanCard>
+					<PlanCardContent className="p-5">
+						<div className="text-sm text-muted-foreground">Total Value</div>
+						<div className="text-2xl font-semibold text-foreground mt-1">₹{Math.round(totalValue).toLocaleString()}</div>
+					</PlanCardContent>
+				</PlanCard>
+				<PlanCard>
+					<PlanCardContent className="p-5">
+						<div className="text-sm text-muted-foreground">Invested</div>
+						<div className="text-2xl font-semibold text-foreground mt-1">₹{Math.round(totalInvested).toLocaleString()}</div>
+					</PlanCardContent>
+				</PlanCard>
+				<PlanCard>
+					<PlanCardContent className="p-5">
+						<div className="text-sm text-muted-foreground">P/L</div>
+						<div className={`text-2xl font-semibold mt-1 ${totalPL >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+							₹{Math.round(totalPL).toLocaleString()}
+						</div>
+					</PlanCardContent>
+				</PlanCard>
+				<PlanCard>
+					<PlanCardContent className="p-5">
+						<div className="text-sm text-muted-foreground">P/L %</div>
+						<div className={`text-2xl font-semibold mt-1 ${totalPLPct >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+							{totalPLPct >= 0 ? `${totalPLPct.toFixed(2)}%` : "—"}
+						</div>
+					</PlanCardContent>
+				</PlanCard>
 			</div>
 
 			{/* Holdings Table with Pie Chart */}
 			<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 				{/* Holdings List - Takes 2 columns */}
-				<div className="lg:col-span-2 rounded-2xl border border-border bg-card">
-					<div className="px-4 py-3 border-b border-border">
-						<div className="font-medium text-foreground">All Holdings</div>
-					</div>
-					<div className="p-4">
+				<PlanCard className="lg:col-span-2">
+					<PlanCardHeader className="px-4 py-3 border-b border-border">
+						<PlanCardTitle className="text-sm font-medium">All Holdings</PlanCardTitle>
+					</PlanCardHeader>
+					<PlanCardContent className="p-4">
 						{holdings && holdings.length > 0 ? (
 							<div>
-								<div className="overflow-x-auto">
-									<table className="w-full">
-										<thead>
-											<tr className="border-b border-border">
-												<th className="py-2 px-2 text-xs font-semibold text-muted-foreground text-left tracking-wide">Instrument</th>
-												<th className="py-2 px-2 text-xs font-semibold text-muted-foreground text-left tracking-wide">Asset Class</th>
-												<th className="py-2 px-2 text-xs font-semibold text-muted-foreground text-left tracking-wide">Units</th>
-												<th className="py-2 px-2 text-xs font-semibold text-muted-foreground text-left tracking-wide">Price</th>
-												<th className="py-2 px-2 text-xs font-semibold text-muted-foreground text-right tracking-wide">Current Value</th>
-												<th className="py-2 px-2 text-xs font-semibold text-muted-foreground text-right tracking-wide">Invested Amount</th>
-												<th className="py-2 px-2 text-xs font-semibold text-muted-foreground text-right tracking-wide">P/L</th>
-												<th className="py-2 px-2 text-xs font-semibold text-muted-foreground text-center tracking-wide">Actions</th>
+								<div className="rounded-xl border border-border overflow-auto max-h-72">
+									<table className="w-full text-left text-xs">
+										<thead className="bg-card sticky top-0 z-10">
+											<tr>
+												<th className="py-2 px-3 text-muted-foreground">Instrument</th>
+												<th className="py-2 px-3 text-muted-foreground">Asset Class</th>
+												<th className="py-2 px-3 text-muted-foreground">Units</th>
+												<th className="py-2 px-3 text-muted-foreground">Price</th>
+												<th className="py-2 px-3 text-muted-foreground text-right">Current Value</th>
+												<th className="py-2 px-3 text-muted-foreground text-right">Invested Amount</th>
+												<th className="py-2 px-3 text-muted-foreground text-right">P/L</th>
+												<th className="py-2 px-3 text-muted-foreground">Actions</th>
 											</tr>
 										</thead>
 										<tbody>
@@ -486,17 +501,17 @@ export default function HoldingsPage() {
 												const plPercent = investedAmount > 0 ? (pl / investedAmount) * 100 : 0;
 												
 												return (
-													<tr key={holding.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-														<td className="py-2 px-2">
+													<tr key={holding.id} className="border-t border-border/50">
+														<td className="py-2 px-3 font-medium">
 															<div>
-																<div className="font-medium text-foreground text-sm">{holding.name}</div>
+																<div className="text-foreground">{holding.name}</div>
 																{holding.symbol && (
-																	<div className="text-xs text-muted-foreground font-medium">{holding.symbol}</div>
+																	<div className="text-muted-foreground">{holding.symbol}</div>
 																)}
 															</div>
 														</td>
-														<td className="py-2 px-2 text-left">
-															<span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-semibold ${
+														<td className="py-2 px-3">
+															<span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
 																CLASS_COLORS[holding.instrumentClass as keyof typeof CLASS_COLORS]?.bg || 'bg-gray-100 dark:bg-gray-800'
 															} ${
 																CLASS_COLORS[holding.instrumentClass as keyof typeof CLASS_COLORS]?.text || 'text-gray-700 dark:text-gray-300'
@@ -504,38 +519,30 @@ export default function HoldingsPage() {
 																{holding.instrumentClass}
 															</span>
 														</td>
-														<td className="py-2 px-2 text-left">
-															<div className="font-medium text-foreground text-sm">{holding.units?.toFixed(2) || '0.00'}</div>
-														</td>
-														<td className="py-2 px-2 text-left">
-															<div className="font-medium text-foreground text-sm">₹{holding.price?.toLocaleString() || '0.00'}</div>
-														</td>
-														<td className="py-2 px-2 text-right">
-															<div className="font-medium text-foreground text-sm">₹{currentValue.toLocaleString()}</div>
-														</td>
-														<td className="py-2 px-2 text-right">
-															<div className="font-medium text-foreground text-sm">₹{investedAmount.toLocaleString()}</div>
-														</td>
-														<td className="py-2 px-2 text-right">
-															<div className={`font-medium text-sm ${pl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+														<td className="py-2 px-3">{holding.units?.toFixed(2) || '0.00'}</td>
+														<td className="py-2 px-3">₹{holding.price?.toLocaleString() || '0.00'}</td>
+														<td className="py-2 px-3 text-right">₹{currentValue.toLocaleString()}</td>
+														<td className="py-2 px-3 text-right">₹{investedAmount.toLocaleString()}</td>
+														<td className="py-2 px-3 text-right">
+															<div className={`${pl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
 																₹{pl.toLocaleString()}
 															</div>
-															<div className={`text-xs font-medium ${pl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+															<div className={`text-[10px] ${pl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
 																{plPercent >= 0 ? '+' : ''}{plPercent.toFixed(2)}%
 															</div>
 														</td>
-														<td className="py-2 px-2 text-center">
-															<div className="flex items-center justify-center gap-1">
+														<td className="py-2 px-3">
+															<div className="flex items-center gap-2">
 																<button 
 																	onClick={() => openEdit(holding)} 
-																	className="p-1.5 rounded-md hover:bg-muted transition-colors text-blue-600 hover:text-blue-700"
+																	className="p-1 rounded hover:bg-muted transition-colors text-blue-600 hover:text-blue-700"
 																	title="Edit"
 																>
 																	<Edit2 size={14} />
 																</button>
 																<button 
 																	onClick={() => handleDeleteHolding(holding.id)} 
-																	className="p-1.5 rounded-md hover:bg-muted transition-colors text-rose-600 hover:text-rose-700"
+																	className="p-1 rounded hover:bg-muted transition-colors text-rose-600 hover:text-rose-700"
 																	title="Delete"
 																>
 																	<Trash2 size={14} />
@@ -598,15 +605,15 @@ export default function HoldingsPage() {
 								<div className="text-sm">Click "Add Holding" to get started with your portfolio</div>
 							</div>
 						)}
-					</div>
-				</div>
+					</PlanCardContent>
+				</PlanCard>
 
 				{/* Portfolio Allocation Pie Chart - Takes 1 column */}
-				<div className="rounded-2xl border border-border bg-card">
-					<div className="px-4 py-3 border-b border-border">
-						<div className="font-medium text-foreground">Portfolio Allocation</div>
-					</div>
-					<div className="p-4">
+				<PlanCard>
+					<PlanCardHeader className="px-4 py-3 border-b border-border">
+						<PlanCardTitle className="text-sm font-medium">Portfolio Allocation</PlanCardTitle>
+					</PlanCardHeader>
+					<PlanCardContent className="p-4">
 						{holdings && holdings.length > 0 ? (
 							<div className="space-y-8">
 								{/* Asset Class Chart with Details */}
@@ -719,8 +726,8 @@ export default function HoldingsPage() {
 								<div className="text-sm">No data to display</div>
 							</div>
 						)}
-					</div>
-				</div>
+					</PlanCardContent>
+				</PlanCard>
 			</div>
 
 			{/* Add/Edit Modal */}
