@@ -2,8 +2,8 @@
 import React, { useMemo, useState } from "react";
 import { useApp, type Holding } from "../../../store";
 import type { AssetClass } from "../../domain/allocationEngine";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar } from "recharts";
-import { Plus, Edit2, Trash2, X, Search, TrendingUp, BarChart3, PieChart as PieChartIcon, LineChart } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { Plus, Edit2, Trash2, X, Search, TrendingUp, BarChart3, PieChart as PieChartIcon } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { Card as PlanCard, CardContent as PlanCardContent, CardHeader as PlanCardHeader, CardTitle as PlanCardTitle } from "../../../components/Card";
 import { Button as PlanButton } from "../../../components/Button";
@@ -336,32 +336,7 @@ export default function HoldingsPage() {
 		return roleArray;
 	}, [holdings]);
 
-	// Mock time series data for portfolio performance (in real app, fetch from API)
-	const portfolioTimeSeriesData = useMemo(() => {
-		if (!holdings || holdings.length === 0) return [];
-		
-		// Generate mock data for the last 12 months
-		const months = [];
-		const currentDate = new Date();
-		let baseValue = totalValue * 0.8; // Start at 80% of current value
-		
-		for (let i = 11; i >= 0; i--) {
-			const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-			const monthName = date.toLocaleDateString('en-US', { month: 'short' });
-			
-			// Add some realistic variation
-			const variation = (Math.random() - 0.5) * 0.2; // ±10% variation
-			baseValue = baseValue * (1 + variation);
-			
-			months.push({
-				month: monthName,
-				value: Math.round(baseValue),
-				invested: Math.round(totalInvested * (0.8 + (i * 0.02))) // Gradual increase in investment
-			});
-		}
-		
-		return months;
-	}, [holdings, totalValue, totalInvested]);
+
 
 	// Pagination logic
 	const totalPages = Math.ceil((holdings?.length || 0) / itemsPerPage);
@@ -640,127 +615,7 @@ export default function HoldingsPage() {
 					</PlanCardContent>
 				</PlanCard>
 
-				{/* Portfolio Allocation Pie Chart - Takes 1 column */}
-				<PlanCard>
-					<PlanCardHeader className="px-4 py-3 border-b border-border">
-						<PlanCardTitle className="text-sm font-medium">Portfolio Allocation</PlanCardTitle>
-					</PlanCardHeader>
-					<PlanCardContent className="p-4">
-						{holdings && holdings.length > 0 ? (
-							<div className="space-y-8">
-								{/* Asset Class Chart with Details */}
-								<div>
-									<div className="text-sm font-medium text-muted-foreground mb-3 text-center">By Asset Class</div>
-									<div className="h-40 flex items-center justify-center mb-4">
-										<ResponsiveContainer width="100%" height="100%">
-											<PieChart>
-												<Pie
-													data={portfolioAllocationData}
-													cx="50%"
-													cy="50%"
-													innerRadius={30}
-													outerRadius={60}
-													paddingAngle={3}
-													dataKey="value"
-												>
-													{portfolioAllocationData.map((entry, index) => (
-														<Cell key={`cell-${index}`} fill={entry.color} />
-													))}
-												</Pie>
-												<Tooltip 
-													formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Value']}
-													labelFormatter={(label) => `${label}`}
-													contentStyle={{
-														backgroundColor: 'hsl(var(--card))',
-														border: '1px solid hsl(var(--border))',
-														borderRadius: '8px',
-														boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-													}}
-												/>
-											</PieChart>
-										</ResponsiveContainer>
-									</div>
-									
-									{/* Asset Class Summary */}
-									<div className="space-y-2">
-										{portfolioAllocationData.map((item, index) => (
-											<div key={index} className="flex items-center justify-between text-sm">
-												<div className="flex items-center gap-2">
-													<div 
-														className="w-3 h-3 rounded-full" 
-														style={{ backgroundColor: item.color }}
-													></div>
-													<span className="text-foreground font-medium">{item.name}</span>
-												</div>
-												<div className="text-muted-foreground font-medium">
-													{((item.value / totalValue) * 100).toFixed(1)}%
-												</div>
-											</div>
-										))}
-									</div>
-								</div>
-								
-								{/* Portfolio Role Chart with Details */}
-								<div>
-									<div className="text-sm font-medium text-muted-foreground mb-3 text-center">By Portfolio Role</div>
-									<div className="h-40 flex items-center justify-center mb-4">
-										<ResponsiveContainer width="100%" height="100%">
-											<PieChart>
-												<Pie
-													data={portfolioRoleData}
-													cx="50%"
-													cy="50%"
-													innerRadius={30}
-													outerRadius={60}
-													paddingAngle={3}
-													dataKey="value"
-												>
-													{portfolioRoleData.map((entry, index) => (
-														<Cell key={`cell-${index}`} fill={entry.color} />
-													))}
-												</Pie>
-												<Tooltip 
-													formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Value']}
-													labelFormatter={(label) => `${label}`}
-													contentStyle={{
-														backgroundColor: 'hsl(var(--card))',
-														border: '1px solid hsl(var(--border))',
-														borderRadius: '8px',
-														boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-													}}
-												/>
-											</PieChart>
-										</ResponsiveContainer>
-									</div>
-									
-									{/* Portfolio Role Summary */}
-									<div className="space-y-2">
-										{portfolioRoleData.map((item, index) => (
-											<div key={index} className="flex items-center justify-between text-sm">
-												<div className="flex items-center gap-2">
-													<div 
-														className="w-3 h-3 rounded-full" 
-														style={{ backgroundColor: item.color }}
-													></div>
-													<span className="text-foreground font-medium">{item.name}</span>
-												</div>
-												<div className="text-muted-foreground font-medium">
-													{((item.value / totalValue) * 100).toFixed(1)}%
-												</div>
-											</div>
-										))}
-									</div>
-								</div>
-							</div>
-						) : (
-							<div className="text-center py-8 text-muted-foreground">
-								<div className="text-4xl mb-2">📊</div>
-								<div className="text-sm">No data to display</div>
-							</div>
-						)}
-					</PlanCardContent>
-				</PlanCard>
-			</div>
+
 
 			{/* Charts Section - Two Separate Divs */}
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -878,78 +733,7 @@ export default function HoldingsPage() {
 					</PlanCardContent>
 				</PlanCard>
 
-				{/* Portfolio Performance Time Series Chart */}
-				<PlanCard>
-					<PlanCardHeader className="px-4 py-3 border-b border-border">
-						<PlanCardTitle className="text-sm font-medium flex items-center gap-2">
-							<LineChart size={16} />
-							Portfolio Performance
-						</PlanCardTitle>
-					</PlanCardHeader>
-					<PlanCardContent className="p-4">
-						{holdings && holdings.length > 0 ? (
-							<div>
-								<div className="h-80 flex items-center justify-center">
-									<ResponsiveContainer width="100%" height="100%">
-										<RechartsLineChart data={portfolioTimeSeriesData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-											<CartesianGrid strokeDasharray="3 3" />
-											<XAxis dataKey="month" />
-											<YAxis />
-											<Tooltip 
-												formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Value']}
-												contentStyle={{
-													backgroundColor: 'hsl(var(--card))',
-													border: '1px solid hsl(var(--border))',
-													borderRadius: '8px',
-													boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-												}}
-											/>
-											<Legend />
-											<Line 
-												type="monotone" 
-												dataKey="value" 
-												stroke="#8884d8" 
-												strokeWidth={2}
-												name="Portfolio Value"
-												dot={{ fill: '#8884d8', strokeWidth: 2, r: 4 }}
-											/>
-											<Line 
-												type="monotone" 
-												dataKey="invested" 
-												stroke="#82ca9d" 
-												strokeWidth={2}
-												name="Amount Invested"
-												dot={{ fill: '#82ca9d', strokeWidth: 2, r: 4 }}
-											/>
-										</RechartsLineChart>
-									</ResponsiveContainer>
-								</div>
-								
-								{/* Performance Summary */}
-								<div className="mt-4 text-center">
-									<div className="text-sm text-muted-foreground mb-2">Performance Overview</div>
-									<div className="grid grid-cols-2 gap-4 text-xs">
-										<div className="text-center">
-											<div className="font-medium text-foreground">Current Value</div>
-											<div className="text-emerald-600 font-semibold">₹{totalValue.toLocaleString()}</div>
-										</div>
-										<div className="text-center">
-											<div className="font-medium text-foreground">Total Return</div>
-											<div className={`font-semibold ${totalPL >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-												{totalPLPct >= 0 ? '+' : ''}{totalPLPct.toFixed(2)}%
-											</div>
-										</div>
-									</div>
-								</div>
-							</div>
-						) : (
-							<div className="text-center py-8 text-muted-foreground">
-								<div className="text-4xl mb-2">📈</div>
-								<div className="text-sm">No performance data available</div>
-							</div>
-						)}
-					</PlanCardContent>
-				</PlanCard>
+
 			</div>
 
 			{/* Add/Edit Modal */}

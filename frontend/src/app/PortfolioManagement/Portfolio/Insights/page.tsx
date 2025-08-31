@@ -68,6 +68,64 @@ export default function PortfolioInsightsPage() {
 		};
 	}, [holdings]);
 
+	// Mock time series data for portfolio performance (in real app, fetch from API)
+	const portfolioTimeSeriesData = useMemo(() => {
+		if (!holdings || holdings.length === 0) return [];
+		
+		// Generate mock data for the last 12 months
+		const months = [];
+		const currentDate = new Date();
+		let baseValue = portfolioAnalytics.current * 0.8; // Start at 80% of current value
+		
+		for (let i = 11; i >= 0; i--) {
+			const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+			const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+			
+			// Add some realistic variation
+			const variation = (Math.random() - 0.5) * 0.2; // ±10% variation
+			baseValue = baseValue * (1 + variation);
+			
+			months.push({
+				month: monthName,
+				value: Math.round(baseValue),
+				invested: Math.round(portfolioAnalytics.invested * (0.8 + (i * 0.02))) // Gradual increase in investment
+			});
+		}
+		
+		return months;
+	}, [holdings, portfolioAnalytics.current, portfolioAnalytics.invested]);
+
+	// Chart.js data for time series
+	const timeSeriesChartData = useMemo(() => {
+		if (!portfolioTimeSeriesData.length) return null;
+		
+		return {
+			labels: portfolioTimeSeriesData.map(item => item.month),
+			datasets: [
+				{
+					label: 'Portfolio Value',
+					data: portfolioTimeSeriesData.map(item => item.value),
+					borderColor: '#8884d8',
+					backgroundColor: '#8884d8' + '20',
+					fill: true,
+					tension: 0.4,
+					pointRadius: 4,
+					pointHoverRadius: 6
+				},
+				{
+					label: 'Amount Invested',
+					data: portfolioTimeSeriesData.map(item => item.invested),
+					borderColor: '#82ca9d',
+					backgroundColor: '#82ca9d' + '20',
+					fill: true,
+					tension: 0.4,
+					pointRadius: 4,
+					pointHoverRadius: 6
+				}
+			]
+		};
+	}, [portfolioTimeSeriesData]);
+
 	// Plan vs Actual analysis
 	const allocationAnalysis = useMemo(() => {
 		if (!plan || !plan.buckets) return null;
@@ -630,6 +688,87 @@ export default function PortfolioInsightsPage() {
 					)}
 				</div>
 			)}
+
+			{/* Portfolio Performance Time Series Chart */}
+			<Card className="mt-8">
+				<CardHeader>
+					<CardTitle className="flex items-center gap-2">
+						<Activity size={20} />
+						Portfolio Performance Over Time
+					</CardTitle>
+					<CardDescription>Track your portfolio value and investment growth over the last 12 months</CardDescription>
+				</CardHeader>
+				<CardContent>
+					{holdings && holdings.length > 0 ? (
+						<div>
+							<div className="h-80">
+								{timeSeriesChartData && (
+									<Line 
+										data={timeSeriesChartData}
+										options={{
+											responsive: true,
+											maintainAspectRatio: false,
+											plugins: {
+												legend: {
+													position: 'top' as const,
+												},
+												tooltip: {
+													mode: 'index' as const,
+													intersect: false,
+													callbacks: {
+														label: function(context) {
+															return `${context.dataset.label}: ₹${Number(context.parsed.y).toLocaleString()}`;
+														}
+													}
+												}
+											},
+											scales: {
+												y: {
+													beginAtZero: false,
+													ticks: {
+														callback: function(value) {
+															return '₹' + Number(value).toLocaleString();
+														}
+													}
+												}
+											},
+											interaction: {
+												mode: 'nearest' as const,
+												axis: 'x' as const,
+												intersect: false
+											}
+										}}
+									/>
+								)}
+							</div>
+							
+							{/* Performance Summary */}
+							<div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+								<div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+									<div className="text-sm text-muted-foreground mb-1">Current Value</div>
+									<div className="text-2xl font-bold text-blue-600">₹{portfolioAnalytics.current.toLocaleString()}</div>
+								</div>
+								<div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
+									<div className="text-sm text-muted-foreground mb-1">Total Return</div>
+									<div className={`text-2xl font-bold ${portfolioAnalytics.pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+										{portfolioAnalytics.pnl >= 0 ? '+' : ''}{portfolioAnalytics.pnl.toFixed(2)}%
+									</div>
+								</div>
+								<div className="p-4 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
+									<div className="text-sm text-muted-foreground mb-1">Total Invested</div>
+									<div className="text-2xl font-bold text-purple-600">₹{portfolioAnalytics.invested.toLocaleString()}</div>
+								</div>
+							</div>
+						</div>
+					) : (
+						<div className="text-center py-12 text-muted-foreground">
+							<div className="text-4xl mb-3">📈</div>
+							<div className="text-lg font-medium mb-2">No Performance Data Available</div>
+							<div className="text-sm">Add some holdings to see your portfolio performance over time</div>
+						</div>
+					)}
+				</CardContent>
+			</Card>
 		</div>
 	);
 }
