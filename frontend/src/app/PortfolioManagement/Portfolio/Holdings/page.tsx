@@ -143,44 +143,20 @@ export default function HoldingsPage() {
 	const [mfGainLoss, setMfGainLoss] = useState<number | null>(null);
 	const [mfGainLossPercent, setMfGainLossPercent] = useState<number | null>(null);
 
-	// Load mutual fund and ETF data from DynamoDB table
+	// Load mock mutual fund and ETF data (replace with API call when infrastructure is ready)
 	React.useEffect(() => {
-		async function loadMFData() {
-			try {
-				const response = await fetch('/api/mutual-funds');
-				const data = await response.json();
-				
-				if (data.success && data.funds) {
-					// Transform the data to match our expected format
-					const funds = data.funds.map((fund: any) => ({
-						schemeCode: fund.scheme_code || fund.schemeCode,
-						name: fund.fund_name || fund.name,
-						fullName: fund.scheme_name || fund.fullName,
-						currentNAV: parseFloat(fund.nav) || 0,
-						fundType: fund.allocation_class || 'Equity MF',
-						allocationClass: fund.allocation_class || 'Equity',
-						isETF: fund.is_etf || false
-					}));
-					
-					// Sort by name for better UX
-					funds.sort((a: any, b: any) => a.name.localeCompare(b.name));
-					setMfOptions(funds);
-				}
-			} catch (error) {
-				console.error('Error loading MF data from DynamoDB:', error);
-				// Fallback to mock data if API fails
-				const mockFunds = [
-					{ schemeCode: 'MOCK001', name: 'HDFC Mid-Cap Opportunities Fund', fullName: 'HDFC Mid-Cap Opportunities Fund - Direct Plan - Growth', currentNAV: 45.67, fundType: 'Equity MF', allocationClass: 'Equity', isETF: false },
-					{ schemeCode: 'MOCK002', name: 'ICICI Prudential Bluechip Fund', fullName: 'ICICI Prudential Bluechip Fund - Direct Plan - Growth', currentNAV: 52.34, fundType: 'Equity MF', allocationClass: 'Equity', isETF: false },
-					{ schemeCode: 'MOCK003', name: 'SBI Gold Fund', fullName: 'SBI Gold Fund - Direct Plan - Growth', currentNAV: 23.45, fundType: 'Gold MF', allocationClass: 'Gold', isETF: false },
-					{ schemeCode: 'ETF001', name: 'NIFTY 50 ETF', fullName: 'NIFTY 50 ETF - Direct Plan - Growth', currentNAV: 185.67, fundType: 'Equity ETF', allocationClass: 'Equity', isETF: true },
-					{ schemeCode: 'ETF002', name: 'GOLD ETF', fullName: 'GOLD ETF - Direct Plan - Growth', currentNAV: 45.23, fundType: 'Gold ETF', allocationClass: 'Gold', isETF: true }
-				];
-				setMfOptions(mockFunds);
-			}
-		}
+		// TODO: Replace with actual API call to /api/mutual-funds when DynamoDB infrastructure is ready
+		const mockFunds = [
+			{ schemeCode: 'MOCK001', name: 'HDFC Mid-Cap Opportunities Fund', fullName: 'HDFC Mid-Cap Opportunities Fund - Direct Plan - Growth', currentNAV: 45.67, fundType: 'Equity MF', allocationClass: 'Equity', isETF: false },
+			{ schemeCode: 'MOCK002', name: 'ICICI Prudential Bluechip Fund', fullName: 'ICICI Prudential Bluechip Fund - Direct Plan - Growth', currentNAV: 52.34, fundType: 'Equity MF', allocationClass: 'Equity', isETF: false },
+			{ schemeCode: 'MOCK003', name: 'SBI Gold Fund', fullName: 'SBI Gold Fund - Direct Plan - Growth', currentNAV: 23.45, fundType: 'Gold MF', allocationClass: 'Gold', isETF: false },
+			{ schemeCode: 'ETF001', name: 'NIFTY 50 ETF', fullName: 'NIFTY 50 ETF - Direct Plan - Growth', currentNAV: 185.67, fundType: 'Equity ETF', allocationClass: 'Equity', isETF: true },
+			{ schemeCode: 'ETF002', name: 'GOLD ETF', fullName: 'GOLD ETF - Direct Plan - Growth', currentNAV: 45.23, fundType: 'Gold ETF', allocationClass: 'Gold', isETF: true }
+		];
 		
-		loadMFData();
+		// Sort by name for better UX
+		mockFunds.sort((a: any, b: any) => a.name.localeCompare(b.name));
+		setMfOptions(mockFunds);
 	}, []);
 
 	// Filter stock options
