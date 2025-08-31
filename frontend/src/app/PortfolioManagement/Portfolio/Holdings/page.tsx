@@ -86,6 +86,10 @@ export default function HoldingsPage() {
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingId, setEditingId] = useState<string | null>(null);
 	
+	// Pagination state
+	const [currentPage, setCurrentPage] = useState(1);
+	const itemsPerPage = 10;
+	
 	// New state for role-based flow
 	const [selectedRole, setSelectedRole] = useState<'Equity' | 'Defensive' | 'Satellite' | null>(null);
 	const [selectedInstrumentType, setSelectedInstrumentType] = useState<string | null>(null);
@@ -330,6 +334,17 @@ export default function HoldingsPage() {
 		return roleArray;
 	}, [holdings]);
 
+	// Pagination logic
+	const totalPages = Math.ceil((holdings?.length || 0) / itemsPerPage);
+	const startIndex = (currentPage - 1) * itemsPerPage;
+	const endIndex = startIndex + itemsPerPage;
+	const currentHoldings = holdings?.slice(startIndex, endIndex) || [];
+
+	// Reset to first page when holdings change
+	React.useEffect(() => {
+		setCurrentPage(1);
+	}, [holdings?.length]);
+
 	function resetForm() {
 		setForm({ instrumentClass: "Stocks", name: "", symbol: "", units: "", price: "", investedAmount: "", currentValue: "" });
 		setEditingId(null);
@@ -448,89 +463,133 @@ export default function HoldingsPage() {
 					</div>
 					<div className="p-4">
 						{holdings && holdings.length > 0 ? (
-							<div className="overflow-x-auto">
-								<table className="w-full">
-									<thead>
-										<tr className="border-b border-border">
-											<th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Instrument</th>
-											<th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Asset Class</th>
-											<th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Units</th>
-											<th className="text-left py-3 px-3 text-sm font-medium text-muted-foreground">Price</th>
-											<th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Current Value</th>
-											<th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">Invested Amount</th>
-											<th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">P/L</th>
-											<th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">Actions</th>
-										</tr>
-									</thead>
-									<tbody>
-										{holdings.map((holding) => {
-											const currentValue = computeHoldingValue(holding);
-											const investedAmount = computeInvestedAmount(holding);
-											const pl = currentValue - investedAmount;
-											const plPercent = investedAmount > 0 ? (pl / investedAmount) * 100 : 0;
+							<div>
+								<div className="overflow-x-auto">
+									<table className="w-full">
+										<thead>
+											<tr className="border-b border-border">
+												<th className="py-3 px-3 text-sm font-semibold text-muted-foreground text-left tracking-wide">Instrument</th>
+												<th className="py-3 px-3 text-sm font-semibold text-muted-foreground text-left tracking-wide">Asset Class</th>
+												<th className="py-3 px-3 text-sm font-semibold text-muted-foreground text-left tracking-wide">Units</th>
+												<th className="py-3 px-3 text-sm font-semibold text-muted-foreground text-left tracking-wide">Price</th>
+												<th className="py-3 px-3 text-sm font-semibold text-muted-foreground text-right tracking-wide">Current Value</th>
+												<th className="py-3 px-3 text-sm font-semibold text-muted-foreground text-right tracking-wide">Invested Amount</th>
+												<th className="py-3 px-3 text-sm font-semibold text-muted-foreground text-right tracking-wide">P/L</th>
+												<th className="py-3 px-3 text-sm font-semibold text-muted-foreground text-center tracking-wide">Actions</th>
+											</tr>
+										</thead>
+										<tbody>
+											{currentHoldings.map((holding) => {
+												const currentValue = computeHoldingValue(holding);
+												const investedAmount = computeInvestedAmount(holding);
+												const pl = currentValue - investedAmount;
+												const plPercent = investedAmount > 0 ? (pl / investedAmount) * 100 : 0;
+												
+												return (
+													<tr key={holding.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+														<td className="py-3 px-3">
+															<div>
+																<div className="font-semibold text-foreground text-base">{holding.name}</div>
+																{holding.symbol && (
+																	<div className="text-sm text-muted-foreground font-medium">{holding.symbol}</div>
+																)}
+															</div>
+														</td>
+														<td className="py-3 px-3 text-left">
+															<span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
+																CLASS_COLORS[holding.instrumentClass as keyof typeof CLASS_COLORS]?.bg || 'bg-gray-100 dark:bg-gray-800'
+															} ${
+																CLASS_COLORS[holding.instrumentClass as keyof typeof CLASS_COLORS]?.text || 'text-gray-700 dark:text-gray-300'
+															}`}>
+																{holding.instrumentClass}
+															</span>
+														</td>
+														<td className="py-3 px-3 text-left">
+															<div className="font-semibold text-foreground text-base">{holding.units?.toFixed(2) || '0.00'}</div>
+														</td>
+														<td className="py-3 px-3 text-left">
+															<div className="font-semibold text-foreground text-base">₹{holding.price?.toLocaleString() || '0.00'}</div>
+														</td>
+														<td className="py-3 px-3 text-right">
+															<div className="font-semibold text-foreground text-base">₹{currentValue.toLocaleString()}</div>
+														</td>
+														<td className="py-3 px-3 text-right">
+															<div className="font-semibold text-foreground text-base">₹{investedAmount.toLocaleString()}</div>
+														</td>
+														<td className="py-3 px-3 text-right">
+															<div className={`font-semibold text-base ${pl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+																₹{pl.toLocaleString()}
+															</div>
+															<div className={`text-sm font-medium ${pl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+																{plPercent >= 0 ? '+' : ''}{plPercent.toFixed(2)}%
+															</div>
+														</td>
+														<td className="py-3 px-3 text-center">
+															<div className="flex items-center justify-center gap-2">
+																<button 
+																	onClick={() => openEdit(holding)} 
+																	className="p-2 rounded-lg hover:bg-muted transition-colors text-blue-600 hover:text-blue-700"
+																	title="Edit"
+																>
+																	<Edit2 size={16} />
+																</button>
+																<button 
+																	onClick={() => handleDeleteHolding(holding.id)} 
+																	className="p-2 rounded-lg hover:bg-muted transition-colors text-rose-600 hover:text-rose-700"
+																	title="Delete"
+																>
+																	<Trash2 size={16} />
+																</button>
+															</div>
+														</td>
+													</tr>
+												);
+											})}
+										</tbody>
+									</table>
+								</div>
+								
+								{/* Pagination Controls */}
+								{totalPages > 1 && (
+									<div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
+										<div className="text-sm text-muted-foreground">
+											Showing {startIndex + 1} to {Math.min(endIndex, holdings.length)} of {holdings.length} holdings
+										</div>
+										<div className="flex items-center gap-2">
+											<button
+												onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+												disabled={currentPage === 1}
+												className="px-3 py-2 text-sm font-medium text-foreground bg-card border border-border rounded-lg hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+											>
+												Previous
+											</button>
 											
-											return (
-												<tr key={holding.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-													<td className="py-3 px-3">
-														<div>
-															<div className="font-medium text-foreground">{holding.name}</div>
-															{holding.symbol && (
-																<div className="text-sm text-muted-foreground">{holding.symbol}</div>
-															)}
-														</div>
-													</td>
-													<td className="py-3 px-3 text-left">
-														<span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-															CLASS_COLORS[holding.instrumentClass as keyof typeof CLASS_COLORS]?.bg || 'bg-gray-100 dark:bg-gray-800'
-														} ${
-															CLASS_COLORS[holding.instrumentClass as keyof typeof CLASS_COLORS]?.text || 'text-gray-700 dark:text-gray-300'
-														}`}>
-															{holding.instrumentClass}
-														</span>
-													</td>
-													<td className="py-3 px-3 text-left">
-														<div className="font-medium text-foreground">{holding.units?.toFixed(2) || '0.00'}</div>
-													</td>
-													<td className="py-3 px-3 text-left">
-														<div className="font-medium text-foreground">₹{holding.price?.toLocaleString() || '0.00'}</div>
-													</td>
-													<td className="py-3 px-3 text-right">
-														<div className="font-medium text-foreground">₹{currentValue.toLocaleString()}</div>
-													</td>
-													<td className="py-3 px-3 text-right">
-														<div className="font-medium text-foreground">₹{investedAmount.toLocaleString()}</div>
-													</td>
-													<td className="py-3 px-3 text-right">
-														<div className={`font-medium ${pl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-															₹{pl.toLocaleString()}
-														</div>
-														<div className={`text-sm ${pl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-															{plPercent >= 0 ? '+' : ''}{plPercent.toFixed(2)}%
-														</div>
-													</td>
-													<td className="py-3 px-3 text-center">
-														<div className="flex items-center justify-center gap-2">
-															<button 
-																onClick={() => openEdit(holding)} 
-																className="p-2 rounded-lg hover:bg-muted transition-colors text-blue-600 hover:text-blue-700"
-																title="Edit"
-															>
-																<Edit2 size={16} />
-															</button>
-															<button 
-																onClick={() => handleDeleteHolding(holding.id)} 
-																className="p-2 rounded-lg hover:bg-muted transition-colors text-rose-600 hover:text-rose-700"
-																title="Delete"
-															>
-																<Trash2 size={16} />
-															</button>
-														</div>
-													</td>
-												</tr>
-											);
-										})}
-									</tbody>
-								</table>
+											<div className="flex items-center gap-1">
+												{Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+													<button
+														key={page}
+														onClick={() => setCurrentPage(page)}
+														className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+															currentPage === page
+																? 'bg-primary text-primary-foreground'
+																: 'text-foreground bg-card border border-border hover:bg-muted'
+														}`}
+													>
+														{page}
+													</button>
+												))}
+											</div>
+											
+											<button
+												onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+												disabled={currentPage === totalPages}
+												className="px-3 py-2 text-sm font-medium text-foreground bg-card border border-border rounded-lg hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+											>
+												Next
+											</button>
+										</div>
+									</div>
+								)}
 							</div>
 						) : (
 							<div className="text-center py-8 text-muted-foreground">
@@ -549,11 +608,11 @@ export default function HoldingsPage() {
 					</div>
 					<div className="p-4">
 						{holdings && holdings.length > 0 ? (
-							<div className="space-y-6">
-								{/* Asset Class Pie Chart */}
+							<div className="space-y-8">
+								{/* Asset Class Chart with Details */}
 								<div>
 									<div className="text-sm font-medium text-muted-foreground mb-3 text-center">By Asset Class</div>
-									<div className="h-40 flex items-center justify-center">
+									<div className="h-40 flex items-center justify-center mb-4">
 										<ResponsiveContainer width="100%" height="100%">
 											<PieChart>
 												<Pie
@@ -582,12 +641,30 @@ export default function HoldingsPage() {
 											</PieChart>
 										</ResponsiveContainer>
 									</div>
+									
+									{/* Asset Class Summary */}
+									<div className="space-y-2">
+										{portfolioAllocationData.map((item, index) => (
+											<div key={index} className="flex items-center justify-between text-sm">
+												<div className="flex items-center gap-2">
+													<div 
+														className="w-3 h-3 rounded-full" 
+														style={{ backgroundColor: item.color }}
+													></div>
+													<span className="text-foreground font-medium">{item.name}</span>
+												</div>
+												<div className="text-muted-foreground font-medium">
+													{((item.value / totalValue) * 100).toFixed(1)}%
+												</div>
+											</div>
+										))}
+									</div>
 								</div>
 								
-								{/* Portfolio Role Pie Chart */}
+								{/* Portfolio Role Chart with Details */}
 								<div>
 									<div className="text-sm font-medium text-muted-foreground mb-3 text-center">By Portfolio Role</div>
-									<div className="h-40 flex items-center justify-center">
+									<div className="h-40 flex items-center justify-center mb-4">
 										<ResponsiveContainer width="100%" height="100%">
 											<PieChart>
 												<Pie
@@ -616,50 +693,23 @@ export default function HoldingsPage() {
 											</PieChart>
 										</ResponsiveContainer>
 									</div>
-								</div>
-								
-								{/* Combined Allocation Summary */}
-								<div className="space-y-4">
-									{/* Asset Class Summary */}
-									<div>
-										<div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Asset Class</div>
-										<div className="space-y-2">
-											{portfolioAllocationData.map((item, index) => (
-												<div key={index} className="flex items-center justify-between text-sm">
-													<div className="flex items-center gap-2">
-														<div 
-															className="w-3 h-3 rounded-full" 
-															style={{ backgroundColor: item.color }}
-														></div>
-														<span className="text-foreground font-medium">{item.name}</span>
-													</div>
-													<div className="text-muted-foreground font-medium">
-														{((item.value / totalValue) * 100).toFixed(1)}%
-													</div>
-												</div>
-											))}
-										</div>
-									</div>
 									
 									{/* Portfolio Role Summary */}
-									<div>
-										<div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Portfolio Role</div>
-										<div className="space-y-2">
-											{portfolioRoleData.map((item, index) => (
-												<div key={index} className="flex items-center justify-between text-sm">
-													<div className="flex items-center gap-2">
-														<div 
-															className="w-3 h-3 rounded-full" 
-															style={{ backgroundColor: item.color }}
-														></div>
-														<span className="text-foreground font-medium">{item.name}</span>
-													</div>
-													<div className="text-muted-foreground font-medium">
-														{((item.value / totalValue) * 100).toFixed(1)}%
-													</div>
+									<div className="space-y-2">
+										{portfolioRoleData.map((item, index) => (
+											<div key={index} className="flex items-center justify-between text-sm">
+												<div className="flex items-center gap-2">
+													<div 
+														className="w-3 h-3 rounded-full" 
+														style={{ backgroundColor: item.color }}
+													></div>
+													<span className="text-foreground font-medium">{item.name}</span>
 												</div>
-											))}
-										</div>
+												<div className="text-muted-foreground font-medium">
+													{((item.value / totalValue) * 100).toFixed(1)}%
+												</div>
+											</div>
+										))}
 									</div>
 								</div>
 							</div>
