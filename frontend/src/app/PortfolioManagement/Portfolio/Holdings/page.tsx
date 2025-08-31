@@ -2,8 +2,8 @@
 import React, { useMemo, useState } from "react";
 import { useApp, type Holding } from "../../../store";
 import type { AssetClass } from "../../domain/allocationEngine";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
-import { Plus, Edit2, Trash2, X, Search } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar } from "recharts";
+import { Plus, Edit2, Trash2, X, Search, TrendingUp, BarChart3, PieChart as PieChartIcon, LineChart } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { Card as PlanCard, CardContent as PlanCardContent, CardHeader as PlanCardHeader, CardTitle as PlanCardTitle } from "../../../components/Card";
 import { Button as PlanButton } from "../../../components/Button";
@@ -336,6 +336,33 @@ export default function HoldingsPage() {
 		return roleArray;
 	}, [holdings]);
 
+	// Mock time series data for portfolio performance (in real app, fetch from API)
+	const portfolioTimeSeriesData = useMemo(() => {
+		if (!holdings || holdings.length === 0) return [];
+		
+		// Generate mock data for the last 12 months
+		const months = [];
+		const currentDate = new Date();
+		let baseValue = totalValue * 0.8; // Start at 80% of current value
+		
+		for (let i = 11; i >= 0; i--) {
+			const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+			const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+			
+			// Add some realistic variation
+			const variation = (Math.random() - 0.5) * 0.2; // ±10% variation
+			baseValue = baseValue * (1 + variation);
+			
+			months.push({
+				month: monthName,
+				value: Math.round(baseValue),
+				invested: Math.round(totalInvested * (0.8 + (i * 0.02))) // Gradual increase in investment
+			});
+		}
+		
+		return months;
+	}, [holdings, totalValue, totalInvested]);
+
 	// Pagination logic
 	const totalPages = Math.ceil((holdings?.length || 0) / itemsPerPage);
 	const startIndex = (currentPage - 1) * itemsPerPage;
@@ -431,55 +458,60 @@ export default function HoldingsPage() {
 					onClick={() => setIsModalOpen(true)} 
 					variant="primary" 
 					size="md"
-					leftIcon={<Plus size={18} />}
+					leftIcon={<TrendingUp size={18} />}
 				>
 					Add Holding
 				</PlanButton>
 			</div>
 			
 			{/* KPI Row */}
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
 				<PlanCard>
-					<PlanCardContent className="p-5">
-						<div className="text-sm text-muted-foreground">Total Value</div>
-						<div className="text-2xl font-semibold text-foreground mt-1">₹{Math.round(totalValue).toLocaleString()}</div>
+					<PlanCardContent className="p-3 text-center">
+						<div className="text-xs text-muted-foreground mb-1">Total Value</div>
+						<div className="text-lg font-semibold text-foreground mb-1">₹{Math.round(totalValue).toLocaleString()}</div>
+						<div className="text-[10px] text-muted-foreground">Portfolio Worth</div>
 					</PlanCardContent>
 				</PlanCard>
 				<PlanCard>
-					<PlanCardContent className="p-5">
-						<div className="text-sm text-muted-foreground">Invested</div>
-						<div className="text-2xl font-semibold text-foreground mt-1">₹{Math.round(totalInvested).toLocaleString()}</div>
+					<PlanCardContent className="p-3 text-center">
+						<div className="text-xs text-muted-foreground mb-1">Invested</div>
+						<div className="text-lg font-semibold text-foreground mb-1">₹{Math.round(totalInvested).toLocaleString()}</div>
+						<div className="text-[10px] text-muted-foreground">Capital Deployed</div>
 					</PlanCardContent>
 				</PlanCard>
 				<PlanCard>
-					<PlanCardContent className="p-5">
-						<div className="text-sm text-muted-foreground">P/L</div>
-						<div className={`text-2xl font-semibold mt-1 ${totalPL >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+					<PlanCardContent className="p-3 text-center">
+						<div className="text-xs text-muted-foreground mb-1">P/L</div>
+						<div className={`text-lg font-semibold mb-1 ${totalPL >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
 							₹{Math.round(totalPL).toLocaleString()}
 						</div>
+						<div className="text-[10px] text-muted-foreground">Profit/Loss</div>
 					</PlanCardContent>
 				</PlanCard>
 				<PlanCard>
-					<PlanCardContent className="p-5">
-						<div className="text-sm text-muted-foreground">P/L %</div>
-						<div className={`text-2xl font-semibold mt-1 ${totalPLPct >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+					<PlanCardContent className="p-3 text-center">
+						<div className="text-xs text-muted-foreground mb-1">P/L %</div>
+						<div className={`text-lg font-semibold mb-1 ${totalPLPct >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
 							{totalPLPct >= 0 ? `${totalPLPct.toFixed(2)}%` : "—"}
 						</div>
+						<div className="text-[10px] text-muted-foreground">Return %</div>
 					</PlanCardContent>
 				</PlanCard>
 			</div>
 
-			{/* Holdings Table with Pie Chart */}
-			<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-				{/* Holdings List - Takes 2 columns */}
-				<PlanCard className="lg:col-span-2">
-					<PlanCardHeader className="px-4 py-3 border-b border-border">
-						<PlanCardTitle className="text-sm font-medium">All Holdings</PlanCardTitle>
-					</PlanCardHeader>
+			{/* Holdings Table */}
+			<PlanCard className="mb-6">
+				<PlanCardHeader className="px-4 py-3 border-b border-border">
+					<PlanCardTitle className="text-sm font-medium flex items-center gap-2">
+						<BarChart3 size={16} />
+						All Holdings
+					</PlanCardTitle>
+				</PlanCardHeader>
 					<PlanCardContent className="p-4">
 						{holdings && holdings.length > 0 ? (
 							<div>
-								<div className="rounded-xl border border-border overflow-auto max-h-72">
+								<div className="rounded-xl border border-border overflow-auto">
 									<table className="w-full text-left text-xs">
 										<thead className="bg-card sticky top-0 z-10">
 											<tr>
@@ -730,6 +762,196 @@ export default function HoldingsPage() {
 				</PlanCard>
 			</div>
 
+			{/* Charts Section - Two Separate Divs */}
+			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+				{/* Portfolio Allocation Charts */}
+				<PlanCard>
+					<PlanCardHeader className="px-4 py-3 border-b border-border">
+						<PlanCardTitle className="text-sm font-medium flex items-center gap-2">
+							<PieChartIcon size={16} />
+							Portfolio Allocation
+						</PlanCardTitle>
+					</PlanCardHeader>
+					<PlanCardContent className="p-4">
+						{holdings && holdings.length > 0 ? (
+							<div className="space-y-6">
+								{/* Asset Class Chart with Details */}
+								<div>
+									<div className="text-sm font-medium text-muted-foreground mb-3 text-center">By Asset Class</div>
+									<div className="h-40 flex items-center justify-center mb-4">
+										<ResponsiveContainer width="100%" height="100%">
+											<PieChart>
+												<Pie
+													data={portfolioAllocationData}
+													cx="50%"
+													cy="50%"
+													innerRadius={30}
+													outerRadius={60}
+													paddingAngle={3}
+													dataKey="value"
+												>
+													{portfolioAllocationData.map((entry, index) => (
+														<Cell key={`cell-${index}`} fill={entry.color} />
+													))}
+												</Pie>
+												<Tooltip 
+													formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Value']}
+													labelFormatter={(label) => `${label}`}
+													contentStyle={{
+														backgroundColor: 'hsl(var(--card))',
+														border: '1px solid hsl(var(--border))',
+														borderRadius: '8px',
+														boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+													}}
+												/>
+											</PieChart>
+										</ResponsiveContainer>
+									</div>
+									
+									{/* Asset Class Summary */}
+									<div className="space-y-2">
+										{portfolioAllocationData.map((item, index) => (
+											<div key={index} className="flex items-center justify-between text-sm">
+												<div className="flex items-center gap-2">
+													<div 
+														className="w-3 h-3 rounded-full" 
+														style={{ backgroundColor: item.color }}
+													></div>
+													<span className="text-foreground font-medium">{item.name}</span>
+												</div>
+												<div className="text-muted-foreground font-medium">
+													{((item.value / totalValue) * 100).toFixed(1)}%
+												</div>
+											</div>
+										))}
+									</div>
+								</div>
+								
+								{/* Portfolio Role Chart with Details - Using Bar Chart */}
+								<div>
+									<div className="text-sm font-medium text-muted-foreground mb-3 text-center">By Portfolio Role</div>
+									<div className="h-40 flex items-center justify-center mb-4">
+										<ResponsiveContainer width="100%" height="100%">
+											<BarChart data={portfolioRoleData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+												<CartesianGrid strokeDasharray="3 3" />
+												<XAxis dataKey="name" />
+												<YAxis />
+												<Tooltip 
+													formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Value']}
+													contentStyle={{
+														backgroundColor: 'hsl(var(--card))',
+														border: '1px solid hsl(var(--border))',
+														borderRadius: '8px',
+														boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+													}}
+												/>
+												<Bar dataKey="value" fill="#8884d8" />
+											</BarChart>
+										</ResponsiveContainer>
+									</div>
+									
+									{/* Portfolio Role Summary */}
+									<div className="space-y-2">
+										{portfolioRoleData.map((item, index) => (
+											<div key={index} className="flex items-center justify-between text-sm">
+												<div className="flex items-center gap-2">
+													<div 
+														className="w-3 h-3 rounded-full" 
+														style={{ backgroundColor: item.color }}
+													></div>
+													<span className="text-foreground font-medium">{item.name}</span>
+												</div>
+												<div className="text-muted-foreground font-medium">
+													{((item.value / totalValue) * 100).toFixed(1)}%
+												</div>
+											</div>
+										))}
+									</div>
+								</div>
+							</div>
+						) : (
+							<div className="text-center py-8 text-muted-foreground">
+								<div className="text-4xl mb-2">📊</div>
+								<div className="text-sm">No data to display</div>
+							</div>
+						)}
+					</PlanCardContent>
+				</PlanCard>
+
+				{/* Portfolio Performance Time Series Chart */}
+				<PlanCard>
+					<PlanCardHeader className="px-4 py-3 border-b border-border">
+						<PlanCardTitle className="text-sm font-medium flex items-center gap-2">
+							<LineChart size={16} />
+							Portfolio Performance
+						</PlanCardTitle>
+					</PlanCardHeader>
+					<PlanCardContent className="p-4">
+						{holdings && holdings.length > 0 ? (
+							<div>
+								<div className="h-80 flex items-center justify-center">
+									<ResponsiveContainer width="100%" height="100%">
+										<RechartsLineChart data={portfolioTimeSeriesData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+											<CartesianGrid strokeDasharray="3 3" />
+											<XAxis dataKey="month" />
+											<YAxis />
+											<Tooltip 
+												formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Value']}
+												contentStyle={{
+													backgroundColor: 'hsl(var(--card))',
+													border: '1px solid hsl(var(--border))',
+													borderRadius: '8px',
+													boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+												}}
+											/>
+											<Legend />
+											<Line 
+												type="monotone" 
+												dataKey="value" 
+												stroke="#8884d8" 
+												strokeWidth={2}
+												name="Portfolio Value"
+												dot={{ fill: '#8884d8', strokeWidth: 2, r: 4 }}
+											/>
+											<Line 
+												type="monotone" 
+												dataKey="invested" 
+												stroke="#82ca9d" 
+												strokeWidth={2}
+												name="Amount Invested"
+												dot={{ fill: '#82ca9d', strokeWidth: 2, r: 4 }}
+											/>
+										</RechartsLineChart>
+									</ResponsiveContainer>
+								</div>
+								
+								{/* Performance Summary */}
+								<div className="mt-4 text-center">
+									<div className="text-sm text-muted-foreground mb-2">Performance Overview</div>
+									<div className="grid grid-cols-2 gap-4 text-xs">
+										<div className="text-center">
+											<div className="font-medium text-foreground">Current Value</div>
+											<div className="text-emerald-600 font-semibold">₹{totalValue.toLocaleString()}</div>
+										</div>
+										<div className="text-center">
+											<div className="font-medium text-foreground">Total Return</div>
+											<div className={`font-semibold ${totalPL >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+												{totalPLPct >= 0 ? '+' : ''}{totalPLPct.toFixed(2)}%
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						) : (
+							<div className="text-center py-8 text-muted-foreground">
+								<div className="text-4xl mb-2">📈</div>
+								<div className="text-sm">No performance data available</div>
+							</div>
+						)}
+					</PlanCardContent>
+				</PlanCard>
+			</div>
+
 			{/* Add/Edit Modal */}
 			{isModalOpen && (
 				<div className="fixed inset-0 z-50">
@@ -749,7 +971,10 @@ export default function HoldingsPage() {
 						{/* Portfolio Role Selection - Top Row */}
 						<div className="px-6 py-3 border-b border-border">
 							<div className="text-center">
-								<label className="block text-sm font-medium text-foreground mb-3">Portfolio Role</label>
+								<label className="block text-sm font-medium text-foreground mb-3 flex items-center justify-center gap-2">
+									<TrendingUp size={16} />
+									Portfolio Role
+								</label>
 								<div className="flex items-center justify-center gap-3">
 									{(['Equity', 'Defensive', 'Satellite'] as const).map(role => (
 										<button
@@ -779,7 +1004,10 @@ export default function HoldingsPage() {
 								<div className="p-4">
 									{selectedRole ? (
 										<>
-											<h3 className="text-sm font-semibold text-foreground mb-3 uppercase tracking-wide">Instrument Type</h3>
+											<h3 className="text-sm font-semibold text-foreground mb-3 uppercase tracking-wide flex items-center gap-2">
+										<BarChart3 size={16} />
+										Instrument Type
+									</h3>
 											<div className="space-y-2">
 												{ROLE_INSTRUMENT_TYPES[selectedRole].map(type => (
 													<button
