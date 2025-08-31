@@ -67,7 +67,7 @@ echo "🤔 Do you want to apply these changes? (y/N)"
 read -r response
 if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
     echo "🚀 Applying Terraform changes..."
-    terraform apply tfplan --auto-approve
+    terraform apply tfplan
     
     echo "✅ Deployment completed!"
     echo ""

@@ -171,6 +171,11 @@ resource "aws_dynamodb_table" "mutual_fund_schemes" {
     type = "S"
   }
 
+  attribute {
+    name = "is_etf"
+    type = "S"
+  }
+
   # GSI for querying by date
   global_secondary_index {
     name     = "DateIndex"
@@ -214,6 +219,14 @@ resource "aws_dynamodb_table" "mutual_fund_schemes" {
   global_secondary_index {
     name     = "Option-Date-Index" 
     hash_key = "option"
+    range_key = "date"
+    projection_type = "ALL"
+  }
+
+  # GSI for querying by ETF status
+  global_secondary_index {
+    name     = "IsETF-Date-Index" 
+    hash_key = "is_etf"
     range_key = "date"
     projection_type = "ALL"
   }
