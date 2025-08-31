@@ -143,7 +143,7 @@ export default function HoldingsPage() {
 	const [mfGainLoss, setMfGainLoss] = useState<number | null>(null);
 	const [mfGainLossPercent, setMfGainLossPercent] = useState<number | null>(null);
 
-	// Load mutual fund data from DynamoDB table
+	// Load mutual fund and ETF data from DynamoDB table
 	React.useEffect(() => {
 		async function loadMFData() {
 			try {
@@ -158,7 +158,8 @@ export default function HoldingsPage() {
 						fullName: fund.scheme_name || fund.fullName,
 						currentNAV: parseFloat(fund.nav) || 0,
 						fundType: fund.allocation_class || 'Equity MF',
-						allocationClass: fund.allocation_class || 'Equity'
+						allocationClass: fund.allocation_class || 'Equity',
+						isETF: fund.is_etf || false
 					}));
 					
 					// Sort by name for better UX
@@ -169,9 +170,11 @@ export default function HoldingsPage() {
 				console.error('Error loading MF data from DynamoDB:', error);
 				// Fallback to mock data if API fails
 				const mockFunds = [
-					{ schemeCode: 'MOCK001', name: 'HDFC Mid-Cap Opportunities Fund', fullName: 'HDFC Mid-Cap Opportunities Fund - Direct Plan - Growth', currentNAV: 45.67, fundType: 'Equity MF', allocationClass: 'Equity' },
-					{ schemeCode: 'MOCK002', name: 'ICICI Prudential Bluechip Fund', fullName: 'ICICI Prudential Bluechip Fund - Direct Plan - Growth', currentNAV: 52.34, fundType: 'Equity MF', allocationClass: 'Equity' },
-					{ schemeCode: 'MOCK003', name: 'SBI Gold Fund', fullName: 'SBI Gold Fund - Direct Plan - Growth', currentNAV: 23.45, fundType: 'Gold MF', allocationClass: 'Gold' }
+					{ schemeCode: 'MOCK001', name: 'HDFC Mid-Cap Opportunities Fund', fullName: 'HDFC Mid-Cap Opportunities Fund - Direct Plan - Growth', currentNAV: 45.67, fundType: 'Equity MF', allocationClass: 'Equity', isETF: false },
+					{ schemeCode: 'MOCK002', name: 'ICICI Prudential Bluechip Fund', fullName: 'ICICI Prudential Bluechip Fund - Direct Plan - Growth', currentNAV: 52.34, fundType: 'Equity MF', allocationClass: 'Equity', isETF: false },
+					{ schemeCode: 'MOCK003', name: 'SBI Gold Fund', fullName: 'SBI Gold Fund - Direct Plan - Growth', currentNAV: 23.45, fundType: 'Gold MF', allocationClass: 'Gold', isETF: false },
+					{ schemeCode: 'ETF001', name: 'NIFTY 50 ETF', fullName: 'NIFTY 50 ETF - Direct Plan - Growth', currentNAV: 185.67, fundType: 'Equity ETF', allocationClass: 'Equity', isETF: true },
+					{ schemeCode: 'ETF002', name: 'GOLD ETF', fullName: 'GOLD ETF - Direct Plan - Growth', currentNAV: 45.23, fundType: 'Gold ETF', allocationClass: 'Gold', isETF: true }
 				];
 				setMfOptions(mockFunds);
 			}
@@ -204,8 +207,11 @@ export default function HoldingsPage() {
 			let filtered = mfOptions;
 			
 			if (selectedRole === 'Mutual Funds') {
-				// Show all mutual funds when Mutual Funds is selected
-				filtered = mfOptions;
+				// Show only mutual funds (is_etf = false)
+				filtered = mfOptions.filter(option => !option.isETF);
+			} else if (selectedRole === 'ETF') {
+				// Show only ETFs (is_etf = true)
+				filtered = mfOptions.filter(option => option.isETF);
 			}
 			
 			// Then filter by search term
@@ -335,7 +341,14 @@ export default function HoldingsPage() {
 		let instrumentClass: AssetClass = "Stocks";
 		if (selectedRole === 'Stocks') instrumentClass = "Stocks";
 		else if (selectedRole === 'Mutual Funds') instrumentClass = "Mutual Funds";
-		else if (selectedRole === 'ETF') instrumentClass = "Stocks"; // ETFs are typically equity-based
+		else if (selectedRole === 'ETF') {
+			// For ETFs, use the allocation_class from the selected fund
+			if (selectedMF && selectedMF.allocationClass) {
+				instrumentClass = selectedMF.allocationClass as AssetClass;
+			} else {
+				instrumentClass = "Stocks"; // Default fallback
+			}
+		}
 		else if (selectedRole === 'Gold') instrumentClass = "Gold";
 		else if (selectedRole === 'Real Estate') instrumentClass = "Real Estate";
 		
@@ -947,23 +960,37 @@ export default function HoldingsPage() {
 											<>
 												<div>
 													<label className="block text-sm font-medium text-foreground mb-2">ETF Name *</label>
-													<input
-														value={form.name}
-														onChange={(e) => setForm({ ...form, name: e.target.value })}
-														required
-														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-														placeholder="Enter ETF name"
-													/>
-												</div>
-												
-												<div>
-													<label className="block text-sm font-medium text-foreground mb-2">Symbol (Optional)</label>
-													<input
-														value={form.symbol || ''}
-														onChange={(e) => setForm({ ...form, symbol: e.target.value })}
-														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-														placeholder="e.g., NIFTYBEES, GOLDBEES"
-													/>
+													<div className="relative">
+														<input
+															value={mfSearchTerm}
+															onChange={(e) => {
+																setMfSearchTerm(e.target.value);
+																filterMFOptions(e.target.value);
+															}}
+															onFocus={() => filterMFOptions(mfSearchTerm)}
+															className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+															placeholder="Search for ETFs..."
+														/>
+														{showMFDropdown && (
+															<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-auto">
+																{filteredMFOptions.map((fund) => (
+																	<div
+																		key={fund.schemeCode}
+																		onClick={() => {
+																			setSelectedMF(fund);
+																			setMfSearchTerm(fund.name);
+																			setForm({ ...form, name: fund.name, symbol: fund.schemeCode, price: fund.currentNAV.toString() });
+																			setShowMFDropdown(false);
+																		}}
+																		className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
+																	>
+																		<div className="font-medium text-sm">{fund.name}</div>
+																		<div className="text-xs text-muted-foreground">NAV: ₹{fund.currentNAV}</div>
+																	</div>
+																))}
+															</div>
+														)}
+													</div>
 												</div>
 												
 												<div>
@@ -982,7 +1009,7 @@ export default function HoldingsPage() {
 												<div>
 													<label className="block text-sm font-medium text-foreground mb-2">Current Price per Unit *</label>
 													<div className="relative">
-														<span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground">₹</span>
+														<span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">₹</span>
 														<input
 															type="number"
 															value={form.price || ''}
@@ -994,6 +1021,19 @@ export default function HoldingsPage() {
 														/>
 													</div>
 												</div>
+
+												{/* Auto-calculated Holding Value for ETF */}
+												{form.units && form.price && (
+													<div className="p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
+														<div className="text-sm font-medium text-purple-700 dark:text-purple-300">Holding Value</div>
+														<div className="text-lg font-semibold text-purple-600 dark:text-purple-400">
+															₹{(parseFloat(form.units) * parseFloat(form.price)).toLocaleString()}
+														</div>
+														<div className="text-xs text-purple-600 dark:text-purple-400">
+															{form.units} units × ₹{form.price} = ₹{(parseFloat(form.units) * parseFloat(form.price)).toLocaleString()}
+														</div>
+													</div>
+												)}
 											</>
 										)}
 
@@ -1002,18 +1042,13 @@ export default function HoldingsPage() {
 											<>
 												<div>
 													<label className="block text-sm font-medium text-foreground mb-2">Gold Type *</label>
-													<select
+													<input
 														value={form.name}
 														onChange={(e) => setForm({ ...form, name: e.target.value })}
 														required
 														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-													>
-														<option value="">Select gold type</option>
-														<option value="Physical Gold">Physical Gold</option>
-														<option value="Gold ETF">Gold ETF</option>
-														<option value="Gold Mutual Fund">Gold Mutual Fund</option>
-														<option value="Sovereign Gold Bond">Sovereign Gold Bond</option>
-													</select>
+														placeholder="e.g., Physical Gold, Gold ETF, Gold Mutual Fund"
+													/>
 												</div>
 												
 												<div>
@@ -1044,6 +1079,19 @@ export default function HoldingsPage() {
 														/>
 													</div>
 												</div>
+
+												{/* Auto-calculated Holding Value for Gold */}
+												{form.units && form.price && (
+													<div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
+														<div className="text-sm font-medium text-yellow-700 dark:text-yellow-300">Holding Value</div>
+														<div className="text-lg font-semibold text-yellow-600 dark:text-yellow-400">
+															₹{(parseFloat(form.units) * parseFloat(form.price)).toLocaleString()}
+														</div>
+														<div className="text-xs text-yellow-600 dark:text-yellow-400">
+															{form.units} grams × ₹{form.price} = ₹{(parseFloat(form.units) * parseFloat(form.price)).toLocaleString()}
+														</div>
+													</div>
+												)}
 											</>
 										)}
 
