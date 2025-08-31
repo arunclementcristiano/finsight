@@ -61,8 +61,10 @@ resource "aws_iam_role_policy" "lambda_ddb_access" {
         aws_dynamodb_table.category_rules.arn,
         aws_dynamodb_table.user_budgets.arn,
         aws_dynamodb_table.invest.arn,
+        aws_dynamodb_table.mutual_fund_schemes.arn,
         "${aws_dynamodb_table.expenses.arn}/index/userId-date-index",
-        "${aws_dynamodb_table.invest.arn}/index/*"
+        "${aws_dynamodb_table.invest.arn}/index/*",
+        "${aws_dynamodb_table.mutual_fund_schemes.arn}/index/*"
       ]
     }]
   })
@@ -101,6 +103,7 @@ resource "aws_lambda_function" "expenses" {
       USER_BUDGETS_TABLE       = aws_dynamodb_table.user_budgets.name
       GROQ_MODEL               = "llama-3.1-8b-instant"
       INVEST_TABLE             = aws_dynamodb_table.invest.name
+      MUTUAL_FUND_TABLE        = aws_dynamodb_table.mutual_fund_schemes.name
     }
   }
 }
@@ -145,7 +148,8 @@ resource "aws_apigatewayv2_route" "routes_public" {
     "POST /summary/category",
     "GET /budgets",
     "PUT /budgets",
-    "GET /health"
+    "GET /health",
+    "GET /mutual-funds"
   ])
   api_id    = aws_apigatewayv2_api.http.id
   route_key = each.value

@@ -171,6 +171,26 @@ resource "aws_dynamodb_table" "mutual_fund_schemes" {
     type = "S"
   }
 
+  attribute {
+    name = "is_etf"
+    type = "S"
+  }
+
+  attribute {
+    name = "fund_name"
+    type = "S"
+  }
+
+  attribute {
+    name = "scheme_name"
+    type = "S"
+  }
+
+  attribute {
+    name = "nav"
+    type = "N"
+  }
+
   # GSI for querying by date
   global_secondary_index {
     name     = "DateIndex"
@@ -218,6 +238,20 @@ resource "aws_dynamodb_table" "mutual_fund_schemes" {
     projection_type = "ALL"
   }
 
+  # GSI for querying by ETF status - essential for portfolio allocation
+  global_secondary_index {
+    name     = "ETF-Status-Index" 
+    hash_key = "is_etf"
+    projection_type = "ALL"
+  }
+
+  # GSI for querying by fund name for search functionality
+  global_secondary_index {
+    name     = "FundName-Index" 
+    hash_key = "fund_name"
+    projection_type = "ALL"
+  }
+
   tags = {
     Name        = var.mutual_fund_schemes_table_name
     Environment = var.environment
@@ -237,4 +271,8 @@ output "category_rules_table_name" {
 
 output "user_budgets_table_name" {
   value = aws_dynamodb_table.user_budgets.name
+}
+
+output "mutual_fund_schemes_table_name" {
+  value = aws_dynamodb_table.mutual_fund_schemes.name
 }
