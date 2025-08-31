@@ -63,4 +63,17 @@ src/output.css
 terraform/.terraform*
 terraform/terraform.tfstate*
 terraform/build/
+terraform/lambda_build/
+terraform/python/
+terraform/*.zip
+terraform/tfplan
+terraform/README_OLD.md
+
+# Lambda build artifacts
+**/lambda_build/
+**/*.zip
+**/python/
+
 frontend/.env
+terraform/response.json
+terraform/terraform.tfvars.example

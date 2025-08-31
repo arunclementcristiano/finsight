@@ -4,7 +4,12 @@ variable "expenses_table_name" {
   default     = "Expenses"
 }
 
-// CategoryMemory removed per simplified flow
+// CategoryMemory removed per simplified 
+
+
+output "mutual_fund_schemes_table_name" {
+  value = aws_dynamodb_table.mutual_fund_schemes.name
+}
 
 variable "category_rules_table_name" {
   description = "DynamoDB table name for global category rules"
@@ -22,6 +27,18 @@ variable "invest_table_name" {
   description = "Single-table DynamoDB for user, portfolios, allocations, holdings, transactions"
   type        = string
   default     = "InvestApp"
+}
+
+variable "mutual_fund_schemes_table_name" {
+  description = "DynamoDB table name for mutual fund schemes"
+  type        = string
+  default     = "MutualFundSchemes"
+}
+
+variable "environment" {
+  description = "Environment name"
+  type        = string
+  default     = "dev"
 }
 
 resource "aws_dynamodb_table" "expenses" {
@@ -113,6 +130,101 @@ resource "aws_dynamodb_table" "invest" {
   }
 }
 
+# DynamoDB table for mutual fund schemes
+resource "aws_dynamodb_table" "mutual_fund_schemes" {
+  name         = var.mutual_fund_schemes_table_name
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "scheme_code"
+
+  attribute {
+    name = "scheme_code"
+    type = "S"
+  }
+
+  attribute {
+    name = "date"
+    type = "S"
+  }
+
+  attribute {
+    name = "amc"
+    type = "S"
+  }
+
+  attribute {
+    name = "scheme_type"
+    type = "S"
+  }
+
+  attribute {
+    name = "allocation_class"
+    type = "S"
+  }
+
+  attribute {
+    name = "plan"
+    type = "S"
+  }
+
+  attribute {
+    name = "option"
+    type = "S"
+  }
+
+  # GSI for querying by date
+  global_secondary_index {
+    name     = "DateIndex"
+    hash_key = "date"
+    projection_type = "ALL"
+  }
+
+  # GSI for querying by AMC
+  global_secondary_index {
+    name     = "AMC-Date-Index"
+    hash_key = "amc"
+    range_key = "date"
+    projection_type = "ALL"
+  }
+
+  # GSI for querying by scheme type
+  global_secondary_index {
+    name     = "SchemeType-Date-Index" 
+    hash_key = "scheme_type"
+    range_key = "date"
+    projection_type = "ALL"
+  }
+
+  # GSI for querying by allocation class - very useful for portfolio analysis
+  global_secondary_index {
+    name     = "AllocationClass-Date-Index" 
+    hash_key = "allocation_class"
+    range_key = "date"
+    projection_type = "ALL"
+  }
+
+  # GSI for querying by plan (Direct/Regular)
+  global_secondary_index {
+    name     = "Plan-Date-Index" 
+    hash_key = "plan"
+    range_key = "date"
+    projection_type = "ALL"
+  }
+
+  # GSI for querying by option (Growth/IDCW)
+  global_secondary_index {
+    name     = "Option-Date-Index" 
+    hash_key = "option"
+    range_key = "date"
+    projection_type = "ALL"
+  }
+
+  tags = {
+    Name        = var.mutual_fund_schemes_table_name
+    Environment = var.environment
+    Project     = "finsight"
+  }
+}
+
 output "expenses_table_name" {
   value = aws_dynamodb_table.expenses.name
 }
@@ -125,8 +237,4 @@ output "category_rules_table_name" {
 
 output "user_budgets_table_name" {
   value = aws_dynamodb_table.user_budgets.name
-}
-
-output "invest_table_name" {
-  value = aws_dynamodb_table.invest.name
 }
