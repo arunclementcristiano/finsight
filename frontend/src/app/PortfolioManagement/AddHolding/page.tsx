@@ -53,7 +53,7 @@ export default function AddHolding() {
 		setShowStockDropdown(filtered.length > 0);
 	}
 
-			// Equity MF autocomplete (Direct Plan – Growth)
+			// Mutual Funds autocomplete (Direct Plan – Growth)
 	const [mfSearchTerm, setMfSearchTerm] = useState('');
 	const [selectedMF, setSelectedMF] = useState<{ name: string; schemeCode: string; currentNAV?: number; fullName?: string } | null>(null);
 	const [mfOptions, setMfOptions] = useState<any[]>([]);
@@ -171,7 +171,7 @@ export default function AddHolding() {
 				</div>
 			)}
 
-			{/* Equity MF */}
+			{/* Mutual Funds */}
 			{selectedClass === 'mutual_funds' && (
 				<div className="rounded-xl border border-border bg-card p-4 space-y-4">
 					<h2 className="text-sm font-medium text-foreground">Mutual Funds</h2>
