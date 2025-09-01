@@ -62,9 +62,11 @@ resource "aws_iam_role_policy" "lambda_ddb_access" {
         aws_dynamodb_table.user_budgets.arn,
         aws_dynamodb_table.invest.arn,
         aws_dynamodb_table.mutual_fund_schemes.arn,
+        aws_dynamodb_table.holdings.arn,
         "${aws_dynamodb_table.expenses.arn}/index/userId-date-index",
         "${aws_dynamodb_table.invest.arn}/index/*",
-        "${aws_dynamodb_table.mutual_fund_schemes.arn}/index/*"
+        "${aws_dynamodb_table.mutual_fund_schemes.arn}/index/*",
+        "${aws_dynamodb_table.holdings.arn}/index/userId-createdAt-index"
       ]
     }]
   })

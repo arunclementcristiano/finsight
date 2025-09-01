@@ -35,6 +35,12 @@ variable "mutual_fund_schemes_table_name" {
   default     = "MutualFundSchemes"
 }
 
+variable "holdings_table_name" {
+  description = "DynamoDB table name for holdings"
+  type        = string
+  default     = "holdings"
+}
+
 variable "environment" {
   description = "Environment name"
   type        = string
@@ -249,6 +255,42 @@ resource "aws_dynamodb_table" "mutual_fund_schemes" {
   }
 }
 
+# Dedicated holdings table for portfolio holdings
+resource "aws_dynamodb_table" "holdings" {
+  name         = var.holdings_table_name
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "id"
+
+  attribute {
+    name = "id"
+    type = "S"
+  }
+
+  # Attributes used by the GSI must be defined here
+  attribute {
+    name = "user_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "created_at"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "userId-createdAt-index"
+    hash_key        = "user_id"
+    range_key       = "created_at"
+    projection_type = "ALL"
+  }
+
+  tags = {
+    Name        = var.holdings_table_name
+    Environment = var.environment
+    Project     = "finsight"
+  }
+}
+
 output "expenses_table_name" {
   value = aws_dynamodb_table.expenses.name
 }
@@ -261,4 +303,8 @@ output "category_rules_table_name" {
 
 output "user_budgets_table_name" {
   value = aws_dynamodb_table.user_budgets.name
+}
+
+output "holdings_table_name" {
+  value = aws_dynamodb_table.holdings.name
 }

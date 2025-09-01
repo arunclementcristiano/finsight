@@ -61,25 +61,13 @@ export interface HoldingData {
   updated_at: string;
 }
 
-// Function to fetch mutual fund schemes from DynamoDB
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || ""; // e.g., https://abc123.execute-api.us-east-1.amazonaws.com
+
 export async function fetchMutualFundSchemes(): Promise<TransformedFund[]> {
-  if (!docClient) throw new Error('DynamoDB client not initialized');
-  const command = new ScanCommand({
-    TableName: process.env.NEXT_PUBLIC_MUTUAL_FUND_TABLE || 'MutualFundSchemes',
-  });
-  const response = await docClient.send(command);
-  if (!response.Items) throw new Error('No mutual fund schemes found');
-  const funds = response.Items.map((item: any) => ({
-    schemeCode: item.scheme_code || item.schemeCode || '',
-    name: item.fund_name || item.name || '',
-    fullName: item.scheme_name || item.fullName || '',
-    currentNAV: parseFloat(item.nav) || 0,
-    fundType: item.allocation_class || 'Equity MF',
-    allocationClass: item.allocation_class || 'Equity',
-    isETF: item.is_etf === 'true' || item.isETF === true
-  }));
-  funds.sort((a, b) => a.name.localeCompare(b.name));
-  return funds;
+  const res = await fetch(`${API_BASE}/mutual-funds`, { method: 'GET' });
+  if (!res.ok) throw new Error(`MF fetch failed: ${res.status}`);
+  const data = await res.json();
+  return (data.items || []) as TransformedFund[];
 }
 
 // Function to fetch funds by ETF status
@@ -88,40 +76,26 @@ export async function fetchFundsByETFStatus(isETF: boolean): Promise<Transformed
   return allFunds.filter(fund => fund.isETF === isETF);
 }
 
-// Function to search funds by name
 export async function searchFundsByName(searchTerm: string, isETF?: boolean): Promise<TransformedFund[]> {
-  let allFunds = await fetchMutualFundSchemes();
-  if (isETF !== undefined) allFunds = allFunds.filter(fund => fund.isETF === isETF);
-  if (searchTerm.trim()) {
-    const term = searchTerm.toLowerCase();
-    allFunds = allFunds.filter(fund => fund.name.toLowerCase().includes(term) || fund.fullName.toLowerCase().includes(term));
-  }
-  return allFunds.slice(0, 10);
+  const params = new URLSearchParams();
+  if (searchTerm) params.set('q', searchTerm);
+  if (isETF !== undefined) params.set('is_etf', String(isETF));
+  const res = await fetch(`${API_BASE}/mutual-funds/search?${params.toString()}`, { method: 'GET' });
+  if (!res.ok) throw new Error(`MF search failed: ${res.status}`);
+  const data = await res.json();
+  return (data.items || []) as TransformedFund[];
 }
 
-// Function to save holding to DynamoDB
 export async function saveHolding(holding: HoldingData): Promise<boolean> {
-  if (!docClient) throw new Error('DynamoDB client not initialized');
-  const command = new PutCommand({
-    TableName: process.env.NEXT_PUBLIC_HOLDINGS_TABLE || 'holdings',
-    Item: holding,
-  });
-  await docClient.send(command);
+  const body = { portfolioId: holding.user_id, holding };
+  const res = await fetch(`${API_BASE}/holdings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!res.ok) throw new Error(`Save holding failed: ${res.status}`);
   return true;
 }
 
-// Function to fetch holdings for a user from DynamoDB
 export async function fetchUserHoldings(userId: string): Promise<HoldingData[]> {
-  if (!docClient) throw new Error('DynamoDB client not initialized');
-  const command = new ScanCommand({
-    TableName: process.env.NEXT_PUBLIC_HOLDINGS_TABLE || 'holdings',
-    FilterExpression: 'user_id = :userId',
-    ExpressionAttributeValues: { ':userId': userId },
-  });
-  const response = await docClient.send(command);
-  if (!response.Items) throw new Error('No holdings found');
-  const holdings = (response.Items as HoldingData[]).sort((a: any, b: any) =>
-    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
-  return holdings;
+  const res = await fetch(`${API_BASE}/holdings?portfolioId=${encodeURIComponent(userId)}`, { method: 'GET' });
+  if (!res.ok) throw new Error(`Fetch holdings failed: ${res.status}`);
+  const data = await res.json();
+  return (data.items || []) as HoldingData[];
 }
