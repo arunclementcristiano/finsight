@@ -112,13 +112,9 @@ def _get_portfolio_role_for_asset_class(asset_class):
 
 def _validate_table_exists(table_name, table_object):
     """Validate that a DynamoDB table exists and is accessible"""
-    try:
-        # Try to describe the table to check if it exists
-        table_object.meta.client.describe_table(TableName=table_name)
-        return True
-    except Exception as e:
-        print(f"Table {table_name} validation failed: {e}")
-        return False
+    # Skip validation to avoid IAM permission issues
+    # The table operations will fail naturally if there are permission issues
+    return True
 
 
 ALLOWED_CATEGORIES = [
@@ -671,10 +667,6 @@ def handler(event, context):
                 print(f"User ID: {user_sub}")
                 print(f"Portfolio ID: {portfolio_id}")
                 
-                # Validate table exists
-                if not _validate_table_exists(HOLDINGS_TABLE, holdings_table):
-                    return _response(500, {"error": f"Table {HOLDINGS_TABLE} does not exist or is not accessible"})
-                
                 print(f"Using global holdings table: {holdings_table}")
                 
                 # Query the holdings table
@@ -789,10 +781,6 @@ def handler(event, context):
             try:
                 print(f"Fetching mutual funds from table: {MUTUAL_FUND_SCHEMES_TABLE}")
                 
-                # Validate table exists
-                if not _validate_table_exists(MUTUAL_FUND_SCHEMES_TABLE, mutual_fund_schemes_table):
-                    return _response(500, {"error": f"Table {MUTUAL_FUND_SCHEMES_TABLE} does not exist or is not accessible"})
-                
                 print(f"Using global mutual fund schemes table: {mutual_fund_schemes_table}")
                 
                 res = mutual_fund_schemes_table.scan()
@@ -848,10 +836,6 @@ def handler(event, context):
                 print(f"Searching mutual funds in table: {MUTUAL_FUND_SCHEMES_TABLE}")
                 print(f"Search query: {q}")
                 print(f"ETF filter: {is_etf}")
-                
-                # Validate table exists
-                if not _validate_table_exists(MUTUAL_FUND_SCHEMES_TABLE, mutual_fund_schemes_table):
-                    return _response(500, {"error": f"Table {MUTUAL_FUND_SCHEMES_TABLE} does not exist or is not accessible"})
                 
                 # Scan the mutual fund schemes table
                 res = mutual_fund_schemes_table.scan()
