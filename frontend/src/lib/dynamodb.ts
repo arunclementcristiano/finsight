@@ -89,7 +89,6 @@ function shouldRefreshCache(): boolean {
 export async function fetchMutualFundSchemes(): Promise<TransformedFund[]> {
   // Check if cache is valid
   if (mfCache && !shouldRefreshCache()) {
-    console.log('Using cached mutual fund data');
     return mfCache.data;
   }
 
@@ -99,7 +98,6 @@ export async function fetchMutualFundSchemes(): Promise<TransformedFund[]> {
   }
 
   try {
-    console.log('Fetching fresh mutual fund data from API');
     const res = await fetch(`${API_BASE}/mutual-funds`, { method: 'GET' });
     
     if (!res.ok) {
@@ -111,28 +109,23 @@ export async function fetchMutualFundSchemes(): Promise<TransformedFund[]> {
     
     // Update cache
     mfCache = { data: funds, timestamp: Date.now() };
-    console.log(`Successfully fetched ${funds.length} funds from API and cached`);
     return funds;
   } catch (error) {
-    console.error('Failed to fetch mutual fund data:', error);
     throw error;
   }
 }
 
 // Preload function to be called on server start
 export async function preloadMutualFundData(): Promise<void> {
-  console.log('Preloading mutual fund data on server start...');
   try {
     await fetchMutualFundSchemes();
-    console.log('Mutual fund data preloaded successfully');
   } catch (error) {
-    console.warn('Failed to preload mutual fund data:', error);
+    // Silent fail on preload
   }
 }
 
 // Function to clear cache (for testing)
 export function clearMFCache(): void {
-  console.log('🧹 Clearing mutual fund cache...');
   mfCache = null;
 }
 
@@ -167,33 +160,26 @@ export async function searchFundsByName(searchTerm: string, isETF?: boolean): Pr
 }
 
 export async function saveHolding(holding: HoldingData): Promise<boolean> {
-  // Try to save to API if available
-  if (API_BASE) {
-    try {
-      console.log('Saving holding to API...', holding);
-      const body = { portfolioId: holding.user_id, holding };
-      const res = await fetch(`${API_BASE}/holdings`, { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify(body) 
-      });
-      
-      if (res.ok) {
-        const result = await res.json();
-        console.log('Successfully saved holding to API:', result);
-        return true;
-      } else {
-        const errorText = await res.text();
-        console.error(`API returned ${res.status}:`, errorText);
-        throw new Error(`Save holding failed: ${res.status} - ${errorText}`);
-      }
-    } catch (error) {
-      console.error('Error saving holding to API:', error);
-      throw error;
+  if (!API_BASE) {
+    throw new Error('API_BASE not configured');
+  }
+
+  try {
+    const body = { portfolioId: holding.user_id, holding };
+    const res = await fetch(`${API_BASE}/holdings`, { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json' }, 
+      body: JSON.stringify(body) 
+    });
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Save holding failed: ${res.status} - ${errorText}`);
     }
-  } else {
-    console.warn('API_BASE not configured, cannot save holding');
-    throw new Error('API not configured');
+    
+    return true;
+  } catch (error) {
+    throw error;
   }
 }
 
@@ -205,7 +191,6 @@ export async function fetchUserHoldings(userId: string): Promise<HoldingData[]> 
   }
 
   try {
-    console.log('Fetching holdings from API...');
     const res = await fetch(`${API_BASE}/holdings?portfolioId=${encodeURIComponent(userId)}`, { method: 'GET' });
     
     if (!res.ok) {
@@ -213,10 +198,8 @@ export async function fetchUserHoldings(userId: string): Promise<HoldingData[]> 
     }
     
     const data = await res.json();
-    console.log('Successfully fetched holdings from API');
     return (data.items || []) as HoldingData[];
   } catch (error) {
-    console.error('Failed to fetch holdings:', error);
     throw error;
   }
 }

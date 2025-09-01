@@ -156,27 +156,9 @@ export default function HoldingsPage() {
 				await preloadMutualFundData();
 				const funds = await fetchMutualFundSchemes();
 				setMfOptions(funds);
-				console.log('Loaded funds directly from DynamoDB:', funds);
 			} catch (error) {
-				console.error('Error loading MF data from DynamoDB:', error);
-				// Fallback to mock data if DynamoDB fails
-				loadMockData();
+				// Silent fail - user will see empty results
 			}
-		}
-
-		function loadMockData() {
-			const mockFunds: TransformedFund[] = [
-				{ schemeCode: 'MOCK001', name: 'HDFC Mid-Cap Opportunities Fund', fullName: 'HDFC Mid-Cap Opportunities Fund - Direct Plan - Growth', currentNAV: 45.67, fundType: 'Equity MF', allocationClass: 'Equity', isETF: false },
-				{ schemeCode: 'MOCK002', name: 'ICICI Prudential Bluechip Fund', fullName: 'ICICI Prudential Bluechip Fund - Direct Plan - Growth', currentNAV: 52.34, fundType: 'Equity MF', allocationClass: 'Equity', isETF: false },
-				{ schemeCode: 'MOCK003', name: 'SBI Gold Fund', fullName: 'SBI Gold Fund - Direct Plan - Growth', currentNAV: 23.45, fundType: 'Gold MF', allocationClass: 'Gold', isETF: false },
-				{ schemeCode: 'ETF001', name: 'NIFTY 50 ETF', fullName: 'NIFTY 50 ETF - Direct Plan - Growth', currentNAV: 185.67, fundType: 'Equity ETF', allocationClass: 'Equity', isETF: true },
-				{ schemeCode: 'ETF002', name: 'GOLD ETF', fullName: 'GOLD ETF - Direct Plan - Growth', currentNAV: 45.23, fundType: 'Gold ETF', allocationClass: 'Gold', isETF: true }
-			];
-			
-			// Sort by name for better UX
-			mockFunds.sort((a, b) => a.name.localeCompare(b.name));
-			setMfOptions(mockFunds);
-			console.log('Using mock data as fallback');
 		}
 		
 		loadMFData();
@@ -210,11 +192,8 @@ export default function HoldingsPage() {
 						addHolding(holding);
 					}
 				});
-				
-				console.log('Loaded holdings from DynamoDB:', transformedHoldings);
 			} catch (error) {
-				console.error('Error loading holdings from DynamoDB:', error);
-				// Continue with local state if DynamoDB fails
+				// Silent fail - continue with local state
 			}
 		}
 		
@@ -537,27 +516,14 @@ export default function HoldingsPage() {
 					<h1 className="text-lg font-semibold tracking-tight">Holdings</h1>
 					<p className="text-sm text-muted-foreground">Capture your investments and view allocation.</p>
 				</div>
-				<div className="flex gap-2">
-					<Button 
-						onClick={() => {
-							clearMFCache();
-							console.log('🧹 Cache cleared! Refresh the page to test with fresh data.');
-						}}
-						variant="outline" 
-						size="sm"
-						className="text-xs"
-					>
-						Clear Cache
-					</Button>
-					<Button 
-						onClick={() => setIsModalOpen(true)} 
-						variant="outline" 
-						size="md"
-						leftIcon={<Plus size={18} />}
-					>
-						Add Holding
-					</Button>
-				</div>
+				<Button 
+					onClick={() => setIsModalOpen(true)} 
+					variant="outline" 
+					size="md"
+					leftIcon={<Plus size={18} />}
+				>
+					Add Holding
+				</Button>
 			</div>
 			
 			{/* KPI Row */}
@@ -1379,12 +1345,28 @@ export default function HoldingsPage() {
 													Reset
 												</button>
 											</div>
-											<button
-												type="submit"
-												className="min-w-[140px] px-6 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 text-sm"
-											>
-												{editingId ? "Save Changes" : "Add Holding"}
-											</button>
+											
+											{/* Simple KPI Section */}
+											<div className="flex items-center gap-4">
+												{form.investedAmount && (
+													<div className="text-right">
+														<div className="text-xs text-muted-foreground">Investment</div>
+														<div className="text-sm font-medium">₹{parseFloat(form.investedAmount || '0').toLocaleString()}</div>
+													</div>
+												)}
+												{form.units && form.price && (
+													<div className="text-right">
+														<div className="text-xs text-muted-foreground">Value</div>
+														<div className="text-sm font-medium">₹{(parseFloat(form.units || '0') * parseFloat(form.price || '0')).toLocaleString()}</div>
+													</div>
+												)}
+												<button
+													type="submit"
+													className="min-w-[140px] px-6 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 text-sm"
+												>
+													{editingId ? "Save Changes" : "Add Holding"}
+												</button>
+											</div>
 										</div>
 									</form>
 								) : (
