@@ -110,6 +110,17 @@ def _get_portfolio_role_for_asset_class(asset_class):
     return mapping.get(asset_class, "Equity")  # Default to Equity if not found
 
 
+def _validate_table_exists(table_name, table_object):
+    """Validate that a DynamoDB table exists and is accessible"""
+    try:
+        # Try to describe the table to check if it exists
+        table_object.meta.client.describe_table(TableName=table_name)
+        return True
+    except Exception as e:
+        print(f"Table {table_name} validation failed: {e}")
+        return False
+
+
 ALLOWED_CATEGORIES = [
     "Food",          # groceries, restaurants, coffee, snacks
     "Travel",        # fuel, cab, flights, metro, parking
@@ -228,9 +239,18 @@ def _extract_term(raw_text: str) -> str:
 
 def handler(event, context):
     try:
+        # Log environment variables for debugging
+        print(f"Environment variables:")
+        print(f"  MUTUAL_FUND_SCHEMES_TABLE: {os.environ.get('MUTUAL_FUND_SCHEMES_TABLE', 'NOT_SET')}")
+        print(f"  HOLDINGS_TABLE: {os.environ.get('HOLDINGS_TABLE', 'NOT_SET')}")
+        print(f"  AWS_REGION: {os.environ.get('AWS_REGION', 'NOT_SET')}")
+        
         method = (event.get("requestContext", {}).get("http", {}) or {}).get("method") or event.get("httpMethod")
         path = event.get("rawPath") or event.get("resource") or ""
         route_key = event.get("requestContext", {}).get("routeKey") or f"{method} {path}"
+        
+        print(f"Request: {method} {path}")
+        print(f"Route key: {route_key}")
 
         if method == "OPTIONS":
             return _response(200, {"ok": True})
@@ -600,10 +620,7 @@ def handler(event, context):
                 return _response(400, {"error": "Missing portfolioId or holding"})
             
             try:
-                # Use the new holdings table
-                table_name = os.environ.get("HOLDINGS_TABLE", "holdings")
-                print(f"Using holdings table: {table_name}")
-                holdings_table = dynamodb.Table(table_name)
+                print(f"Using holdings table: {HOLDINGS_TABLE}")
                 holding_id = holding.get("id") or str(uuid.uuid4())
                 now = datetime.utcnow().isoformat()
                 
@@ -650,13 +667,26 @@ def handler(event, context):
                 return _response(400, {"error": "Missing portfolioId"})
             
             try:
-                # Use the new holdings table
-                holdings_table = dynamodb.Table(os.environ.get("HOLDINGS_TABLE", "holdings"))
+                print(f"Fetching holdings from table: {HOLDINGS_TABLE}")
+                print(f"User ID: {user_sub}")
+                print(f"Portfolio ID: {portfolio_id}")
+                
+                # Validate table exists
+                if not _validate_table_exists(HOLDINGS_TABLE, holdings_table):
+                    return _response(500, {"error": f"Table {HOLDINGS_TABLE} does not exist or is not accessible"})
+                
+                print(f"Using global holdings table: {holdings_table}")
+                
+                # Query the holdings table
                 res = holdings_table.query(
                     IndexName="userId-createdAt-index",
                     KeyConditionExpression=Key("user_id").eq(user_sub)
                 )
+                print(f"Query result: {res}")
+                
                 items = res.get("Items", [])
+                print(f"Found {len(items)} holding items")
+                
                 holdings = []
                 for it in items:
                     holding_data = it.get("data") or {}
@@ -664,10 +694,14 @@ def handler(event, context):
                     holding_data["asset_class"] = it.get("asset_class", holding_data.get("instrumentClass", "Stocks"))
                     holding_data["portfolio_role"] = it.get("portfolio_role", "Equity")
                     holdings.append({"id": it.get("id"), **holding_data})
+                
+                print(f"Returning {len(holdings)} holdings")
                 return _response(200, {"items": holdings})
             except Exception as e:
                 print(f"Error fetching holdings: {e}")
-                return _response(500, {"error": "Failed to fetch holdings"})
+                print(f"Error type: {type(e)}")
+                print(f"Traceback: {traceback.format_exc()}")
+                return _response(500, {"error": f"Failed to fetch holdings: {str(e)}"})
 
         # Delete holding (DELETE /holdings/{id})
         if route_key == "DELETE /holdings/{id}":
@@ -683,7 +717,6 @@ def handler(event, context):
                     return _response(400, {"error": "Missing portfolioId"})
                 
                 # Delete the holding from DynamoDB
-                holdings_table = dynamodb.Table(os.environ.get("HOLDINGS_TABLE", "holdings"))
                 holdings_table.delete_item(
                     Key={
                         "user_id": "dev_user_123",  # Use same user ID as GET endpoint
@@ -754,15 +787,15 @@ def handler(event, context):
         # Get mutual fund schemes (GET /mutual-funds)
         if route_key == "GET /mutual-funds":
             try:
-                # Get table name from environment
-                table_name = os.environ.get("MUTUAL_FUND_SCHEMES_TABLE", "MutualFundSchemes")
-                print(f"Fetching mutual funds from table: {table_name}")
+                print(f"Fetching mutual funds from table: {MUTUAL_FUND_SCHEMES_TABLE}")
                 
-                # Scan the mutual fund schemes table
-                table = dynamodb.Table(table_name)
-                print(f"Table object created: {table}")
+                # Validate table exists
+                if not _validate_table_exists(MUTUAL_FUND_SCHEMES_TABLE, mutual_fund_schemes_table):
+                    return _response(500, {"error": f"Table {MUTUAL_FUND_SCHEMES_TABLE} does not exist or is not accessible"})
                 
-                res = table.scan()
+                print(f"Using global mutual fund schemes table: {mutual_fund_schemes_table}")
+                
+                res = mutual_fund_schemes_table.scan()
                 print(f"Scan result: {res}")
                 
                 items = res.get("Items", [])
@@ -798,9 +831,18 @@ def handler(event, context):
                 q = (qs or {}).get("q", "").lower()
                 is_etf = (qs or {}).get("is_etf")
                 
+                print(f"Searching mutual funds in table: {MUTUAL_FUND_SCHEMES_TABLE}")
+                print(f"Search query: {q}")
+                print(f"ETF filter: {is_etf}")
+                
+                # Validate table exists
+                if not _validate_table_exists(MUTUAL_FUND_SCHEMES_TABLE, mutual_fund_schemes_table):
+                    return _response(500, {"error": f"Table {MUTUAL_FUND_SCHEMES_TABLE} does not exist or is not accessible"})
+                
                 # Scan the mutual fund schemes table
-                res = dynamodb.Table(os.environ.get("MUTUAL_FUND_SCHEMES_TABLE", "MutualFundSchemes")).scan()
+                res = mutual_fund_schemes_table.scan()
                 items = res.get("Items", [])
+                print(f"Found {len(items)} total mutual fund items")
                 
                 # Filter by search term and ETF status
                 filtered_funds = []
@@ -831,10 +873,13 @@ def handler(event, context):
                 
                 # Sort by name and limit results
                 filtered_funds.sort(key=lambda x: x["name"])
+                print(f"Returning {len(filtered_funds)} filtered funds")
                 return _response(200, {"items": filtered_funds[:10]})
             except Exception as e:
                 print(f"Error searching mutual funds: {e}")
-                return _response(500, {"error": "Failed to search mutual funds"})
+                print(f"Error type: {type(e)}")
+                print(f"Traceback: {traceback.format_exc()}")
+                return _response(500, {"error": f"Failed to search mutual funds: {str(e)}"})
 
         return _response(404, {"error": "Not found", "routeKey": route_key})
     except Exception as e:
