@@ -7,7 +7,7 @@ import { Plus, Edit2, Trash2, X, Search, TrendingUp, BarChart3, PieChart as PieC
 import { v4 as uuidv4 } from "uuid";
 import { Card as PlanCard, CardContent as PlanCardContent, CardHeader as PlanCardHeader, CardTitle as PlanCardTitle } from "../../../components/Card";
 import { Button } from "../../../components/Button";
-import { fetchMutualFundSchemes, searchFundsByName, TransformedFund, saveHolding, fetchUserHoldings, HoldingData } from "../../../../lib/dynamodb";
+import { fetchMutualFundSchemes, searchFundsByName, TransformedFund, saveHolding, fetchUserHoldings, HoldingData, preloadMutualFundData } from "../../../../lib/dynamodb";
 
 // Asset class colors for charts
 const CLASS_COLORS = {
@@ -152,6 +152,8 @@ export default function HoldingsPage() {
 	React.useEffect(() => {
 		async function loadMFData() {
 			try {
+				// Preload data on component mount
+				await preloadMutualFundData();
 				const funds = await fetchMutualFundSchemes();
 				setMfOptions(funds);
 				console.log('Loaded funds directly from DynamoDB:', funds);

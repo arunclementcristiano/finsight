@@ -63,9 +63,26 @@ export interface HoldingData {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
 
-// Cache for mutual fund data with daily refresh
+// Cache for mutual fund data with daily refresh at 6 AM
 let mfCache: { data: TransformedFund[]; timestamp: number } | null = null;
-const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+function getNextRefreshTime(): number {
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(6, 0, 0, 0); // 6 AM tomorrow
+  return tomorrow.getTime();
+}
+
+function shouldRefreshCache(): boolean {
+  if (!mfCache) return true;
+  
+  const now = Date.now();
+  const nextRefresh = getNextRefreshTime();
+  
+  // Refresh if it's past 6 AM or cache is older than 24 hours
+  return now >= nextRefresh || (now - mfCache.timestamp) >= 24 * 60 * 60 * 1000;
+}
 
 // Mock data for development/testing
 const MOCK_MF_DATA: TransformedFund[] = [
@@ -78,7 +95,7 @@ const MOCK_MF_DATA: TransformedFund[] = [
 
 export async function fetchMutualFundSchemes(): Promise<TransformedFund[]> {
   // Check if cache is valid
-  if (mfCache && (Date.now() - mfCache.timestamp) < CACHE_DURATION) {
+  if (mfCache && !shouldRefreshCache()) {
     console.log('Using cached mutual fund data');
     return mfCache.data;
   }
@@ -106,6 +123,17 @@ export async function fetchMutualFundSchemes(): Promise<TransformedFund[]> {
   console.log('Using mock mutual fund data (API not available)');
   mfCache = { data: MOCK_MF_DATA, timestamp: Date.now() };
   return MOCK_MF_DATA;
+}
+
+// Preload function to be called on server start
+export async function preloadMutualFundData(): Promise<void> {
+  console.log('Preloading mutual fund data on server start...');
+  try {
+    await fetchMutualFundSchemes();
+    console.log('Mutual fund data preloaded successfully');
+  } catch (error) {
+    console.warn('Failed to preload mutual fund data:', error);
+  }
 }
 
 // Function to fetch funds by ETF status
@@ -181,10 +209,14 @@ export async function fetchUserHoldings(userId: string): Promise<HoldingData[]> 
   // Try to fetch from API if available
   if (API_BASE) {
     try {
+      console.log('Fetching holdings from API...');
       const res = await fetch(`${API_BASE}/holdings?portfolioId=${encodeURIComponent(userId)}`, { method: 'GET' });
       if (res.ok) {
         const data = await res.json();
+        console.log('Successfully fetched holdings from API');
         return (data.items || []) as HoldingData[];
+      } else {
+        console.warn(`API returned ${res.status}, using mock data`);
       }
     } catch (error) {
       console.warn('API call failed, using mock data:', error);

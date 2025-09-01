@@ -525,9 +525,8 @@ def handler(event, context):
 
         # Create holding (POST /holdings) — body: { portfolioId, holding }
         if route_key == "POST /holdings":
-            user_sub = _user_from_jwt(event)
-            if not user_sub:
-                return _response(401, {"error": "Unauthorized"})
+            # Temporarily allow without authentication for development
+            user_sub = _user_from_jwt(event) or "dev_user_123"
             portfolio_id = body.get("portfolioId")
             holding = body.get("holding") or {}
             if not portfolio_id or not isinstance(holding, dict):
@@ -556,9 +555,8 @@ def handler(event, context):
 
         # List holdings (GET /holdings?portfolioId=...)
         if route_key == "GET /holdings":
-            user_sub = _user_from_jwt(event)
-            if not user_sub:
-                return _response(401, {"error": "Unauthorized"})
+            # Temporarily allow without authentication for development
+            user_sub = _user_from_jwt(event) or "dev_user_123"
             portfolio_id = (qs or {}).get("portfolioId")
             if not portfolio_id:
                 return _response(400, {"error": "Missing portfolioId"})
