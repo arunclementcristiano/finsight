@@ -4,7 +4,7 @@ import { Search } from 'lucide-react';
 
 const ASSET_CLASSES = [
 	{ id: 'stocks', label: 'Stocks' },
-			{ id: 'equity_mf', label: 'Equity MF' },
+			{ id: 'mutual_funds', label: 'Mutual Funds' },
 	{ id: 'debt', label: 'Debt' },
 	{ id: 'liquid', label: 'Liquid' },
 	{ id: 'gold', label: 'Gold' },
@@ -172,9 +172,9 @@ export default function AddHolding() {
 			)}
 
 			{/* Equity MF */}
-			{selectedClass === 'equity_mf' && (
+			{selectedClass === 'mutual_funds' && (
 				<div className="rounded-xl border border-border bg-card p-4 space-y-4">
-					<h2 className="text-sm font-medium text-foreground">Equity MF</h2>
+					<h2 className="text-sm font-medium text-foreground">Mutual Funds</h2>
 					<div className="relative">
 						<label className="block text-xs text-muted-foreground mb-2">Search Mutual Fund (Direct Growth) *</label>
 						<div className="relative">
