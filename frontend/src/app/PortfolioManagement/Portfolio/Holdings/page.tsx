@@ -336,8 +336,13 @@ export default function HoldingsPage() {
 		if (!holdings) return [];
 		
 		return holdings.filter(holding => {
-			const matchesAssetClass = !filterAssetClass || holding.instrumentClass === filterAssetClass;
-			const matchesAssetRole = !filterAssetRole || getRoleForAssetClass(holding.instrumentClass) === filterAssetRole;
+			// Use asset_class from holdings table if available, fallback to instrumentClass
+			const assetClass = (holding as any).asset_class || holding.instrumentClass;
+			// Use portfolio_role from holdings table if available, fallback to calculated role
+			const portfolioRole = (holding as any).portfolio_role || getRoleForAssetClass(holding.instrumentClass);
+			
+			const matchesAssetClass = !filterAssetClass || assetClass === filterAssetClass;
+			const matchesAssetRole = !filterAssetRole || portfolioRole === filterAssetRole;
 			return matchesAssetClass && matchesAssetRole;
 		});
 	}, [holdings, filterAssetClass, filterAssetRole]);
@@ -367,8 +372,9 @@ export default function HoldingsPage() {
 					bv = b.name || '';
 					return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
 				case 'class':
-					av = a.instrumentClass || '';
-					bv = b.instrumentClass || '';
+					// Use asset_class from holdings table if available, fallback to instrumentClass
+					av = (a as any).asset_class || a.instrumentClass || '';
+					bv = (b as any).asset_class || b.instrumentClass || '';
 					return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
 				case 'current':
 					av = computeHoldingValue(a);
@@ -735,15 +741,16 @@ export default function HoldingsPage() {
 								>
 									<option value="">All Classes</option>
 									<option value="Stocks">Stocks</option>
-									<option value="Mutual Funds">Mutual Funds</option>
+									<option value="Equity MF">Equity MF</option>
+									<option value="Debt MF">Debt MF</option>
+									<option value="Liquid MF">Liquid MF</option>
 									<option value="Gold">Gold</option>
 									<option value="Real Estate">Real Estate</option>
-									<option value="Debt">Debt</option>
-									<option value="Liquid">Liquid</option>
+									<option value="ETF">ETF</option>
 								</select>
 							</div>
 							<div className="flex items-center gap-2">
-								<label className="text-xs font-medium text-muted-foreground">Asset Role:</label>
+								<label className="text-xs font-medium text-muted-foreground">Portfolio Role:</label>
 								<select
 									value={filterAssetRole || ''}
 									onChange={(e) => setFilterAssetRole(e.target.value || null)}
@@ -764,7 +771,7 @@ export default function HoldingsPage() {
 										<thead className="bg-card sticky top-0 z-10">
 											<tr>
 												<th className="py-2 px-3 text-muted-foreground cursor-pointer" onClick={() => toggleSort('instrument')}>Instrument</th>
-												<th className="py-2 px-3 text-muted-foreground cursor-pointer" onClick={() => toggleSort('class')}>Class/Role</th>
+												<th className="py-2 px-3 text-muted-foreground cursor-pointer" onClick={() => toggleSort('class')}>Asset Class / Portfolio Role</th>
 												<th className="py-2 px-3 text-muted-foreground">Units</th>
 												<th className="py-2 px-3 text-muted-foreground cursor-pointer" onClick={() => toggleSort('current')}>Price</th>
 												<th className="py-2 px-3 text-muted-foreground text-right cursor-pointer" onClick={() => toggleSort('current')}>Current Value</th>
@@ -792,8 +799,8 @@ export default function HoldingsPage() {
 														</td>
 														<td className="py-2 px-3">
 															<div className="space-y-0.5">
-																<div className="text-sm text-foreground">{(holding as any).asset_class || holding.instrumentClass}</div>
-																<div className="text-xs italic text-muted-foreground">{(holding as any).portfolio_role || getRoleForAssetClass(holding.instrumentClass)}</div>
+																<div className="text-sm text-foreground font-medium">{(holding as any).asset_class || holding.instrumentClass}</div>
+																<div className="text-xs text-muted-foreground">Role: {(holding as any).portfolio_role || getRoleForAssetClass(holding.instrumentClass)}</div>
 															</div>
 														</td>
 														<td className="py-2 px-3">{holding.units?.toFixed(2) || '0.00'}</td>
