@@ -143,34 +143,72 @@ export async function fetchFundsByETFStatus(isETF: boolean): Promise<Transformed
 }
 
 export async function searchFundsByName(searchTerm: string, isETF?: boolean): Promise<TransformedFund[]> {
+  console.log('🔍 searchFundsByName called with:', { searchTerm, isETF });
+  
   // Use cached data for search to avoid API calls
   const allFunds = await fetchMutualFundSchemes();
+  console.log('📊 Total funds available:', allFunds.length);
+  console.log('📋 Sample funds:', allFunds.slice(0, 3));
   
   let filteredFunds = allFunds;
   
   // Filter by ETF status if specified
   if (isETF !== undefined) {
+    const beforeETFFilter = filteredFunds.length;
     filteredFunds = filteredFunds.filter(fund => fund.isETF === isETF);
+    console.log(`🎯 ETF filter (${isETF}): ${beforeETFFilter} → ${filteredFunds.length} funds`);
   }
   
   // Filter by search term
   if (searchTerm.trim()) {
     const term = searchTerm.toLowerCase();
-    filteredFunds = filteredFunds.filter(fund => 
-      fund.name.toLowerCase().includes(term) || 
-      fund.fullName.toLowerCase().includes(term)
-    );
+    const beforeSearchFilter = filteredFunds.length;
+    filteredFunds = filteredFunds.filter(fund => {
+      const nameMatch = fund.name.toLowerCase().includes(term);
+      const fullNameMatch = fund.fullName.toLowerCase().includes(term);
+      const matches = nameMatch || fullNameMatch;
+      if (matches) {
+        console.log(`✅ Match found: "${fund.name}" (term: "${term}")`);
+      }
+      return matches;
+    });
+    console.log(`🔎 Search filter ("${term}"): ${beforeSearchFilter} → ${filteredFunds.length} funds`);
   }
   
-  // Return limited results
-  return filteredFunds.slice(0, 10);
+  const result = filteredFunds.slice(0, 10);
+  console.log('🎯 Final results:', result.length, 'funds');
+  return result;
 }
 
 export async function saveHolding(holding: HoldingData): Promise<boolean> {
-  const body = { portfolioId: holding.user_id, holding };
-  const res = await fetch(`${API_BASE}/holdings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  if (!res.ok) throw new Error(`Save holding failed: ${res.status}`);
-  return true;
+  // Try to save to API if available
+  if (API_BASE) {
+    try {
+      console.log('Saving holding to API...', holding);
+      const body = { portfolioId: holding.user_id, holding };
+      const res = await fetch(`${API_BASE}/holdings`, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(body) 
+      });
+      
+      if (res.ok) {
+        const result = await res.json();
+        console.log('Successfully saved holding to API:', result);
+        return true;
+      } else {
+        const errorText = await res.text();
+        console.error(`API returned ${res.status}:`, errorText);
+        throw new Error(`Save holding failed: ${res.status} - ${errorText}`);
+      }
+    } catch (error) {
+      console.error('Error saving holding to API:', error);
+      throw error;
+    }
+  } else {
+    console.warn('API_BASE not configured, cannot save holding');
+    throw new Error('API not configured');
+  }
 }
 
 // Mock holdings data for development/testing

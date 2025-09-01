@@ -237,7 +237,10 @@ export default function HoldingsPage() {
 	};
 
 	const filterMFOptions = async (term: string): Promise<void> => {
+		console.log('🔍 filterMFOptions called with:', { term, selectedRole, mfOptionsCount: mfOptions.length });
+		
 		if (term.trim() === "") {
+			console.log('📝 Empty term, clearing dropdown');
 			setFilteredMFOptions([]);
 			setShowMFDropdown(false);
 		} else {
@@ -246,23 +249,34 @@ export default function HoldingsPage() {
 				let isETF: boolean | undefined;
 				if (selectedRole === 'Mutual Funds') {
 					isETF = false;
+					console.log('🏦 Searching for Mutual Funds (isETF = false)');
 				} else if (selectedRole === 'ETF') {
 					isETF = true;
+					console.log('📈 Searching for ETFs (isETF = true)');
+				} else {
+					console.log('❓ No role selected, searching all funds');
 				}
 				
+				console.log('🔍 Calling searchFundsByName with:', { term, isETF });
 				// Search funds directly from DynamoDB with filtering
 				const filtered = await searchFundsByName(term, isETF);
+				console.log('✅ searchFundsByName returned:', filtered.length, 'funds');
+				console.log('📋 Sample filtered funds:', filtered.slice(0, 3));
+				
 				setFilteredMFOptions(filtered);
 				setShowMFDropdown(filtered.length > 0);
 			} catch (error) {
-				console.error('Error searching funds:', error);
+				console.error('❌ Error searching funds:', error);
 				// Fallback to local filtering if DynamoDB search fails
+				console.log('🔄 Falling back to local filtering...');
 				let filtered = mfOptions;
 				
 				if (selectedRole === 'Mutual Funds') {
 					filtered = mfOptions.filter(option => !option.isETF);
+					console.log('🏦 Local filter for Mutual Funds:', filtered.length, 'funds');
 				} else if (selectedRole === 'ETF') {
 					filtered = mfOptions.filter(option => option.isETF);
+					console.log('📈 Local filter for ETFs:', filtered.length, 'funds');
 				}
 				
 				filtered = filtered.filter(option =>
@@ -270,6 +284,7 @@ export default function HoldingsPage() {
 					option.fullName.toLowerCase().includes(term.toLowerCase())
 				);
 				
+				console.log('🔍 Local search results:', filtered.length, 'funds');
 				setFilteredMFOptions(filtered.slice(0, 10));
 				setShowMFDropdown(filtered.length > 0);
 			}
