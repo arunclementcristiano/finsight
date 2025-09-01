@@ -3,7 +3,7 @@
  * Professional-grade allocation logic with weighted signals and dynamic base calculations
  */
 
-export type AssetClass = "Stocks" | "Mutual Funds" | "Gold" | "Real Estate" | "Debt" | "Liquid";
+export type AssetClass = "Stocks" | "Mutual Funds" | "ETF" | "Gold" | "Real Estate" | "Debt" | "Liquid";
 export type RiskLevel = "Conservative" | "Moderate" | "Aggressive";
 
 export interface RiskRange {

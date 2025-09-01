@@ -81,6 +81,7 @@ export class AdvisorCouncilEngine {
     let allocation: Record<AssetClass, number> = {
       "Stocks": stocks,
       "Mutual Funds": mutualFunds,
+      "ETF": 0, // ETFs will be handled as part of Mutual Funds for now
       "Gold": gold,
       "Real Estate": realEstate,
       "Debt": debt,

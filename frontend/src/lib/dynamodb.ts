@@ -98,6 +98,7 @@ export async function fetchMutualFundSchemes(): Promise<TransformedFund[]> {
   }
 
   try {
+    console.log('🔄 Cache loading in progress...');
     const res = await fetch(`${API_BASE}/mutual-funds`, { method: 'GET' });
     
     if (!res.ok) {
@@ -109,6 +110,7 @@ export async function fetchMutualFundSchemes(): Promise<TransformedFund[]> {
     
     // Update cache
     mfCache = { data: funds, timestamp: Date.now() };
+    console.log('✅ Cache load completed');
     return funds;
   } catch (error) {
     throw error;

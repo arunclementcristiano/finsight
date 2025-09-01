@@ -3,7 +3,7 @@
 
 import { AdvisorCouncilEngine } from './advisor/advisorCouncilEngine';
 
-export type AssetClass = "Stocks" | "Mutual Funds" | "Gold" | "Real Estate" | "Debt" | "Liquid";
+export type AssetClass = "Stocks" | "Mutual Funds" | "ETF" | "Gold" | "Real Estate" | "Debt" | "Liquid";
 export type RiskLevel = "Conservative" | "Moderate" | "Aggressive";
 
 export interface AllocationPlan {
@@ -190,6 +190,7 @@ const getBaseRange = (asset: AssetClass): number => {
   const baseRanges = {
     "Stocks": 0.05,        // ±5% base range
     "Mutual Funds": 0.04,  // ±4% base range
+    "ETF": 0.04,           // ±4% base range (similar to Mutual Funds)
     "Debt": 0.03,          // ±3% base range
     "Liquid": 0.02,        // ±2% base range
     "Gold": 0.03,          // ±3% base range
@@ -202,6 +203,7 @@ const getAssetCap = (asset: AssetClass): number => {
   const caps = {
     "Stocks": 2.5,        // Most volatile, widest ranges
     "Mutual Funds": 2.2,  // High volatility
+    "ETF": 2.2,           // High volatility (similar to Mutual Funds)
     "Debt": 1.5,          // Low volatility, tight ranges
     "Liquid": 1.3,        // Very stable
     "Gold": 1.8,          // Moderate volatility
@@ -217,6 +219,10 @@ const getAssetBounds = (asset: AssetClass, riskLevel: RiskLevel) => {
       max: riskLevel === "Conservative" ? 45 : riskLevel === "Aggressive" ? 75 : 60
     },
     "Mutual Funds": {
+      min: riskLevel === "Conservative" ? 10 : riskLevel === "Aggressive" ? 20 : 15,
+      max: riskLevel === "Conservative" ? 50 : riskLevel === "Aggressive" ? 70 : 60
+    },
+    "ETF": {
       min: riskLevel === "Conservative" ? 10 : riskLevel === "Aggressive" ? 20 : 15,
       max: riskLevel === "Conservative" ? 50 : riskLevel === "Aggressive" ? 70 : 60
     },

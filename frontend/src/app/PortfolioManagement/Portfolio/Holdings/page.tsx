@@ -165,38 +165,38 @@ export default function HoldingsPage() {
 	}, []);
 
 	// Load holdings from DynamoDB
-	React.useEffect(() => {
-		async function loadHoldingsData() {
-			try {
-				// For now, using a mock user ID. In production, this should come from user authentication
-				const mockUserId = 'user-123';
-				const dbHoldings = await fetchUserHoldings(mockUserId);
-				
-				// Transform DynamoDB holdings to local state format
-				const transformedHoldings = dbHoldings.map(dbHolding => ({
-					id: dbHolding.id,
-					instrumentClass: dbHolding.instrumentClass as AssetClass,
-					name: dbHolding.name,
-					symbol: dbHolding.symbol,
-					units: dbHolding.units,
-					price: dbHolding.price,
-					investedAmount: dbHolding.investedAmount,
-					currentValue: dbHolding.currentValue
-				}));
-				
-				// Update local state with DynamoDB data
-				transformedHoldings.forEach(holding => {
-					// Check if holding already exists to avoid duplicates
-					const existingIndex = holdings.findIndex(h => h.id === holding.id);
-					if (existingIndex === -1) {
-						addHolding(holding);
-					}
-				});
-			} catch (error) {
-				// Silent fail - continue with local state
-			}
+	async function loadHoldingsData() {
+		try {
+			// For now, using a mock user ID. In production, this should come from user authentication
+			const mockUserId = 'user-123';
+			const dbHoldings = await fetchUserHoldings(mockUserId);
+			
+			// Transform DynamoDB holdings to local state format
+			const transformedHoldings = dbHoldings.map(dbHolding => ({
+				id: dbHolding.id,
+				instrumentClass: dbHolding.instrumentClass as AssetClass,
+				name: dbHolding.name,
+				symbol: dbHolding.symbol,
+				units: dbHolding.units,
+				price: dbHolding.price,
+				investedAmount: dbHolding.investedAmount,
+				currentValue: dbHolding.currentValue
+			}));
+			
+			// Update local state with DynamoDB data
+			transformedHoldings.forEach(holding => {
+				// Check if holding already exists to avoid duplicates
+				const existingIndex = holdings.findIndex(h => h.id === holding.id);
+				if (existingIndex === -1) {
+					addHolding(holding);
+				}
+			});
+		} catch (error) {
+			// Silent fail - continue with local state
 		}
-		
+	}
+	
+	React.useEffect(() => {
 		loadHoldingsData();
 	}, []);
 
@@ -242,6 +242,27 @@ export default function HoldingsPage() {
 		}
 	};
 
+	// Debounce search term to reduce lag
+	const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(mfSearchTerm);
+	
+	React.useEffect(() => {
+		const timer = setTimeout(() => {
+			setDebouncedSearchTerm(mfSearchTerm);
+		}, 300); // 300ms delay
+		
+		return () => clearTimeout(timer);
+	}, [mfSearchTerm]);
+	
+	// Use debounced search term for better performance
+	React.useEffect(() => {
+		if (debouncedSearchTerm.trim()) {
+			filterMFOptions(debouncedSearchTerm);
+		} else {
+			setFilteredMFOptions([]);
+			setShowMFDropdown(false);
+		}
+	}, [debouncedSearchTerm, selectedRole]);
+	
 	// Auto-calculate MF values
 	React.useEffect(() => {
 		if (selectedMF && form.investedAmount && selectedMF.currentNAV) {
@@ -462,33 +483,50 @@ export default function HoldingsPage() {
 				updated_at: new Date().toISOString()
 			};
 			
-			await saveHolding(dbHolding);
-			
-			// Update local state
-			if (editingId) {
-				updateHolding(editingId, holding);
-			} else {
-				addHolding(holding);
-			}
-			
-			setIsModalOpen(false);
-			resetForm();
+							await saveHolding(dbHolding);
+				
+				// Refresh holdings from DynamoDB instead of updating local state
+				await loadHoldingsData();
+				
+				setIsModalOpen(false);
+				resetForm();
 		} catch (error) {
 			console.error('Error saving holding to DynamoDB:', error);
-			// Still update local state even if DynamoDB save fails
-			if (editingId) {
-				updateHolding(editingId, holding);
-			} else {
-				addHolding(holding);
-			}
-			
-			setIsModalOpen(false);
-			resetForm();
+			alert('Failed to save holding. Please try again.');
 		}
 	}
 
 	function openEdit(holding: Holding) {
 		setEditingId(holding.id);
+		
+		// Determine role and instrument type based on holding data
+		let role: 'Stocks' | 'Mutual Funds' | 'ETF' | 'Gold' | 'Real Estate';
+		let instrumentType: string;
+		
+		if (holding.instrumentClass === 'Stocks') {
+			role = 'Stocks';
+			instrumentType = 'Stocks';
+		} else if (holding.instrumentClass === 'Mutual Funds') {
+			role = 'Mutual Funds';
+			instrumentType = 'Mutual Funds';
+		} else if (holding.instrumentClass === 'ETF') {
+			role = 'ETF';
+			instrumentType = 'ETF';
+		} else if (holding.instrumentClass === 'Gold') {
+			role = 'Gold';
+			instrumentType = 'Physical Gold';
+		} else if (holding.instrumentClass === 'Real Estate') {
+			role = 'Real Estate';
+			instrumentType = 'Properties';
+		} else {
+			// Default fallback
+			role = 'Stocks';
+			instrumentType = 'Stocks';
+		}
+		
+		setSelectedRole(role);
+		setSelectedInstrumentType(instrumentType);
+		
 		setForm({
 			instrumentClass: holding.instrumentClass,
 			name: holding.name,
@@ -499,12 +537,22 @@ export default function HoldingsPage() {
 			currentValue: holding.currentValue?.toString() || "",
 			propertyType: (holding as any).propertyType || ""
 		});
+		
 		setIsModalOpen(true);
 	}
 
-	function handleDeleteHolding(id: string) {
+	async function handleDeleteHolding(id: string) {
 		if (confirm("Are you sure you want to delete this holding?")) {
-			deleteHolding(id);
+			try {
+				// TODO: Implement delete from DynamoDB
+				// await deleteHoldingFromDB(id);
+				
+				// For now, remove from local state
+				deleteHolding(id);
+			} catch (error) {
+				console.error('Error deleting holding:', error);
+				alert('Failed to delete holding. Please try again.');
+			}
 		}
 	}
 

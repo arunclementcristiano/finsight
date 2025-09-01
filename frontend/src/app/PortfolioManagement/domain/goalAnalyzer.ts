@@ -107,6 +107,7 @@ export class GoalAnalyzer {
     const allocation: Record<AssetClass, number> = {
       "Stocks": 0,
       "Mutual Funds": 0,
+      "ETF": 0, // ETFs will be handled as part of Mutual Funds for now
       "Gold": 0,
       "Real Estate": 0,
       "Debt": 0,

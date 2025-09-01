@@ -534,7 +534,9 @@ def handler(event, context):
             
             try:
                 # Use the new holdings table
-                holdings_table = dynamodb.Table(os.environ.get("HOLDINGS_TABLE", "holdings"))
+                table_name = os.environ.get("HOLDINGS_TABLE", "holdings")
+                print(f"Using holdings table: {table_name}")
+                holdings_table = dynamodb.Table(table_name)
                 holding_id = holding.get("id") or str(uuid.uuid4())
                 now = datetime.utcnow().isoformat()
                 
@@ -547,11 +549,17 @@ def handler(event, context):
                     "updated_at": now
                 }
                 
+                print(f"Attempting to save holding: {item}")
                 holdings_table.put_item(Item=item)
+                print(f"Successfully saved holding with ID: {holding_id}")
                 return _response(200, {"holdingId": holding_id})
             except Exception as e:
                 print(f"Error creating holding: {e}")
-                return _response(500, {"error": "Failed to create holding"})
+                print(f"Error type: {type(e)}")
+                print(f"Error details: {str(e)}")
+                import traceback
+                print(f"Traceback: {traceback.format_exc()}")
+                return _response(500, {"error": f"Failed to create holding: {str(e)}"})
 
         # List holdings (GET /holdings?portfolioId=...)
         if route_key == "GET /holdings":
