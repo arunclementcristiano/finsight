@@ -103,7 +103,7 @@ export default function HoldingsPage() {
 	const [entryMode, setEntryMode] = useState<'units' | 'amount'>('units');
 	
 	// Store original values for edit mode reset
-	const [originalForm, setOriginalForm] = useState<any>(null);
+	const [originalForm, setOriginalForm] = useState<HoldingData | null>(null);
 	
 	// Loading state for data refresh
 	const [isRefreshing, setIsRefreshing] = useState(false);
@@ -508,32 +508,42 @@ export default function HoldingsPage() {
 		let assetClass: string | undefined;
 		let portfolioRole: string | undefined;
 		
-		if (selectedRole === 'Stocks') {
-			instrumentClass = "Stocks";
-			assetClass = "Stocks";
-			portfolioRole = "Equity";
-		} else if (selectedRole === 'Mutual Funds') {
-			instrumentClass = "Mutual Funds";
-			// For Mutual Funds, use the values from the selected fund
-			if (selectedMF) {
-				assetClass = selectedMF.fundType || "Equity MF";
-				portfolioRole = selectedMF.portfolioRole || "Equity";
+		// If we're editing, try to preserve the existing asset_class and portfolio_role
+		if (editingId && originalForm) {
+			// For editing, use the existing values if available
+			assetClass = originalForm.asset_class;
+			portfolioRole = originalForm.portfolio_role;
+		}
+		
+		// If we don't have asset_class and portfolio_role from editing, calculate them
+		if (!assetClass || !portfolioRole) {
+			if (selectedRole === 'Stocks') {
+				instrumentClass = "Stocks";
+				assetClass = "Stocks";
+				portfolioRole = "Equity";
+			} else if (selectedRole === 'Mutual Funds') {
+				instrumentClass = "Mutual Funds";
+				// For Mutual Funds, use the values from the selected fund
+				if (selectedMF) {
+					assetClass = selectedMF.fundType || "Equity MF";
+					portfolioRole = selectedMF.portfolioRole || "Equity";
+				}
+			} else if (selectedRole === 'ETF') {
+				instrumentClass = "ETF";
+				// For ETFs, use the values from the selected fund
+				if (selectedMF) {
+					assetClass = selectedMF.fundType || "Equity MF";
+					portfolioRole = selectedMF.portfolioRole || "Equity";
+				}
+			} else if (selectedRole === 'Gold') {
+				instrumentClass = "Gold";
+				assetClass = "Gold";
+				portfolioRole = "Satellite";
+			} else if (selectedRole === 'Real Estate') {
+				instrumentClass = "Real Estate";
+				assetClass = "Real Estate";
+				portfolioRole = "Satellite";
 			}
-		} else if (selectedRole === 'ETF') {
-			instrumentClass = "ETF";
-			// For ETFs, use the values from the selected fund
-			if (selectedMF) {
-				assetClass = selectedMF.fundType || "Equity MF";
-				portfolioRole = selectedMF.portfolioRole || "Equity";
-			}
-		} else if (selectedRole === 'Gold') {
-			instrumentClass = "Gold";
-			assetClass = "Gold";
-			portfolioRole = "Satellite";
-		} else if (selectedRole === 'Real Estate') {
-			instrumentClass = "Real Estate";
-			assetClass = "Real Estate";
-			portfolioRole = "Satellite";
 		}
 		
 		const holding: Holding = {
@@ -621,7 +631,9 @@ export default function HoldingsPage() {
 			price: holding.price?.toString() || "",
 			investedAmount: holding.investedAmount?.toString() || "",
 			currentValue: holding.currentValue?.toString() || "",
-			propertyType: (holding as any).propertyType || ""
+			propertyType: (holding as any).propertyType || "",
+			asset_class: holding.asset_class,
+			portfolio_role: holding.portfolio_role
 		};
 		
 		// Store original values for reset functionality
