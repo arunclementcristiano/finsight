@@ -158,7 +158,7 @@ def lambda_handler(event, context):
             # Variant
             plan, option = parse_variant(fund_name)
 
-            # ✅ Default missing values to "NA" (avoid NULL in DynamoDB indexes)
+            # ✅ Default missing values to "NA"
             if not plan:
                 plan = "NA"
             if not option:
@@ -180,8 +180,16 @@ def lambda_handler(event, context):
                 logger.warning(f"Skipping invalid NAV: {fund_name} NAV={nav}")
                 continue
 
-            # Allocation
-            allocation_class = map_to_allocation(curr_category[0], curr_category[1], fund_name)
+            # Asset Class & Portfolio Role
+            asset_class = map_to_allocation(curr_category[0], curr_category[1], fund_name)
+            if asset_class == "Equity":
+                portfolio_role = "Equity"
+            elif asset_class in ["Debt Fund", "Liquid Fund"]:
+                portfolio_role = "Defensive"
+            elif asset_class in ["Gold", "Real Estate"]:
+                portfolio_role = "Satellite"
+            else:
+                portfolio_role = "Equity"  # default
 
             item = {
                 "scheme_code": scheme_code,
@@ -193,7 +201,8 @@ def lambda_handler(event, context):
                 "plan": plan,
                 "option": option,
                 "nav": nav_value,
-                "allocation_class": allocation_class,
+                "asset_class": asset_class,
+                "portfolio_role": portfolio_role,
                 "is_etf": "true" if is_etf else "false"
             }
             items.append(item)
