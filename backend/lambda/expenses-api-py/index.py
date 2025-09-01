@@ -618,6 +618,78 @@ def handler(event, context):
             txns = [{"id": it.get("transactionId"), **(it.get("data") or {})} for it in items if in_range(it.get("sk",""))]
             return _response(200, {"items": txns})
 
+        # Get mutual fund schemes (GET /mutual-funds)
+        if route_key == "GET /mutual-funds":
+            try:
+                # Scan the mutual fund schemes table
+                res = dynamodb.Table(os.environ.get("MUTUAL_FUND_SCHEMES_TABLE", "MutualFundSchemes")).scan()
+                items = res.get("Items", [])
+                
+                # Transform to match frontend expectations
+                funds = []
+                for item in items:
+                    fund = {
+                        "schemeCode": item.get("scheme_code", ""),
+                        "name": item.get("fund_name", ""),
+                        "fullName": item.get("scheme_name", ""),
+                        "currentNAV": float(item.get("nav", 0)),
+                        "fundType": item.get("allocation_class", "Equity MF"),
+                        "allocationClass": item.get("allocation_class", "Equity"),
+                        "isETF": item.get("is_etf") == "true"
+                    }
+                    funds.append(fund)
+                
+                # Sort by name for better UX
+                funds.sort(key=lambda x: x["name"])
+                return _response(200, {"items": funds})
+            except Exception as e:
+                print(f"Error fetching mutual funds: {e}")
+                return _response(500, {"error": "Failed to fetch mutual funds"})
+
+        # Search mutual funds (GET /mutual-funds/search?q=...&is_etf=...)
+        if route_key == "GET /mutual-funds/search":
+            try:
+                q = (qs or {}).get("q", "").lower()
+                is_etf = (qs or {}).get("is_etf")
+                
+                # Scan the mutual fund schemes table
+                res = dynamodb.Table(os.environ.get("MUTUAL_FUND_SCHEMES_TABLE", "MutualFundSchemes")).scan()
+                items = res.get("Items", [])
+                
+                # Filter by search term and ETF status
+                filtered_funds = []
+                for item in items:
+                    # Check ETF status if specified
+                    if is_etf is not None:
+                        item_is_etf = item.get("is_etf") == "true"
+                        if str(item_is_etf).lower() != str(is_etf).lower():
+                            continue
+                    
+                    # Check search term
+                    if q:
+                        fund_name = item.get("fund_name", "").lower()
+                        scheme_name = item.get("scheme_name", "").lower()
+                        if q not in fund_name and q not in scheme_name:
+                            continue
+                    
+                    fund = {
+                        "schemeCode": item.get("scheme_code", ""),
+                        "name": item.get("fund_name", ""),
+                        "fullName": item.get("scheme_name", ""),
+                        "currentNAV": float(item.get("nav", 0)),
+                        "fundType": item.get("allocation_class", "Equity MF"),
+                        "allocationClass": item.get("allocation_class", "Equity"),
+                        "isETF": item.get("is_etf") == "true"
+                    }
+                    filtered_funds.append(fund)
+                
+                # Sort by name and limit results
+                filtered_funds.sort(key=lambda x: x["name"])
+                return _response(200, {"items": filtered_funds[:10]})
+            except Exception as e:
+                print(f"Error searching mutual funds: {e}")
+                return _response(500, {"error": "Failed to search mutual funds"})
+
         return _response(404, {"error": "Not found", "routeKey": route_key})
     except Exception as e:
         print("handler error", e)

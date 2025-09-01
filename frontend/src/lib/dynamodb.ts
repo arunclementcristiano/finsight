@@ -61,13 +61,29 @@ export interface HoldingData {
   updated_at: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || ""; // e.g., https://abc123.execute-api.us-east-1.amazonaws.com
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
+
+// Cache for mutual fund data with daily refresh
+let mfCache: { data: TransformedFund[]; timestamp: number } | null = null;
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
 export async function fetchMutualFundSchemes(): Promise<TransformedFund[]> {
+  // Check if cache is valid
+  if (mfCache && (Date.now() - mfCache.timestamp) < CACHE_DURATION) {
+    console.log('Using cached mutual fund data');
+    return mfCache.data;
+  }
+
+  // Fetch fresh data
+  console.log('Fetching fresh mutual fund data from API');
   const res = await fetch(`${API_BASE}/mutual-funds`, { method: 'GET' });
   if (!res.ok) throw new Error(`MF fetch failed: ${res.status}`);
   const data = await res.json();
-  return (data.items || []) as TransformedFund[];
+  const funds = (data.items || []) as TransformedFund[];
+  
+  // Update cache
+  mfCache = { data: funds, timestamp: Date.now() };
+  return funds;
 }
 
 // Function to fetch funds by ETF status
@@ -77,13 +93,27 @@ export async function fetchFundsByETFStatus(isETF: boolean): Promise<Transformed
 }
 
 export async function searchFundsByName(searchTerm: string, isETF?: boolean): Promise<TransformedFund[]> {
-  const params = new URLSearchParams();
-  if (searchTerm) params.set('q', searchTerm);
-  if (isETF !== undefined) params.set('is_etf', String(isETF));
-  const res = await fetch(`${API_BASE}/mutual-funds/search?${params.toString()}`, { method: 'GET' });
-  if (!res.ok) throw new Error(`MF search failed: ${res.status}`);
-  const data = await res.json();
-  return (data.items || []) as TransformedFund[];
+  // Use cached data for search to avoid API calls
+  const allFunds = await fetchMutualFundSchemes();
+  
+  let filteredFunds = allFunds;
+  
+  // Filter by ETF status if specified
+  if (isETF !== undefined) {
+    filteredFunds = filteredFunds.filter(fund => fund.isETF === isETF);
+  }
+  
+  // Filter by search term
+  if (searchTerm.trim()) {
+    const term = searchTerm.toLowerCase();
+    filteredFunds = filteredFunds.filter(fund => 
+      fund.name.toLowerCase().includes(term) || 
+      fund.fullName.toLowerCase().includes(term)
+    );
+  }
+  
+  // Return limited results
+  return filteredFunds.slice(0, 10);
 }
 
 export async function saveHolding(holding: HoldingData): Promise<boolean> {

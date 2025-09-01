@@ -105,6 +105,7 @@ resource "aws_lambda_function" "expenses" {
       USER_BUDGETS_TABLE       = aws_dynamodb_table.user_budgets.name
       GROQ_MODEL               = "llama-3.1-8b-instant"
       INVEST_TABLE             = aws_dynamodb_table.invest.name
+      MUTUAL_FUND_SCHEMES_TABLE = aws_dynamodb_table.mutual_fund_schemes.name
     }
   }
 }
@@ -149,7 +150,9 @@ resource "aws_apigatewayv2_route" "routes_public" {
     "POST /summary/category",
     "GET /budgets",
     "PUT /budgets",
-    "GET /health"
+    "GET /health",
+    "GET /mutual-funds",
+    "GET /mutual-funds/search"
   ])
   api_id    = aws_apigatewayv2_api.http.id
   route_key = each.value
