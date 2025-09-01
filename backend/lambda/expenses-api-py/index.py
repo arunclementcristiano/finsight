@@ -64,10 +64,10 @@ def _convert_floats_to_decimals(obj):
 def _get_asset_class_mapping():
     """Get asset class to portfolio role mapping from DynamoDB"""
     try:
-        # Initialize with default mappings
-        default_mapping = {
-            "Stocks": "Equity",
-            "Mutual Funds": "Equity", 
+        		# Initialize with default mappings
+		default_mapping = {
+			"Stocks": "Equity",
+			"Equity MF": "Equity", 
             "Liquid Funds": "Defensive",
             "Debt Funds": "Defensive",
             "Bonds": "Defensive",
@@ -90,10 +90,10 @@ def _get_asset_class_mapping():
         return default_mapping
     except Exception as e:
         print(f"Error getting asset class mapping: {e}")
-        # Return default mapping if DB lookup fails
-        return {
-            "Stocks": "Equity",
-            "Mutual Funds": "Equity", 
+        		# Return default mapping if DB lookup fails
+		return {
+			"Stocks": "Equity",
+			"Equity MF": "Equity", 
             "Liquid Funds": "Defensive",
             "Debt Funds": "Defensive",
             "Bonds": "Defensive",
@@ -117,7 +117,7 @@ ALLOWED_CATEGORIES = [
     "Housing",       # rent, maintenance, home repairs
     "Healthcare",    # doctor visits, pharmacy, health checkup
     "Entertainment", # movies, OTT, gaming, outings
-    "Investment",    # stocks, mutual funds, SIP, gold
+    	"Investment",    # stocks, equity mutual funds, SIP, gold
     "Loans",         # EMI, credit card payment, personal loan
     "Insurance",     # life, health, vehicle, home
     "Grooming",      # haircut, salon, spa, beauty, cosmetics

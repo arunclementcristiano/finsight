@@ -164,7 +164,7 @@ export default function PlanSummary({
         if (d.includes('Debt clamp->Liquid')) return 'Excess Debt flows into Liquid to keep balance.';
         if (d.includes('Debt minimum')) return 'We ensure a minimum level of Debt for stability.';
         if (d.includes('Equity floor')) return 'We maintain a sensible equity floor for long-term growth.';
-        if (d.includes('Beginner MF routing')) return 'As a beginner, equity is routed via diversified mutual funds rather than direct stocks.';
+        		if (d.includes('Beginner MF routing')) return 'As a beginner, equity is routed via diversified equity mutual funds rather than direct stocks.';
         return null;
       };
       const msgs: string[] = [];

@@ -190,7 +190,7 @@ const getBaseRange = (asset: AssetClass): number => {
   const baseRanges = {
     "Stocks": 0.05,        // ±5% base range
     		"Equity MF": 0.04,     // ±4% base range
-    "ETF": 0.04,           // ±4% base range (similar to Mutual Funds)
+    		"ETF": 0.04,           // ±4% base range (similar to Equity MF)
     "Debt": 0.03,          // ±3% base range
     "Liquid": 0.02,        // ±2% base range
     "Gold": 0.03,          // ±3% base range
@@ -203,7 +203,7 @@ const getAssetCap = (asset: AssetClass): number => {
   const caps = {
     "Stocks": 2.5,        // Most volatile, widest ranges
     		"Equity MF": 2.2,     // High volatility
-    "ETF": 2.2,           // High volatility (similar to Mutual Funds)
+    		"ETF": 2.2,           // High volatility (similar to Equity MF)
     "Debt": 1.5,          // Low volatility, tight ranges
     "Liquid": 1.3,        // Very stable
     "Gold": 1.8,          // Moderate volatility

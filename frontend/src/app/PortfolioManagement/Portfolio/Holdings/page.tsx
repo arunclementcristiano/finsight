@@ -1190,7 +1190,7 @@ export default function HoldingsPage() {
 																	? 'bg-muted text-muted-foreground cursor-not-allowed' 
 																	: 'bg-background text-foreground'
 															}`}
-															placeholder={editingId !== null ? "Fund name cannot be changed during edit" : "Search for equity mutual funds..."}
+															placeholder={editingId !== null ? "Fund name cannot be changed during edit" : "Search for mutual funds..."}
 														/>
 														{showMFDropdown && filteredMFOptions.length > 0 && !editingId && (
 															<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-auto">
