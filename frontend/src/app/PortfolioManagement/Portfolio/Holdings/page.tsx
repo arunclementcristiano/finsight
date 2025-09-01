@@ -297,18 +297,32 @@ export default function HoldingsPage() {
 		}
 	}, [selectedMF, form.investedAmount]);
 
-	const totalValue = useMemo(() => (holdings || []).reduce((s: number, h: Holding) => s + computeHoldingValue(h), 0), [holdings]);
-	const totalInvested = useMemo(() => (holdings || []).reduce((s: number, h: Holding) => s + computeInvestedAmount(h), 0), [holdings]);
+
+
+	// Filter holdings based on selected filters
+	const filteredHoldings = useMemo(() => {
+		if (!holdings) return [];
+		
+		return holdings.filter(holding => {
+			const matchesAssetClass = !filterAssetClass || holding.instrumentClass === filterAssetClass;
+			const matchesAssetRole = !filterAssetRole || getRoleForAssetClass(holding.instrumentClass) === filterAssetRole;
+			return matchesAssetClass && matchesAssetRole;
+		});
+	}, [holdings, filterAssetClass, filterAssetRole]);
+
+	// Calculate totals for KPI cards - using filtered data
+	const totalValue = useMemo(() => (filteredHoldings || []).reduce((s: number, h: Holding) => s + computeHoldingValue(h), 0), [filteredHoldings]);
+	const totalInvested = useMemo(() => (filteredHoldings || []).reduce((s: number, h: Holding) => s + computeInvestedAmount(h), 0), [filteredHoldings]);
 	const totalPL = useMemo(() => totalValue - totalInvested, [totalValue, totalInvested]);
 	const totalPLPct = useMemo(() => (totalInvested > 0 ? (totalPL / totalInvested) * 100 : 0), [totalPL, totalInvested]);
 
 	// Portfolio allocation data for pie chart
 	const portfolioAllocationData = useMemo(() => {
-		if (!holdings || holdings.length === 0) return [];
+		if (!filteredHoldings || filteredHoldings.length === 0) return [];
 		
 		const allocationMap = new Map<string, number>();
 		
-		holdings.forEach(holding => {
+		filteredHoldings.forEach(holding => {
 			const assetClass = holding.instrumentClass;
 			const currentValue = computeHoldingValue(holding);
 			allocationMap.set(assetClass, (allocationMap.get(assetClass) || 0) + currentValue);
@@ -322,15 +336,15 @@ export default function HoldingsPage() {
 		})).sort((a, b) => b.value - a.value);
 		
 		return allocationArray;
-	}, [holdings]);
+	}, [filteredHoldings]);
 
 	// Portfolio role allocation data for pie chart
 	const portfolioRoleData = useMemo(() => {
-		if (!holdings || holdings.length === 0) return [];
+		if (!filteredHoldings || filteredHoldings.length === 0) return [];
 
 		const roleMap = new Map<string, number>();
 
-		holdings.forEach(holding => {
+		filteredHoldings.forEach(holding => {
 			const role = getRoleForAssetClass(holding.instrumentClass);
 			const currentValue = computeHoldingValue(holding);
 			roleMap.set(role, (roleMap.get(role) || 0) + currentValue);
@@ -343,20 +357,7 @@ export default function HoldingsPage() {
 		})).sort((a, b) => b.value - a.value);
 
 		return roleArray;
-	}, [holdings]);
-
-
-
-	// Filter holdings based on selected filters
-	const filteredHoldings = useMemo(() => {
-		if (!holdings) return [];
-		
-		return holdings.filter(holding => {
-			const matchesAssetClass = !filterAssetClass || holding.instrumentClass === filterAssetClass;
-			const matchesAssetRole = !filterAssetRole || getRoleForAssetClass(holding.instrumentClass) === filterAssetRole;
-			return matchesAssetClass && matchesAssetRole;
-		});
-	}, [holdings, filterAssetClass, filterAssetRole]);
+	}, [filteredHoldings]);
 
 	// Pagination logic
 	const totalPages = Math.ceil((filteredHoldings?.length || 0) / itemsPerPage);
@@ -595,8 +596,7 @@ export default function HoldingsPage() {
 										<thead className="bg-card sticky top-0 z-10">
 											<tr>
 												<th className="py-2 px-3 text-muted-foreground">Instrument</th>
-												<th className="py-2 px-3 text-muted-foreground">Asset Class</th>
-												<th className="py-2 px-3 text-muted-foreground">Asset Role</th>
+												<th className="py-2 px-3 text-muted-foreground">Class/Role</th>
 												<th className="py-2 px-3 text-muted-foreground">Units</th>
 												<th className="py-2 px-3 text-muted-foreground">Price</th>
 												<th className="py-2 px-3 text-muted-foreground text-right">Current Value</th>
@@ -623,22 +623,18 @@ export default function HoldingsPage() {
 															</div>
 														</td>
 														<td className="py-2 px-3">
-															<span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-																CLASS_COLORS[holding.instrumentClass as keyof typeof CLASS_COLORS]?.bg || 'bg-gray-100 dark:bg-gray-800'
-															} ${
-																CLASS_COLORS[holding.instrumentClass as keyof typeof CLASS_COLORS]?.text || 'text-gray-700 dark:text-gray-300'
-															}`}>
-																{holding.instrumentClass}
-															</span>
-														</td>
-														<td className="py-2 px-3">
-															<span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-																getRoleForAssetClass(holding.instrumentClass) === 'Equity' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' :
-																getRoleForAssetClass(holding.instrumentClass) === 'Defensive' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300' :
-																'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300'
-															}`}>
-																{getRoleForAssetClass(holding.instrumentClass)}
-															</span>
+															<div className="space-y-1">
+																<span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+																	CLASS_COLORS[holding.instrumentClass as keyof typeof CLASS_COLORS]?.bg || 'bg-gray-100 dark:bg-gray-800'
+																} ${
+																	CLASS_COLORS[holding.instrumentClass as keyof typeof CLASS_COLORS]?.text || 'text-gray-700 dark:text-gray-300'
+																}`}>
+																	{holding.instrumentClass}
+																</span>
+																<div className="text-xs text-muted-foreground">
+																	{getRoleForAssetClass(holding.instrumentClass)}
+																</div>
+															</div>
 														</td>
 														<td className="py-2 px-3">{holding.units?.toFixed(2) || '0.00'}</td>
 														<td className="py-2 px-3">₹{holding.price?.toLocaleString() || '0.00'}</td>
@@ -681,7 +677,10 @@ export default function HoldingsPage() {
 								{totalPages > 1 && (
 									<div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
 										<div className="text-xs text-muted-foreground">
-											Showing {startIndex + 1} to {Math.min(endIndex, holdings.length)} of {holdings.length} holdings
+											Showing {startIndex + 1} to {Math.min(endIndex, filteredHoldings.length)} of {filteredHoldings.length} holdings
+											{filteredHoldings.length !== holdings.length && (
+												<span className="ml-2 text-blue-600">(filtered from {holdings.length} total)</span>
+											)}
 										</div>
 										<div className="flex items-center gap-2">
 											<button
@@ -800,11 +799,11 @@ export default function HoldingsPage() {
 						</PlanCardContent>
 					</PlanCard>
 
-					{/* Portfolio Role Chart */}
+					{/* Portfolio Role Chart - Bar Chart */}
 					<PlanCard>
 						<PlanCardHeader className="px-4 py-3 border-b border-border">
 							<PlanCardTitle className="text-sm font-medium flex items-center gap-2">
-								<PieChartIcon size={16} />
+								<BarChart3 size={16} />
 								Portfolio Role
 							</PlanCardTitle>
 						</PlanCardHeader>
@@ -813,23 +812,22 @@ export default function HoldingsPage() {
 								<div className="space-y-4">
 									<div className="h-32 flex items-center justify-center">
 										<ResponsiveContainer width="100%" height="100%">
-											<PieChart>
-												<Pie
-													data={portfolioRoleData}
-													cx="50%"
-													cy="50%"
-													innerRadius={20}
-													outerRadius={50}
-													paddingAngle={2}
-													dataKey="value"
-												>
-													{portfolioRoleData.map((entry, index) => (
-														<Cell key={`cell-${index}`} fill={entry.color} />
-													))}
-												</Pie>
+											<BarChart data={portfolioRoleData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+												<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+												<XAxis 
+													dataKey="name" 
+													tick={{ fontSize: 10 }}
+													axisLine={false}
+													tickLine={false}
+												/>
+												<YAxis 
+													tick={{ fontSize: 10 }}
+													axisLine={false}
+													tickLine={false}
+													tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`}
+												/>
 												<Tooltip 
 													formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Value']}
-													labelFormatter={(label) => `${label}`}
 													contentStyle={{
 														backgroundColor: 'hsl(var(--card))',
 														border: '1px solid hsl(var(--border))',
@@ -837,7 +835,12 @@ export default function HoldingsPage() {
 														boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
 													}}
 												/>
-											</PieChart>
+												<Bar 
+													dataKey="value" 
+													fill="hsl(var(--primary))"
+													radius={[2, 2, 0, 0]}
+												/>
+											</BarChart>
 										</ResponsiveContainer>
 									</div>
 									
@@ -1426,57 +1429,31 @@ export default function HoldingsPage() {
 											</>
 										)}
 
-										{/* Universal Holding Value Display */}
-										{selectedRole && (
-											<div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-xl border border-blue-200 dark:border-blue-800">
-												<div className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-3">Holding Summary</div>
-												<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-													{/* Name and Type */}
-													<div>
-														<div className="text-xs text-blue-600 dark:text-blue-400 mb-1">Instrument</div>
-														<div className="text-sm font-semibold text-blue-800 dark:text-blue-200">
-															{form.name || 'Not specified'}
-														</div>
-														<div className="text-xs text-blue-600 dark:text-blue-400">
-															{selectedRole} • {form.instrumentClass || 'Asset Class'}
-														</div>
-													</div>
-													
-													{/* Value Calculation */}
-													<div>
-														<div className="text-xs text-blue-600 dark:text-blue-400 mb-1">Estimated Value</div>
-														<div className="text-lg font-bold text-blue-800 dark:text-blue-200">
-															{(() => {
-																if (selectedRole === 'Stocks' && form.units && form.price) {
-																	return `₹${(parseFloat(form.units) * parseFloat(form.price)).toLocaleString()}`;
-																} else if (selectedRole === 'Mutual Funds' && form.investedAmount) {
-																	return `₹${parseFloat(form.investedAmount).toLocaleString()}`;
-																} else if (selectedRole === 'ETF' && form.units && form.price) {
-																	return `₹${(parseFloat(form.units) * parseFloat(form.price)).toLocaleString()}`;
-																} else if (selectedRole === 'Gold' && form.units && form.price) {
-																	return `₹${(parseFloat(form.units) * parseFloat(form.price)).toLocaleString()}`;
-																} else if (selectedRole === 'Real Estate' && form.investedAmount) {
-																	return `₹${parseFloat(form.investedAmount).toLocaleString()}`;
-																}
-																return '₹0';
-															})()}
-														</div>
-														<div className="text-xs text-blue-600 dark:text-blue-400">
-															{(() => {
-																if (selectedRole === 'Stocks' && form.units && form.price) {
-																	return `${form.units} units × ₹${form.price}`;
-																} else if (selectedRole === 'Mutual Funds' && form.investedAmount && form.price) {
-																	return `₹${form.investedAmount} ÷ ₹${form.price} = ${(parseFloat(form.investedAmount) / parseFloat(form.price)).toFixed(4)} units`;
-																} else if (selectedRole === 'ETF' && form.units && form.price) {
-																	return `${form.units} units × ₹${form.price}`;
-																} else if (selectedRole === 'Gold' && form.units && form.price) {
-																	return `${form.units} grams × ₹${form.price}`;
-																} else if (selectedRole === 'Real Estate' && form.investedAmount) {
-																	return `Investment Amount`;
-																}
-																return 'Enter details to see calculation';
-															})()}
-														</div>
+										{/* Simple KPI-style Holding Summary */}
+										{selectedRole && form.name && (
+											<div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-xl border border-border">
+												<div className="text-center">
+													<div className="text-xs text-muted-foreground mb-1">Instrument</div>
+													<div className="text-sm font-semibold text-foreground">{form.name}</div>
+													<div className="text-xs text-muted-foreground">{selectedRole}</div>
+												</div>
+												<div className="text-center">
+													<div className="text-xs text-muted-foreground mb-1">Value</div>
+													<div className="text-lg font-bold text-foreground">
+														{(() => {
+															if (selectedRole === 'Stocks' && form.units && form.price) {
+																return `₹${(parseFloat(form.units) * parseFloat(form.price)).toLocaleString()}`;
+															} else if (selectedRole === 'Mutual Funds' && form.investedAmount) {
+																return `₹${parseFloat(form.investedAmount).toLocaleString()}`;
+															} else if (selectedRole === 'ETF' && form.units && form.price) {
+																return `₹${(parseFloat(form.units) * parseFloat(form.price)).toLocaleString()}`;
+															} else if (selectedRole === 'Gold' && form.units && form.price) {
+																return `₹${(parseFloat(form.units) * parseFloat(form.price)).toLocaleString()}`;
+															} else if (selectedRole === 'Real Estate' && form.investedAmount) {
+																return `₹${parseFloat(form.investedAmount).toLocaleString()}`;
+															}
+															return '₹0';
+														})()}
 													</div>
 												</div>
 											</div>

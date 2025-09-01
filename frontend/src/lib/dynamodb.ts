@@ -11,8 +11,18 @@ const awsConfig = {
 };
 
 // Initialize DynamoDB client
-const client = new DynamoDBClient(awsConfig);
-const docClient = DynamoDBDocumentClient.from(client);
+let client: DynamoDBClient;
+let docClient: DynamoDBDocumentClient;
+
+// Only initialize if credentials are available
+if (process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID && process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY) {
+  try {
+    client = new DynamoDBClient(awsConfig);
+    docClient = DynamoDBDocumentClient.from(client);
+  } catch (error) {
+    console.warn('Failed to initialize DynamoDB client:', error);
+  }
+}
 
 // Types for mutual fund data
 export interface MutualFundScheme {
@@ -58,6 +68,12 @@ export interface HoldingData {
 // Function to fetch mutual fund schemes from DynamoDB
 export async function fetchMutualFundSchemes(): Promise<TransformedFund[]> {
   try {
+    // Check if DynamoDB client is available
+    if (!docClient) {
+      console.warn('DynamoDB client not initialized - using mock data');
+      return getMockFundData();
+    }
+
     const command = new ScanCommand({
       TableName: process.env.NEXT_PUBLIC_MUTUAL_FUND_TABLE || 'MutualFundSchemes',
     });
@@ -66,7 +82,7 @@ export async function fetchMutualFundSchemes(): Promise<TransformedFund[]> {
     
     if (!response.Items) {
       console.warn('No mutual fund schemes found in DynamoDB');
-      return [];
+      return getMockFundData();
     }
 
     // Transform the data to match our expected format
@@ -88,8 +104,20 @@ export async function fetchMutualFundSchemes(): Promise<TransformedFund[]> {
     
   } catch (error) {
     console.error('Error fetching mutual fund schemes from DynamoDB:', error);
-    throw error;
+    console.log('Falling back to mock data');
+    return getMockFundData();
   }
+}
+
+// Mock data function
+function getMockFundData(): TransformedFund[] {
+  return [
+    { schemeCode: 'MOCK001', name: 'HDFC Mid-Cap Opportunities Fund', fullName: 'HDFC Mid-Cap Opportunities Fund - Direct Plan - Growth', currentNAV: 45.67, fundType: 'Equity MF', allocationClass: 'Equity', isETF: false },
+    { schemeCode: 'MOCK002', name: 'ICICI Prudential Bluechip Fund', fullName: 'ICICI Prudential Bluechip Fund - Direct Plan - Growth', currentNAV: 52.34, fundType: 'Equity MF', allocationClass: 'Equity', isETF: false },
+    { schemeCode: 'MOCK003', name: 'SBI Gold Fund', fullName: 'SBI Gold Fund - Direct Plan - Growth', currentNAV: 23.45, fundType: 'Gold MF', allocationClass: 'Gold', isETF: false },
+    { schemeCode: 'ETF001', name: 'NIFTY 50 ETF', fullName: 'NIFTY 50 ETF - Direct Plan - Growth', currentNAV: 185.67, fundType: 'Equity ETF', allocationClass: 'Equity', isETF: true },
+    { schemeCode: 'ETF002', name: 'GOLD ETF', fullName: 'GOLD ETF - Direct Plan - Growth', currentNAV: 45.23, fundType: 'Gold ETF', allocationClass: 'Gold', isETF: true }
+  ];
 }
 
 // Function to fetch funds by ETF status
