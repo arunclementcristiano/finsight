@@ -1,6 +1,6 @@
 "use client";
 import React, { useMemo, useState } from "react";
-import { useApp, type Holding } from "../../../store";
+import type { Holding } from "../../../store";
 import type { AssetClass } from "../../domain/allocationEngine";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Plus, Edit2, Trash2, X, Search, TrendingUp, BarChart3, PieChart as PieChartIcon } from "lucide-react";
@@ -83,7 +83,7 @@ function getRoleForAssetClass(assetClass: AssetClass): 'Equity' | 'Defensive' | 
 }
 
 export default function HoldingsPage() {
-	const { holdings, addHolding, updateHolding, deleteHolding, profile } = useApp();
+	const [holdings, setHoldings] = useState<Holding[]>([]);
 	
 	// Modal state
 	const [isModalOpen, setIsModalOpen] = useState(false);
@@ -183,16 +183,11 @@ export default function HoldingsPage() {
 				currentValue: dbHolding.currentValue
 			}));
 			
-			// Update local state with DynamoDB data
-			transformedHoldings.forEach(holding => {
-				// Check if holding already exists to avoid duplicates
-				const existingIndex = holdings.findIndex(h => h.id === holding.id);
-				if (existingIndex === -1) {
-					addHolding(holding);
-				}
-			});
+			// Clear existing holdings and set new ones from DynamoDB
+			setHoldings(transformedHoldings);
 		} catch (error) {
-			// Silent fail - continue with local state
+			// Silent fail - set empty array
+			setHoldings([]);
 		}
 	}
 	
@@ -548,7 +543,7 @@ export default function HoldingsPage() {
 				// await deleteHoldingFromDB(id);
 				
 				// For now, remove from local state
-				deleteHolding(id);
+				setHoldings(prev => prev.filter(h => h.id !== id));
 			} catch (error) {
 				console.error('Error deleting holding:', error);
 				alert('Failed to delete holding. Please try again.');
@@ -1156,29 +1151,7 @@ export default function HoldingsPage() {
 													</div>
 												</div>
 
-												{/* Auto-calculated Units and Holding Value */}
-												{form.investedAmount && form.price && (
-													<div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg">
-														<div className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Calculated Details</div>
-														<div className="grid grid-cols-2 gap-4 mt-2">
-															<div>
-																<div className="text-xs text-emerald-600 dark:text-emerald-400">Units</div>
-																<div className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">
-																	{(parseFloat(form.investedAmount) / parseFloat(form.price)).toFixed(4)}
-																</div>
-															</div>
-															<div>
-																<div className="text-xs text-emerald-600 dark:text-emerald-400">Holding Value</div>
-																<div className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">
-																	₹{parseFloat(form.investedAmount).toLocaleString()}
-																</div>
-															</div>
-														</div>
-														<div className="text-xs text-emerald-600 dark:text-emerald-400 mt-2">
-															₹{form.investedAmount} ÷ ₹{form.price} = {(parseFloat(form.investedAmount) / parseFloat(form.price)).toFixed(4)} units
-														</div>
-													</div>
-												)}
+
 											</>
 										)}
 
