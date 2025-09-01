@@ -41,6 +41,12 @@ variable "holdings_table_name" {
   default     = "holdings"
 }
 
+variable "asset_class_mapping_table_name" {
+  description = "DynamoDB table name for asset class to portfolio role mapping"
+  type        = string
+  default     = "AssetClassMapping"
+}
+
 variable "environment" {
   description = "Environment name"
   type        = string
@@ -291,6 +297,24 @@ resource "aws_dynamodb_table" "holdings" {
   }
 }
 
+# Asset class to portfolio role mapping table
+resource "aws_dynamodb_table" "asset_class_mapping" {
+  name         = var.asset_class_mapping_table_name
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "asset_class"
+
+  attribute {
+    name = "asset_class"
+    type = "S"
+  }
+
+  tags = {
+    Name        = var.asset_class_mapping_table_name
+    Environment = var.environment
+    Project     = "finsight"
+  }
+}
+
 output "expenses_table_name" {
   value = aws_dynamodb_table.expenses.name
 }
@@ -307,4 +331,8 @@ output "user_budgets_table_name" {
 
 output "holdings_table_name" {
   value = aws_dynamodb_table.holdings.name
+}
+
+output "asset_class_mapping_table_name" {
+  value = aws_dynamodb_table.asset_class_mapping.name
 }

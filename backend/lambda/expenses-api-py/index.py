@@ -17,12 +17,18 @@ USER_BUDGETS_TABLE = os.environ.get("USER_BUDGETS_TABLE", "UserBudgets")
 GROQ_API_KEY = (os.environ.get("GROQ_API_KEY") or "").strip()
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-70b-versatile")
 INVEST_TABLE = os.environ.get("INVEST_TABLE", "InvestApp")
+MUTUAL_FUND_SCHEMES_TABLE = os.environ.get("MUTUAL_FUND_SCHEMES_TABLE", "MutualFundSchemes")
+HOLDINGS_TABLE = os.environ.get("HOLDINGS_TABLE", "holdings")
+ASSET_CLASS_MAPPING_TABLE = os.environ.get("ASSET_CLASS_MAPPING_TABLE", "AssetClassMapping")
 
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
 expenses_table = dynamodb.Table(EXPENSES_TABLE)
 category_rules_table = dynamodb.Table(CATEGORY_RULES_TABLE)
 user_budgets_table = dynamodb.Table(USER_BUDGETS_TABLE)
 invest_table = dynamodb.Table(INVEST_TABLE)
+mutual_fund_schemes_table = dynamodb.Table(MUTUAL_FUND_SCHEMES_TABLE)
+holdings_table = dynamodb.Table(HOLDINGS_TABLE)
+asset_class_mapping_table = dynamodb.Table(ASSET_CLASS_MAPPING_TABLE)
 
 
 def _cors_headers():
@@ -53,6 +59,54 @@ def _convert_floats_to_decimals(obj):
         return Decimal(str(obj))
     else:
         return obj
+
+
+def _get_asset_class_mapping():
+    """Get asset class to portfolio role mapping from DynamoDB"""
+    try:
+        # Initialize with default mappings
+        default_mapping = {
+            "Stocks": "Equity",
+            "Mutual Funds": "Equity", 
+            "Liquid Funds": "Defensive",
+            "Debt Funds": "Defensive",
+            "Bonds": "Defensive",
+            "FD": "Defensive",
+            "Gold": "Satellite",
+            "Real Estate": "Satellite"
+        }
+        
+        # Try to get from DynamoDB table
+        response = asset_class_mapping_table.scan()
+        items = response.get("Items", [])
+        
+        # Update default mapping with any custom mappings from DB
+        for item in items:
+            asset_class = item.get("asset_class")
+            portfolio_role = item.get("portfolio_role")
+            if asset_class and portfolio_role:
+                default_mapping[asset_class] = portfolio_role
+        
+        return default_mapping
+    except Exception as e:
+        print(f"Error getting asset class mapping: {e}")
+        # Return default mapping if DB lookup fails
+        return {
+            "Stocks": "Equity",
+            "Mutual Funds": "Equity", 
+            "Liquid Funds": "Defensive",
+            "Debt Funds": "Defensive",
+            "Bonds": "Defensive",
+            "FD": "Defensive",
+            "Gold": "Satellite",
+            "Real Estate": "Satellite"
+        }
+
+
+def _get_portfolio_role_for_asset_class(asset_class):
+    """Get portfolio role for a given asset class"""
+    mapping = _get_asset_class_mapping()
+    return mapping.get(asset_class, "Equity")  # Default to Equity if not found
 
 
 ALLOWED_CATEGORIES = [
@@ -556,11 +610,20 @@ def handler(event, context):
                 converted_holding = _convert_floats_to_decimals(holding)
                 print(f"Converted holding data: {converted_holding}")
                 
+                # Extract asset class and determine portfolio role
+                instrument_class = converted_holding.get("instrumentClass", "Stocks")
+                asset_class = converted_holding.get("allocation_class", instrument_class)
+                portfolio_role = _get_portfolio_role_for_asset_class(asset_class)
+                
+                print(f"Asset Class: {asset_class}, Portfolio Role: {portfolio_role}")
+                
                 item = {
                     "id": holding_id,
                     "user_id": user_sub,
                     "portfolio_id": portfolio_id,
                     "data": converted_holding,
+                    "asset_class": asset_class,
+                    "portfolio_role": portfolio_role,
                     "created_at": now,
                     "updated_at": now
                 }
@@ -593,7 +656,13 @@ def handler(event, context):
                     KeyConditionExpression=Key("user_id").eq(user_sub)
                 )
                 items = res.get("Items", [])
-                holdings = [{"id": it.get("id"), **(it.get("data") or {})} for it in items]
+                holdings = []
+                for it in items:
+                    holding_data = it.get("data") or {}
+                    # Include asset class and portfolio role from the main item
+                    holding_data["asset_class"] = it.get("asset_class", holding_data.get("instrumentClass", "Stocks"))
+                    holding_data["portfolio_role"] = it.get("portfolio_role", "Equity")
+                    holdings.append({"id": it.get("id"), **holding_data})
                 return _response(200, {"items": holdings})
             except Exception as e:
                 print(f"Error fetching holdings: {e}")

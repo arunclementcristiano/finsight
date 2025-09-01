@@ -63,6 +63,7 @@ resource "aws_iam_role_policy" "lambda_ddb_access" {
         aws_dynamodb_table.invest.arn,
         aws_dynamodb_table.mutual_fund_schemes.arn,
         aws_dynamodb_table.holdings.arn,
+        aws_dynamodb_table.asset_class_mapping.arn,
         "${aws_dynamodb_table.expenses.arn}/index/userId-date-index",
         "${aws_dynamodb_table.invest.arn}/index/*",
         "${aws_dynamodb_table.mutual_fund_schemes.arn}/index/*",
@@ -109,6 +110,7 @@ resource "aws_lambda_function" "expenses" {
       INVEST_TABLE             = aws_dynamodb_table.invest.name
       MUTUAL_FUND_SCHEMES_TABLE = aws_dynamodb_table.mutual_fund_schemes.name
       HOLDINGS_TABLE           = aws_dynamodb_table.holdings.name
+      ASSET_CLASS_MAPPING_TABLE = aws_dynamodb_table.asset_class_mapping.name
     }
   }
 }

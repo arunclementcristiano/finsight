@@ -417,7 +417,8 @@ export default function HoldingsPage() {
 		const allocationMap = new Map<string, number>();
 		
 		filteredHoldings.forEach(holding => {
-			const assetClass = holding.instrumentClass;
+			// Use asset_class from holdings table if available, fallback to instrumentClass
+			const assetClass = (holding as any).asset_class || holding.instrumentClass;
 			const currentValue = computeHoldingValue(holding);
 			allocationMap.set(assetClass, (allocationMap.get(assetClass) || 0) + currentValue);
 		});
@@ -439,7 +440,8 @@ export default function HoldingsPage() {
 		const roleMap = new Map<string, number>();
 
 		filteredHoldings.forEach(holding => {
-			const role = getRoleForAssetClass(holding.instrumentClass);
+			// Use portfolio_role from holdings table if available, fallback to calculated role
+			const role = (holding as any).portfolio_role || getRoleForAssetClass(holding.instrumentClass);
 			const currentValue = computeHoldingValue(holding);
 			roleMap.set(role, (roleMap.get(role) || 0) + currentValue);
 		});
@@ -447,7 +449,7 @@ export default function HoldingsPage() {
 		const roleArray = Array.from(roleMap.entries()).map(([name, value]) => ({
 			name,
 			value,
-			color: name === 'Equity' ? '#3B82F6' : name === 'Defensive' ? '#10B981' : '#F59E0B'
+			color: name === 'Equity' ? '#3B7280' : name === 'Defensive' ? '#10B981' : '#F59E0B'
 		})).sort((a, b) => b.value - a.value);
 
 		return roleArray;
@@ -778,8 +780,8 @@ export default function HoldingsPage() {
 														</td>
 														<td className="py-2 px-3">
 															<div className="space-y-0.5">
-																<div className="text-sm text-foreground">{holding.instrumentClass}</div>
-																<div className="text-xs italic text-muted-foreground">{getRoleForAssetClass(holding.instrumentClass)}</div>
+																<div className="text-sm text-foreground">{(holding as any).asset_class || holding.instrumentClass}</div>
+																<div className="text-xs italic text-muted-foreground">{(holding as any).portfolio_role || getRoleForAssetClass(holding.instrumentClass)}</div>
 															</div>
 														</td>
 														<td className="py-2 px-3">{holding.units?.toFixed(2) || '0.00'}</td>
