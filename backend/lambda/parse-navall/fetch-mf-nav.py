@@ -6,7 +6,6 @@ import logging
 from datetime import datetime
 from decimal import Decimal
 
-
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -18,7 +17,7 @@ NAV_URL = "https://www.amfiindia.com/spages/NAVAll.txt"
 
 # --- Config via environment ---
 KEEP_VARIANTS = os.environ.get("KEEP_VARIANTS", "direct_growth_only")  
-# Allowed values: "direct_growth_only" | "all"
+# Allowed: "direct_growth_only" | "all"
 
 # --- Regex ---
 header_re = re.compile(r"^\s*Open Ended Schemes\((.*?)\)\s*$", re.IGNORECASE)
@@ -32,7 +31,6 @@ def normalize_quote(s: str) -> str:
 def parse_variant(fund_name: str):
     n = (fund_name or "").lower()
     plan   = "Direct"  if "direct"  in n else ("Regular" if "regular" in n else None)
-    # Broader matching for IDCW variants
     if re.search(r"(idcw|dividend|payout|reinvest|bonus|unclaimed|withdrawal)", n):
         option = "IDCW"
     elif "growth" in n:
@@ -40,6 +38,12 @@ def parse_variant(fund_name: str):
     else:
         option = None
     return plan, option
+
+def detect_etf(scheme_type, scheme_subtype, fund_name: str) -> bool:
+    st = (scheme_type or "").lower()
+    ss = (scheme_subtype or "").lower() if scheme_subtype else ""
+    n  = (fund_name or "").lower()
+    return ("etf" in st or "etf" in ss or "etf" in n or "bees" in n)
 
 def map_to_allocation(scheme_type: str, scheme_subtype: str, fund_name: str) -> str:
     st = (scheme_type or "").lower().strip()
@@ -89,7 +93,7 @@ def map_to_allocation(scheme_type: str, scheme_subtype: str, fund_name: str) -> 
             return "Equity"
         return "Equity"
 
-    # 5) Legacy labels under open-ended
+    # 5) Legacy labels
     if st in ["income", "money market", "gilt", "growth"]:
         if has_any(ss + " " + n, liquid_kw): return "Liquid Fund"
         if has_any(ss + " " + n, debt_kw):   return "Debt Fund"
@@ -146,33 +150,32 @@ def lambda_handler(event, context):
 
             scheme_code, isin_div_payout, isin_growth, fund_name, nav, date = [p.strip() for p in parts[:6]]
 
-            # Skip if no AMC found
             if not curr_amc:
                 skipped_no_amc += 1
                 continue
 
-            # Normalize fund name
+            # Normalize
             fund_name = normalize_quote(fund_name)
 
-            # Parse variant
+            # Variant
             plan, option = parse_variant(fund_name)
 
-            # Apply variant filter
+            # Variant filter
             if KEEP_VARIANTS == "direct_growth_only":
                 if plan != "Direct" or option != "Growth":
                     continue
 
-            # Validate NAV
+            # NAV safe parse
             try:
                 nav_value = Decimal(nav)
-            except ValueError:
+            except Exception:
                 logger.warning(f"Skipping invalid NAV: {fund_name} NAV={nav}")
                 continue
 
-            # Map allocation
+            # Allocation & ETF detection
             allocation_class = map_to_allocation(curr_category[0], curr_category[1], fund_name)
+            is_etf = detect_etf(curr_category[0], curr_category[1], fund_name)
 
-            # Build item
             item = {
                 "scheme_code": scheme_code,
                 "date": date,
@@ -182,14 +185,14 @@ def lambda_handler(event, context):
                 "scheme_subtype": curr_category[1],
                 "plan": plan,
                 "option": option,
-                "nav": nav_value,   # stored as Number in Dynamo
+                "nav": nav_value,
                 "allocation_class": allocation_class,
+                "is_etf": "true" if is_etf else "false"   # ✅ ETF flag as string
             }
             items.append(item)
 
-        # Batch write to DynamoDB
+        # Batch write
         logger.info(f"Writing {len(items)} items to DynamoDB (skipped {skipped_no_amc} items without AMC)")
-        
         try:
             with table.batch_writer() as batch:
                 for item in items:

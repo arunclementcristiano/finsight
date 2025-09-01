@@ -262,7 +262,3 @@ output "category_rules_table_name" {
 output "user_budgets_table_name" {
   value = aws_dynamodb_table.user_budgets.name
 }
-
-output "mutual_fund_schemes_table_name" {
-  value = aws_dynamodb_table.mutual_fund_schemes.name
-}
