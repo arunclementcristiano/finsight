@@ -102,6 +102,12 @@ export default function HoldingsPage() {
 	const [selectedInstrumentType, setSelectedInstrumentType] = useState<string | null>(null);
 	const [entryMode, setEntryMode] = useState<'units' | 'amount'>('units');
 	
+	// Store original values for edit mode reset
+	const [originalForm, setOriginalForm] = useState<any>(null);
+	
+	// Loading state for data refresh
+	const [isRefreshing, setIsRefreshing] = useState(false);
+	
 	// Enhanced stock functionality
 	const [stockSearchTerm, setStockSearchTerm] = useState("");
 	const [selectedStock, setSelectedStock] = useState<any>(null);
@@ -405,28 +411,41 @@ export default function HoldingsPage() {
 	}, [holdings?.length]);
 
 	function resetForm() {
-		setForm({ instrumentClass: "Stocks", name: "", symbol: "", units: "", price: "", investedAmount: "", currentValue: "", propertyType: "" });
+		if (editingId && originalForm) {
+			// If editing, restore original values
+			setForm(originalForm);
+			setMfSearchTerm(originalForm.name);
+		} else {
+			// If adding new, reset to empty form
+			setForm({ instrumentClass: "Stocks", name: "", symbol: "", units: "", price: "", investedAmount: "", currentValue: "", propertyType: "" });
+			// Reset stock functionality
+			setStockSearchTerm("");
+			setSelectedStock(null);
+			setFilteredStockOptions([]);
+			setShowStockDropdown(false);
+			// Reset MF functionality
+			setMfSearchTerm("");
+			setSelectedMF(null);
+			setFilteredMFOptions([]);
+			setShowMFDropdown(false);
+			setMfCalculatedUnits(null);
+			setMfCurrentValue(null);
+			setMfGainLoss(null);
+			setMfGainLossPercent(null);
+			// Reset role-based state
+			setSelectedRole(null);
+			setSelectedInstrumentType(null);
+			setEntryMode('units');
+		}
+		}
+	
+	function clearEditState() {
 		setEditingId(null);
-		// Reset stock functionality
-		setStockSearchTerm("");
-		setSelectedStock(null);
-		setFilteredStockOptions([]);
-		setShowStockDropdown(false);
-		// Reset MF functionality
-		setMfSearchTerm("");
-		setSelectedMF(null);
-		setFilteredMFOptions([]);
-		setShowMFDropdown(false);
-		setMfCalculatedUnits(null);
-		setMfCurrentValue(null);
-		setMfGainLoss(null);
-		setMfGainLossPercent(null);
-		// Reset role-based state
+		setOriginalForm(null);
 		setSelectedRole(null);
 		setSelectedInstrumentType(null);
-		setEntryMode('units');
 	}
-
+	
 	async function submitForm(e: React.FormEvent) {
 		e.preventDefault();
 		
@@ -478,13 +497,16 @@ export default function HoldingsPage() {
 				updated_at: new Date().toISOString()
 			};
 			
-							await saveHolding(dbHolding);
-				
-				// Refresh holdings from DynamoDB instead of updating local state
-				await loadHoldingsData();
-				
-				setIsModalOpen(false);
-				resetForm();
+			await saveHolding(dbHolding);
+			
+			// Show loading state and refresh holdings from DynamoDB
+			setIsRefreshing(true);
+			await loadHoldingsData();
+			setIsRefreshing(false);
+			
+			setIsModalOpen(false);
+			clearEditState();
+			resetForm();
 		} catch (error) {
 			console.error('Error saving holding to DynamoDB:', error);
 			alert('Failed to save holding. Please try again.');
@@ -522,7 +544,7 @@ export default function HoldingsPage() {
 		setSelectedRole(role);
 		setSelectedInstrumentType(instrumentType);
 		
-		setForm({
+		const formData = {
 			instrumentClass: holding.instrumentClass,
 			name: holding.name,
 			symbol: holding.symbol || "",
@@ -531,7 +553,16 @@ export default function HoldingsPage() {
 			investedAmount: holding.investedAmount?.toString() || "",
 			currentValue: holding.currentValue?.toString() || "",
 			propertyType: (holding as any).propertyType || ""
-		});
+		};
+		
+		// Store original values for reset functionality
+		setOriginalForm(formData);
+		setForm(formData);
+		
+		// Set MF search term to show the fund name
+		if (holding.instrumentClass === 'Mutual Funds' || holding.instrumentClass === 'ETF') {
+			setMfSearchTerm(holding.name);
+		}
 		
 		setIsModalOpen(true);
 	}
@@ -1061,18 +1092,7 @@ export default function HoldingsPage() {
 													</div>
 												</div>
 
-												{/* Auto-calculated Holding Value */}
-												{form.units && form.price && (
-													<div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-														<div className="text-sm font-medium text-blue-700 dark:text-blue-300">Holding Value</div>
-														<div className="text-lg font-semibold text-blue-600 dark:text-blue-400">
-															₹{(parseFloat(form.units) * parseFloat(form.price)).toLocaleString()}
-														</div>
-														<div className="text-xs text-blue-600 dark:text-blue-400">
-															{form.units} units × ₹{form.price} = ₹{(parseFloat(form.units) * parseFloat(form.price)).toLocaleString()}
-														</div>
-													</div>
-												)}
+
 											</>
 										)}
 
@@ -1227,18 +1247,7 @@ export default function HoldingsPage() {
 													</div>
 												</div>
 
-												{/* Auto-calculated Holding Value for ETF */}
-												{form.units && form.price && (
-													<div className="p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
-														<div className="text-sm font-medium text-purple-700 dark:text-purple-300">Holding Value</div>
-														<div className="text-lg font-semibold text-purple-600 dark:text-purple-400">
-															₹{(parseFloat(form.units) * parseFloat(form.price)).toLocaleString()}
-														</div>
-														<div className="text-xs text-purple-600 dark:text-purple-400">
-															{form.units} units × ₹{form.price} = ₹{(parseFloat(form.units) * parseFloat(form.price)).toLocaleString()}
-														</div>
-													</div>
-												)}
+
 											</>
 										)}
 
@@ -1285,18 +1294,7 @@ export default function HoldingsPage() {
 													</div>
 												</div>
 
-												{/* Auto-calculated Holding Value for Gold */}
-												{form.units && form.price && (
-													<div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
-														<div className="text-sm font-medium text-yellow-700 dark:text-yellow-300">Holding Value</div>
-														<div className="text-lg font-semibold text-yellow-600 dark:text-yellow-400">
-															₹{(parseFloat(form.units) * parseFloat(form.price)).toLocaleString()}
-														</div>
-														<div className="text-xs text-yellow-600 dark:text-yellow-400">
-															{form.units} grams × ₹{form.price} = ₹{(parseFloat(form.units) * parseFloat(form.price)).toLocaleString()}
-														</div>
-													</div>
-												)}
+
 											</>
 										)}
 
@@ -1353,7 +1351,11 @@ export default function HoldingsPage() {
 											<div className="flex items-center gap-2">
 												<button
 													type="button"
-													onClick={() => { setIsModalOpen(false); resetForm(); }}
+													onClick={() => { 
+														setIsModalOpen(false); 
+														clearEditState(); 
+														resetForm(); 
+													}}
 													className="px-4 py-2 rounded-lg text-foreground hover:bg-muted transition-colors text-sm"
 												>
 													Cancel
