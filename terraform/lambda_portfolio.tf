@@ -4,18 +4,6 @@ variable "portfolio_lambda_name" {
   description = "Portfolio Lambda function name"
 }
 
-variable "cognito_user_pool_id" {
-  type        = string
-  description = "Existing Cognito User Pool ID for JWT authorizer (leave blank to disable auth on protected routes)"
-  default     = ""
-}
-
-variable "cognito_audience" {
-  type        = list(string)
-  description = "JWT audiences (e.g., app client IDs)"
-  default     = []
-}
-
 data "archive_file" "portfolio_lambda_zip" {
   type        = "zip"
   source_dir  = "${path.root}/../backend/lambda/portfolio-api-py"
