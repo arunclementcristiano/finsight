@@ -1,6 +1,6 @@
 "use client";
 import React, { useMemo, useState } from "react";
-import type { Holding } from "../../../store";
+
 import type { AssetClass } from "../../domain/allocationEngine";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Plus, Edit2, Trash2, X, Search, TrendingUp, BarChart3, PieChart as PieChartIcon } from "lucide-react";
@@ -53,14 +53,14 @@ function mapInstrumentTypeToAssetClass(instrumentType: string): AssetClass {
 }
 
 // Utility functions
-function computeHoldingValue(holding: Holding): number {
+function computeHoldingValue(holding: HoldingData): number {
 	if (holding.currentValue !== undefined) return holding.currentValue;
 	if (holding.units && holding.price) return holding.units * holding.price;
 	if (holding.investedAmount) return holding.investedAmount;
 	return 0;
 }
 
-function computeInvestedAmount(holding: Holding): number {
+function computeInvestedAmount(holding: HoldingData): number {
 	if (holding.investedAmount !== undefined) return holding.investedAmount;
 	if (holding.units && holding.price) return holding.units * holding.price;
 	return 0;
@@ -83,7 +83,7 @@ function getRoleForAssetClass(assetClass: AssetClass): 'Equity' | 'Defensive' | 
 }
 
 export default function HoldingsPage() {
-	const [holdings, setHoldings] = useState<Holding[]>([]);
+	const [holdings, setHoldings] = useState<HoldingData[]>([]);
 	
 	// Modal state
 	const [isModalOpen, setIsModalOpen] = useState(false);
@@ -337,9 +337,9 @@ export default function HoldingsPage() {
 		
 		return holdings.filter(holding => {
 			// Use asset_class from holdings table if available, fallback to instrumentClass
-			const assetClass = (holding as any).asset_class || holding.instrumentClass;
+			const assetClass = holding.asset_class || holding.instrumentClass;
 			// Use portfolio_role from holdings table if available, fallback to calculated role
-			const portfolioRole = (holding as any).portfolio_role || getRoleForAssetClass(holding.instrumentClass);
+			const portfolioRole = holding.portfolio_role || getRoleForAssetClass(holding.instrumentClass);
 			
 			const matchesAssetClass = !filterAssetClass || assetClass === filterAssetClass;
 			const matchesAssetRole = !filterAssetRole || portfolioRole === filterAssetRole;
@@ -373,8 +373,8 @@ export default function HoldingsPage() {
 					return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
 				case 'class':
 					// Use asset_class from holdings table if available, fallback to instrumentClass
-					av = (a as any).asset_class || a.instrumentClass || '';
-					bv = (b as any).asset_class || b.instrumentClass || '';
+					av = a.asset_class || a.instrumentClass || '';
+					bv = b.asset_class || b.instrumentClass || '';
 					return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
 				case 'current':
 					av = computeHoldingValue(a);
@@ -412,7 +412,7 @@ export default function HoldingsPage() {
 		
 		filteredHoldings.forEach(holding => {
 			// Use asset_class from holdings table if available, fallback to instrumentClass
-			const assetClass = (holding as any).asset_class || holding.instrumentClass;
+			const assetClass = holding.asset_class || holding.instrumentClass;
 			const currentValue = computeHoldingValue(holding);
 			allocationMap.set(assetClass, (allocationMap.get(assetClass) || 0) + currentValue);
 		});
@@ -435,7 +435,7 @@ export default function HoldingsPage() {
 
 		filteredHoldings.forEach(holding => {
 			// Use portfolio_role from holdings table if available, fallback to calculated role
-			const role = (holding as any).portfolio_role || getRoleForAssetClass(holding.instrumentClass);
+			const role = holding.portfolio_role || getRoleForAssetClass(holding.instrumentClass);
 			const currentValue = computeHoldingValue(holding);
 			roleMap.set(role, (roleMap.get(role) || 0) + currentValue);
 		});
@@ -582,7 +582,7 @@ export default function HoldingsPage() {
 		}
 	}
 
-	function openEdit(holding: Holding) {
+	function openEdit(holding: HoldingData) {
 		setEditingId(holding.id);
 		
 		// Determine role and instrument type based on holding data
@@ -799,8 +799,8 @@ export default function HoldingsPage() {
 														</td>
 														<td className="py-2 px-3">
 															<div className="space-y-0.5">
-																<div className="text-sm text-foreground font-medium">{(holding as any).asset_class || holding.instrumentClass}</div>
-																<div className="text-xs text-muted-foreground">Role: {(holding as any).portfolio_role || getRoleForAssetClass(holding.instrumentClass)}</div>
+																<div className="text-sm text-foreground font-medium">{holding.asset_class || holding.instrumentClass}</div>
+																<div className="text-xs text-muted-foreground">Role: {holding.portfolio_role || getRoleForAssetClass(holding.instrumentClass)}</div>
 															</div>
 														</td>
 														<td className="py-2 px-3">{holding.units?.toFixed(2) || '0.00'}</td>
