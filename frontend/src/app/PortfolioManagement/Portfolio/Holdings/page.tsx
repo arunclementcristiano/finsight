@@ -186,11 +186,18 @@ export default function HoldingsPage() {
 				units: dbHolding.units,
 				price: dbHolding.price,
 				investedAmount: dbHolding.investedAmount,
-				currentValue: dbHolding.currentValue
+				currentValue: dbHolding.currentValue,
+				created_at: dbHolding.created_at // Ensure created_at is included
 			}));
 			
-			// Clear existing holdings and set new ones from DynamoDB
-			setHoldings(transformedHoldings);
+			// Sort by created_at descending (newest first) and set holdings
+			const sortedHoldings = transformedHoldings.sort((a, b) => {
+				const dateA = new Date(a.created_at || 0).getTime();
+				const dateB = new Date(b.created_at || 0).getTime();
+				return dateB - dateA; // Descending order
+			});
+			
+			setHoldings(sortedHoldings);
 		} catch (error) {
 			// Silent fail - set empty array
 			setHoldings([]);
@@ -559,9 +566,11 @@ export default function HoldingsPage() {
 		setOriginalForm(formData);
 		setForm(formData);
 		
-		// Set MF search term to show the fund name
+		// Set search terms to show the names for all asset classes
 		if (holding.instrumentClass === 'Mutual Funds' || holding.instrumentClass === 'ETF') {
 			setMfSearchTerm(holding.name);
+		} else if (holding.instrumentClass === 'Stocks') {
+			setStockSearchTerm(holding.name);
 		}
 		
 		setIsModalOpen(true);
@@ -1112,7 +1121,7 @@ export default function HoldingsPage() {
 															}`}
 															placeholder={editingId !== null ? "Fund name cannot be changed during edit" : "Search for mutual funds..."}
 														/>
-														{showMFDropdown && filteredMFOptions.length > 0 && (
+														{showMFDropdown && filteredMFOptions.length > 0 && !editingId && (
 															<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-auto">
 																{filteredMFOptions.map((fund) => (
 																	<div
@@ -1191,15 +1200,15 @@ export default function HoldingsPage() {
 															}`}
 															placeholder={editingId !== null ? "ETF name cannot be changed during edit" : "Search for ETFs..."}
 														/>
-																												{showMFDropdown && filteredMFOptions.length > 0 && (
+																																										{showMFDropdown && filteredMFOptions.length > 0 && !editingId && (
 															<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-auto">
 																{filteredMFOptions.map((fund) => (
 																	<div
-																		key={fund.schemeCode}
-																		onClick={() => {
-																			setSelectedMF(fund);
-																			setMfSearchTerm(fund.name);
-																			setForm({ ...form, name: fund.name, symbol: fund.schemeCode, price: fund.currentNAV.toString() });
+														key={fund.schemeCode}
+														onClick={() => {
+															setSelectedMF(fund);
+															setMfSearchTerm(fund.name);
+															setForm({ ...form, name: fund.name, symbol: fund.schemeCode, price: fund.currentNAV.toString() });
 															setShowMFDropdown(false);
 														}}
 														className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
