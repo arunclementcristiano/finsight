@@ -7,6 +7,7 @@ import { Plus, Edit2, Trash2, X, Search, TrendingUp, BarChart3, PieChart as PieC
 import { v4 as uuidv4 } from "uuid";
 import { Card as PlanCard, CardContent as PlanCardContent, CardHeader as PlanCardHeader, CardTitle as PlanCardTitle } from "../../../components/Card";
 import { Button } from "../../../components/Button";
+import { fetchMutualFundSchemes, searchFundsByName, TransformedFund } from "../../../../lib/dynamodb";
 
 // Asset class colors for charts
 const CLASS_COLORS = {
@@ -134,55 +135,31 @@ export default function HoldingsPage() {
 
 	// Mutual Fund functionality
 	const [mfSearchTerm, setMfSearchTerm] = useState("");
-	const [selectedMF, setSelectedMF] = useState<any>(null);
-	const [mfOptions, setMfOptions] = useState<any[]>([]);
-	const [filteredMFOptions, setFilteredMFOptions] = useState<any[]>([]);
+	const [selectedMF, setSelectedMF] = useState<TransformedFund | null>(null);
+	const [mfOptions, setMfOptions] = useState<TransformedFund[]>([]);
+	const [filteredMFOptions, setFilteredMFOptions] = useState<TransformedFund[]>([]);
 	const [showMFDropdown, setShowMFDropdown] = useState(false);
 	const [mfCalculatedUnits, setMfCalculatedUnits] = useState<number | null>(null);
 	const [mfCurrentValue, setMfCurrentValue] = useState<number | null>(null);
 	const [mfGainLoss, setMfGainLoss] = useState<number | null>(null);
 	const [mfGainLossPercent, setMfGainLossPercent] = useState<number | null>(null);
 
-	// Load mutual fund and ETF data from DynamoDB via API
+	// Load mutual fund and ETF data directly from DynamoDB
 	React.useEffect(() => {
 		async function loadMFData() {
 			try {
-				const response = await fetch('/api/mutual-funds');
-				if (!response.ok) {
-					throw new Error(`HTTP error! status: ${response.status}`);
-				}
-				const data = await response.json();
-				
-				if (data.success && data.funds) {
-					// Transform the data to match our expected format
-					const funds = data.funds.map((fund: any) => ({
-						schemeCode: fund.scheme_code || fund.schemeCode,
-						name: fund.fund_name || fund.name,
-						fullName: fund.scheme_name || fund.fullName,
-						currentNAV: parseFloat(fund.nav) || 0,
-						fundType: fund.allocation_class || 'Equity MF',
-						allocationClass: fund.allocation_class || 'Equity',
-						isETF: fund.is_etf === 'true' || fund.isETF === true
-					}));
-					
-					// Sort by name for better UX
-					funds.sort((a: any, b: any) => a.name.localeCompare(b.name));
-					setMfOptions(funds);
-					console.log('Loaded funds from API:', funds);
-				} else {
-					console.error('API response format error:', data);
-					// Fallback to mock data if API response is invalid
-					loadMockData();
-				}
+				const funds = await fetchMutualFundSchemes();
+				setMfOptions(funds);
+				console.log('Loaded funds directly from DynamoDB:', funds);
 			} catch (error) {
-				console.error('Error loading MF data from API:', error);
-				// Fallback to mock data if API fails
+				console.error('Error loading MF data from DynamoDB:', error);
+				// Fallback to mock data if DynamoDB fails
 				loadMockData();
 			}
 		}
 
 		function loadMockData() {
-			const mockFunds = [
+			const mockFunds: TransformedFund[] = [
 				{ schemeCode: 'MOCK001', name: 'HDFC Mid-Cap Opportunities Fund', fullName: 'HDFC Mid-Cap Opportunities Fund - Direct Plan - Growth', currentNAV: 45.67, fundType: 'Equity MF', allocationClass: 'Equity', isETF: false },
 				{ schemeCode: 'MOCK002', name: 'ICICI Prudential Bluechip Fund', fullName: 'ICICI Prudential Bluechip Fund - Direct Plan - Growth', currentNAV: 52.34, fundType: 'Equity MF', allocationClass: 'Equity', isETF: false },
 				{ schemeCode: 'MOCK003', name: 'SBI Gold Fund', fullName: 'SBI Gold Fund - Direct Plan - Growth', currentNAV: 23.45, fundType: 'Gold MF', allocationClass: 'Gold', isETF: false },
@@ -191,7 +168,7 @@ export default function HoldingsPage() {
 			];
 			
 			// Sort by name for better UX
-			mockFunds.sort((a: any, b: any) => a.name.localeCompare(b.name));
+			mockFunds.sort((a, b) => a.name.localeCompare(b.name));
 			setMfOptions(mockFunds);
 			console.log('Using mock data as fallback');
 		}
@@ -214,30 +191,43 @@ export default function HoldingsPage() {
 		}
 	};
 
-	const filterMFOptions = (term: string): void => {
+	const filterMFOptions = async (term: string): Promise<void> => {
 		if (term.trim() === "") {
 			setFilteredMFOptions([]);
 			setShowMFDropdown(false);
 		} else {
-			// Filter based on selected asset class
-			let filtered = mfOptions;
-			
-			if (selectedRole === 'Mutual Funds') {
-				// Show only mutual funds (is_etf = false)
-				filtered = mfOptions.filter(option => !option.isETF);
-			} else if (selectedRole === 'ETF') {
-				// Show only ETFs (is_etf = true)
-				filtered = mfOptions.filter(option => option.isETF);
+			try {
+				// Determine ETF status based on selected role
+				let isETF: boolean | undefined;
+				if (selectedRole === 'Mutual Funds') {
+					isETF = false;
+				} else if (selectedRole === 'ETF') {
+					isETF = true;
+				}
+				
+				// Search funds directly from DynamoDB with filtering
+				const filtered = await searchFundsByName(term, isETF);
+				setFilteredMFOptions(filtered);
+				setShowMFDropdown(filtered.length > 0);
+			} catch (error) {
+				console.error('Error searching funds:', error);
+				// Fallback to local filtering if DynamoDB search fails
+				let filtered = mfOptions;
+				
+				if (selectedRole === 'Mutual Funds') {
+					filtered = mfOptions.filter(option => !option.isETF);
+				} else if (selectedRole === 'ETF') {
+					filtered = mfOptions.filter(option => option.isETF);
+				}
+				
+				filtered = filtered.filter(option =>
+					option.name.toLowerCase().includes(term.toLowerCase()) ||
+					option.fullName.toLowerCase().includes(term.toLowerCase())
+				);
+				
+				setFilteredMFOptions(filtered.slice(0, 10));
+				setShowMFDropdown(filtered.length > 0);
 			}
-			
-			// Then filter by search term
-			filtered = filtered.filter(option =>
-				option.name.toLowerCase().includes(term.toLowerCase()) ||
-				option.fullName.toLowerCase().includes(term.toLowerCase())
-			);
-			
-			setFilteredMFOptions(filtered.slice(0, 10));
-			setShowMFDropdown(filtered.length > 0);
 		}
 	};
 
@@ -899,11 +889,11 @@ export default function HoldingsPage() {
 													<div className="relative">
 														<input
 															value={mfSearchTerm}
-															onChange={(e) => {
+															onChange={async (e) => {
 																setMfSearchTerm(e.target.value);
-																filterMFOptions(e.target.value);
+																await filterMFOptions(e.target.value);
 															}}
-															onFocus={() => filterMFOptions(mfSearchTerm)}
+															onFocus={async () => await filterMFOptions(mfSearchTerm)}
 															className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
 															placeholder="Search for mutual funds..."
 														/>
@@ -979,11 +969,11 @@ export default function HoldingsPage() {
 													<div className="relative">
 														<input
 															value={mfSearchTerm}
-															onChange={(e) => {
+															onChange={async (e) => {
 																setMfSearchTerm(e.target.value);
-																filterMFOptions(e.target.value);
+																await filterMFOptions(e.target.value);
 															}}
-															onFocus={() => filterMFOptions(mfSearchTerm)}
+															onFocus={async () => await filterMFOptions(mfSearchTerm)}
 															className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
 															placeholder="Search for ETFs..."
 														/>
