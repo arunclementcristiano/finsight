@@ -84,18 +84,7 @@ function shouldRefreshCache(): boolean {
   return now >= nextRefresh || (now - mfCache.timestamp) >= 24 * 60 * 60 * 1000;
 }
 
-// Mock data for development/testing
-const MOCK_MF_DATA: TransformedFund[] = [
-  { schemeCode: "001", name: "HDFC Mid-Cap Opportunities Fund", fullName: "HDFC Mid-Cap Opportunities Fund - Direct Plan - Growth", currentNAV: 45.67, fundType: "Equity MF", allocationClass: "Equity", isETF: false },
-  { schemeCode: "002", name: "ICICI Prudential Bluechip Fund", fullName: "ICICI Prudential Bluechip Fund - Direct Plan - Growth", currentNAV: 67.89, fundType: "Equity MF", allocationClass: "Equity", isETF: false },
-  { schemeCode: "003", name: "SBI Gold ETF", fullName: "SBI Gold ETF", currentNAV: 123.45, fundType: "Gold ETF", allocationClass: "Gold", isETF: true },
-  { schemeCode: "004", name: "Axis Liquid Fund", fullName: "Axis Liquid Fund - Direct Plan - Growth", currentNAV: 1000.00, fundType: "Liquid MF", allocationClass: "Liquid", isETF: false },
-  { schemeCode: "005", name: "Nippon India Debt Fund", fullName: "Nippon India Debt Fund - Direct Plan - Growth", currentNAV: 12.34, fundType: "Debt MF", allocationClass: "Debt", isETF: false },
-  // Add more diverse names for better testing
-  { schemeCode: "006", name: "Parag Parikh Flexi Cap Fund", fullName: "Parag Parikh Flexi Cap Fund - Direct Plan - Growth", currentNAV: 78.90, fundType: "Equity MF", allocationClass: "Equity", isETF: false },
-  { schemeCode: "007", name: "Kotak Emerging Equity Fund", fullName: "Kotak Emerging Equity Fund - Direct Plan - Growth", currentNAV: 56.78, fundType: "Equity MF", allocationClass: "Equity", isETF: false },
-  { schemeCode: "008", name: "Mirae Asset Large Cap Fund", fullName: "Mirae Asset Large Cap Fund - Direct Plan - Growth", currentNAV: 89.12, fundType: "Equity MF", allocationClass: "Equity", isETF: false }
-];
+
 
 export async function fetchMutualFundSchemes(): Promise<TransformedFund[]> {
   // Check if cache is valid
@@ -104,29 +93,30 @@ export async function fetchMutualFundSchemes(): Promise<TransformedFund[]> {
     return mfCache.data;
   }
 
-  // Try to fetch from API if available
-  if (API_BASE) {
-    try {
-      console.log('Fetching fresh mutual fund data from API');
-      const res = await fetch(`${API_BASE}/mutual-funds`, { method: 'GET' });
-      if (res.ok) {
-        const data = await res.json();
-        const funds = (data.items || []) as TransformedFund[];
-        
-        // Update cache
-        mfCache = { data: funds, timestamp: Date.now() };
-        console.log('Successfully fetched from API and cached');
-        return funds;
-      }
-    } catch (error) {
-      console.warn('API call failed, using mock data:', error);
-    }
+  // Fetch from API
+  if (!API_BASE) {
+    throw new Error('API_BASE not configured');
   }
 
-  // Fallback to mock data
-  console.log('Using mock mutual fund data (API not available)');
-  mfCache = { data: MOCK_MF_DATA, timestamp: Date.now() };
-  return MOCK_MF_DATA;
+  try {
+    console.log('Fetching fresh mutual fund data from API');
+    const res = await fetch(`${API_BASE}/mutual-funds`, { method: 'GET' });
+    
+    if (!res.ok) {
+      throw new Error(`API returned ${res.status}: ${res.statusText}`);
+    }
+    
+    const data = await res.json();
+    const funds = (data.items || []) as TransformedFund[];
+    
+    // Update cache
+    mfCache = { data: funds, timestamp: Date.now() };
+    console.log(`Successfully fetched ${funds.length} funds from API and cached`);
+    return funds;
+  } catch (error) {
+    console.error('Failed to fetch mutual fund data:', error);
+    throw error;
+  }
 }
 
 // Preload function to be called on server start
@@ -153,52 +143,27 @@ export async function fetchFundsByETFStatus(isETF: boolean): Promise<Transformed
 }
 
 export async function searchFundsByName(searchTerm: string, isETF?: boolean): Promise<TransformedFund[]> {
-  console.log('🔍 searchFundsByName called with:', { searchTerm, isETF });
-  
   // Use cached data for search to avoid API calls
   const allFunds = await fetchMutualFundSchemes();
-  console.log('📊 Total funds available:', allFunds.length);
-  console.log('📋 Sample funds:', allFunds.slice(0, 3));
   
   let filteredFunds = allFunds;
   
   // Filter by ETF status if specified
   if (isETF !== undefined) {
-    const beforeETFFilter = filteredFunds.length;
     filteredFunds = filteredFunds.filter(fund => fund.isETF === isETF);
-    console.log(`🎯 ETF filter (${isETF}): ${beforeETFFilter} → ${filteredFunds.length} funds`);
   }
   
   // Filter by search term
   if (searchTerm.trim()) {
     const term = searchTerm.toLowerCase();
-    const beforeSearchFilter = filteredFunds.length;
-    
-    // Debug: Show all fund names before filtering
-    console.log('🔍 All available fund names:');
-    filteredFunds.forEach((fund, index) => {
-      console.log(`  ${index + 1}. "${fund.name}" (full: "${fund.fullName}")`);
-    });
-    
-    filteredFunds = filteredFunds.filter(fund => {
-      const nameMatch = fund.name.toLowerCase().includes(term);
-      const fullNameMatch = fund.fullName.toLowerCase().includes(term);
-      const matches = nameMatch || fullNameMatch;
-      
-      if (matches) {
-        console.log(`✅ Match found: "${fund.name}" (term: "${term}")`);
-      } else {
-        console.log(`❌ No match: "${fund.name}" (term: "${term}")`);
-      }
-      
-      return matches;
-    });
-    console.log(`🔎 Search filter ("${term}"): ${beforeSearchFilter} → ${filteredFunds.length} funds`);
+    filteredFunds = filteredFunds.filter(fund => 
+      fund.name.toLowerCase().includes(term) || 
+      fund.fullName.toLowerCase().includes(term)
+    );
   }
   
-  const result = filteredFunds.slice(0, 10);
-  console.log('🎯 Final results:', result.length, 'funds');
-  return result;
+  // Return limited results
+  return filteredFunds.slice(0, 10);
 }
 
 export async function saveHolding(holding: HoldingData): Promise<boolean> {
@@ -232,57 +197,26 @@ export async function saveHolding(holding: HoldingData): Promise<boolean> {
   }
 }
 
-// Mock holdings data for development/testing
-const MOCK_HOLDINGS_DATA: HoldingData[] = [
-  {
-    id: "1",
-    user_id: "user123",
-    name: "HDFC Bank",
-    symbol: "HDFCBANK",
-    instrumentClass: "Stocks",
-    units: 100,
-    price: 1500.00,
-    investedAmount: 150000.00,
-    currentValue: 155000.00,
-    allocation_class: "Equity",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: "2",
-    user_id: "user123", 
-    name: "HDFC Mid-Cap Opportunities Fund",
-    symbol: "",
-    instrumentClass: "Mutual Funds",
-    units: 0,
-    price: 45.67,
-    investedAmount: 50000.00,
-    currentValue: 52000.00,
-    allocation_class: "Equity",
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-    updated_at: new Date(Date.now() - 86400000).toISOString()
-  }
-];
+
 
 export async function fetchUserHoldings(userId: string): Promise<HoldingData[]> {
-  // Try to fetch from API if available
-  if (API_BASE) {
-    try {
-      console.log('Fetching holdings from API...');
-      const res = await fetch(`${API_BASE}/holdings?portfolioId=${encodeURIComponent(userId)}`, { method: 'GET' });
-      if (res.ok) {
-        const data = await res.json();
-        console.log('Successfully fetched holdings from API');
-        return (data.items || []) as HoldingData[];
-      } else {
-        console.warn(`API returned ${res.status}, using mock data`);
-      }
-    } catch (error) {
-      console.warn('API call failed, using mock data:', error);
-    }
+  if (!API_BASE) {
+    throw new Error('API_BASE not configured');
   }
 
-  // Fallback to mock data
-  console.log('Using mock holdings data (API not available)');
-  return MOCK_HOLDINGS_DATA;
+  try {
+    console.log('Fetching holdings from API...');
+    const res = await fetch(`${API_BASE}/holdings?portfolioId=${encodeURIComponent(userId)}`, { method: 'GET' });
+    
+    if (!res.ok) {
+      throw new Error(`API returned ${res.status}: ${res.statusText}`);
+    }
+    
+    const data = await res.json();
+    console.log('Successfully fetched holdings from API');
+    return (data.items || []) as HoldingData[];
+  } catch (error) {
+    console.error('Failed to fetch holdings:', error);
+    throw error;
+  }
 }
