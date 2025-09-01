@@ -43,6 +43,17 @@ def _to_json(o):
         return float(o)
     return o
 
+def _convert_floats_to_decimals(obj):
+    """Convert float values to Decimal types for DynamoDB compatibility"""
+    if isinstance(obj, dict):
+        return {k: _convert_floats_to_decimals(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_convert_floats_to_decimals(item) for item in obj]
+    elif isinstance(obj, float):
+        return Decimal(str(obj))
+    else:
+        return obj
+
 
 ALLOWED_CATEGORIES = [
     "Food",          # groceries, restaurants, coffee, snacks
@@ -540,11 +551,16 @@ def handler(event, context):
                 holding_id = holding.get("id") or str(uuid.uuid4())
                 now = datetime.utcnow().isoformat()
                 
+                # Convert float values to Decimal types for DynamoDB compatibility
+                print(f"Original holding data: {holding}")
+                converted_holding = _convert_floats_to_decimals(holding)
+                print(f"Converted holding data: {converted_holding}")
+                
                 item = {
                     "id": holding_id,
                     "user_id": user_sub,
                     "portfolio_id": portfolio_id,
-                    "data": holding,
+                    "data": converted_holding,
                     "created_at": now,
                     "updated_at": now
                 }
