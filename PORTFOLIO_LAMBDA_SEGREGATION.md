@@ -22,6 +22,12 @@ This document describes the segregation of portfolio and holdings functionality 
 ### 4. Deployment Script
 - **New File**: `deploy-portfolio-lambda.sh` - Script to deploy portfolio Lambda
 
+### 5. Updated Frontend Code
+- **Updated File**: `frontend/src/lib/dynamodb.ts` - Now supports both APIs
+- **New File**: `frontend/.env.local.example` - Example environment variables
+- **New Functions**: Added expense-related API functions
+- **Separate API Calls**: Portfolio and expense functions use different base URLs
+
 ## Portfolio Lambda Endpoints
 
 ### Public Endpoints (No Authentication Required)
@@ -95,6 +101,21 @@ terraform apply
 
 ## Environment Variables
 
+### Frontend (.env.local)
+```bash
+# API Base URLs for segregated Lambda functions
+NEXT_PUBLIC_API_BASE_EXPENSES=https://[expenses-api-gateway-url]
+NEXT_PUBLIC_API_BASE_PORTFOLIO=https://[portfolio-api-gateway-url]
+
+# Legacy support - keep the old variable for backward compatibility
+NEXT_PUBLIC_API_BASE=https://[portfolio-api-gateway-url]
+
+# AWS Configuration
+NEXT_PUBLIC_AWS_REGION=us-east-1
+NEXT_PUBLIC_AWS_ACCESS_KEY_ID=your_access_key_here
+NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY=your_secret_key_here
+```
+
 ### Portfolio Lambda
 - `AWS_REGION` - AWS region
 - `INVEST_TABLE` - Investment table name
@@ -122,7 +143,13 @@ terraform apply
 
 ## Migration Notes
 
-1. **Frontend Updates**: Update API endpoints to point to the new portfolio Lambda
+1. **Frontend Updates**: 
+   - Update `.env.local` with new environment variables
+   - Frontend code has been updated to use separate API base URLs
+   - Portfolio functions use `NEXT_PUBLIC_API_BASE_PORTFOLIO`
+   - Expense functions use `NEXT_PUBLIC_API_BASE_EXPENSES`
+   - Legacy support maintained with `NEXT_PUBLIC_API_BASE`
+
 2. **Environment Variables**: Ensure both Lambdas have the correct environment variables
 3. **IAM Roles**: Verify IAM permissions are correctly set for both functions
 4. **API Gateway**: Both functions will have separate API Gateway instances
