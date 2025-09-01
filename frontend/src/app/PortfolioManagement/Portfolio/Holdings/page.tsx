@@ -835,11 +835,9 @@ export default function HoldingsPage() {
 														boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
 													}}
 												/>
-												<Bar 
-													dataKey="value" 
-													fill="hsl(var(--primary))"
-													radius={[2, 2, 0, 0]}
-												/>
+												{portfolioRoleData.map((entry, index) => (
+													<Bar key={entry.name} dataKey="value" fill={entry.color} radius={[2, 2, 0, 0]} xAxisId={0} />
+												))}
 											</BarChart>
 										</ResponsiveContainer>
 									</div>
@@ -871,135 +869,6 @@ export default function HoldingsPage() {
 						</PlanCardContent>
 					</PlanCard>
 				</div>
-			</div>
-
-			{/* Charts Section - Two Separate Divs */}
-			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-				{/* Portfolio Allocation Charts */}
-				<PlanCard>
-					<PlanCardHeader className="px-4 py-3 border-b border-border">
-						<PlanCardTitle className="text-sm font-medium flex items-center gap-2">
-							<PieChartIcon size={16} />
-							Portfolio Allocation
-						</PlanCardTitle>
-					</PlanCardHeader>
-					<PlanCardContent className="p-4">
-						{holdings && holdings.length > 0 ? (
-							<div className="space-y-6">
-								{/* Asset Class Chart with Details */}
-								<div>
-									<div className="text-sm font-medium text-muted-foreground mb-3 text-center">By Asset Class</div>
-									<div className="h-40 flex items-center justify-center mb-4">
-										<ResponsiveContainer width="100%" height="100%">
-											<PieChart>
-												<Pie
-													data={portfolioAllocationData}
-													cx="50%"
-													cy="50%"
-													innerRadius={30}
-													outerRadius={60}
-													paddingAngle={3}
-													dataKey="value"
-												>
-													{portfolioAllocationData.map((entry, index) => (
-														<Cell key={`cell-${index}`} fill={entry.color} />
-													))}
-												</Pie>
-												<Tooltip 
-													formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Value']}
-													labelFormatter={(label) => `${label}`}
-													contentStyle={{
-														backgroundColor: 'hsl(var(--card))',
-														border: '1px solid hsl(var(--border))',
-														borderRadius: '8px',
-														boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-													}}
-												/>
-											</PieChart>
-										</ResponsiveContainer>
-									</div>
-									
-									{/* Asset Class Summary */}
-									<div className="space-y-2">
-										{portfolioAllocationData.map((item, index) => (
-											<div key={index} className="flex items-center justify-between text-sm">
-												<div className="flex items-center gap-2">
-													<div 
-														className="w-3 h-3 rounded-full" 
-														style={{ backgroundColor: item.color }}
-													></div>
-													<span className="text-foreground font-medium">{item.name}</span>
-												</div>
-												<div className="text-muted-foreground font-medium">
-													{((item.value / totalValue) * 100).toFixed(1)}%
-												</div>
-											</div>
-										))}
-									</div>
-								</div>
-								
-								{/* Portfolio Role Chart with Details - Using Pie Chart */}
-								<div>
-									<div className="text-sm font-medium text-muted-foreground mb-3 text-center">By Portfolio Role</div>
-									<div className="h-40 flex items-center justify-center mb-4">
-										<ResponsiveContainer width="100%" height="100%">
-											<PieChart>
-												<Pie
-													data={portfolioRoleData}
-													cx="50%"
-													cy="50%"
-													innerRadius={30}
-													outerRadius={60}
-													paddingAngle={3}
-													dataKey="value"
-												>
-													{portfolioRoleData.map((entry, index) => (
-														<Cell key={`cell-${index}`} fill={entry.color} />
-													))}
-												</Pie>
-												<Tooltip 
-													formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Value']}
-													labelFormatter={(label) => `${label}`}
-													contentStyle={{
-														backgroundColor: 'hsl(var(--card))',
-														border: '1px solid hsl(var(--border))',
-														borderRadius: '8px',
-														boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-													}}
-												/>
-											</PieChart>
-										</ResponsiveContainer>
-									</div>
-									
-									{/* Portfolio Role Summary */}
-									<div className="space-y-2">
-										{portfolioRoleData.map((item, index) => (
-											<div key={index} className="flex items-center justify-between text-sm">
-												<div className="flex items-center gap-2">
-													<div 
-														className="w-3 h-3 rounded-full" 
-														style={{ backgroundColor: item.color }}
-													></div>
-													<span className="text-foreground font-medium">{item.name}</span>
-												</div>
-												<div className="text-muted-foreground font-medium">
-													{((item.value / totalValue) * 100).toFixed(1)}%
-												</div>
-											</div>
-										))}
-									</div>
-								</div>
-							</div>
-						) : (
-							<div className="text-center py-8 text-muted-foreground">
-								<div className="text-4xl mb-2">📊</div>
-								<div className="text-sm">No data to display</div>
-							</div>
-						)}
-					</PlanCardContent>
-				</PlanCard>
-
-
 			</div>
 
 			{/* Add/Edit Modal */}
@@ -1351,7 +1220,7 @@ export default function HoldingsPage() {
 												</div>
 												
 												<div>
-													<label className="block text-sm font-medium text-foreground mb-2">Price per Gram *</label>
+													<label className="block text-sm font-medium text-foreground mb-2">Current Price per Unit *</label>
 													<div className="relative">
 														<span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground">₹</span>
 														<input
