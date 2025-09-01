@@ -93,6 +93,10 @@ export default function HoldingsPage() {
 	const [currentPage, setCurrentPage] = useState(1);
 	const itemsPerPage = 10;
 	
+	// Filter state
+	const [filterAssetClass, setFilterAssetClass] = useState<string | null>(null);
+	const [filterAssetRole, setFilterAssetRole] = useState<string | null>(null);
+	
 	// New state for asset class-based flow
 	const [selectedRole, setSelectedRole] = useState<'Stocks' | 'Mutual Funds' | 'ETF' | 'Gold' | 'Real Estate' | null>(null);
 	const [selectedInstrumentType, setSelectedInstrumentType] = useState<string | null>(null);
@@ -343,11 +347,22 @@ export default function HoldingsPage() {
 
 
 
+	// Filter holdings based on selected filters
+	const filteredHoldings = useMemo(() => {
+		if (!holdings) return [];
+		
+		return holdings.filter(holding => {
+			const matchesAssetClass = !filterAssetClass || holding.instrumentClass === filterAssetClass;
+			const matchesAssetRole = !filterAssetRole || getRoleForAssetClass(holding.instrumentClass) === filterAssetRole;
+			return matchesAssetClass && matchesAssetRole;
+		});
+	}, [holdings, filterAssetClass, filterAssetRole]);
+
 	// Pagination logic
-	const totalPages = Math.ceil((holdings?.length || 0) / itemsPerPage);
+	const totalPages = Math.ceil((filteredHoldings?.length || 0) / itemsPerPage);
 	const startIndex = (currentPage - 1) * itemsPerPage;
 	const endIndex = startIndex + itemsPerPage;
-	const currentHoldings = holdings?.slice(startIndex, endIndex) || [];
+	const currentHoldings = filteredHoldings?.slice(startIndex, endIndex) || [];
 
 	// Reset to first page when holdings change
 	React.useEffect(() => {
@@ -528,15 +543,51 @@ export default function HoldingsPage() {
 				</PlanCard>
 			</div>
 
-			{/* Holdings Table */}
-			<PlanCard className="mb-6">
-				<PlanCardHeader className="px-4 py-3 border-b border-border">
-					<PlanCardTitle className="text-sm font-medium flex items-center gap-2">
-						<BarChart3 size={16} />
-						All Holdings
-					</PlanCardTitle>
-				</PlanCardHeader>
-					<PlanCardContent className="p-4">
+			{/* Holdings Table and Charts - Side by Side */}
+			<div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+				{/* Holdings Table - Takes 2 columns */}
+				<div className="lg:col-span-2">
+					<PlanCard>
+						<PlanCardHeader className="px-4 py-3 border-b border-border">
+							<PlanCardTitle className="text-sm font-medium flex items-center gap-2">
+								<BarChart3 size={16} />
+								All Holdings
+							</PlanCardTitle>
+						</PlanCardHeader>
+						<PlanCardContent className="p-4">
+						{/* Filters */}
+						<div className="mb-4 flex flex-wrap gap-3">
+							<div className="flex items-center gap-2">
+								<label className="text-xs font-medium text-muted-foreground">Asset Class:</label>
+								<select
+									value={filterAssetClass || ''}
+									onChange={(e) => setFilterAssetClass(e.target.value || null)}
+									className="px-3 py-1.5 text-xs border border-border rounded-md bg-background"
+								>
+									<option value="">All Classes</option>
+									<option value="Stocks">Stocks</option>
+									<option value="Mutual Funds">Mutual Funds</option>
+									<option value="Gold">Gold</option>
+									<option value="Real Estate">Real Estate</option>
+									<option value="Debt">Debt</option>
+									<option value="Liquid">Liquid</option>
+								</select>
+							</div>
+							<div className="flex items-center gap-2">
+								<label className="text-xs font-medium text-muted-foreground">Asset Role:</label>
+								<select
+									value={filterAssetRole || ''}
+									onChange={(e) => setFilterAssetRole(e.target.value || null)}
+									className="px-3 py-1.5 text-xs border border-border rounded-md bg-background"
+								>
+									<option value="">All Roles</option>
+									<option value="Equity">Equity</option>
+									<option value="Defensive">Defensive</option>
+									<option value="Satellite">Satellite</option>
+								</select>
+							</div>
+						</div>
+						
 						{holdings && holdings.length > 0 ? (
 							<div>
 								<div className="rounded-xl border border-border overflow-auto">
@@ -677,8 +728,147 @@ export default function HoldingsPage() {
 						)}
 					</PlanCardContent>
 				</PlanCard>
+				</div>
 
+				{/* Charts Section - Right Side */}
+				<div className="lg:col-span-1 space-y-6">
+					{/* Asset Class Chart */}
+					<PlanCard>
+						<PlanCardHeader className="px-4 py-3 border-b border-border">
+							<PlanCardTitle className="text-sm font-medium flex items-center gap-2">
+								<PieChartIcon size={16} />
+								Asset Class
+							</PlanCardTitle>
+						</PlanCardHeader>
+						<PlanCardContent className="p-4">
+							{holdings && holdings.length > 0 ? (
+								<div className="space-y-4">
+									<div className="h-32 flex items-center justify-center">
+										<ResponsiveContainer width="100%" height="100%">
+											<PieChart>
+												<Pie
+													data={portfolioAllocationData}
+													cx="50%"
+													cy="50%"
+													innerRadius={20}
+													outerRadius={50}
+													paddingAngle={2}
+													dataKey="value"
+												>
+													{portfolioAllocationData.map((entry, index) => (
+														<Cell key={`cell-${index}`} fill={entry.color} />
+													))}
+												</Pie>
+												<Tooltip 
+													formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Value']}
+													labelFormatter={(label) => `${label}`}
+													contentStyle={{
+														backgroundColor: 'hsl(var(--card))',
+														border: '1px solid hsl(var(--border))',
+														borderRadius: '8px',
+														boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+													}}
+												/>
+											</PieChart>
+										</ResponsiveContainer>
+									</div>
+									
+									{/* Asset Class Summary */}
+									<div className="space-y-2">
+										{portfolioAllocationData.map((item, index) => (
+											<div key={index} className="flex items-center justify-between text-xs">
+												<div className="flex items-center gap-2">
+													<div 
+														className="w-2 h-2 rounded-full" 
+														style={{ backgroundColor: item.color }}
+													></div>
+													<span className="text-foreground font-medium">{item.name}</span>
+												</div>
+												<div className="text-muted-foreground font-medium">
+													{((item.value / totalValue) * 100).toFixed(1)}%
+												</div>
+											</div>
+										))}
+									</div>
+								</div>
+							) : (
+								<div className="text-center py-8 text-muted-foreground">
+									<div className="text-2xl mb-2">📊</div>
+									<div className="text-sm">No data to display</div>
+								</div>
+							)}
+						</PlanCardContent>
+					</PlanCard>
 
+					{/* Portfolio Role Chart */}
+					<PlanCard>
+						<PlanCardHeader className="px-4 py-3 border-b border-border">
+							<PlanCardTitle className="text-sm font-medium flex items-center gap-2">
+								<PieChartIcon size={16} />
+								Portfolio Role
+							</PlanCardTitle>
+						</PlanCardHeader>
+						<PlanCardContent className="p-4">
+							{holdings && holdings.length > 0 ? (
+								<div className="space-y-4">
+									<div className="h-32 flex items-center justify-center">
+										<ResponsiveContainer width="100%" height="100%">
+											<PieChart>
+												<Pie
+													data={portfolioRoleData}
+													cx="50%"
+													cy="50%"
+													innerRadius={20}
+													outerRadius={50}
+													paddingAngle={2}
+													dataKey="value"
+												>
+													{portfolioRoleData.map((entry, index) => (
+														<Cell key={`cell-${index}`} fill={entry.color} />
+													))}
+												</Pie>
+												<Tooltip 
+													formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Value']}
+													labelFormatter={(label) => `${label}`}
+													contentStyle={{
+														backgroundColor: 'hsl(var(--card))',
+														border: '1px solid hsl(var(--border))',
+														borderRadius: '8px',
+														boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+													}}
+												/>
+											</PieChart>
+										</ResponsiveContainer>
+									</div>
+									
+									{/* Portfolio Role Summary */}
+									<div className="space-y-2">
+										{portfolioRoleData.map((item, index) => (
+											<div key={index} className="flex items-center justify-between text-xs">
+												<div className="flex items-center gap-2">
+													<div 
+														className="w-2 h-2 rounded-full" 
+														style={{ backgroundColor: item.color }}
+													></div>
+													<span className="text-foreground font-medium">{item.name}</span>
+												</div>
+												<div className="text-muted-foreground font-medium">
+													{((item.value / totalValue) * 100).toFixed(1)}%
+												</div>
+											</div>
+										))}
+									</div>
+								</div>
+							) : (
+								<div className="text-center py-8 text-muted-foreground">
+									<div className="text-2xl mb-2">📊</div>
+									<div className="text-sm">No data to display</div>
+								</div>
+							)}
+						</PlanCardContent>
+					</PlanCard>
+				</div>
+			</div>
 
 			{/* Charts Section - Two Separate Divs */}
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -813,7 +1003,7 @@ export default function HoldingsPage() {
 			{isModalOpen && (
 				<div className="fixed inset-0 z-50">
 					<div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setIsModalOpen(false); resetForm(); }} />
-					<div className="absolute inset-x-0 top-20 mx-auto w-[90%] max-w-4xl rounded-2xl border border-border bg-card shadow-2xl">
+					<div className="absolute inset-x-4 top-16 mx-auto w-full max-w-2xl rounded-2xl border border-border bg-card shadow-2xl">
 						{/* Header */}
 						<div className="px-6 py-4 border-b border-border flex items-center justify-between">
 							<div>
@@ -855,9 +1045,9 @@ export default function HoldingsPage() {
 							</div>
 						</div>
 						
-						<div className="min-h-[400px]">
+						<div className="min-h-[300px]">
 							{/* Form Column - Full Width */}
-							<div className="w-full p-6">
+							<div className="w-full p-4">
 								{selectedRole ? (
 									<form onSubmit={submitForm} className="space-y-6">
 										{/* Stocks Form */}
@@ -952,7 +1142,7 @@ export default function HoldingsPage() {
 											</>
 										)}
 
-																				{/* Mutual Funds Form */}
+																																{/* Mutual Funds Form */}
 										{selectedRole === 'Mutual Funds' && (
 											<>
 												<div>
@@ -972,17 +1162,17 @@ export default function HoldingsPage() {
 															<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-auto">
 																{filteredMFOptions.map((fund) => (
 																	<div
-																		key={fund.schemeCode}
-																		onClick={() => {
-																			setSelectedMF(fund);
-																			setMfSearchTerm(fund.name);
-																			setForm({ ...form, name: fund.name, symbol: fund.schemeCode, price: fund.currentNAV.toString() });
-																			setShowMFDropdown(false);
-																		}}
+														key={fund.schemeCode}
+														onClick={() => {
+															setSelectedMF(fund);
+															setMfSearchTerm(fund.name);
+															setForm({ ...form, name: fund.name, symbol: fund.schemeCode, price: fund.currentNAV.toString() });
+															setShowMFDropdown(false);
+														}}
 														className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
 																	>
-																		<div className="font-medium text-sm">{fund.name}</div>
-																		<div className="text-xs text-muted-foreground">NAV: ₹{fund.currentNAV}</div>
+														<div className="font-medium text-sm">{fund.name}</div>
+														<div className="text-xs text-muted-foreground">NAV: ₹{fund.currentNAV}</div>
 																	</div>
 																))}
 															</div>
@@ -998,6 +1188,22 @@ export default function HoldingsPage() {
 															type="number"
 															value={form.investedAmount || ''}
 															onChange={(e) => setForm({ ...form, investedAmount: e.target.value })}
+															required
+															className="w-full rounded-lg border border-border bg-background pl-8 pr-3 py-2 text-sm text-foreground"
+															placeholder="0.00"
+															step="0.01"
+														/>
+													</div>
+												</div>
+
+												<div>
+													<label className="block text-sm font-medium text-foreground mb-2">Current NAV *</label>
+													<div className="relative">
+														<span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground">₹</span>
+														<input
+															type="number"
+															value={form.price || ''}
+															onChange={(e) => setForm({ ...form, price: e.target.value })}
 															required
 															className="w-full rounded-lg border border-border bg-background pl-8 pr-3 py-2 text-sm text-foreground"
 															placeholder="0.00"
@@ -1124,7 +1330,7 @@ export default function HoldingsPage() {
 														onChange={(e) => setForm({ ...form, name: e.target.value })}
 														required
 														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-														placeholder="e.g., Physical Gold, Gold ETF, Gold Mutual Fund"
+														placeholder="e.g., Physical Gold, Gold Coins, Gold Bars"
 													/>
 												</div>
 												
@@ -1218,6 +1424,62 @@ export default function HoldingsPage() {
 													</div>
 												</div>
 											</>
+										)}
+
+										{/* Universal Holding Value Display */}
+										{selectedRole && (
+											<div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-xl border border-blue-200 dark:border-blue-800">
+												<div className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-3">Holding Summary</div>
+												<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+													{/* Name and Type */}
+													<div>
+														<div className="text-xs text-blue-600 dark:text-blue-400 mb-1">Instrument</div>
+														<div className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+															{form.name || 'Not specified'}
+														</div>
+														<div className="text-xs text-blue-600 dark:text-blue-400">
+															{selectedRole} • {form.instrumentClass || 'Asset Class'}
+														</div>
+													</div>
+													
+													{/* Value Calculation */}
+													<div>
+														<div className="text-xs text-blue-600 dark:text-blue-400 mb-1">Estimated Value</div>
+														<div className="text-lg font-bold text-blue-800 dark:text-blue-200">
+															{(() => {
+																if (selectedRole === 'Stocks' && form.units && form.price) {
+																	return `₹${(parseFloat(form.units) * parseFloat(form.price)).toLocaleString()}`;
+																} else if (selectedRole === 'Mutual Funds' && form.investedAmount) {
+																	return `₹${parseFloat(form.investedAmount).toLocaleString()}`;
+																} else if (selectedRole === 'ETF' && form.units && form.price) {
+																	return `₹${(parseFloat(form.units) * parseFloat(form.price)).toLocaleString()}`;
+																} else if (selectedRole === 'Gold' && form.units && form.price) {
+																	return `₹${(parseFloat(form.units) * parseFloat(form.price)).toLocaleString()}`;
+																} else if (selectedRole === 'Real Estate' && form.investedAmount) {
+																	return `₹${parseFloat(form.investedAmount).toLocaleString()}`;
+																}
+																return '₹0';
+															})()}
+														</div>
+														<div className="text-xs text-blue-600 dark:text-blue-400">
+															{(() => {
+																if (selectedRole === 'Stocks' && form.units && form.price) {
+																	return `${form.units} units × ₹${form.price}`;
+																} else if (selectedRole === 'Mutual Funds' && form.investedAmount && form.price) {
+																	return `₹${form.investedAmount} ÷ ₹${form.price} = ${(parseFloat(form.investedAmount) / parseFloat(form.price)).toFixed(4)} units`;
+																} else if (selectedRole === 'ETF' && form.units && form.price) {
+																	return `${form.units} units × ₹${form.price}`;
+																} else if (selectedRole === 'Gold' && form.units && form.price) {
+																	return `${form.units} grams × ₹${form.price}`;
+																} else if (selectedRole === 'Real Estate' && form.investedAmount) {
+																	return `Investment Amount`;
+																}
+																return 'Enter details to see calculation';
+															})()}
+														</div>
+													</div>
+												</div>
+											</div>
 										)}
 
 										{/* Form Actions */}
