@@ -503,6 +503,8 @@ export default function HoldingsPage() {
 		setOriginalForm(null);
 		setSelectedRole(null);
 		setSelectedInstrumentType(null);
+		setSelectedMF(null);
+		setSelectedStock(null);
 	}
 	
 	async function submitForm(e: React.FormEvent) {
@@ -513,25 +515,40 @@ export default function HoldingsPage() {
 		// Map selected asset class to instrument class
 		let instrumentClass: AssetClass = "Stocks";
 		let allocationClass: string | undefined;
+		let assetClass: string | undefined;
+		let portfolioRole: string | undefined;
 		
 		if (selectedRole === 'Stocks') {
 			instrumentClass = "Stocks";
-						} else if (selectedRole === 'Mutual Funds') {
+			allocationClass = "Stocks";
+			assetClass = "Stocks";
+			portfolioRole = "Equity";
+		} else if (selectedRole === 'Mutual Funds') {
 			instrumentClass = "Mutual Funds";
-			// For Mutual Funds, use the allocation_class from the selected fund
-			if (selectedMF && selectedMF.allocationClass) {
-				allocationClass = selectedMF.allocationClass;
+			// For Mutual Funds, use the values from the selected fund
+			if (selectedMF) {
+				allocationClass = selectedMF.allocationClass || "Equity";
+				assetClass = selectedMF.fundType || "Equity MF";
+				portfolioRole = selectedMF.allocationClass || "Equity";
 			}
 		} else if (selectedRole === 'ETF') {
 			instrumentClass = "ETF";
-			// For ETFs, use the allocation_class from the selected fund
-			if (selectedMF && selectedMF.allocationClass) {
-				allocationClass = selectedMF.allocationClass;
+			// For ETFs, use the values from the selected fund
+			if (selectedMF) {
+				allocationClass = selectedMF.allocationClass || "Equity";
+				assetClass = selectedMF.fundType || "Equity MF";
+				portfolioRole = selectedMF.allocationClass || "Equity";
 			}
 		} else if (selectedRole === 'Gold') {
 			instrumentClass = "Gold";
+			allocationClass = "Gold";
+			assetClass = "Gold";
+			portfolioRole = "Satellite";
 		} else if (selectedRole === 'Real Estate') {
 			instrumentClass = "Real Estate";
+			allocationClass = "Real Estate";
+			assetClass = "Real Estate";
+			portfolioRole = "Satellite";
 		}
 		
 		const holding: Holding = {
@@ -558,6 +575,8 @@ export default function HoldingsPage() {
 				investedAmount: holding.investedAmount,
 				currentValue: holding.currentValue,
 				allocation_class: allocationClass,
+				asset_class: assetClass,
+				portfolio_role: portfolioRole,
 				created_at: new Date().toISOString(),
 				updated_at: new Date().toISOString()
 			};
@@ -626,6 +645,18 @@ export default function HoldingsPage() {
 		// Set search terms to show the names for all asset classes
 		if (holding.instrumentClass === 'Mutual Funds' || holding.instrumentClass === 'ETF') {
 			setMfSearchTerm(holding.name);
+			// Try to find and set the selected mutual fund to preserve asset class and portfolio role
+			if (holding.symbol) {
+				// Find the mutual fund by symbol (scheme code)
+				fetchMutualFundSchemes().then(funds => {
+					const fund = funds.find(f => f.schemeCode === holding.symbol);
+					if (fund) {
+						setSelectedMF(fund);
+					}
+				}).catch(() => {
+					// Silently fail if we can't fetch funds
+				});
+			}
 		} else if (holding.instrumentClass === 'Stocks') {
 			setStockSearchTerm(holding.name);
 		}

@@ -211,10 +211,10 @@ def handler(event, context):
                 # Convert float values to Decimal types for DynamoDB compatibility
                 converted_holding = _convert_floats_to_decimals(holding)
                 
-                # Extract asset class and determine portfolio role
+                # Extract asset class and portfolio role from the holding data
                 instrument_class = converted_holding.get("instrumentClass", "Stocks")
-                asset_class = converted_holding.get("allocation_class", instrument_class)
-                portfolio_role = _get_portfolio_role_for_asset_class(asset_class)
+                asset_class = converted_holding.get("asset_class", converted_holding.get("allocation_class", instrument_class))
+                portfolio_role = converted_holding.get("portfolio_role", _get_portfolio_role_for_asset_class(asset_class))
                 
                 item = {
                     "id": holding_id,
@@ -253,8 +253,8 @@ def handler(event, context):
                 for it in items:
                     holding_data = it.get("data") or {}
                     # Include asset class and portfolio role from the main item
-                    holding_data["asset_class"] = it.get("asset_class", holding_data.get("instrumentClass", "Stocks"))
-                    holding_data["portfolio_role"] = it.get("portfolio_role", "Equity")
+                    holding_data["asset_class"] = it.get("asset_class", holding_data.get("allocation_class", holding_data.get("instrumentClass", "Stocks")))
+                    holding_data["portfolio_role"] = it.get("portfolio_role", holding_data.get("allocation_class", "Equity"))
                     holdings.append({"id": it.get("id"), **holding_data})
                 
                 return _response(200, {"items": holdings})
