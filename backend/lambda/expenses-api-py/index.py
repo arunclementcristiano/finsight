@@ -804,13 +804,20 @@ def handler(event, context):
                 # Transform to match frontend expectations
                 funds = []
                 for item in items:
+                    # NAV safe conversion
+                    nav_val = item.get("nav")
+                    try:
+                        current_nav = float(nav_val) if nav_val is not None else 0.0
+                    except Exception:
+                        current_nav = 0.0
+
                     fund = {
                         "schemeCode": item.get("scheme_code", ""),
                         "name": item.get("fund_name", ""),
                         "fullName": item.get("fund_name", ""),
-                        "currentNAV": float(item.get("nav", 0)),
-                        "fundType": item.get("asset_class", "Equity MF"),
-                        "allocationClass": item.get("portfolio_role", "Equity"),
+                        "currentNAV": current_nav,
+                        "fundType": item.get("asset_class", "Equity MF"),      # Equity / Debt Fund / Liquid Fund / Gold / Real Estate
+                        "portfolioRole": item.get("portfolio_role", "Equity"), # Equity / Defensive / Satellite
                         "isETF": item.get("is_etf") == "true",
                         "amc": item.get("amc", ""),
                         "schemeType": item.get("scheme_type", ""),
@@ -830,6 +837,7 @@ def handler(event, context):
                 print(f"Error type: {type(e)}")
                 print(f"Traceback: {traceback.format_exc()}")
                 return _response(500, {"error": f"Failed to fetch mutual funds: {str(e)}"})
+
 
         # Search mutual funds (GET /mutual-funds/search?q=...&is_etf=...)
         if route_key == "GET /mutual-funds/search":
