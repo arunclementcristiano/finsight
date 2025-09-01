@@ -984,6 +984,7 @@ export default function HoldingsPage() {
 											key={assetClass}
 											type="button"
 											onClick={() => {
+												if (editingId) return; // Disable in edit mode
 												setSelectedRole(assetClass as any);
 												setSelectedInstrumentType(null);
 												// hard reset form and per-asset state
@@ -1000,7 +1001,9 @@ export default function HoldingsPage() {
 											className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 transform ${
 												selectedRole === assetClass
 													? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg scale-105 ring-2 ring-blue-500/30"
-													: "bg-muted text-muted-foreground hover:bg-muted/80 hover:scale-102"
+													: editingId 
+														? "bg-muted/50 text-muted-foreground cursor-not-allowed opacity-50"
+														: "bg-muted text-muted-foreground hover:bg-muted/80 hover:scale-102"
 											}`}
 										>
 											{assetClass}
@@ -1022,7 +1025,7 @@ export default function HoldingsPage() {
 													<label className="block text-sm font-medium text-foreground mb-2">Stock Name *</label>
 													<div className="relative">
 														<input
-															value={stockSearchTerm}
+															value={selectedStock ? `${selectedStock.name} (${selectedStock.symbol})` : stockSearchTerm}
 															onChange={(e) => {
 																setStockSearchTerm(e.target.value);
 																filterStockOptions(e.target.value);
@@ -1053,15 +1056,7 @@ export default function HoldingsPage() {
 													</div>
 												</div>
 												
-												<div>
-													<label className="block text-sm font-medium text-foreground mb-2">Symbol (Optional)</label>
-													<input
-														value={form.symbol || ''}
-														onChange={(e) => setForm({ ...form, symbol: e.target.value })}
-														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-														placeholder="e.g., RELIANCE, TCS"
-													/>
-												</div>
+
 												
 												<div>
 													<label className="block text-sm font-medium text-foreground mb-2">Units/Quantity *</label>
@@ -1117,7 +1112,7 @@ export default function HoldingsPage() {
 															}`}
 															placeholder={editingId !== null ? "Fund name cannot be changed during edit" : "Search for mutual funds..."}
 														/>
-														{showMFDropdown && (
+														{showMFDropdown && filteredMFOptions.length > 0 && (
 															<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-auto">
 																{filteredMFOptions.map((fund) => (
 																	<div
@@ -1196,7 +1191,7 @@ export default function HoldingsPage() {
 															}`}
 															placeholder={editingId !== null ? "ETF name cannot be changed during edit" : "Search for ETFs..."}
 														/>
-														{showMFDropdown && (
+																												{showMFDropdown && filteredMFOptions.length > 0 && (
 															<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-auto">
 																{filteredMFOptions.map((fund) => (
 																	<div
@@ -1205,12 +1200,12 @@ export default function HoldingsPage() {
 																			setSelectedMF(fund);
 																			setMfSearchTerm(fund.name);
 																			setForm({ ...form, name: fund.name, symbol: fund.schemeCode, price: fund.currentNAV.toString() });
-																			setShowMFDropdown(false);
-																		}}
-																		className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
+															setShowMFDropdown(false);
+														}}
+														className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
 																	>
-																		<div className="font-medium text-sm">{fund.name}</div>
-																		<div className="text-xs text-muted-foreground">NAV: ₹{fund.currentNAV}</div>
+														<div className="font-medium text-sm">{fund.name}</div>
+														<div className="text-xs text-muted-foreground">NAV: ₹{fund.currentNAV}</div>
 																	</div>
 																))}
 															</div>
