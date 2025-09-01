@@ -16,7 +16,7 @@ export default function PlanKPIs({ plan, holdings = [], className = "" }: PlanKP
     const buckets = plan.buckets || [];
     
     const equity = buckets
-      .filter((b: any) => ["Stocks", "Mutual Funds"].includes(b.class))
+      		.filter((b: any) => ["Stocks", "Equity MF"].includes(b.class))
       .reduce((sum: number, b: any) => sum + (b.pct || 0), 0);
     
     const defensive = buckets

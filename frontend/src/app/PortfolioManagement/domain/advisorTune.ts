@@ -1,4 +1,4 @@
-export type Asset = "Stocks" | "Mutual Funds" | "Gold" | "Real Estate" | "Debt" | "Liquid";
+export type Asset = "Stocks" | "Equity MF" | "Gold" | "Real Estate" | "Debt" | "Liquid";
 
 export type Bucket = { class: Asset; pct: number; range?: [number, number] };
 
@@ -11,8 +11,8 @@ function sumRecord(values: Record<Asset, number>): number {
 }
 
 function largestRemainderRoundWithLocks(values: Record<Asset, number>, locked: Asset[]): Record<Asset, number> {
-	const order: Asset[] = ["Stocks","Mutual Funds","Gold","Real Estate","Debt","Liquid"];
-	const floors: Record<Asset, number> = { Stocks: 0, "Mutual Funds": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
+	const order: Asset[] = ["Stocks","Equity MF","Gold","Real Estate","Debt","Liquid"];
+	const floors: Record<Asset, number> = { Stocks: 0, "Equity MF": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
 	const remainders: Array<{ k: Asset; r: number }> = [];
 	let total = 0;
 	for (const k of order) {
@@ -42,12 +42,12 @@ function largestRemainderRoundWithLocks(values: Record<Asset, number>, locked: A
 }
 
 export function advisorTune(baseline: { buckets: Bucket[] }, current: { buckets: Bucket[] }, changedClass: Asset, newPct: number, locked: Asset[] = []): { buckets: Bucket[]; clamped: boolean } {
-	const baseMap: Record<Asset, { pct: number; min: number; max: number }> = { Stocks: { pct:0,min:0,max:100 }, "Mutual Funds": { pct:0,min:0,max:100 }, Gold: { pct:0,min:0,max:100 }, "Real Estate": { pct:0,min:0,max:100 }, Debt: { pct:0,min:0,max:100 }, Liquid: { pct:0,min:0,max:100 } } as any;
+	const baseMap: Record<Asset, { pct: number; min: number; max: number }> = { Stocks: { pct:0,min:0,max:100 }, "Equity MF": { pct:0,min:0,max:100 }, Gold: { pct:0,min:0,max:100 }, "Real Estate": { pct:0,min:0,max:100 }, Debt: { pct:0,min:0,max:100 }, Liquid: { pct:0,min:0,max:100 } } as any;
 	for (const b of baseline.buckets) {
 		const [min, max] = b.range || [0, 100];
 		baseMap[b.class as Asset] = { pct: b.pct, min, max } as any;
 	}
-	const curMap: Record<Asset, number> = { Stocks: 0, "Mutual Funds": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
+	const curMap: Record<Asset, number> = { Stocks: 0, "Equity MF": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
 	for (const b of (current.buckets||[])) curMap[b.class as Asset] = b.pct;
 
 	let clamped = false;
@@ -132,7 +132,7 @@ export function advisorTune(baseline: { buckets: Bucket[] }, current: { buckets:
 	// 4) Integerize while preserving locked exactness as much as possible
 	const rounded = largestRemainderRoundWithLocks(tuned, Array.from(lockedSet));
 	const outBuckets: Bucket[] = (Object.keys(rounded) as Asset[]).map(cls => ({ class: cls, pct: rounded[cls] }));
-	const rangeMap: Record<Asset, [number, number]> = { Stocks:[0,100], "Mutual Funds":[0,100], Gold:[0,100], "Real Estate":[0,100], Debt:[0,100], Liquid:[0,100] } as any;
+	const rangeMap: Record<Asset, [number, number]> = { Stocks:[0,100], "Equity MF":[0,100], Gold:[0,100], "Real Estate":[0,100], Debt:[0,100], Liquid:[0,100] } as any;
 	for (const b of baseline.buckets) if (b.range) rangeMap[b.class as Asset] = b.range;
 	for (const b of outBuckets) (b as any).range = rangeMap[b.class];
 	return { buckets: outBuckets, clamped };

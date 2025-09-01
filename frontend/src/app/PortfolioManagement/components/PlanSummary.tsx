@@ -104,7 +104,7 @@ export default function PlanSummary({
     
     for (const bucket of (plan?.buckets || [])) {
       if (bucket.pct > 0) { // Only count positive allocations
-        if (bucket.class === "Stocks" || bucket.class === "Mutual Funds") {
+        		if (bucket.class === "Stocks" || bucket.class === "Equity MF") {
           equity += bucket.pct;
         } else if (bucket.class === "Debt" || bucket.class === "Liquid") {
           defensive += bucket.pct;
@@ -133,7 +133,7 @@ export default function PlanSummary({
     try {
       const total = (rebalance as any).totalCurrentValue || holdings.reduce((s:any,h:any)=> s + (h.currentValue||0), 0);
       if (!plan || total <= 0) return null;
-      const eqPct = (plan.buckets||[]).filter((b:any)=> b.class==='Stocks' || b.class==='Mutual Funds').reduce((s:number,b:any)=> s + (b.pct||0), 0) / 100;
+      		const eqPct = (plan.buckets||[]).filter((b:any)=> b.class==='Stocks' || b.class==='Equity MF').reduce((s:number,b:any)=> s + (b.pct||0), 0) / 100;
       const shock = 0.20; // 20% equity drop
       const impact = Math.round(total * eqPct * shock);
       const liquidPct = (plan.buckets||[]).find((b:any)=> b.class==='Liquid')?.pct || 0;
@@ -264,7 +264,7 @@ export default function PlanSummary({
                 <tbody>
                   {visibleBuckets.map((b: any, idx: number) => (
                     <tr key={b.class} className="border-t border-border/50">
-                      <td className="py-2 px-3 font-medium"><span className="inline-flex items-center">{(() => { const common = "h-4 w-4 mr-2"; if (b.class === "Stocks") return <LineChart className={common} />; if (b.class === "Mutual Funds") return <Layers className={common} />; if (b.class === "Debt") return <Banknote className={common} />; if (b.class === "Gold") return <Coins className={common} />; if (b.class === "Real Estate") return <Home className={common} />; if (b.class === "Liquid") return <Droplet className={common} />; return <LineChart className={common} />; })()}{b.class}</span></td>
+                      <td className="py-2 px-3 font-medium"><span className="inline-flex items-center">{(() => { const common = "h-4 w-4 mr-2"; if (b.class === "Stocks") return <LineChart className={common} />; 		if (b.class === "Equity MF") return <Layers className={common} />; if (b.class === "Debt") return <Banknote className={common} />; if (b.class === "Gold") return <Coins className={common} />; if (b.class === "Real Estate") return <Home className={common} />; if (b.class === "Liquid") return <Droplet className={common} />; return <LineChart className={common} />; })()}{b.class}</span></td>
                       <td className="py-2 px-3 text-right">{Math.round(b.pct)}%</td>
                       <td className="py-2 px-3">
                         <div className="group flex items-center gap-2">
@@ -306,8 +306,8 @@ export default function PlanSummary({
                           ); })()}
                         </div>
                       </td>
-                      <td className="py-2 px-3">{b.riskCategory || (b.class === 'Stocks' || b.class === 'Mutual Funds' ? 'Core' : (b.class === 'Gold' || b.class === 'Real Estate' ? 'Satellite' : (b.class === 'Debt' || b.class === 'Liquid' ? 'Defensive' : '')))}</td>
-                      <td className="py-2 px-3">{b.notes || (b.class === 'Stocks' ? 'Growth focus' : b.class === 'Mutual Funds' ? 'Diversified equity' : b.class === 'Debt' ? 'Stability & income' : b.class === 'Liquid' ? 'Emergency buffer' : b.class === 'Gold' ? 'Inflation hedge' : b.class === 'Real Estate' ? 'Long-term asset' : '')}</td>
+                      		<td className="py-2 px-3">{b.riskCategory || (b.class === 'Stocks' || b.class === 'Equity MF' ? 'Core' : (b.class === 'Gold' || b.class === 'Real Estate' ? 'Satellite' : (b.class === 'Debt' || b.class === 'Liquid' ? 'Defensive' : '')))}</td>
+                      		<td className="py-2 px-3">{b.notes || (b.class === 'Stocks' ? 'Growth focus' : b.class === 'Equity MF' ? 'Diversified equity' : b.class === 'Debt' ? 'Stability & income' : b.class === 'Liquid' ? 'Emergency buffer' : b.class === 'Gold' ? 'Inflation hedge' : b.class === 'Real Estate' ? 'Long-term asset' : '')}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -4,7 +4,7 @@
  */
 
 // Asset Class Definitions
-export type AssetClass = "Stocks" | "Mutual Funds" | "ETF" | "Gold" | "Real Estate" | "Debt" | "Liquid";
+export type AssetClass = "Stocks" | "Equity MF" | "ETF" | "Gold" | "Real Estate" | "Debt" | "Liquid";
 
 // Risk Level Definitions
 export type RiskLevel = "Conservative" | "Moderate" | "Aggressive";

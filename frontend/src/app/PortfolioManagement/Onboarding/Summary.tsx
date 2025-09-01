@@ -40,7 +40,7 @@ export default function Summary({ plan }: SummaryProps) {
 	const innerOuterChartData = useMemo(() => {
 		const buckets = target?.buckets || plan.buckets;
 		const sumBy = (classes: string[]) => buckets.filter((b:any)=>classes.includes(b.class)).reduce((s:number,b:any)=>s+b.pct,0);
-		const equitySum = sumBy(["Stocks","Mutual Funds"]);
+		const equitySum = sumBy(["Stocks","Equity MF"]);
 		const defensiveSum = sumBy(["Debt","Liquid"]);
 		const satelliteSum = sumBy(["Gold","Real Estate"]);
 		return {
@@ -57,7 +57,7 @@ export default function Summary({ plan }: SummaryProps) {
 		plugins: { legend: { display: true, position: "bottom" as const, labels: { font: { size: 13 }, color: theme.text } }, tooltip: { callbacks: { label: function(context: any) {
 			const label = context.label || "";
 			const v = context.parsed;
-			const purposeMap: Record<string,string> = { "Stocks":"Growth", "Mutual Funds":"Diversified equity", "Debt":"Steady income", "Liquid":"Emergency buffer", "Gold":"Inflation hedge", "Real Estate":"Long-term asset", "Equity":"Growth", "Defensive":"Stability", "Satellite":"Diversification" };
+			const purposeMap: Record<string,string> = { "Stocks":"Growth", "Equity MF":"Diversified equity", "Debt":"Steady income", "Liquid":"Emergency buffer", "Gold":"Inflation hedge", "Real Estate":"Long-term asset", "Equity":"Growth", "Defensive":"Stability", "Satellite":"Diversification" };
 			return `${label}: ${v}% — ${purposeMap[label]||""}`;
 		}} } },
 		cutout: "70%",
@@ -69,7 +69,7 @@ export default function Summary({ plan }: SummaryProps) {
 	const kpis = useMemo(() => {
 		const byClass = new Map<string, number>();
 		for (const b of plan.buckets) byClass.set(b.class, (byClass.get(b.class) || 0) + b.pct);
-		const equity = (byClass.get("Stocks") || 0) + (byClass.get("Mutual Funds") || 0);
+		const equity = (byClass.get("Stocks") || 0) + (byClass.get("Equity MF") || 0);
 		const defensive = (byClass.get("Debt") || 0) + (byClass.get("Liquid") || 0);
 		const satellite = (byClass.get("Gold") || 0) + (byClass.get("Real Estate") || 0);
 		const numClasses = plan.buckets.length;
@@ -92,7 +92,7 @@ export default function Summary({ plan }: SummaryProps) {
 	function classIcon(cls: string) {
 		const common = "h-4 w-4 mr-2";
 		if (cls === "Stocks") return <LineChart className={common} />;
-		if (cls === "Mutual Funds") return <Layers className={common} />;
+		if (cls === "Equity MF") return <Layers className={common} />;
 		if (cls === "Debt") return <Banknote className={common} />;
 		if (cls === "Gold") return <Coins className={common} />;
 		if (cls === "Real Estate") return <Home className={common} />;

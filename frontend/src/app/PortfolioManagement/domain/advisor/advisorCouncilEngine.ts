@@ -80,7 +80,7 @@ export class AdvisorCouncilEngine {
     // Step 5: Create base allocation
     let allocation: Record<AssetClass, number> = {
       "Stocks": stocks,
-      "Mutual Funds": mutualFunds,
+      		"Equity MF": mutualFunds,
       "ETF": 0, // ETFs will be handled as part of Mutual Funds for now
       "Gold": gold,
       "Real Estate": realEstate,
@@ -171,11 +171,11 @@ export class AdvisorCouncilEngine {
       riskLevel: riskLevel,
       finalAllocation: allocation,
       allocationSummary: {
-        totalEquity: allocation.Stocks + allocation["Mutual Funds"],
+        		totalEquity: allocation.Stocks + allocation["Equity MF"],
         totalSafety: allocation.Liquid + allocation.Debt + allocation.Gold + allocation["Real Estate"],
         satellite: allocation.Gold + allocation["Real Estate"],
         breakdown: {
-          equity: `${allocation.Stocks + allocation["Mutual Funds"]}% (${allocation.Stocks}% stocks + ${allocation["Mutual Funds"]}% MF)`,
+          		equity: `${allocation.Stocks + allocation["Equity MF"]}% (${allocation.Stocks}% stocks + ${allocation["Equity MF"]}% Equity MF)`,
           defensive: `${allocation.Liquid + allocation.Debt}% (${allocation.Liquid}% liquid + ${allocation.Debt}% debt)`,
           satellite: `${allocation.Gold + allocation["Real Estate"]}% (${allocation.Gold}% gold + ${allocation["Real Estate"]}% real estate)`
         }

@@ -183,13 +183,13 @@ export class AllocationCalculator {
         adjusted.Liquid = Math.min(30, adjusted.Liquid + 5);
         adjusted.Debt = Math.min(25, adjusted.Debt + 5);
         adjusted.Stocks = Math.max(20, adjusted.Stocks - 5);
-        adjusted["Mutual Funds"] = Math.max(15, adjusted["Mutual Funds"] - 5);
+        		adjusted["Equity MF"] = Math.max(15, adjusted["Equity MF"] - 5);
       }
       
       if (longTermGoals.length > 0) {
         console.log("🚀 Long-term goals detected, increasing growth assets");
         adjusted.Stocks = Math.min(50, adjusted.Stocks + 5);
-        adjusted["Mutual Funds"] = Math.min(40, adjusted["Mutual Funds"] + 5);
+        		adjusted["Equity MF"] = Math.min(40, adjusted["Equity MF"] + 5);
         adjusted.Liquid = Math.max(5, adjusted.Liquid - 5);
         adjusted.Debt = Math.max(5, adjusted.Debt - 5);
       }
@@ -207,24 +207,24 @@ export class AllocationCalculator {
       switch (answers.primaryGoal) {
         case "wealth_building":
           adjusted.Stocks = Math.min(45, adjusted.Stocks + 5);
-          adjusted["Mutual Funds"] = Math.min(45, adjusted["Mutual Funds"] + 5);
+          		adjusted["Equity MF"] = Math.min(45, adjusted["Equity MF"] + 5);
           adjusted.Liquid = Math.max(5, adjusted.Liquid - 10);
           break;
         case "home_purchase":
           adjusted.Liquid = Math.min(50, adjusted.Liquid + 15);
           adjusted.Stocks = Math.max(5, adjusted.Stocks - 8);
-          adjusted["Mutual Funds"] = Math.max(5, adjusted["Mutual Funds"] - 7);
+          		adjusted["Equity MF"] = Math.max(5, adjusted["Equity MF"] - 7);
           break;
         case "income_generation":
           adjusted.Debt = Math.min(35, adjusted.Debt + 10);
           adjusted.Stocks = Math.max(5, adjusted.Stocks - 5);
-          adjusted["Mutual Funds"] = Math.max(5, adjusted["Mutual Funds"] - 5);
+          		adjusted["Equity MF"] = Math.max(5, adjusted["Equity MF"] - 5);
           break;
         case "preservation":
           adjusted.Liquid = Math.min(40, adjusted.Liquid + 10);
           adjusted.Debt = Math.min(30, adjusted.Debt + 5);
           adjusted.Stocks = Math.max(10, adjusted.Stocks - 10);
-          adjusted["Mutual Funds"] = Math.max(10, adjusted["Mutual Funds"] - 5);
+          		adjusted["Equity MF"] = Math.max(10, adjusted["Equity MF"] - 5);
           break;
       }
     }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // Allowed asset classes and basic guardrails
-const ALLOWED_CLASSES = ["Stocks","Mutual Funds","Gold","Real Estate","Debt","Liquid"] as const;
+const ALLOWED_CLASSES = ["Stocks","Equity MF","Gold","Real Estate","Debt","Liquid"] as const;
 
 type AllowedClass = typeof ALLOWED_CLASSES[number];
 
@@ -95,14 +95,14 @@ function clampRefined(
 }
 
 function objFromBuckets(buckets: Array<{ class: AllowedClass; pct: number }>): Record<AllowedClass, number> {
-	const out: Record<AllowedClass, number> = { Stocks: 0, "Mutual Funds": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
+	const out: Record<AllowedClass, number> = { Stocks: 0, "Equity MF": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
 	for (const b of buckets) out[b.class] = b.pct;
 	return out;
 }
 
 function normalizeTo100(obj: Record<AllowedClass, number>): Record<AllowedClass, number> {
 	const sum = (ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).reduce((s, k) => s + (obj[k] || 0), 0) || 1;
-	const out: Record<AllowedClass, number> = { Stocks: 0, "Mutual Funds": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
+	const out: Record<AllowedClass, number> = { Stocks: 0, "Equity MF": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
 	(ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).forEach(k => out[k] = +(obj[k] * 100 / sum).toFixed(2));
 	return out;
 }
@@ -116,11 +116,11 @@ function enforceSimpleConstraints(obj: Record<AllowedClass, number>): Record<All
 		out.Liquid += takeDebt;
 		let remain = need - takeDebt;
 		if (remain > 0) {
-			const eq = out.Stocks + out["Mutual Funds"]; const totalEq = eq || 1;
+			const eq = out.Stocks + out["Equity MF"]; const totalEq = eq || 1;
 			const fromS = Math.min(remain * (out.Stocks / totalEq), out.Stocks);
 			out.Stocks -= fromS; remain -= fromS;
-			const fromMF = Math.min(remain, out["Mutual Funds"]);
-			out["Mutual Funds"] -= fromMF; remain -= fromMF;
+			const fromMF = Math.min(remain, out["Equity MF"]);
+			out["Equity MF"] -= fromMF; remain -= fromMF;
 			out.Liquid += (need - takeDebt);
 		}
 	}
@@ -132,7 +132,7 @@ function enforceSimpleConstraints(obj: Record<AllowedClass, number>): Record<All
 
 function roundWhole(obj: Record<AllowedClass, number>): Record<AllowedClass, number> {
 	const keys = ALLOWED_CLASSES as ReadonlyArray<AllowedClass>;
-	const floors: Record<AllowedClass, number> = { Stocks: 0, "Mutual Funds": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
+	const floors: Record<AllowedClass, number> = { Stocks: 0, "Equity MF": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
 	const remainders: Array<{ k: AllowedClass; r: number }> = [];
 	let total = 0;
 	for (const k of keys) {
@@ -158,7 +158,7 @@ function getToleranceFromRiskProfile(risk: string): number {
 }
 
 function mapFromAnyBuckets(buckets: Array<{ class: string; pct: number }>): Record<AllowedClass, number> {
-	const out: Record<AllowedClass, number> = { Stocks: 0, "Mutual Funds": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
+	const out: Record<AllowedClass, number> = { Stocks: 0, "Equity MF": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
 	for (const b of (buckets || [])) {
 		const cls = (ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).find(a => a.toLowerCase() === String(b.class || "").toLowerCase());
 		if (!cls) continue;
@@ -175,7 +175,7 @@ function apply_comfort_zone(
 	riskProfile: string
 ): Record<AllowedClass, number> {
 	const tol = getToleranceFromRiskProfile(riskProfile);
-	const out: Record<AllowedClass, number> = { Stocks: 0, "Mutual Funds": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
+	const out: Record<AllowedClass, number> = { Stocks: 0, "Equity MF": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
 	(ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).forEach(k => {
 		const base = baseline[k] || 0;
 		const min = base - base * tol;
@@ -233,7 +233,7 @@ export async function POST(req: NextRequest) {
 
 		// Debate reconciliation: midpoint within ±5 cap
 		const cap = 5;
-		const final: Record<AllowedClass, number> = { Stocks: 0, "Mutual Funds": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
+		const final: Record<AllowedClass, number> = { Stocks: 0, "Equity MF": 0, Gold: 0, "Real Estate": 0, Debt: 0, Liquid: 0 } as any;
 		(ALLOWED_CLASSES as ReadonlyArray<AllowedClass>).forEach(k => {
 			const B = advisor[k] || 0; const A = aiMap[k] || 0;
 			const diff = A - B; const ad = Math.abs(diff);

@@ -4,7 +4,7 @@ import { Search } from 'lucide-react';
 
 const ASSET_CLASSES = [
 	{ id: 'stocks', label: 'Stocks' },
-	{ id: 'mutual_funds', label: 'Mutual Funds' },
+			{ id: 'equity_mf', label: 'Equity MF' },
 	{ id: 'debt', label: 'Debt' },
 	{ id: 'liquid', label: 'Liquid' },
 	{ id: 'gold', label: 'Gold' },
@@ -53,7 +53,7 @@ export default function AddHolding() {
 		setShowStockDropdown(filtered.length > 0);
 	}
 
-	// Mutual funds autocomplete (Direct Plan – Growth)
+			// Equity MF autocomplete (Direct Plan – Growth)
 	const [mfSearchTerm, setMfSearchTerm] = useState('');
 	const [selectedMF, setSelectedMF] = useState<{ name: string; schemeCode: string; currentNAV?: number; fullName?: string } | null>(null);
 	const [mfOptions, setMfOptions] = useState<any[]>([]);
@@ -171,10 +171,10 @@ export default function AddHolding() {
 				</div>
 			)}
 
-			{/* Mutual Funds */}
-			{selectedClass === 'mutual_funds' && (
+			{/* Equity MF */}
+			{selectedClass === 'equity_mf' && (
 				<div className="rounded-xl border border-border bg-card p-4 space-y-4">
-					<h2 className="text-sm font-medium text-foreground">Mutual Funds</h2>
+					<h2 className="text-sm font-medium text-foreground">Equity MF</h2>
 					<div className="relative">
 						<label className="block text-xs text-muted-foreground mb-2">Search Mutual Fund (Direct Growth) *</label>
 						<div className="relative">

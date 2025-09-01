@@ -22,7 +22,7 @@ export class StressTester {
         let assetImpact = 0;
         
         // Get the relevant drop percentage for this asset
-        if (scenario.drop.NIFTY && (asset === "Stocks" || asset === "Mutual Funds")) {
+        		if (scenario.drop.NIFTY && (asset === "Stocks" || asset === "Equity MF")) {
           assetImpact = parseFloat(scenario.drop.NIFTY.replace('%', ''));
         } else if (scenario.drop["Real Estate"] && asset === "Real Estate") {
           assetImpact = parseFloat(scenario.drop["Real Estate"].replace('%', ''));
@@ -30,7 +30,7 @@ export class StressTester {
           assetImpact = parseFloat(scenario.drop.Gold.replace('%', ''));
         } else if (scenario.drop["S&P500"] && asset === "Stocks") {
           assetImpact = parseFloat(scenario.drop["S&P500"].replace('%', ''));
-        } else if (scenario.drop["NASDAQ"] && asset === "Mutual Funds") {
+        		} else if (scenario.drop["NASDAQ"] && asset === "Equity MF") {
           assetImpact = parseFloat(scenario.drop["NASDAQ"].replace('%', ''));
         } else {
           // Default impact for assets not specifically mentioned

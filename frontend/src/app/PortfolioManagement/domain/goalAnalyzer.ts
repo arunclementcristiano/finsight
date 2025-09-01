@@ -106,7 +106,7 @@ export class GoalAnalyzer {
     // Apply goal-based allocation adjustments
     const allocation: Record<AssetClass, number> = {
       "Stocks": 0,
-      "Mutual Funds": 0,
+      		"Equity MF": 0,
       "ETF": 0, // ETFs will be handled as part of Mutual Funds for now
       "Gold": 0,
       "Real Estate": 0,
@@ -124,7 +124,7 @@ export class GoalAnalyzer {
     // Medium-term goals maintain balance
     if (mediumTermWeight > 0) {
       allocation["Stocks"] += mediumTermWeight * 0.3;
-      allocation["Mutual Funds"] += mediumTermWeight * 0.3;
+      		allocation["Equity MF"] += mediumTermWeight * 0.3;
       allocation["Debt"] += mediumTermWeight * 0.2;
       allocation["Liquid"] += mediumTermWeight * 0.1;
       allocation["Gold"] += mediumTermWeight * 0.1;
@@ -133,7 +133,7 @@ export class GoalAnalyzer {
     // Long-term goals bias towards growth
     if (longTermWeight > 0) {
       allocation["Stocks"] += longTermWeight * 0.5;
-      allocation["Mutual Funds"] += longTermWeight * 0.3;
+      		allocation["Equity MF"] += longTermWeight * 0.3;
       allocation["Real Estate"] += longTermWeight * 0.2;
     }
 

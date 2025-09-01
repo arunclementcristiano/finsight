@@ -79,7 +79,7 @@ export const questions: Question[] = [
   {
     key: "avoidAssets",
     text: "Are there any assets you want to avoid? (Optional)",
-    options: ["Stocks", "Mutual Funds", "Gold", "Real Estate", "Debt", "Liquid"],
+    		options: ["Stocks", "Equity MF", "Gold", "Real Estate", "Debt", "Liquid"],
     helperText: "We will set avoided assets to 0% (safety sleeves remain).",
     maxSelect: 6,
     optional: true

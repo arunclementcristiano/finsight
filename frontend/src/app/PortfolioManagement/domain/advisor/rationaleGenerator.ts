@@ -103,7 +103,7 @@ export class RationaleGenerator {
   }
   
   private getRiskExplanation(riskLevel: RiskLevel, allocation: Record<AssetClass, number>, answers: CouncilAnswers): string {
-    const equityTotal = allocation.Stocks + allocation["Mutual Funds"];
+    const equityTotal = allocation.Stocks + allocation["Equity MF"];
     
     if (riskLevel === "Aggressive") {
       return `Your ${equityTotal}% equity allocation reflects your comfort with volatility and long-term growth focus, supported by your ${answers.volatilityComfort?.replace('_', ' ') || 'moderate'} approach to market fluctuations.`;
@@ -117,7 +117,7 @@ export class RationaleGenerator {
   private getGoalAlignment(goal: string, allocation: Record<AssetClass, number>): string {
     const goalExplanations = {
       "retirement": `The ${allocation.Debt + allocation.Gold}% allocation to income-generating and hedge assets supports your retirement timeline.`,
-      "wealth_building": `Heavy equity weighting of ${allocation.Stocks + allocation["Mutual Funds"]}% maximizes long-term wealth accumulation potential.`,
+      "wealth_building": `Heavy equity weighting of ${allocation.Stocks + allocation["Equity MF"]}% maximizes long-term wealth accumulation potential.`,
       "income_generation": `${allocation.Debt}% in debt instruments provides the steady income stream you're seeking.`,
       "home_purchase": `${allocation.Liquid}% in liquid assets ensures capital availability for your home purchase timeline.`,
       "child_education": `Balanced approach preserves capital while generating growth for education expenses.`,
@@ -164,7 +164,7 @@ export class RationaleGenerator {
     });
     
     if (longTermGoals.length > 0) {
-      explanation += `while maintaining ${allocation.Stocks + allocation["Mutual Funds"]}% equity exposure for long-term growth.`;
+      explanation += `while maintaining ${allocation.Stocks + allocation["Equity MF"]}% equity exposure for long-term growth.`;
     } else {
       explanation += `with appropriate risk balance for your timeline.`;
     }
@@ -199,15 +199,15 @@ export class RationaleGenerator {
   }
   
   private getConstructionRationale(allocation: Record<AssetClass, number>, answers: CouncilAnswers): string {
-    const equityTotal = allocation.Stocks + allocation["Mutual Funds"];
+    const equityTotal = allocation.Stocks + allocation["Equity MF"];
     const components: string[] = [];
     
     if (allocation.Stocks > 0) {
       components.push(`${allocation.Stocks}% direct stocks for growth potential`);
     }
     
-    if (allocation["Mutual Funds"] > 0) {
-      components.push(`${allocation["Mutual Funds"]}% mutual funds for diversified equity exposure`);
+    if (allocation["Equity MF"] > 0) {
+      components.push(`${allocation["Equity MF"]}% equity mutual funds for diversified equity exposure`);
     }
     
     if (allocation.Debt > 0) {

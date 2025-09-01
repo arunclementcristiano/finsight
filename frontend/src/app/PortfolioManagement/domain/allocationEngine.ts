@@ -3,7 +3,7 @@
 
 import { AdvisorCouncilEngine } from './advisor/advisorCouncilEngine';
 
-export type AssetClass = "Stocks" | "Mutual Funds" | "ETF" | "Gold" | "Real Estate" | "Debt" | "Liquid";
+export type AssetClass = "Stocks" | "Equity MF" | "ETF" | "Gold" | "Real Estate" | "Debt" | "Liquid";
 export type RiskLevel = "Conservative" | "Moderate" | "Aggressive";
 
 export interface AllocationPlan {
@@ -189,7 +189,7 @@ const inferRemovedValues = (answers: QuestionnaireAnswers): InferredValues => {
 const getBaseRange = (asset: AssetClass): number => {
   const baseRanges = {
     "Stocks": 0.05,        // ±5% base range
-    "Mutual Funds": 0.04,  // ±4% base range
+    		"Equity MF": 0.04,     // ±4% base range
     "ETF": 0.04,           // ±4% base range (similar to Mutual Funds)
     "Debt": 0.03,          // ±3% base range
     "Liquid": 0.02,        // ±2% base range
@@ -202,7 +202,7 @@ const getBaseRange = (asset: AssetClass): number => {
 const getAssetCap = (asset: AssetClass): number => {
   const caps = {
     "Stocks": 2.5,        // Most volatile, widest ranges
-    "Mutual Funds": 2.2,  // High volatility
+    		"Equity MF": 2.2,     // High volatility
     "ETF": 2.2,           // High volatility (similar to Mutual Funds)
     "Debt": 1.5,          // Low volatility, tight ranges
     "Liquid": 1.3,        // Very stable
@@ -218,7 +218,7 @@ const getAssetBounds = (asset: AssetClass, riskLevel: RiskLevel) => {
       min: riskLevel === "Conservative" ? 5 : riskLevel === "Aggressive" ? 15 : 10,
       max: riskLevel === "Conservative" ? 45 : riskLevel === "Aggressive" ? 75 : 60
     },
-    "Mutual Funds": {
+    		"Equity MF": {
       min: riskLevel === "Conservative" ? 10 : riskLevel === "Aggressive" ? 20 : 15,
       max: riskLevel === "Conservative" ? 50 : riskLevel === "Aggressive" ? 70 : 60
     },
@@ -389,7 +389,7 @@ export function buildPlan(answers: QuestionnaireAnswers): AllocationPlan {
   
   // Convert the result to our standard format
   const plan: AllocationPlan = {
-    equity: result.allocation.Stocks + result.allocation["Mutual Funds"],
+    		equity: result.allocation.Stocks + result.allocation["Equity MF"],
     defensive: result.allocation.Debt + result.allocation.Liquid,
     satellite: result.allocation.Gold + result.allocation["Real Estate"],
     riskProfile: result.riskProfile,
@@ -402,10 +402,10 @@ export function buildPlan(answers: QuestionnaireAnswers): AllocationPlan {
         riskCategory: "Equity",
         notes: "Direct stock investments for growth"
       },
-      {
-        class: "Mutual Funds" as AssetClass,
-        pct: result.allocation["Mutual Funds"],
-        range: getSmartDynamicRange("Mutual Funds", result.allocation["Mutual Funds"], result.riskLevel, convertedAnswers),
+      		{
+			class: "Equity MF" as AssetClass,
+			pct: result.allocation["Equity MF"],
+			range: getSmartDynamicRange("Equity MF", result.allocation["Equity MF"], result.riskLevel, convertedAnswers),
         riskCategory: "Equity",
         notes: "Diversified equity exposure through funds"
       },

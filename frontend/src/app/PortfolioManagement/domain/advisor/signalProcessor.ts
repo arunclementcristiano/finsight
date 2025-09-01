@@ -662,7 +662,7 @@ export class SignalProcessor {
     const adjustedAllocation = { ...allocation };
     
     // Reduce equity exposure (more conservative when vulnerable)
-    const equityTotal = allocation.Stocks + allocation["Mutual Funds"];
+    		const equityTotal = allocation.Stocks + allocation["Equity MF"];
     const equityReduction = Math.min(equityTotal * 0.1, 10); // Max 10% reduction
     
     if (allocation.Stocks > 0) {
@@ -670,10 +670,10 @@ export class SignalProcessor {
       adjustedAllocation.Stocks = Math.max(0, allocation.Stocks - stockReduction);
     }
     
-    if (allocation["Mutual Funds"] > 0) {
-      const mfReduction = (allocation["Mutual Funds"] / equityTotal) * equityReduction;
-      adjustedAllocation["Mutual Funds"] = Math.max(0, allocation["Mutual Funds"] - mfReduction);
-    }
+    		if (allocation["Equity MF"] > 0) {
+			const mfReduction = (allocation["Equity MF"] / equityTotal) * equityReduction;
+			adjustedAllocation["Equity MF"] = Math.max(0, allocation["Equity MF"] - mfReduction);
+		}
     
     // Increase liquid allocation (better emergency preparedness)
     const liquidIncrease = Math.min(10, equityReduction * 0.5); // Up to 10% increase
