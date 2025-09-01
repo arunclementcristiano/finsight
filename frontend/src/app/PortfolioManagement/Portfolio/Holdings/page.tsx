@@ -310,6 +310,56 @@ export default function HoldingsPage() {
 		});
 	}, [holdings, filterAssetClass, filterAssetRole]);
 
+	// Sorting state
+	const [sortKey, setSortKey] = useState<'instrument' | 'class' | 'current' | 'invested' | 'pl' | 'created_at'>('created_at');
+	const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+	function toggleSort(key: typeof sortKey) {
+		setSortKey(prev => {
+			if (prev === key) {
+				setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+				return prev;
+			}
+			setSortDir('asc');
+			return key;
+		});
+	}
+
+	const sortedHoldings = useMemo(() => {
+		const list = [...filteredHoldings];
+		list.sort((a, b) => {
+			let av = 0 as any, bv = 0 as any;
+			switch (sortKey) {
+				case 'instrument':
+					av = a.name || '';
+					bv = b.name || '';
+					return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+				case 'class':
+					av = a.instrumentClass || '';
+					bv = b.instrumentClass || '';
+					return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+				case 'current':
+					av = computeHoldingValue(a);
+					bv = computeHoldingValue(b);
+					return sortDir === 'asc' ? av - bv : bv - av;
+				case 'invested':
+					av = computeInvestedAmount(a);
+					bv = computeInvestedAmount(b);
+					return sortDir === 'asc' ? av - bv : bv - av;
+				case 'pl':
+					av = computeHoldingValue(a) - computeInvestedAmount(a);
+					bv = computeHoldingValue(b) - computeInvestedAmount(b);
+					return sortDir === 'asc' ? av - bv : bv - av;
+				case 'created_at':
+				default:
+					av = a && (a as any).created_at ? new Date((a as any).created_at).getTime() : 0;
+					bv = b && (b as any).created_at ? new Date((b as any).created_at).getTime() : 0;
+					return sortDir === 'asc' ? av - bv : bv - av;
+			}
+		});
+		return list;
+	}, [filteredHoldings, sortKey, sortDir]);
+
 	// Calculate totals for KPI cards - using filtered data
 	const totalValue = useMemo(() => (filteredHoldings || []).reduce((s: number, h: Holding) => s + computeHoldingValue(h), 0), [filteredHoldings]);
 	const totalInvested = useMemo(() => (filteredHoldings || []).reduce((s: number, h: Holding) => s + computeInvestedAmount(h), 0), [filteredHoldings]);
@@ -360,10 +410,10 @@ export default function HoldingsPage() {
 	}, [filteredHoldings]);
 
 	// Pagination logic
-	const totalPages = Math.ceil((filteredHoldings?.length || 0) / itemsPerPage);
+	const totalPages = Math.ceil((sortedHoldings?.length || 0) / itemsPerPage);
 	const startIndex = (currentPage - 1) * itemsPerPage;
 	const endIndex = startIndex + itemsPerPage;
-	const currentHoldings = filteredHoldings?.slice(startIndex, endIndex) || [];
+	const currentHoldings = sortedHoldings?.slice(startIndex, endIndex) || [];
 
 	// Reset to first page when holdings change
 	React.useEffect(() => {
@@ -595,13 +645,13 @@ export default function HoldingsPage() {
 									<table className="w-full text-left text-xs">
 										<thead className="bg-card sticky top-0 z-10">
 											<tr>
-												<th className="py-2 px-3 text-muted-foreground">Instrument</th>
-												<th className="py-2 px-3 text-muted-foreground">Class/Role</th>
+												<th className="py-2 px-3 text-muted-foreground cursor-pointer" onClick={() => toggleSort('instrument')}>Instrument</th>
+												<th className="py-2 px-3 text-muted-foreground cursor-pointer" onClick={() => toggleSort('class')}>Class/Role</th>
 												<th className="py-2 px-3 text-muted-foreground">Units</th>
-												<th className="py-2 px-3 text-muted-foreground">Price</th>
-												<th className="py-2 px-3 text-muted-foreground text-right">Current Value</th>
-												<th className="py-2 px-3 text-muted-foreground text-right">Invested Amount</th>
-												<th className="py-2 px-3 text-muted-foreground text-right">P/L</th>
+												<th className="py-2 px-3 text-muted-foreground cursor-pointer" onClick={() => toggleSort('current')}>Price</th>
+												<th className="py-2 px-3 text-muted-foreground text-right cursor-pointer" onClick={() => toggleSort('current')}>Current Value</th>
+												<th className="py-2 px-3 text-muted-foreground text-right cursor-pointer" onClick={() => toggleSort('invested')}>Invested Amount</th>
+												<th className="py-2 px-3 text-muted-foreground text-right cursor-pointer" onClick={() => toggleSort('pl')}>P/L</th>
 												<th className="py-2 px-3 text-muted-foreground">Actions</th>
 											</tr>
 										</thead>
@@ -623,17 +673,9 @@ export default function HoldingsPage() {
 															</div>
 														</td>
 														<td className="py-2 px-3">
-															<div className="space-y-1">
-																<span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-																	CLASS_COLORS[holding.instrumentClass as keyof typeof CLASS_COLORS]?.bg || 'bg-gray-100 dark:bg-gray-800'
-																} ${
-																	CLASS_COLORS[holding.instrumentClass as keyof typeof CLASS_COLORS]?.text || 'text-gray-700 dark:text-gray-300'
-																}`}>
-																	{holding.instrumentClass}
-																</span>
-																<div className="text-xs text-muted-foreground">
-																	{getRoleForAssetClass(holding.instrumentClass)}
-																</div>
+															<div className="space-y-0.5">
+																<div className="text-sm text-foreground">{holding.instrumentClass}</div>
+																<div className="text-xs italic text-muted-foreground">{getRoleForAssetClass(holding.instrumentClass)}</div>
 															</div>
 														</td>
 														<td className="py-2 px-3">{holding.units?.toFixed(2) || '0.00'}</td>
@@ -677,8 +719,8 @@ export default function HoldingsPage() {
 								{totalPages > 1 && (
 									<div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
 										<div className="text-xs text-muted-foreground">
-											Showing {startIndex + 1} to {Math.min(endIndex, filteredHoldings.length)} of {filteredHoldings.length} holdings
-											{filteredHoldings.length !== holdings.length && (
+											Showing {startIndex + 1} to {Math.min(endIndex, sortedHoldings.length)} of {sortedHoldings.length} holdings
+											{sortedHoldings.length !== holdings.length && (
 												<span className="ml-2 text-blue-600">(filtered from {holdings.length} total)</span>
 											)}
 										</div>
@@ -902,7 +944,16 @@ export default function HoldingsPage() {
 											onClick={() => {
 												setSelectedRole(assetClass as any);
 												setSelectedInstrumentType(null);
-												setForm({ ...form, name: "", symbol: "" });
+												// hard reset form and per-asset state
+												setForm({ instrumentClass: "Stocks", name: "", symbol: "", units: "", price: "", investedAmount: "", currentValue: "", propertyType: "" });
+												setStockSearchTerm("");
+												setSelectedStock(null);
+												setFilteredStockOptions([]);
+												setShowStockDropdown(false);
+												setMfSearchTerm("");
+												setSelectedMF(null);
+												setFilteredMFOptions([]);
+												setShowMFDropdown(false);
 											}}
 											className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 transform ${
 												selectedRole === assetClass
@@ -1296,36 +1347,6 @@ export default function HoldingsPage() {
 													</div>
 												</div>
 											</>
-										)}
-
-										{/* Simple KPI-style Holding Summary */}
-										{selectedRole && form.name && (
-											<div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-xl border border-border">
-												<div className="text-center">
-													<div className="text-xs text-muted-foreground mb-1">Instrument</div>
-													<div className="text-sm font-semibold text-foreground">{form.name}</div>
-													<div className="text-xs text-muted-foreground">{selectedRole}</div>
-												</div>
-												<div className="text-center">
-													<div className="text-xs text-muted-foreground mb-1">Value</div>
-													<div className="text-lg font-bold text-foreground">
-														{(() => {
-															if (selectedRole === 'Stocks' && form.units && form.price) {
-																return `₹${(parseFloat(form.units) * parseFloat(form.price)).toLocaleString()}`;
-															} else if (selectedRole === 'Mutual Funds' && form.investedAmount) {
-																return `₹${parseFloat(form.investedAmount).toLocaleString()}`;
-															} else if (selectedRole === 'ETF' && form.units && form.price) {
-																return `₹${(parseFloat(form.units) * parseFloat(form.price)).toLocaleString()}`;
-															} else if (selectedRole === 'Gold' && form.units && form.price) {
-																return `₹${(parseFloat(form.units) * parseFloat(form.price)).toLocaleString()}`;
-															} else if (selectedRole === 'Real Estate' && form.investedAmount) {
-																return `₹${parseFloat(form.investedAmount).toLocaleString()}`;
-															}
-															return '₹0';
-														})()}
-													</div>
-												</div>
-											</div>
 										)}
 
 										{/* Form Actions */}
