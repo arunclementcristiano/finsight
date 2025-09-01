@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import traceback
 import uuid
 from datetime import datetime
 from urllib import request as urlrequest
@@ -241,6 +242,7 @@ def handler(event, context):
             except Exception:
                 body = {}
         qs = event.get("queryStringParameters") or {}
+        path_params = event.get("pathParameters") or {}
 
         if route_key == "POST /add":
             user_id = body.get("userId")
@@ -636,7 +638,6 @@ def handler(event, context):
                 print(f"Error creating holding: {e}")
                 print(f"Error type: {type(e)}")
                 print(f"Error details: {str(e)}")
-                import traceback
                 print(f"Traceback: {traceback.format_exc()}")
                 return _response(500, {"error": f"Failed to create holding: {str(e)}"})
 
