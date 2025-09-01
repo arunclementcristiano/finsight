@@ -234,19 +234,11 @@ export default function HoldingsPage() {
 				
 				// Filter funds based on selected role and allocation class
 				let filtered = allFunds.filter(fund => {
-					// Debug logging
-					console.log(`🔍 Filtering fund: ${fund.name}`);
-					console.log(`   - Role: ${selectedRole}`);
-					console.log(`   - isETF: ${fund.isETF}`);
-					console.log(`   - allocationClass: ${fund.allocationClass}`);
-					
 					// First filter by ETF status
 					if (selectedRole === 'Mutual Funds' && fund.isETF) {
-						console.log(`   ❌ Filtered out: ETF fund in Mutual Funds role`);
 						return false;
 					}
 					if (selectedRole === 'ETF' && !fund.isETF) {
-						console.log(`   ❌ Filtered out: Non-ETF fund in ETF role`);
 						return false;
 					}
 					
@@ -254,10 +246,8 @@ export default function HoldingsPage() {
 					if (selectedRole === 'Mutual Funds') {
 						// For Mutual Funds, show equity-oriented funds
 						const isEquityFund = fund.allocationClass === 'Equity' || 
-										   fund.allocationClass === 'Equity Fund' || 
 										   fund.allocationClass === 'Growth';
 						
-						console.log(`   - Is Equity Fund: ${isEquityFund}`);
 						return isEquityFund;
 					} else if (selectedRole === 'ETF') {
 						// For ETFs, show equity-oriented ETFs
@@ -265,11 +255,9 @@ export default function HoldingsPage() {
 										fund.allocationClass === 'Debt' || 
 										fund.allocationClass === 'Gold';
 						
-						console.log(`   - Is ETF Type: ${isETFType}`);
 						return isETFType;
 					}
 					
-					console.log(`   ✅ Included in results`);
 					return true;
 				});
 				
@@ -287,7 +275,6 @@ export default function HoldingsPage() {
 				setFilteredMFOptions(limitedResults);
 				setShowMFDropdown(limitedResults.length > 0);
 			} catch (error) {
-				console.error('Error searching funds:', error);
 				// Clear results on error
 				setFilteredMFOptions([]);
 				setShowMFDropdown(false);
@@ -295,26 +282,44 @@ export default function HoldingsPage() {
 		}
 	};
 
-	// Debounce search term to reduce lag
-	const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(mfSearchTerm);
+	// Debounce search terms to reduce lag
+	const [debouncedMfSearchTerm, setDebouncedMfSearchTerm] = useState(mfSearchTerm);
+	const [debouncedStockSearchTerm, setDebouncedStockSearchTerm] = useState(stockSearchTerm);
 	
 	React.useEffect(() => {
 		const timer = setTimeout(() => {
-			setDebouncedSearchTerm(mfSearchTerm);
+			setDebouncedMfSearchTerm(mfSearchTerm);
 		}, 300); // 300ms delay
 		
 		return () => clearTimeout(timer);
 	}, [mfSearchTerm]);
 	
-	// Use debounced search term for better performance
 	React.useEffect(() => {
-		if (debouncedSearchTerm.trim()) {
-			filterMFOptions(debouncedSearchTerm);
+		const timer = setTimeout(() => {
+			setDebouncedStockSearchTerm(stockSearchTerm);
+		}, 300); // 300ms delay
+		
+		return () => clearTimeout(timer);
+	}, [stockSearchTerm]);
+	
+	// Use debounced search terms for better performance
+	React.useEffect(() => {
+		if (debouncedMfSearchTerm.trim()) {
+			filterMFOptions(debouncedMfSearchTerm);
 		} else {
 			setFilteredMFOptions([]);
 			setShowMFDropdown(false);
 		}
-	}, [debouncedSearchTerm, selectedRole]);
+	}, [debouncedMfSearchTerm, selectedRole]);
+	
+	React.useEffect(() => {
+		if (debouncedStockSearchTerm.trim()) {
+			filterStockOptions(debouncedStockSearchTerm);
+		} else {
+			setFilteredStockOptions([]);
+			setShowStockDropdown(false);
+		}
+	}, [debouncedStockSearchTerm]);
 	
 	// Auto-calculate MF values
 	React.useEffect(() => {
@@ -568,7 +573,6 @@ export default function HoldingsPage() {
 			clearEditState();
 			resetForm();
 		} catch (error) {
-			console.error('Error saving holding to DynamoDB:', error);
 			alert('Failed to save holding. Please try again.');
 		}
 	}
@@ -638,7 +642,6 @@ export default function HoldingsPage() {
 				// Remove from local state after successful deletion
 				setHoldings(prev => prev.filter(h => h.id !== id));
 			} catch (error) {
-				console.error('Error deleting holding:', error);
 				alert('Failed to delete holding. Please try again.');
 			}
 		}
@@ -1091,11 +1094,12 @@ export default function HoldingsPage() {
 															onChange={(e) => {
 																if (editingId) return; // Disable in edit mode
 																setStockSearchTerm(e.target.value);
-																filterStockOptions(e.target.value);
 															}}
 															onFocus={() => {
 																if (editingId) return; // Disable in edit mode
-																filterStockOptions(stockSearchTerm);
+																if (stockSearchTerm.trim()) {
+																	filterStockOptions(stockSearchTerm);
+																}
 															}}
 															disabled={editingId !== null}
 															className={`w-full rounded-lg border border-border px-3 py-2 text-sm ${
@@ -1170,18 +1174,16 @@ export default function HoldingsPage() {
 													<div className="relative">
 														<input
 															value={mfSearchTerm}
-															onChange={async (e) => {
+															onChange={(e) => {
 																setMfSearchTerm(e.target.value);
 																if (e.target.value.trim() === '') {
 																	setShowMFDropdown(false);
 																	setFilteredMFOptions([]);
-																} else {
-																await filterMFOptions(e.target.value);
 																}
 															}}
-															onFocus={async () => {
+															onFocus={() => {
 																if (mfSearchTerm.trim()) {
-																	await filterMFOptions(mfSearchTerm);
+																	filterMFOptions(mfSearchTerm);
 																}
 															}}
 															disabled={editingId !== null}
