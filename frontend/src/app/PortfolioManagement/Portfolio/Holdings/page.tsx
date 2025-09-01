@@ -514,20 +514,17 @@ export default function HoldingsPage() {
 		
 		// Map selected asset class to instrument class
 		let instrumentClass: AssetClass = "Stocks";
-		let allocationClass: string | undefined;
 		let assetClass: string | undefined;
 		let portfolioRole: string | undefined;
 		
 		if (selectedRole === 'Stocks') {
 			instrumentClass = "Stocks";
-			allocationClass = "Stocks";
 			assetClass = "Stocks";
 			portfolioRole = "Equity";
 		} else if (selectedRole === 'Mutual Funds') {
 			instrumentClass = "Mutual Funds";
 			// For Mutual Funds, use the values from the selected fund
 			if (selectedMF) {
-				allocationClass = selectedMF.allocationClass || "Equity";
 				assetClass = selectedMF.fundType || "Equity MF";
 				portfolioRole = selectedMF.allocationClass || "Equity";
 			}
@@ -535,18 +532,15 @@ export default function HoldingsPage() {
 			instrumentClass = "ETF";
 			// For ETFs, use the values from the selected fund
 			if (selectedMF) {
-				allocationClass = selectedMF.allocationClass || "Equity";
 				assetClass = selectedMF.fundType || "Equity MF";
 				portfolioRole = selectedMF.allocationClass || "Equity";
 			}
 		} else if (selectedRole === 'Gold') {
 			instrumentClass = "Gold";
-			allocationClass = "Gold";
 			assetClass = "Gold";
 			portfolioRole = "Satellite";
 		} else if (selectedRole === 'Real Estate') {
 			instrumentClass = "Real Estate";
-			allocationClass = "Real Estate";
 			assetClass = "Real Estate";
 			portfolioRole = "Satellite";
 		}
@@ -574,12 +568,17 @@ export default function HoldingsPage() {
 				price: holding.price,
 				investedAmount: holding.investedAmount,
 				currentValue: holding.currentValue,
-				allocation_class: allocationClass,
 				asset_class: assetClass,
 				portfolio_role: portfolioRole,
 				created_at: new Date().toISOString(),
 				updated_at: new Date().toISOString()
 			};
+			
+			// Debug logging
+			console.log('Saving holding with data:', dbHolding);
+			console.log('Selected MF:', selectedMF);
+			console.log('Asset Class:', assetClass);
+			console.log('Portfolio Role:', portfolioRole);
 			
 			await saveHolding(dbHolding);
 			

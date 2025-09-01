@@ -56,7 +56,6 @@ export interface HoldingData {
   price?: number;
   investedAmount?: number;
   currentValue?: number;
-  allocation_class?: string;
   asset_class?: string;
   portfolio_role?: string;
   created_at: string;

@@ -213,8 +213,17 @@ def handler(event, context):
                 
                 # Extract asset class and portfolio role from the holding data
                 instrument_class = converted_holding.get("instrumentClass", "Stocks")
-                asset_class = converted_holding.get("asset_class", converted_holding.get("allocation_class", instrument_class))
+                asset_class = converted_holding.get("asset_class", instrument_class)
                 portfolio_role = converted_holding.get("portfolio_role", _get_portfolio_role_for_asset_class(asset_class))
+                
+                # Debug logging to see what's being stored
+                print(f"Storing holding with:")
+                print(f"  instrument_class: {instrument_class}")
+                print(f"  asset_class: {asset_class}")
+                print(f"  portfolio_role: {portfolio_role}")
+                print(f"  converted_holding keys: {list(converted_holding.keys())}")
+                print(f"  asset_class from holding: {converted_holding.get('asset_class')}")
+                print(f"  portfolio_role from holding: {converted_holding.get('portfolio_role')}")
                 
                 item = {
                     "id": holding_id,
@@ -253,8 +262,8 @@ def handler(event, context):
                 for it in items:
                     holding_data = it.get("data") or {}
                     # Include asset class and portfolio role from the main item
-                    holding_data["asset_class"] = it.get("asset_class", holding_data.get("allocation_class", holding_data.get("instrumentClass", "Stocks")))
-                    holding_data["portfolio_role"] = it.get("portfolio_role", holding_data.get("allocation_class", "Equity"))
+                    holding_data["asset_class"] = it.get("asset_class", holding_data.get("instrumentClass", "Stocks"))
+                    holding_data["portfolio_role"] = it.get("portfolio_role", "Equity")
                     holdings.append({"id": it.get("id"), **holding_data})
                 
                 return _response(200, {"items": holdings})

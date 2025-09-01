@@ -283,10 +283,41 @@ resource "aws_dynamodb_table" "holdings" {
     type = "S"
   }
 
+  attribute {
+    name = "asset_class"
+    type = "S"
+  }
+
+  attribute {
+    name = "portfolio_role"
+    type = "S"
+  }
+
   global_secondary_index {
     name            = "userId-createdAt-index"
     hash_key        = "user_id"
     range_key       = "created_at"
+    projection_type = "ALL"
+  }
+
+  global_secondary_index {
+    name            = "userId-assetClass-index"
+    hash_key        = "user_id"
+    range_key       = "asset_class"
+    projection_type = "ALL"
+  }
+
+  global_secondary_index {
+    name            = "userId-portfolioRole-index"
+    hash_key        = "user_id"
+    range_key       = "portfolio_role"
+    projection_type = "ALL"
+  }
+
+  global_secondary_index {
+    name            = "assetClass-portfolioRole-index"
+    hash_key        = "asset_class"
+    range_key       = "portfolio_role"
     projection_type = "ALL"
   }
 

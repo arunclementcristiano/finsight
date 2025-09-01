@@ -56,7 +56,7 @@ resource "aws_iam_role_policy" "portfolio_lambda_ddb_access" {
         aws_dynamodb_table.asset_class_mapping.arn,
         "${aws_dynamodb_table.invest.arn}/index/*",
         "${aws_dynamodb_table.mutual_fund_schemes.arn}/index/*",
-        "${aws_dynamodb_table.holdings.arn}/index/userId-createdAt-index"
+        "${aws_dynamodb_table.holdings.arn}/index/*"
       ]
     }]
   })
