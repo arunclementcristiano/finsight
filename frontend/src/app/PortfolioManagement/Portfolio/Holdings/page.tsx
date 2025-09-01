@@ -242,18 +242,18 @@ export default function HoldingsPage() {
 						return false;
 					}
 					
-					// Then filter by allocation class for proper classification
+					// Then filter by asset class for proper classification
 					if (selectedRole === 'Mutual Funds') {
 						// For Mutual Funds, show equity-oriented funds
-						const isEquityFund = fund.allocationClass === 'Equity' || 
-										   fund.allocationClass === 'Growth';
+						const isEquityFund = fund.fundType.includes('Equity') || 
+										   fund.fundType.includes('Growth');
 						
 						return isEquityFund;
 					} else if (selectedRole === 'ETF') {
 						// For ETFs, show equity-oriented ETFs
-						const isETFType = fund.allocationClass === 'Equity' || 
-										fund.allocationClass === 'Debt' || 
-										fund.allocationClass === 'Gold';
+						const isETFType = fund.fundType.includes('Equity') || 
+										fund.fundType.includes('Debt') || 
+										fund.fundType.includes('Gold');
 						
 						return isETFType;
 					}
@@ -526,14 +526,14 @@ export default function HoldingsPage() {
 			// For Mutual Funds, use the values from the selected fund
 			if (selectedMF) {
 				assetClass = selectedMF.fundType || "Equity MF";
-				portfolioRole = selectedMF.allocationClass || "Equity";
+				portfolioRole = selectedMF.portfolioRole || "Equity";
 			}
 		} else if (selectedRole === 'ETF') {
 			instrumentClass = "ETF";
 			// For ETFs, use the values from the selected fund
 			if (selectedMF) {
 				assetClass = selectedMF.fundType || "Equity MF";
-				portfolioRole = selectedMF.allocationClass || "Equity";
+				portfolioRole = selectedMF.portfolioRole || "Equity";
 			}
 		} else if (selectedRole === 'Gold') {
 			instrumentClass = "Gold";
@@ -574,11 +574,7 @@ export default function HoldingsPage() {
 				updated_at: new Date().toISOString()
 			};
 			
-			// Debug logging
-			console.log('Saving holding with data:', dbHolding);
-			console.log('Selected MF:', selectedMF);
-			console.log('Asset Class:', assetClass);
-			console.log('Portfolio Role:', portfolioRole);
+
 			
 			await saveHolding(dbHolding);
 			

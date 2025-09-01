@@ -216,14 +216,7 @@ def handler(event, context):
                 asset_class = converted_holding.get("asset_class", instrument_class)
                 portfolio_role = converted_holding.get("portfolio_role", _get_portfolio_role_for_asset_class(asset_class))
                 
-                # Debug logging to see what's being stored
-                print(f"Storing holding with:")
-                print(f"  instrument_class: {instrument_class}")
-                print(f"  asset_class: {asset_class}")
-                print(f"  portfolio_role: {portfolio_role}")
-                print(f"  converted_holding keys: {list(converted_holding.keys())}")
-                print(f"  asset_class from holding: {converted_holding.get('asset_class')}")
-                print(f"  portfolio_role from holding: {converted_holding.get('portfolio_role')}")
+
                 
                 item = {
                     "id": holding_id,
@@ -365,7 +358,7 @@ def handler(event, context):
                         "fullName": item.get("fund_name", ""),
                         "currentNAV": float(item.get("nav", 0)),
                         "fundType": item.get("asset_class", "Equity MF"),
-                        "allocationClass": item.get("portfolio_role", "Equity"),
+                        "portfolioRole": item.get("portfolio_role", "Equity"),
                         "isETF": item.get("is_etf") == "true",
                         "amc": item.get("amc", ""),
                         "schemeType": item.get("scheme_type", ""),
@@ -414,7 +407,7 @@ def handler(event, context):
                         "fullName": item.get("fund_name", ""),
                         "currentNAV": float(item.get("nav", 0)),
                         "fundType": item.get("asset_class", "Equity MF"),
-                        "allocationClass": item.get("portfolio_role", "Equity"),
+                        "portfolioRole": item.get("portfolio_role", "Equity"),
                         "isETF": item.get("is_etf") == "true",
                         "amc": item.get("amc", ""),
                         "schemeType": item.get("scheme_type", ""),

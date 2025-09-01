@@ -169,7 +169,12 @@ resource "aws_dynamodb_table" "mutual_fund_schemes" {
   }
 
   attribute {
-    name = "allocation_class"
+    name = "asset_class"
+    type = "S"
+  }
+
+  attribute {
+    name = "portfolio_role"
     type = "S"
   }
 
@@ -216,10 +221,18 @@ resource "aws_dynamodb_table" "mutual_fund_schemes" {
     projection_type = "ALL"
   }
 
-  # GSI for querying by allocation class - very useful for portfolio analysis
+  # GSI for querying by asset class - useful for portfolio analysis
   global_secondary_index {
-    name     = "AllocationClass-Date-Index" 
-    hash_key = "allocation_class"
+    name     = "AssetClass-Date-Index" 
+    hash_key = "asset_class"
+    range_key = "date"
+    projection_type = "ALL"
+  }
+
+  # GSI for querying by portfolio role - useful for portfolio analysis
+  global_secondary_index {
+    name     = "PortfolioRole-Date-Index" 
+    hash_key = "portfolio_role"
     range_key = "date"
     projection_type = "ALL"
   }
@@ -283,41 +296,10 @@ resource "aws_dynamodb_table" "holdings" {
     type = "S"
   }
 
-  attribute {
-    name = "asset_class"
-    type = "S"
-  }
-
-  attribute {
-    name = "portfolio_role"
-    type = "S"
-  }
-
   global_secondary_index {
     name            = "userId-createdAt-index"
     hash_key        = "user_id"
     range_key       = "created_at"
-    projection_type = "ALL"
-  }
-
-  global_secondary_index {
-    name            = "userId-assetClass-index"
-    hash_key        = "user_id"
-    range_key       = "asset_class"
-    projection_type = "ALL"
-  }
-
-  global_secondary_index {
-    name            = "userId-portfolioRole-index"
-    hash_key        = "user_id"
-    range_key       = "portfolio_role"
-    projection_type = "ALL"
-  }
-
-  global_secondary_index {
-    name            = "assetClass-portfolioRole-index"
-    hash_key        = "asset_class"
-    range_key       = "portfolio_role"
     projection_type = "ALL"
   }
 

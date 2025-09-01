@@ -41,7 +41,7 @@ export interface TransformedFund {
   fullName: string;
   currentNAV: number;
   fundType: string;
-  allocationClass: string;
+  portfolioRole: string;
   isETF: boolean;
 }
 
