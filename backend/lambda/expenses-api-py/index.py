@@ -532,21 +532,27 @@ def handler(event, context):
             holding = body.get("holding") or {}
             if not portfolio_id or not isinstance(holding, dict):
                 return _response(400, {"error": "Missing portfolioId or holding"})
-            holding_id = holding.get("id") or str(uuid.uuid4())
-            now = datetime.utcnow().isoformat()
-            item = {
-                "pk": f"USER#{user_sub}",
-                "sk": f"HOLDING#{portfolio_id}#{holding_id}",
-                "entityType": "HOLDING",
-                "portfolioId": portfolio_id,
-                "holdingId": holding_id,
-                "data": holding,
-                "updatedAt": now,
-                "GSI1PK": f"PORTFOLIO#{portfolio_id}",
-                "GSI1SK": f"HOLDING#{holding_id}",
-            }
-            invest_table.put_item(Item=item)
-            return _response(200, {"holdingId": holding_id})
+            
+            try:
+                # Use the new holdings table
+                holdings_table = dynamodb.Table(os.environ.get("HOLDINGS_TABLE", "holdings"))
+                holding_id = holding.get("id") or str(uuid.uuid4())
+                now = datetime.utcnow().isoformat()
+                
+                item = {
+                    "id": holding_id,
+                    "user_id": user_sub,
+                    "portfolio_id": portfolio_id,
+                    "data": holding,
+                    "created_at": now,
+                    "updated_at": now
+                }
+                
+                holdings_table.put_item(Item=item)
+                return _response(200, {"holdingId": holding_id})
+            except Exception as e:
+                print(f"Error creating holding: {e}")
+                return _response(500, {"error": "Failed to create holding"})
 
         # List holdings (GET /holdings?portfolioId=...)
         if route_key == "GET /holdings":
@@ -556,12 +562,20 @@ def handler(event, context):
             portfolio_id = (qs or {}).get("portfolioId")
             if not portfolio_id:
                 return _response(400, {"error": "Missing portfolioId"})
-            res = invest_table.query(
-                KeyConditionExpression=Key("pk").eq(f"USER#{user_sub}") & Key("sk").begins_with(f"HOLDING#{portfolio_id}#")
-            )
-            items = res.get("Items", [])
-            holdings = [{"id": it.get("holdingId"), **(it.get("data") or {})} for it in items]
-            return _response(200, {"items": holdings})
+            
+            try:
+                # Use the new holdings table
+                holdings_table = dynamodb.Table(os.environ.get("HOLDINGS_TABLE", "holdings"))
+                res = holdings_table.query(
+                    IndexName="userId-createdAt-index",
+                    KeyConditionExpression=Key("user_id").eq(user_sub)
+                )
+                items = res.get("Items", [])
+                holdings = [{"id": it.get("id"), **(it.get("data") or {})} for it in items]
+                return _response(200, {"items": holdings})
+            except Exception as e:
+                print(f"Error fetching holdings: {e}")
+                return _response(500, {"error": "Failed to fetch holdings"})
 
         # Create transaction (POST /transactions) — body: { portfolioId, txn }
         if route_key == "POST /transactions":

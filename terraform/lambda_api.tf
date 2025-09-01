@@ -106,6 +106,7 @@ resource "aws_lambda_function" "expenses" {
       GROQ_MODEL               = "llama-3.1-8b-instant"
       INVEST_TABLE             = aws_dynamodb_table.invest.name
       MUTUAL_FUND_SCHEMES_TABLE = aws_dynamodb_table.mutual_fund_schemes.name
+      HOLDINGS_TABLE           = aws_dynamodb_table.holdings.name
     }
   }
 }
