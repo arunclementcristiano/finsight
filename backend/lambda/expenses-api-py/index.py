@@ -863,10 +863,10 @@ def handler(event, context):
                     fund = {
                         "schemeCode": item.get("scheme_code", ""),
                         "name": item.get("fund_name", ""),
-                        "fullName": item.get("fund_name", ""),  # Use fund_name since scheme_name doesn't exist
+                        "fullName": item.get("fund_name", ""),
                         "currentNAV": float(item.get("nav", 0)),
-                        "fundType": item.get("asset_class", "Equity MF"),  # Use asset_class instead of allocation_class
-                        "allocationClass": item.get("scheme_type", "Equity"),
+                        "fundType": item.get("asset_class", "Equity MF"),
+                        "allocationClass": item.get("portfolio_role", "Equity"),  # Use portfolio_role for allocation class
                         "isETF": item.get("is_etf") == "true"
                     }
                     filtered_funds.append(fund)
