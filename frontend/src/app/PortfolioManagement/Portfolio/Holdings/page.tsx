@@ -1036,14 +1036,23 @@ export default function HoldingsPage() {
 														<input
 															value={selectedStock ? `${selectedStock.name} (${selectedStock.symbol})` : stockSearchTerm}
 															onChange={(e) => {
+																if (editingId) return; // Disable in edit mode
 																setStockSearchTerm(e.target.value);
 																filterStockOptions(e.target.value);
 															}}
-															onFocus={() => filterStockOptions(stockSearchTerm)}
-															className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-															placeholder="Search for stocks..."
+															onFocus={() => {
+																if (editingId) return; // Disable in edit mode
+																filterStockOptions(stockSearchTerm);
+															}}
+															disabled={editingId !== null}
+															className={`w-full rounded-lg border border-border px-3 py-2 text-sm ${
+																editingId !== null 
+																	? 'bg-muted text-muted-foreground cursor-not-allowed' 
+																	: 'bg-background text-foreground'
+															}`}
+															placeholder={editingId !== null ? "Stock name cannot be changed during edit" : "Search for stocks..."}
 														/>
-														{showStockDropdown && (
+														{showStockDropdown && !editingId && (
 															<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-auto">
 																{filteredStockOptions.map((stock) => (
 																	<div
@@ -1110,9 +1119,18 @@ export default function HoldingsPage() {
 															value={mfSearchTerm}
 															onChange={async (e) => {
 																setMfSearchTerm(e.target.value);
+																if (e.target.value.trim() === '') {
+																	setShowMFDropdown(false);
+																	setFilteredMFOptions([]);
+																} else {
 																await filterMFOptions(e.target.value);
+																}
 															}}
-															onFocus={async () => await filterMFOptions(mfSearchTerm)}
+															onFocus={async () => {
+																if (mfSearchTerm.trim()) {
+																	await filterMFOptions(mfSearchTerm);
+																}
+															}}
 															disabled={editingId !== null}
 															className={`w-full rounded-lg border border-border px-3 py-2 text-sm ${
 																editingId !== null 
@@ -1189,9 +1207,18 @@ export default function HoldingsPage() {
 															value={mfSearchTerm}
 															onChange={async (e) => {
 																setMfSearchTerm(e.target.value);
-																await filterMFOptions(e.target.value);
+																if (e.target.value.trim() === '') {
+																	setShowMFDropdown(false);
+																	setFilteredMFOptions([]);
+																} else {
+																	await filterMFOptions(e.target.value);
+																}
 															}}
-															onFocus={async () => await filterMFOptions(mfSearchTerm)}
+															onFocus={async () => {
+																if (mfSearchTerm.trim()) {
+																	await filterMFOptions(mfSearchTerm);
+																}
+															}}
 															disabled={editingId !== null}
 															className={`w-full rounded-lg border border-border px-3 py-2 text-sm ${
 																editingId !== null 
@@ -1262,10 +1289,18 @@ export default function HoldingsPage() {
 													<label className="block text-sm font-medium text-foreground mb-2">Gold Type *</label>
 													<input
 														value={form.name}
-														onChange={(e) => setForm({ ...form, name: e.target.value })}
+														onChange={(e) => {
+															if (editingId) return; // Disable in edit mode
+															setForm({ ...form, name: e.target.value });
+														}}
+														disabled={editingId !== null}
 														required
-														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-														placeholder="e.g., Physical Gold, Gold Coins, Gold Bars"
+														className={`w-full rounded-lg border border-border px-3 py-2 text-sm ${
+															editingId !== null 
+																? 'bg-muted text-muted-foreground cursor-not-allowed' 
+																: 'bg-background text-foreground'
+														}`}
+														placeholder={editingId !== null ? "Gold type cannot be changed during edit" : "e.g., Physical Gold, Gold Coins, Gold Bars"}
 													/>
 												</div>
 												
@@ -1309,10 +1344,18 @@ export default function HoldingsPage() {
 													<label className="block text-sm font-medium text-foreground mb-2">Property Name *</label>
 													<input
 														value={form.name}
-														onChange={(e) => setForm({ ...form, name: e.target.value })}
+														onChange={(e) => {
+															if (editingId) return; // Disable in edit mode
+															setForm({ ...form, name: e.target.value });
+														}}
+														disabled={editingId !== null}
 														required
-														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-														placeholder="Enter property name"
+														className={`w-full rounded-lg border border-border px-3 py-2 text-sm ${
+															editingId !== null 
+																? 'bg-muted text-muted-foreground cursor-not-allowed' 
+																: 'bg-background text-foreground'
+														}`}
+														placeholder={editingId !== null ? "Property name cannot be changed during edit" : "Enter property name"}
 													/>
 												</div>
 												
@@ -1320,9 +1363,17 @@ export default function HoldingsPage() {
 													<label className="block text-sm font-medium text-foreground mb-2">Property Type *</label>
 													<select
 														value={form.propertyType || ''}
-														onChange={(e) => setForm({ ...form, propertyType: e.target.value })}
+														onChange={(e) => {
+															if (editingId) return; // Disable in edit mode
+															setForm({ ...form, propertyType: e.target.value });
+														}}
+														disabled={editingId !== null}
 														required
-														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+														className={`w-full rounded-lg border border-border px-3 py-2 text-sm ${
+															editingId !== null 
+																? 'bg-muted text-muted-foreground cursor-not-allowed' 
+																: 'bg-background text-foreground'
+														}`}
 													>
 														<option value="">Select property type</option>
 														<option value="Residential">Residential</option>
