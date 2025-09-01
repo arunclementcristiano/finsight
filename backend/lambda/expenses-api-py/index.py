@@ -754,9 +754,19 @@ def handler(event, context):
         # Get mutual fund schemes (GET /mutual-funds)
         if route_key == "GET /mutual-funds":
             try:
+                # Get table name from environment
+                table_name = os.environ.get("MUTUAL_FUND_SCHEMES_TABLE", "MutualFundSchemes")
+                print(f"Fetching mutual funds from table: {table_name}")
+                
                 # Scan the mutual fund schemes table
-                res = dynamodb.Table(os.environ.get("MUTUAL_FUND_SCHEMES_TABLE", "MutualFundSchemes")).scan()
+                table = dynamodb.Table(table_name)
+                print(f"Table object created: {table}")
+                
+                res = table.scan()
+                print(f"Scan result: {res}")
+                
                 items = res.get("Items", [])
+                print(f"Found {len(items)} mutual fund items")
                 
                 # Transform to match frontend expectations
                 funds = []
@@ -774,10 +784,13 @@ def handler(event, context):
                 
                 # Sort by name for better UX
                 funds.sort(key=lambda x: x["name"])
+                print(f"Returning {len(funds)} transformed funds")
                 return _response(200, {"items": funds})
             except Exception as e:
                 print(f"Error fetching mutual funds: {e}")
-                return _response(500, {"error": "Failed to fetch mutual funds"})
+                print(f"Error type: {type(e)}")
+                print(f"Traceback: {traceback.format_exc()}")
+                return _response(500, {"error": f"Failed to fetch mutual funds: {str(e)}"})
 
         # Search mutual funds (GET /mutual-funds/search?q=...&is_etf=...)
         if route_key == "GET /mutual-funds/search":
