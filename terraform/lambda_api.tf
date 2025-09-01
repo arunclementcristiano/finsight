@@ -60,14 +60,7 @@ resource "aws_iam_role_policy" "lambda_ddb_access" {
         aws_dynamodb_table.expenses.arn,
         aws_dynamodb_table.category_rules.arn,
         aws_dynamodb_table.user_budgets.arn,
-        aws_dynamodb_table.invest.arn,
-        aws_dynamodb_table.mutual_fund_schemes.arn,
-        aws_dynamodb_table.holdings.arn,
-        aws_dynamodb_table.asset_class_mapping.arn,
-        "${aws_dynamodb_table.expenses.arn}/index/userId-date-index",
-        "${aws_dynamodb_table.invest.arn}/index/*",
-        "${aws_dynamodb_table.mutual_fund_schemes.arn}/index/*",
-        "${aws_dynamodb_table.holdings.arn}/index/userId-createdAt-index"
+        "${aws_dynamodb_table.expenses.arn}/index/userId-date-index"
       ]
     }]
   })
@@ -107,10 +100,6 @@ resource "aws_lambda_function" "expenses" {
       CATEGORY_RULES_TABLE     = aws_dynamodb_table.category_rules.name
       USER_BUDGETS_TABLE       = aws_dynamodb_table.user_budgets.name
       GROQ_MODEL               = "llama-3.1-8b-instant"
-      INVEST_TABLE             = aws_dynamodb_table.invest.name
-      MUTUAL_FUND_SCHEMES_TABLE = aws_dynamodb_table.mutual_fund_schemes.name
-      HOLDINGS_TABLE           = aws_dynamodb_table.holdings.name
-      ASSET_CLASS_MAPPING_TABLE = aws_dynamodb_table.asset_class_mapping.name
     }
   }
 }
@@ -155,32 +144,14 @@ resource "aws_apigatewayv2_route" "routes_public" {
     "POST /summary/category",
     "GET /budgets",
     "PUT /budgets",
-    "GET /health",
-    "GET /mutual-funds",
-    "GET /mutual-funds/search"
+    "GET /health"
   ])
   api_id    = aws_apigatewayv2_api.http.id
   route_key = each.value
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
-resource "aws_apigatewayv2_route" "routes_protected" {
-  for_each = toset([
-    "POST /portfolio",
-    "GET /portfolio",
-    "PUT /portfolio/plan",
-    "GET /portfolio/plan",
-    "POST /holdings",
-    "GET /holdings",
-    "POST /transactions",
-    "GET /transactions"
-  ])
-  api_id             = aws_apigatewayv2_api.http.id
-  route_key          = each.value
-  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
-  authorization_type = length(var.cognito_user_pool_id) > 0 && length(var.cognito_audience) > 0 ? "JWT" : "NONE"
-  authorizer_id      = length(var.cognito_user_pool_id) > 0 && length(var.cognito_audience) > 0 ? aws_apigatewayv2_authorizer.jwt[0].id : null
-}
+
 
 resource "aws_lambda_permission" "apigw_invoke" {
   statement_id  = "AllowAPIGatewayInvoke"
