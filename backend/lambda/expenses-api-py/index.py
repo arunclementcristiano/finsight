@@ -810,8 +810,14 @@ def handler(event, context):
                         "fullName": item.get("fund_name", ""),
                         "currentNAV": float(item.get("nav", 0)),
                         "fundType": item.get("asset_class", "Equity MF"),
-                        "allocationClass": item.get("portfolio_role", "Equity"),  # Use portfolio_role for allocation class
-                        "isETF": item.get("is_etf") == "true"
+                        "allocationClass": item.get("portfolio_role", "Equity"),
+                        "isETF": item.get("is_etf") == "true",
+                        "amc": item.get("amc", ""),
+                        "schemeType": item.get("scheme_type", ""),
+                        "schemeSubtype": item.get("scheme_subtype", ""),
+                        "option": item.get("option", ""),
+                        "plan": item.get("plan", ""),
+                        "date": item.get("date", "")
                     }
                     funds.append(fund)
                 
@@ -866,8 +872,14 @@ def handler(event, context):
                         "fullName": item.get("fund_name", ""),
                         "currentNAV": float(item.get("nav", 0)),
                         "fundType": item.get("asset_class", "Equity MF"),
-                        "allocationClass": item.get("portfolio_role", "Equity"),  # Use portfolio_role for allocation class
-                        "isETF": item.get("is_etf") == "true"
+                        "allocationClass": item.get("portfolio_role", "Equity"),
+                        "isETF": item.get("is_etf") == "true",
+                        "amc": item.get("amc", ""),
+                        "schemeType": item.get("scheme_type", ""),
+                        "schemeSubtype": item.get("scheme_subtype", ""),
+                        "option": item.get("option", ""),
+                        "plan": item.get("plan", ""),
+                        "date": item.get("date", "")
                     }
                     filtered_funds.append(fund)
                 
