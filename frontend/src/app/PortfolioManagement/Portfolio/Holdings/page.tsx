@@ -229,18 +229,46 @@ export default function HoldingsPage() {
 			setShowMFDropdown(false);
 		} else {
 			try {
-				// Determine ETF status based on selected role
-				let isETF: boolean | undefined;
-				if (selectedRole === 'Mutual Funds') {
-					isETF = false;
-				} else if (selectedRole === 'ETF') {
-					isETF = true;
+				// Get all funds and filter by role and search term
+				const allFunds = await fetchMutualFundSchemes();
+				
+				// Filter funds based on selected role and allocation class
+				let filtered = allFunds.filter(fund => {
+					// First filter by ETF status
+					if (selectedRole === 'Mutual Funds' && fund.isETF) return false;
+					if (selectedRole === 'ETF' && !fund.isETF) return false;
+					
+					// Then filter by allocation class for proper classification
+					if (selectedRole === 'Mutual Funds') {
+						// For Mutual Funds, show Debt, Liquid, and other non-equity funds
+						return fund.allocationClass === 'Debt' || 
+							   fund.allocationClass === 'Liquid Fund' || 
+							   fund.allocationClass === 'Income' || 
+							   fund.allocationClass === 'Bond' || 
+							   fund.allocationClass === 'Gilt';
+					} else if (selectedRole === 'ETF') {
+						// For ETFs, show equity-oriented ETFs
+						return fund.allocationClass === 'Equity' || 
+							   fund.allocationClass === 'Debt' || 
+							   fund.allocationClass === 'Gold';
+					}
+					
+					return true;
+				});
+				
+				// Then filter by search term
+				if (term.trim()) {
+					const searchTerm = term.toLowerCase();
+					filtered = filtered.filter(fund => 
+						fund.name.toLowerCase().includes(searchTerm) || 
+						fund.fullName.toLowerCase().includes(searchTerm)
+					);
 				}
 				
-				// Search funds using cached data
-				const filtered = await searchFundsByName(term, isETF);
-				setFilteredMFOptions(filtered);
-				setShowMFDropdown(filtered.length > 0);
+				// Limit results and set state
+				const limitedResults = filtered.slice(0, 10);
+				setFilteredMFOptions(limitedResults);
+				setShowMFDropdown(limitedResults.length > 0);
 			} catch (error) {
 				console.error('Error searching funds:', error);
 				// Clear results on error

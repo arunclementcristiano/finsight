@@ -131,22 +131,17 @@ export function clearMFCache(): void {
   mfCache = null;
 }
 
-// Function to fetch funds by ETF status
+// Function to fetch funds by ETF status (deprecated - use role-based filtering instead)
 export async function fetchFundsByETFStatus(isETF: boolean): Promise<TransformedFund[]> {
   const allFunds = await fetchMutualFundSchemes();
   return allFunds.filter(fund => fund.isETF === isETF);
 }
 
-export async function searchFundsByName(searchTerm: string, isETF?: boolean): Promise<TransformedFund[]> {
+export async function searchFundsByName(searchTerm: string): Promise<TransformedFund[]> {
   // Use cached data for search to avoid API calls
   const allFunds = await fetchMutualFundSchemes();
   
   let filteredFunds = allFunds;
-  
-  // Filter by ETF status if specified
-  if (isETF !== undefined) {
-    filteredFunds = filteredFunds.filter(fund => fund.isETF === isETF);
-  }
   
   // Filter by search term
   if (searchTerm.trim()) {

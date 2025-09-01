@@ -670,7 +670,7 @@ def handler(event, context):
                         "fullName": item.get("scheme_name", ""),
                         "currentNAV": float(item.get("nav", 0)),
                         "fundType": item.get("allocation_class", "Equity MF"),
-                        "allocationClass": item.get("allocation_class", "Equity"),
+                        "allocationClass": item.get("scheme_type", "Equity"),  # Use scheme_type instead of allocation_class
                         "isETF": item.get("is_etf") == "true"
                     }
                     funds.append(fund)
@@ -714,7 +714,7 @@ def handler(event, context):
                         "fullName": item.get("scheme_name", ""),
                         "currentNAV": float(item.get("nav", 0)),
                         "fundType": item.get("allocation_class", "Equity MF"),
-                        "allocationClass": item.get("allocation_class", "Equity"),
+                        "allocationClass": item.get("scheme_type", "Equity"),  # Use scheme_type instead of allocation_class
                         "isETF": item.get("is_etf") == "true"
                     }
                     filtered_funds.append(fund)
