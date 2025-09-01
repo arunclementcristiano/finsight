@@ -12,7 +12,7 @@ import { fetchMutualFundSchemes, searchFundsByName, TransformedFund, saveHolding
 // Asset class colors for charts
 const CLASS_COLORS = {
 	"Stocks": { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-300", chart: "#3B82F6" },
-	"Equity MF": { bg: "bg-emerald-100 dark:bg-emerald-900/30", text: "text-emerald-700 dark:text-blue-300", chart: "#10B981" },
+	"Mutual Funds": { bg: "bg-emerald-100 dark:bg-emerald-900/30", text: "text-emerald-700 dark:text-blue-300", chart: "#10B981" },
 	"Debt": { bg: "bg-purple-100 dark:bg-purple-900/30", text: "text-purple-700 dark:text-purple-300", chart: "#8B5CF6" },
 	"Liquid": { bg: "bg-orange-100 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-300", chart: "#F59E0B" },
 	"Gold": { bg: "bg-yellow-100 dark:bg-yellow-900/30", text: "text-yellow-700 dark:text-yellow-300", chart: "#EAB308" },
@@ -23,7 +23,7 @@ const CLASS_COLORS = {
 const ROLE_INSTRUMENT_TYPES = {
 	Equity: [
 		{ label: "Stocks", value: "Stocks", category: "Stocks" },
-		{ label: "Equity MF", value: "Equity MF", category: "Equity MF" },
+		{ label: "Mutual Funds", value: "Mutual Funds", category: "Mutual Funds" },
 		{ label: "Equity ETF", value: "Equity ETF", category: "Stocks" }
 	],
 	Defensive: [
@@ -43,7 +43,7 @@ const ROLE_INSTRUMENT_TYPES = {
 
 // Auto-map instrument type to AssetClass
 function mapInstrumentTypeToAssetClass(instrumentType: string): AssetClass {
-	if (instrumentType.includes("MF")) return "Equity MF";
+	if (instrumentType.includes("MF")) return "Mutual Funds";
 	if (instrumentType.includes("Gold")) return "Gold";
 	if (instrumentType.includes("Real Estate") || instrumentType.includes("REIT") || instrumentType.includes("Property")) return "Real Estate";
 	if (instrumentType.includes("Bond") || instrumentType.includes("Debt")) return "Debt";
@@ -69,7 +69,7 @@ function computeInvestedAmount(holding: Holding): number {
 function getRoleForAssetClass(assetClass: AssetClass): 'Equity' | 'Defensive' | 'Satellite' {
 	switch (assetClass) {
 		case 'Stocks':
-		case 'Equity MF':
+		case 'Mutual Funds':
 			return 'Equity';
 		case 'Debt':
 		case 'Liquid':
@@ -98,7 +98,7 @@ export default function HoldingsPage() {
 	const [filterAssetRole, setFilterAssetRole] = useState<string | null>(null);
 	
 	// New state for asset class-based flow
-	const [selectedRole, setSelectedRole] = useState<'Stocks' | 'Equity MF' | 'ETF' | 'Gold' | 'Real Estate' | null>(null);
+	const [selectedRole, setSelectedRole] = useState<'Stocks' | 'Mutual Funds' | 'ETF' | 'Gold' | 'Real Estate' | null>(null);
 	const [selectedInstrumentType, setSelectedInstrumentType] = useState<string | null>(null);
 	const [entryMode, setEntryMode] = useState<'units' | 'amount'>('units');
 	
@@ -241,8 +241,8 @@ export default function HoldingsPage() {
 					console.log(`   - allocationClass: ${fund.allocationClass}`);
 					
 					// First filter by ETF status
-					if (selectedRole === 'Equity MF' && fund.isETF) {
-						console.log(`   ❌ Filtered out: ETF fund in Equity MF role`);
+					if (selectedRole === 'Mutual Funds' && fund.isETF) {
+						console.log(`   ❌ Filtered out: ETF fund in Mutual Funds role`);
 						return false;
 					}
 					if (selectedRole === 'ETF' && !fund.isETF) {
@@ -251,8 +251,8 @@ export default function HoldingsPage() {
 					}
 					
 					// Then filter by allocation class for proper classification
-					if (selectedRole === 'Equity MF') {
-						// For Equity MF, show equity-oriented funds
+					if (selectedRole === 'Mutual Funds') {
+						// For Mutual Funds, show equity-oriented funds
 						const isEquityFund = fund.allocationClass === 'Equity' || 
 										   fund.allocationClass === 'Equity Fund' || 
 										   fund.allocationClass === 'Growth';
@@ -511,9 +511,9 @@ export default function HoldingsPage() {
 		
 		if (selectedRole === 'Stocks') {
 			instrumentClass = "Stocks";
-		} else if (selectedRole === 'Equity MF') {
-			instrumentClass = "Equity MF";
-			// For Equity MF, use the allocation_class from the selected fund
+						} else if (selectedRole === 'Mutual Funds') {
+			instrumentClass = "Mutual Funds";
+			// For Mutual Funds, use the allocation_class from the selected fund
 			if (selectedMF && selectedMF.allocationClass) {
 				allocationClass = selectedMF.allocationClass;
 			}
@@ -577,15 +577,15 @@ export default function HoldingsPage() {
 		setEditingId(holding.id);
 		
 		// Determine role and instrument type based on holding data
-		let role: 'Stocks' | 'Equity MF' | 'ETF' | 'Gold' | 'Real Estate';
+		let role: 'Stocks' | 'Mutual Funds' | 'ETF' | 'Gold' | 'Real Estate';
 		let instrumentType: string;
 		
 		if (holding.instrumentClass === 'Stocks') {
 			role = 'Stocks';
 			instrumentType = 'Stocks';
-		} else if (holding.instrumentClass === 'Equity MF') {
-			role = 'Equity MF';
-			instrumentType = 'Equity MF';
+		} else if (holding.instrumentClass === 'Mutual Funds') {
+			role = 'Mutual Funds';
+			instrumentType = 'Mutual Funds';
 		} else if (holding.instrumentClass === 'ETF') {
 			role = 'ETF';
 			instrumentType = 'ETF';
@@ -620,7 +620,7 @@ export default function HoldingsPage() {
 		setForm(formData);
 		
 		// Set search terms to show the names for all asset classes
-		if (holding.instrumentClass === 'Equity MF' || holding.instrumentClass === 'ETF') {
+		if (holding.instrumentClass === 'Mutual Funds' || holding.instrumentClass === 'ETF') {
 			setMfSearchTerm(holding.name);
 		} else if (holding.instrumentClass === 'Stocks') {
 			setStockSearchTerm(holding.name);
@@ -721,7 +721,7 @@ export default function HoldingsPage() {
 								>
 									<option value="">All Classes</option>
 									<option value="Stocks">Stocks</option>
-									<option value="Equity MF">Equity MF</option>
+									<option value="Mutual Funds">Mutual Funds</option>
 									<option value="Gold">Gold</option>
 									<option value="Real Estate">Real Estate</option>
 									<option value="Debt">Debt</option>
@@ -1041,7 +1041,7 @@ export default function HoldingsPage() {
 									Asset Class
 								</label>
 								<div className="flex items-center justify-center gap-3">
-									{(['Stocks', 'Equity MF', 'ETF', 'Gold', 'Real Estate'] as const).map(assetClass => (
+									{(['Stocks', 'Mutual Funds', 'ETF', 'Gold', 'Real Estate'] as const).map(assetClass => (
 										<button
 											key={assetClass}
 											type="button"
@@ -1162,8 +1162,8 @@ export default function HoldingsPage() {
 											</>
 										)}
 
-																																								{/* Equity MF Form */}
-								{selectedRole === 'Equity MF' && (
+																																								{/* Mutual Funds Form */}
+								{selectedRole === 'Mutual Funds' && (
 											<>
 												<div>
 													<label className="block text-sm font-medium text-foreground mb-2">Fund Name *</label>
