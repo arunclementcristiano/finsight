@@ -647,7 +647,7 @@ def handler(event, context):
             user_sub = _user_from_jwt(event) or "dev_user_123"
             portfolio_id = (qs or {}).get("portfolioId")
             if not portfolio_id:
-                return _response(400, "Missing portfolioId")
+                return _response(400, {"error": "Missing portfolioId"})
             
             try:
                 # Use the new holdings table
