@@ -7,11 +7,18 @@ This document outlines the Terraform infrastructure changes required to support 
 
 ### 1. DynamoDB Table Updates (`dynamodb.tf`)
 
-#### New Attributes Added to `mutual_fund_schemes` Table:
+#### Attributes in `mutual_fund_schemes` Table:
+- `scheme_code` (String) - Primary hash key
+- `date` (String) - Date for time-based queries
+- `amc` (String) - Asset Management Company
+- `scheme_type` (String) - Type of scheme
+- `allocation_class` (String) - Asset allocation class (Equity, Debt, Gold, etc.)
+- `plan` (String) - Direct/Regular plan
+- `option` (String) - Growth/IDCW option
 - `is_etf` (String) - Identifies if the fund is an ETF or mutual fund
 - `fund_name` (String) - Short name of the fund for display
-- `scheme_name` (String) - Full scheme name
-- `nav` (Number) - Net Asset Value of the fund
+
+**Note**: `scheme_name` and `nav` are stored as regular attributes (not indexed) and can be queried through GSIs with `projection_type = "ALL"`
 
 #### New Global Secondary Indexes (GSI):
 - **ETF-Status-Index**: Hash key on `is_etf` for efficient ETF/MF filtering
@@ -51,6 +58,8 @@ The `MutualFundSchemes` table should contain:
   "option": "string"
 }
 ```
+
+**Important**: Only indexed attributes (`scheme_code`, `date`, `amc`, `scheme_type`, `allocation_class`, `plan`, `option`, `is_etf`, `fund_name`) are defined in the Terraform configuration. Other attributes like `scheme_name` and `nav` are stored as regular attributes and accessible through GSIs with `projection_type = "ALL"`.
 
 ### Lambda Function Requirements
 The existing Lambda function needs to handle the new route:

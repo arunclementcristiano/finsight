@@ -181,16 +181,6 @@ resource "aws_dynamodb_table" "mutual_fund_schemes" {
     type = "S"
   }
 
-  attribute {
-    name = "scheme_name"
-    type = "S"
-  }
-
-  attribute {
-    name = "nav"
-    type = "N"
-  }
-
   # GSI for querying by date
   global_secondary_index {
     name     = "DateIndex"
