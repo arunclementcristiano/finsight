@@ -60,8 +60,6 @@ def map_to_allocation(scheme_type: str, scheme_subtype: str, fund_name: str) -> 
 
     # 1) Solution Oriented
     if "solution oriented" in st:
-        if "retirement" in ss or "children" in ss:
-            return "Equity"
         return "Equity"
 
     # 2) Equity / Debt straight
@@ -160,10 +158,20 @@ def lambda_handler(event, context):
             # Variant
             plan, option = parse_variant(fund_name)
 
-            # Variant filter
+            # ✅ Default missing values to "NA" (avoid NULL in DynamoDB indexes)
+            if not plan:
+                plan = "NA"
+            if not option:
+                option = "NA"
+
+            # ETF detection
+            is_etf = detect_etf(curr_category[0], curr_category[1], fund_name)
+
+            # ✅ Variant filter: ETFs bypass restriction
             if KEEP_VARIANTS == "direct_growth_only":
-                if plan != "Direct" or option != "Growth":
-                    continue
+                if not is_etf:  # only apply strict filter to non-ETFs
+                    if plan != "Direct" or option != "Growth":
+                        continue
 
             # NAV safe parse
             try:
@@ -172,9 +180,8 @@ def lambda_handler(event, context):
                 logger.warning(f"Skipping invalid NAV: {fund_name} NAV={nav}")
                 continue
 
-            # Allocation & ETF detection
+            # Allocation
             allocation_class = map_to_allocation(curr_category[0], curr_category[1], fund_name)
-            is_etf = detect_etf(curr_category[0], curr_category[1], fund_name)
 
             item = {
                 "scheme_code": scheme_code,
@@ -187,7 +194,7 @@ def lambda_handler(event, context):
                 "option": option,
                 "nav": nav_value,
                 "allocation_class": allocation_class,
-                "is_etf": "true" if is_etf else "false"   # ✅ ETF flag as string
+                "is_etf": "true" if is_etf else "false"
             }
             items.append(item)
 
