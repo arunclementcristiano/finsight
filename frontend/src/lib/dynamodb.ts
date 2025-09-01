@@ -1,5 +1,5 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, ScanCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 
 // AWS Configuration
 const awsConfig = {
@@ -37,6 +37,22 @@ export interface TransformedFund {
   fundType: string;
   allocationClass: string;
   isETF: boolean;
+}
+
+// Types for holdings
+export interface HoldingData {
+  id: string;
+  user_id: string;
+  instrumentClass: string;
+  name: string;
+  symbol?: string;
+  units?: number;
+  price?: number;
+  investedAmount?: number;
+  currentValue?: number;
+  allocation_class?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // Function to fetch mutual fund schemes from DynamoDB
@@ -108,6 +124,55 @@ export async function searchFundsByName(searchTerm: string, isETF?: boolean): Pr
     return allFunds.slice(0, 10); // Limit to 10 results
   } catch (error) {
     console.error('Error searching funds:', error);
+    throw error;
+  }
+}
+
+// Function to save holding to DynamoDB
+export async function saveHolding(holding: HoldingData): Promise<boolean> {
+  try {
+    const command = new PutCommand({
+      TableName: process.env.NEXT_PUBLIC_HOLDINGS_TABLE || 'holdings',
+      Item: holding,
+    });
+
+    await docClient.send(command);
+    console.log('Holding saved successfully to DynamoDB:', holding.id);
+    return true;
+  } catch (error) {
+    console.error('Error saving holding to DynamoDB:', error);
+    throw error;
+  }
+}
+
+// Function to fetch holdings for a user from DynamoDB
+export async function fetchUserHoldings(userId: string): Promise<HoldingData[]> {
+  try {
+    const command = new ScanCommand({
+      TableName: process.env.NEXT_PUBLIC_HOLDINGS_TABLE || 'holdings',
+      FilterExpression: 'user_id = :userId',
+      ExpressionAttributeValues: {
+        ':userId': userId,
+      },
+    });
+
+    const response = await docClient.send(command);
+    
+    if (!response.Items) {
+      console.warn('No holdings found in DynamoDB for user:', userId);
+      return [];
+    }
+
+    // Sort by creation date (newest first)
+    const holdings = response.Items.sort((a: any, b: any) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    console.log(`Successfully loaded ${holdings.length} holdings from DynamoDB for user:`, userId);
+    return holdings as HoldingData[];
+    
+  } catch (error) {
+    console.error('Error fetching holdings from DynamoDB:', error);
     throw error;
   }
 }

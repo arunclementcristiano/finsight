@@ -7,7 +7,7 @@ import { Plus, Edit2, Trash2, X, Search, TrendingUp, BarChart3, PieChart as PieC
 import { v4 as uuidv4 } from "uuid";
 import { Card as PlanCard, CardContent as PlanCardContent, CardHeader as PlanCardHeader, CardTitle as PlanCardTitle } from "../../../components/Card";
 import { Button } from "../../../components/Button";
-import { fetchMutualFundSchemes, searchFundsByName, TransformedFund } from "../../../../lib/dynamodb";
+import { fetchMutualFundSchemes, searchFundsByName, TransformedFund, saveHolding, fetchUserHoldings, HoldingData } from "../../../../lib/dynamodb";
 
 // Asset class colors for charts
 const CLASS_COLORS = {
@@ -176,6 +176,45 @@ export default function HoldingsPage() {
 		loadMFData();
 	}, []);
 
+	// Load holdings from DynamoDB
+	React.useEffect(() => {
+		async function loadHoldingsData() {
+			try {
+				// For now, using a mock user ID. In production, this should come from user authentication
+				const mockUserId = 'user-123';
+				const dbHoldings = await fetchUserHoldings(mockUserId);
+				
+				// Transform DynamoDB holdings to local state format
+				const transformedHoldings = dbHoldings.map(dbHolding => ({
+					id: dbHolding.id,
+					instrumentClass: dbHolding.instrumentClass as AssetClass,
+					name: dbHolding.name,
+					symbol: dbHolding.symbol,
+					units: dbHolding.units,
+					price: dbHolding.price,
+					investedAmount: dbHolding.investedAmount,
+					currentValue: dbHolding.currentValue
+				}));
+				
+				// Update local state with DynamoDB data
+				transformedHoldings.forEach(holding => {
+					// Check if holding already exists to avoid duplicates
+					const existingIndex = holdings.findIndex(h => h.id === holding.id);
+					if (existingIndex === -1) {
+						addHolding(holding);
+					}
+				});
+				
+				console.log('Loaded holdings from DynamoDB:', transformedHoldings);
+			} catch (error) {
+				console.error('Error loading holdings from DynamoDB:', error);
+				// Continue with local state if DynamoDB fails
+			}
+		}
+		
+		loadHoldingsData();
+	}, []);
+
 	// Filter stock options
 	const filterStockOptions = (term: string): void => {
 		if (term.trim() === "") {
@@ -296,7 +335,7 @@ export default function HoldingsPage() {
 		const roleArray = Array.from(roleMap.entries()).map(([name, value]) => ({
 			name,
 			value,
-			color: name === 'Equity' ? '#3B82F6' : name === 'Defensive' ? '#10B981' : '#F43F5E'
+			color: name === 'Equity' ? '#3B82F6' : name === 'Defensive' ? '#10B981' : '#F59E0B'
 		})).sort((a, b) => b.value - a.value);
 
 		return roleArray;
@@ -338,19 +377,22 @@ export default function HoldingsPage() {
 		setEntryMode('units');
 	}
 
-	function submitForm(e: React.FormEvent) {
+	async function submitForm(e: React.FormEvent) {
 		e.preventDefault();
 		
 		if (!form.name.trim()) return;
 		
 		// Map selected asset class to instrument class
 		let instrumentClass: AssetClass = "Stocks";
+		let allocationClass: string | undefined;
+		
 		if (selectedRole === 'Stocks') instrumentClass = "Stocks";
 		else if (selectedRole === 'Mutual Funds') instrumentClass = "Mutual Funds";
 		else if (selectedRole === 'ETF') {
 			// For ETFs, use the allocation_class from the selected fund
 			if (selectedMF && selectedMF.allocationClass) {
 				instrumentClass = selectedMF.allocationClass as AssetClass;
+				allocationClass = selectedMF.allocationClass;
 			} else {
 				instrumentClass = "Stocks"; // Default fallback
 			}
@@ -369,14 +411,46 @@ export default function HoldingsPage() {
 			currentValue: form.currentValue ? parseFloat(form.currentValue) : undefined
 		};
 		
-		if (editingId) {
-			updateHolding(editingId, holding);
-		} else {
-			addHolding(holding);
+		try {
+			// Save to DynamoDB
+			const dbHolding: HoldingData = {
+				id: holding.id,
+				user_id: 'user-123', // Mock user ID - should come from authentication
+				instrumentClass: holding.instrumentClass,
+				name: holding.name,
+				symbol: holding.symbol,
+				units: holding.units,
+				price: holding.price,
+				investedAmount: holding.investedAmount,
+				currentValue: holding.currentValue,
+				allocation_class: allocationClass,
+				created_at: new Date().toISOString(),
+				updated_at: new Date().toISOString()
+			};
+			
+			await saveHolding(dbHolding);
+			
+			// Update local state
+			if (editingId) {
+				updateHolding(editingId, holding);
+			} else {
+				addHolding(holding);
+			}
+			
+			setIsModalOpen(false);
+			resetForm();
+		} catch (error) {
+			console.error('Error saving holding to DynamoDB:', error);
+			// Still update local state even if DynamoDB save fails
+			if (editingId) {
+				updateHolding(editingId, holding);
+			} else {
+				addHolding(holding);
+			}
+			
+			setIsModalOpen(false);
+			resetForm();
 		}
-		
-		setIsModalOpen(false);
-		resetForm();
 	}
 
 	function openEdit(holding: Holding) {
@@ -471,6 +545,7 @@ export default function HoldingsPage() {
 											<tr>
 												<th className="py-2 px-3 text-muted-foreground">Instrument</th>
 												<th className="py-2 px-3 text-muted-foreground">Asset Class</th>
+												<th className="py-2 px-3 text-muted-foreground">Asset Role</th>
 												<th className="py-2 px-3 text-muted-foreground">Units</th>
 												<th className="py-2 px-3 text-muted-foreground">Price</th>
 												<th className="py-2 px-3 text-muted-foreground text-right">Current Value</th>
@@ -503,6 +578,15 @@ export default function HoldingsPage() {
 																CLASS_COLORS[holding.instrumentClass as keyof typeof CLASS_COLORS]?.text || 'text-gray-700 dark:text-gray-300'
 															}`}>
 																{holding.instrumentClass}
+															</span>
+														</td>
+														<td className="py-2 px-3">
+															<span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+																getRoleForAssetClass(holding.instrumentClass) === 'Equity' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' :
+																getRoleForAssetClass(holding.instrumentClass) === 'Defensive' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300' :
+																'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300'
+															}`}>
+																{getRoleForAssetClass(holding.instrumentClass)}
 															</span>
 														</td>
 														<td className="py-2 px-3">{holding.units?.toFixed(2) || '0.00'}</td>
@@ -661,17 +745,28 @@ export default function HoldingsPage() {
 									</div>
 								</div>
 								
-								{/* Portfolio Role Chart with Details - Using Bar Chart */}
+								{/* Portfolio Role Chart with Details - Using Pie Chart */}
 								<div>
 									<div className="text-sm font-medium text-muted-foreground mb-3 text-center">By Portfolio Role</div>
 									<div className="h-40 flex items-center justify-center mb-4">
 										<ResponsiveContainer width="100%" height="100%">
-											<BarChart data={portfolioRoleData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-												<CartesianGrid strokeDasharray="3 3" />
-												<XAxis dataKey="name" />
-												<YAxis />
+											<PieChart>
+												<Pie
+													data={portfolioRoleData}
+													cx="50%"
+													cy="50%"
+													innerRadius={30}
+													outerRadius={60}
+													paddingAngle={3}
+													dataKey="value"
+												>
+													{portfolioRoleData.map((entry, index) => (
+														<Cell key={`cell-${index}`} fill={entry.color} />
+													))}
+												</Pie>
 												<Tooltip 
 													formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Value']}
+													labelFormatter={(label) => `${label}`}
 													contentStyle={{
 														backgroundColor: 'hsl(var(--card))',
 														border: '1px solid hsl(var(--border))',
@@ -679,8 +774,7 @@ export default function HoldingsPage() {
 														boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
 													}}
 												/>
-												<Bar dataKey="value" fill="#8884d8" />
-											</BarChart>
+											</PieChart>
 										</ResponsiveContainer>
 									</div>
 									
@@ -761,32 +855,9 @@ export default function HoldingsPage() {
 							</div>
 						</div>
 						
-						<div className="flex min-h-[400px]">
-							{/* Left Column - Asset Class Selection */}
-							<div className="w-2/5 border-r border-border bg-muted/20">
-								<div className="p-4">
-									{selectedRole ? (
-										<div className="flex items-center justify-center h-full">
-											<div className="text-center text-muted-foreground">
-												<div className="text-3xl mb-3">📊</div>
-												<div className="text-base font-medium mb-1">{selectedRole}</div>
-												<div className="text-xs">Selected asset class</div>
-											</div>
-										</div>
-									) : (
-										<div className="flex items-center justify-center h-full">
-											<div className="text-center text-muted-foreground">
-												<div className="text-3xl mb-3">📊</div>
-												<div className="text-base font-medium mb-1">Select Asset Class</div>
-												<div className="text-xs">Choose an asset class above to see required fields</div>
-											</div>
-										</div>
-									)}
-								</div>
-							</div>
-
-														{/* Right Column - Form */}
-							<div className="w-3/5 p-4">
+						<div className="min-h-[400px]">
+							{/* Form Column - Full Width */}
+							<div className="w-full p-6">
 								{selectedRole ? (
 									<form onSubmit={submitForm} className="space-y-6">
 										{/* Stocks Form */}
