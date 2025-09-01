@@ -200,3 +200,26 @@ export async function fetchUserHoldings(userId: string): Promise<HoldingData[]> 
     throw error;
   }
 }
+
+export async function deleteHolding(holdingId: string, portfolioId: string): Promise<boolean> {
+  if (!API_BASE) {
+    throw new Error('API_BASE not configured');
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/holdings/${holdingId}`, { 
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ portfolioId })
+    });
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Delete holding failed: ${res.status} - ${errorText}`);
+    }
+    
+    return true;
+  } catch (error) {
+    throw error;
+  }
+}

@@ -7,7 +7,7 @@ import { Plus, Edit2, Trash2, X, Search, TrendingUp, BarChart3, PieChart as PieC
 import { v4 as uuidv4 } from "uuid";
 import { Card as PlanCard, CardContent as PlanCardContent, CardHeader as PlanCardHeader, CardTitle as PlanCardTitle } from "../../../components/Card";
 import { Button } from "../../../components/Button";
-import { fetchMutualFundSchemes, searchFundsByName, TransformedFund, saveHolding, fetchUserHoldings, HoldingData, preloadMutualFundData, clearMFCache } from "../../../../lib/dynamodb";
+import { fetchMutualFundSchemes, searchFundsByName, TransformedFund, saveHolding, fetchUserHoldings, HoldingData, preloadMutualFundData, clearMFCache, deleteHolding } from "../../../../lib/dynamodb";
 
 // Asset class colors for charts
 const CLASS_COLORS = {
@@ -234,25 +234,44 @@ export default function HoldingsPage() {
 				
 				// Filter funds based on selected role and allocation class
 				let filtered = allFunds.filter(fund => {
+					// Debug logging
+					console.log(`🔍 Filtering fund: ${fund.name}`);
+					console.log(`   - Role: ${selectedRole}`);
+					console.log(`   - isETF: ${fund.isETF}`);
+					console.log(`   - allocationClass: ${fund.allocationClass}`);
+					
 					// First filter by ETF status
-					if (selectedRole === 'Mutual Funds' && fund.isETF) return false;
-					if (selectedRole === 'ETF' && !fund.isETF) return false;
+					if (selectedRole === 'Mutual Funds' && fund.isETF) {
+						console.log(`   ❌ Filtered out: ETF fund in Mutual Funds role`);
+						return false;
+					}
+					if (selectedRole === 'ETF' && !fund.isETF) {
+						console.log(`   ❌ Filtered out: Non-ETF fund in ETF role`);
+						return false;
+					}
 					
 					// Then filter by allocation class for proper classification
 					if (selectedRole === 'Mutual Funds') {
 						// For Mutual Funds, show Debt, Liquid, and other non-equity funds
-						return fund.allocationClass === 'Debt' || 
-							   fund.allocationClass === 'Liquid Fund' || 
-							   fund.allocationClass === 'Income' || 
-							   fund.allocationClass === 'Bond' || 
-							   fund.allocationClass === 'Gilt';
+						const isDebtFund = fund.allocationClass === 'Debt' || 
+										 fund.allocationClass === 'Liquid Fund' || 
+										 fund.allocationClass === 'Income' || 
+										 fund.allocationClass === 'Bond' || 
+										 fund.allocationClass === 'Gilt';
+						
+						console.log(`   - Is Debt Fund: ${isDebtFund}`);
+						return isDebtFund;
 					} else if (selectedRole === 'ETF') {
 						// For ETFs, show equity-oriented ETFs
-						return fund.allocationClass === 'Equity' || 
-							   fund.allocationClass === 'Debt' || 
-							   fund.allocationClass === 'Gold';
+						const isETFType = fund.allocationClass === 'Equity' || 
+										fund.allocationClass === 'Debt' || 
+										fund.allocationClass === 'Gold';
+						
+						console.log(`   - Is ETF Type: ${isETFType}`);
+						return isETFType;
 					}
 					
+					console.log(`   ✅ Included in results`);
 					return true;
 				});
 				
@@ -490,19 +509,25 @@ export default function HoldingsPage() {
 		let instrumentClass: AssetClass = "Stocks";
 		let allocationClass: string | undefined;
 		
-		if (selectedRole === 'Stocks') instrumentClass = "Stocks";
-		else if (selectedRole === 'Mutual Funds') instrumentClass = "Mutual Funds";
-		else if (selectedRole === 'ETF') {
+		if (selectedRole === 'Stocks') {
+			instrumentClass = "Stocks";
+		} else if (selectedRole === 'Mutual Funds') {
+			instrumentClass = "Mutual Funds";
+			// For Mutual Funds, use the allocation_class from the selected fund
+			if (selectedMF && selectedMF.allocationClass) {
+				allocationClass = selectedMF.allocationClass;
+			}
+		} else if (selectedRole === 'ETF') {
+			instrumentClass = "ETF";
 			// For ETFs, use the allocation_class from the selected fund
 			if (selectedMF && selectedMF.allocationClass) {
-				instrumentClass = selectedMF.allocationClass as AssetClass;
 				allocationClass = selectedMF.allocationClass;
-			} else {
-				instrumentClass = "Stocks"; // Default fallback
 			}
+		} else if (selectedRole === 'Gold') {
+			instrumentClass = "Gold";
+		} else if (selectedRole === 'Real Estate') {
+			instrumentClass = "Real Estate";
 		}
-		else if (selectedRole === 'Gold') instrumentClass = "Gold";
-		else if (selectedRole === 'Real Estate') instrumentClass = "Real Estate";
 		
 		const holding: Holding = {
 			id: editingId || uuidv4(),
@@ -607,10 +632,10 @@ export default function HoldingsPage() {
 	async function handleDeleteHolding(id: string) {
 		if (confirm("Are you sure you want to delete this holding?")) {
 			try {
-				// TODO: Implement delete from DynamoDB
-				// await deleteHoldingFromDB(id);
+				// Delete from DynamoDB
+				await deleteHolding(id, 'user-123'); // Mock user ID - should come from authentication
 				
-				// For now, remove from local state
+				// Remove from local state after successful deletion
 				setHoldings(prev => prev.filter(h => h.id !== id));
 			} catch (error) {
 				console.error('Error deleting holding:', error);

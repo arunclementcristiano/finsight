@@ -583,7 +583,7 @@ def handler(event, context):
             user_sub = _user_from_jwt(event) or "dev_user_123"
             portfolio_id = (qs or {}).get("portfolioId")
             if not portfolio_id:
-                return _response(400, {"error": "Missing portfolioId"})
+                return _response(400, "Missing portfolioId")
             
             try:
                 # Use the new holdings table
@@ -598,6 +598,33 @@ def handler(event, context):
             except Exception as e:
                 print(f"Error fetching holdings: {e}")
                 return _response(500, {"error": "Failed to fetch holdings"})
+
+        # Delete holding (DELETE /holdings/{id})
+        if route_key == "DELETE /holdings/{id}":
+            try:
+                holding_id = path_params.get("id")
+                if not holding_id:
+                    return _response(400, {"error": "Missing holding ID"})
+                
+                # Parse request body for portfolio ID
+                body = json.loads(event.get("body", "{}"))
+                portfolio_id = body.get("portfolioId")
+                if not portfolio_id:
+                    return _response(400, {"error": "Missing portfolioId"})
+                
+                # Delete the holding from DynamoDB
+                holdings_table = dynamodb.Table(os.environ.get("HOLDINGS_TABLE", "holdings"))
+                holdings_table.delete_item(
+                    Key={
+                        "user_id": "dev_user_123",  # Use same user ID as GET endpoint
+                        "id": holding_id
+                    }
+                )
+                
+                return _response(200, {"message": "Holding deleted successfully"})
+            except Exception as e:
+                print(f"Error deleting holding: {e}")
+                return _response(500, {"error": "Failed to delete holding"})
 
         # Create transaction (POST /transactions) — body: { portfolioId, txn }
         if route_key == "POST /transactions":
