@@ -90,7 +90,11 @@ const MOCK_MF_DATA: TransformedFund[] = [
   { schemeCode: "002", name: "ICICI Prudential Bluechip Fund", fullName: "ICICI Prudential Bluechip Fund - Direct Plan - Growth", currentNAV: 67.89, fundType: "Equity MF", allocationClass: "Equity", isETF: false },
   { schemeCode: "003", name: "SBI Gold ETF", fullName: "SBI Gold ETF", currentNAV: 123.45, fundType: "Gold ETF", allocationClass: "Gold", isETF: true },
   { schemeCode: "004", name: "Axis Liquid Fund", fullName: "Axis Liquid Fund - Direct Plan - Growth", currentNAV: 1000.00, fundType: "Liquid MF", allocationClass: "Liquid", isETF: false },
-  { schemeCode: "005", name: "Nippon India Debt Fund", fullName: "Nippon India Debt Fund - Direct Plan - Growth", currentNAV: 12.34, fundType: "Debt MF", allocationClass: "Debt", isETF: false }
+  { schemeCode: "005", name: "Nippon India Debt Fund", fullName: "Nippon India Debt Fund - Direct Plan - Growth", currentNAV: 12.34, fundType: "Debt MF", allocationClass: "Debt", isETF: false },
+  // Add more diverse names for better testing
+  { schemeCode: "006", name: "Parag Parikh Flexi Cap Fund", fullName: "Parag Parikh Flexi Cap Fund - Direct Plan - Growth", currentNAV: 78.90, fundType: "Equity MF", allocationClass: "Equity", isETF: false },
+  { schemeCode: "007", name: "Kotak Emerging Equity Fund", fullName: "Kotak Emerging Equity Fund - Direct Plan - Growth", currentNAV: 56.78, fundType: "Equity MF", allocationClass: "Equity", isETF: false },
+  { schemeCode: "008", name: "Mirae Asset Large Cap Fund", fullName: "Mirae Asset Large Cap Fund - Direct Plan - Growth", currentNAV: 89.12, fundType: "Equity MF", allocationClass: "Equity", isETF: false }
 ];
 
 export async function fetchMutualFundSchemes(): Promise<TransformedFund[]> {
@@ -136,6 +140,12 @@ export async function preloadMutualFundData(): Promise<void> {
   }
 }
 
+// Function to clear cache (for testing)
+export function clearMFCache(): void {
+  console.log('🧹 Clearing mutual fund cache...');
+  mfCache = null;
+}
+
 // Function to fetch funds by ETF status
 export async function fetchFundsByETFStatus(isETF: boolean): Promise<TransformedFund[]> {
   const allFunds = await fetchMutualFundSchemes();
@@ -163,13 +173,24 @@ export async function searchFundsByName(searchTerm: string, isETF?: boolean): Pr
   if (searchTerm.trim()) {
     const term = searchTerm.toLowerCase();
     const beforeSearchFilter = filteredFunds.length;
+    
+    // Debug: Show all fund names before filtering
+    console.log('🔍 All available fund names:');
+    filteredFunds.forEach((fund, index) => {
+      console.log(`  ${index + 1}. "${fund.name}" (full: "${fund.fullName}")`);
+    });
+    
     filteredFunds = filteredFunds.filter(fund => {
       const nameMatch = fund.name.toLowerCase().includes(term);
       const fullNameMatch = fund.fullName.toLowerCase().includes(term);
       const matches = nameMatch || fullNameMatch;
+      
       if (matches) {
         console.log(`✅ Match found: "${fund.name}" (term: "${term}")`);
+      } else {
+        console.log(`❌ No match: "${fund.name}" (term: "${term}")`);
       }
+      
       return matches;
     });
     console.log(`🔎 Search filter ("${term}"): ${beforeSearchFilter} → ${filteredFunds.length} funds`);

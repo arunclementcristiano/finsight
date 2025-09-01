@@ -7,7 +7,7 @@ import { Plus, Edit2, Trash2, X, Search, TrendingUp, BarChart3, PieChart as PieC
 import { v4 as uuidv4 } from "uuid";
 import { Card as PlanCard, CardContent as PlanCardContent, CardHeader as PlanCardHeader, CardTitle as PlanCardTitle } from "../../../components/Card";
 import { Button } from "../../../components/Button";
-import { fetchMutualFundSchemes, searchFundsByName, TransformedFund, saveHolding, fetchUserHoldings, HoldingData, preloadMutualFundData } from "../../../../lib/dynamodb";
+import { fetchMutualFundSchemes, searchFundsByName, TransformedFund, saveHolding, fetchUserHoldings, HoldingData, preloadMutualFundData, clearMFCache } from "../../../../lib/dynamodb";
 
 // Asset class colors for charts
 const CLASS_COLORS = {
@@ -565,14 +565,27 @@ export default function HoldingsPage() {
 					<h1 className="text-lg font-semibold tracking-tight">Holdings</h1>
 					<p className="text-sm text-muted-foreground">Capture your investments and view allocation.</p>
 				</div>
-				<Button 
-					onClick={() => setIsModalOpen(true)} 
-					variant="outline" 
-					size="md"
-					leftIcon={<Plus size={18} />}
-				>
-					Add Holding
-				</Button>
+				<div className="flex gap-2">
+					<Button 
+						onClick={() => {
+							clearMFCache();
+							console.log('🧹 Cache cleared! Refresh the page to test with fresh data.');
+						}}
+						variant="outline" 
+						size="sm"
+						className="text-xs"
+					>
+						Clear Cache
+					</Button>
+					<Button 
+						onClick={() => setIsModalOpen(true)} 
+						variant="outline" 
+						size="md"
+						leftIcon={<Plus size={18} />}
+					>
+						Add Holding
+					</Button>
+				</div>
 			</div>
 			
 			{/* KPI Row */}
