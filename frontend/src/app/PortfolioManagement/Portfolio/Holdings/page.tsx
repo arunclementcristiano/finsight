@@ -224,61 +224,39 @@ export default function HoldingsPage() {
 	};
 
 	const filterMFOptions = async (term: string): Promise<void> => {
-		if (term.trim() === "") {
+		try {
+			// Get all funds and filter by ETF status based on selected role
+			const allFunds = await fetchMutualFundSchemes();
+			
+			// Filter funds based on ETF status only
+			let filtered = allFunds.filter(fund => {
+				if (selectedRole === 'Mutual Funds') {
+					// Show only non-ETF funds (is_etf = false)
+					return !fund.isETF;
+				} else if (selectedRole === 'ETF') {
+					// Show only ETF funds (is_etf = true)
+					return fund.isETF;
+				}
+				return false;
+			});
+			
+			// Then filter by search term if provided
+			if (term.trim()) {
+				const searchTerm = term.toLowerCase();
+				filtered = filtered.filter(fund => 
+					fund.name.toLowerCase().includes(searchTerm) || 
+					fund.fullName.toLowerCase().includes(searchTerm)
+				);
+			}
+			
+			// Limit results and set state
+			const limitedResults = filtered.slice(0, 10);
+			setFilteredMFOptions(limitedResults);
+			setShowMFDropdown(limitedResults.length > 0);
+		} catch (error) {
+			// Clear results on error
 			setFilteredMFOptions([]);
 			setShowMFDropdown(false);
-		} else {
-			try {
-				// Get all funds and filter by role and search term
-				const allFunds = await fetchMutualFundSchemes();
-				
-				// Filter funds based on selected role and allocation class
-				let filtered = allFunds.filter(fund => {
-					// First filter by ETF status
-					if (selectedRole === 'Mutual Funds' && fund.isETF) {
-						return false;
-					}
-					if (selectedRole === 'ETF' && !fund.isETF) {
-						return false;
-					}
-					
-					// Then filter by asset class for proper classification
-					if (selectedRole === 'Mutual Funds') {
-						// For Mutual Funds, show equity-oriented funds
-						const isEquityFund = fund.fundType.includes('Equity') || 
-										   fund.fundType.includes('Growth');
-						
-						return isEquityFund;
-					} else if (selectedRole === 'ETF') {
-						// For ETFs, show equity-oriented ETFs
-						const isETFType = fund.fundType.includes('Equity') || 
-										fund.fundType.includes('Debt') || 
-										fund.fundType.includes('Gold');
-						
-						return isETFType;
-					}
-					
-					return true;
-				});
-				
-				// Then filter by search term
-				if (term.trim()) {
-					const searchTerm = term.toLowerCase();
-					filtered = filtered.filter(fund => 
-						fund.name.toLowerCase().includes(searchTerm) || 
-						fund.fullName.toLowerCase().includes(searchTerm)
-					);
-				}
-				
-				// Limit results and set state
-				const limitedResults = filtered.slice(0, 10);
-				setFilteredMFOptions(limitedResults);
-				setShowMFDropdown(limitedResults.length > 0);
-			} catch (error) {
-				// Clear results on error
-				setFilteredMFOptions([]);
-				setShowMFDropdown(false);
-			}
 		}
 	};
 
@@ -307,10 +285,17 @@ export default function HoldingsPage() {
 		if (debouncedMfSearchTerm.trim()) {
 			filterMFOptions(debouncedMfSearchTerm);
 		} else {
-			setFilteredMFOptions([]);
-			setShowMFDropdown(false);
+			// When no search term, still show funds based on selected role
+			filterMFOptions("");
 		}
 	}, [debouncedMfSearchTerm, selectedRole]);
+
+	// Show funds immediately when role changes
+	React.useEffect(() => {
+		if (selectedRole === 'Mutual Funds' || selectedRole === 'ETF') {
+			filterMFOptions("");
+		}
+	}, [selectedRole]);
 	
 	React.useEffect(() => {
 		if (debouncedStockSearchTerm.trim()) {
@@ -1234,7 +1219,9 @@ export default function HoldingsPage() {
 														className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
 																	>
 														<div className="font-medium text-sm">{fund.name}</div>
-														<div className="text-xs text-muted-foreground">NAV: ₹{fund.currentNAV}</div>
+														<div className="text-xs text-muted-foreground">
+															NAV: ₹{fund.currentNAV} • {fund.fundType} • {fund.portfolioRole}
+														</div>
 																	</div>
 																))}
 															</div>
@@ -1286,18 +1273,16 @@ export default function HoldingsPage() {
 													<div className="relative">
 														<input
 															value={mfSearchTerm}
-															onChange={async (e) => {
+															onChange={(e) => {
 																setMfSearchTerm(e.target.value);
 																if (e.target.value.trim() === '') {
 																	setShowMFDropdown(false);
 																	setFilteredMFOptions([]);
-																} else {
-																	await filterMFOptions(e.target.value);
 																}
 															}}
-															onFocus={async () => {
+															onFocus={() => {
 																if (mfSearchTerm.trim()) {
-																	await filterMFOptions(mfSearchTerm);
+																	filterMFOptions(mfSearchTerm);
 																}
 															}}
 															disabled={editingId !== null}
@@ -1322,7 +1307,9 @@ export default function HoldingsPage() {
 														className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
 																	>
 														<div className="font-medium text-sm">{fund.name}</div>
-														<div className="text-xs text-muted-foreground">NAV: ₹{fund.currentNAV}</div>
+														<div className="text-xs text-muted-foreground">
+															NAV: ₹{fund.currentNAV} • {fund.fundType} • {fund.portfolioRole}
+														</div>
 																	</div>
 																))}
 															</div>
