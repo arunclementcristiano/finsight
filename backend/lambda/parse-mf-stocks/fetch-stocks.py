@@ -2,10 +2,11 @@ import boto3
 import csv
 import requests
 import io
+import os
 from datetime import datetime
 
 dynamodb = boto3.resource("dynamodb")
-table = dynamodb.Table("StockCompanies")
+table = dynamodb.Table(os.environ.get("STOCK_COMPANIES_TABLE", "StockCompanies"))
 
 def fetch_nse():
     url = "https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv"

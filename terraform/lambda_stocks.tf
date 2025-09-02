@@ -3,7 +3,7 @@ resource "aws_lambda_function" "parse_mf_stocks" {
   filename         = "parse_mf_stocks.zip"
   function_name    = "parse-mf-stocks"
   role            = aws_iam_role.parse_mf_stocks_exec.arn
-  handler         = "combined_parser.lambda_handler"
+  handler         = "main.lambda_handler"
   source_code_hash = data.archive_file.parse_mf_stocks_zip.output_base64sha256
   runtime         = "python3.12"
   timeout         = 300  # 5 minutes timeout for data fetching
