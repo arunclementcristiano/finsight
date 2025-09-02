@@ -559,6 +559,13 @@ export default function HoldingsPage() {
 		
 		try {
 			// Save to DynamoDB
+			console.log('=== DEBUG: Creating holding ===');
+			console.log('selectedRole:', selectedRole);
+			console.log('selectedMF:', selectedMF);
+			console.log('assetClass:', assetClass);
+			console.log('portfolioRole:', portfolioRole);
+			console.log('instrumentClass:', instrumentClass);
+			
 			const dbHolding: HoldingData = {
 				id: holding.id,
 				user_id: 'user-123', // Mock user ID - should come from authentication
@@ -574,6 +581,8 @@ export default function HoldingsPage() {
 				created_at: new Date().toISOString(),
 				updated_at: new Date().toISOString()
 			};
+			
+			console.log('dbHolding being sent:', dbHolding);
 			
 
 			
@@ -649,6 +658,10 @@ export default function HoldingsPage() {
 				fetchMutualFundSchemes().then(funds => {
 					const fund = funds.find(f => f.schemeCode === holding.symbol);
 					if (fund) {
+						console.log('=== DEBUG: Setting selectedMF in openEdit ===');
+						console.log('Found fund:', fund);
+						console.log('fund.fundType:', fund.fundType);
+						console.log('fund.portfolioRole:', fund.portfolioRole);
 						setSelectedMF(fund);
 					}
 				}).catch(() => {
@@ -1230,6 +1243,10 @@ export default function HoldingsPage() {
 																	<div
 														key={fund.schemeCode}
 														onClick={() => {
+															console.log('=== DEBUG: Mutual Fund selected ===');
+															console.log('Selected fund:', fund);
+															console.log('fund.fundType:', fund.fundType);
+															console.log('fund.portfolioRole:', fund.portfolioRole);
 															setSelectedMF(fund);
 															setMfSearchTerm(fund.name);
 															setForm({ ...form, name: fund.name, symbol: fund.schemeCode, price: fund.currentNAV.toString() });
@@ -1318,6 +1335,10 @@ export default function HoldingsPage() {
 																	<div
 														key={fund.schemeCode}
 														onClick={() => {
+															console.log('=== DEBUG: ETF selected ===');
+															console.log('Selected ETF:', fund);
+															console.log('fund.fundType:', fund.fundType);
+															console.log('fund.portfolioRole:', fund.portfolioRole);
 															setSelectedMF(fund);
 															setMfSearchTerm(fund.name);
 															setForm({ ...form, name: fund.name, symbol: fund.schemeCode, price: fund.currentNAV.toString() });
