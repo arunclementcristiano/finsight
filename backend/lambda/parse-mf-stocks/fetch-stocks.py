@@ -53,14 +53,28 @@ def fetch_nse():
         
         csv_text = response.content.decode("utf-8")
         reader = csv.DictReader(io.StringIO(csv_text))
+        
+        # Log the column headers for debugging
+        logger.info(f"NSE CSV headers: {reader.fieldnames}")
 
         items = []
         for row in reader:
+            # Handle different possible column names
+            symbol = row.get("SYMBOL", "").strip()
+            company_name = row.get("NAME OF COMPANY", "").strip()
+            listing_date = row.get("DATE OF LISTING", "").strip() or None
+            isin_number = row.get(" ISIN NUMBER", row.get("ISIN NUMBER", "")).strip()
+            
+            # Skip rows with missing essential data
+            if not symbol or not company_name:
+                logger.warning(f"Skipping row with missing data: {row}")
+                continue
+                
             items.append({
-                "symbol": row["SYMBOL"].strip(),
-                "companyName": row["NAME OF COMPANY"].strip(),
-                "listingDate": row["DATE OF LISTING"].strip() or None,
-                "isinNumber": row[" ISIN NUMBER"].strip(),  # has space in header
+                "symbol": symbol,
+                "companyName": company_name,
+                "listingDate": listing_date,
+                "isinNumber": isin_number,
                 "exchange": "NSE"
             })
         
