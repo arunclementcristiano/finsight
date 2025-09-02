@@ -241,11 +241,12 @@ export default function PortfolioInsightsPage() {
 	}, [plan]);
 
 	return (
-		<div className="max-w-7xl mx-auto px-4 py-6 space-y-8">
+		<div className="max-w-full space-y-4 pl-2">
 			{/* Header */}
-			<div className="mb-8">
-				<h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">Portfolio Insights</h1>
-				<p className="text-lg text-muted-foreground">Comprehensive analysis of your investment strategy, performance, and recommendations.</p>
+			<div className="flex items-center justify-between">
+				<div className="flex items-center gap-2">
+					<div className="text-sm text-muted-foreground">Portfolio Insights</div>
+				</div>
 			</div>
 
 			{/* Key Metrics Dashboard */}

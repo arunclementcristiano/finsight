@@ -21,9 +21,12 @@ export default function AddGoalMobilePage() {
 	}
 
 	return (
-		<div className="max-w-md mx-auto p-4 space-y-4">
+		<div className="max-w-full space-y-4 pl-2">
+			{/* Header */}
 			<div className="flex items-center justify-between">
-				<h1 className="text-lg font-semibold">Add Goal</h1>
+				<div className="flex items-center gap-2">
+					<div className="text-sm text-muted-foreground">Add Goal</div>
+				</div>
 				<button className="h-9 w-9 rounded-md hover:bg-muted" onClick={()=> window.history.back()}>✕</button>
 			</div>
 			<div className="rounded-xl border border-border bg-card">
@@ -52,8 +55,8 @@ export default function AddGoalMobilePage() {
 						</select>
 					</div>
 					<div className="flex items-center justify-between pt-2">
-						<Button variant="outline" onClick={()=> window.history.back()}>Cancel</Button>
-						<Button onClick={save}>Save</Button>
+						<Button variant="outline" size="sm" onClick={()=> window.history.back()}>Cancel</Button>
+						<Button size="sm" onClick={save}>Save</Button>
 					</div>
 					{confirm ? <div className="text-xs text-emerald-600">{confirm}</div> : null}
 				</div>
