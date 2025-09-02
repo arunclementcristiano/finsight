@@ -614,12 +614,18 @@ export default function HoldingsPage() {
 			}
 		}
 		
+		// Calculate units for Mutual Funds and ETFs based on investment amount and NAV
+		let calculatedUnits: number | undefined;
+		if ((selectedRole === 'Mutual Funds' || selectedRole === 'ETF') && form.investedAmount && form.price) {
+			calculatedUnits = parseFloat(form.investedAmount) / parseFloat(form.price);
+		}
+
 		const holding: Holding = {
 			id: editingId || uuidv4(),
 			instrumentClass: instrumentClass,
 			name: form.name.trim(),
 			symbol: form.symbol.trim() || undefined,
-			units: form.units ? parseFloat(form.units) : undefined,
+			units: calculatedUnits || (form.units ? parseFloat(form.units) : undefined),
 			price: form.price ? parseFloat(form.price) : undefined,
 			investedAmount: form.investedAmount ? parseFloat(form.investedAmount) : undefined,
 			currentValue: form.currentValue ? parseFloat(form.currentValue) : undefined
@@ -633,7 +639,7 @@ export default function HoldingsPage() {
 				instrumentClass: holding.instrumentClass,
 				name: holding.name,
 				symbol: holding.symbol,
-				units: holding.units,
+				units: calculatedUnits || holding.units,
 				price: holding.price,
 				investedAmount: holding.investedAmount,
 				currentValue: holding.currentValue,
@@ -1287,6 +1293,8 @@ export default function HoldingsPage() {
 																if (e.target.value.trim() === '') {
 																	setShowMFDropdown(false);
 																	setFilteredMFOptions([]);
+																} else {
+																	filterMFOptions(e.target.value);
 																}
 															}}
 															onFocus={() => {
@@ -1376,6 +1384,8 @@ export default function HoldingsPage() {
 																if (e.target.value.trim() === '') {
 																	setShowETFDropdown(false);
 																	setFilteredETFOptions([]);
+																} else {
+																	filterETFOptions(e.target.value);
 																}
 															}}
 															onFocus={() => {
