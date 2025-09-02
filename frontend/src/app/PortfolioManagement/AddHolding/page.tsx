@@ -74,17 +74,49 @@ export default function AddHolding() {
 				for (const line of lines) {
 					if (line.includes('Direct Plan') && line.includes('Growth') && line.includes(';')) {
 						const parts = line.split(';');
-						if (parts.length >= 5) {
+						if (parts.length >= 6) {
 							const schemeCode = parts[0]?.trim();
 							const schemeName = parts[3]?.trim();
 							const nav = parseFloat(parts[4]?.trim());
-							if (schemeCode && schemeName && !isNaN(nav)) {
-								funds.push({ schemeCode, name: schemeName.replace(/- Direct Plan.*Growth/i, '').trim(), fullName: schemeName, currentNAV: nav });
+							const dateStr = parts[5]?.trim();
+							if (schemeCode && schemeName && !isNaN(nav) && dateStr) {
+								// Parse date string (format: "26-Aug-2025")
+								const dateParts = dateStr.split('-');
+								if (dateParts.length === 3) {
+									const day = parseInt(dateParts[0]);
+									const monthStr = dateParts[1];
+									const year = parseInt(dateParts[2]);
+									
+									// Convert month string to number
+									const monthMap: { [key: string]: number } = {
+										'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+										'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+									};
+									const month = monthMap[monthStr];
+									
+									if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+										const navDate = new Date(year, month, day);
+										funds.push({ 
+											schemeCode, 
+											name: schemeName.replace(/- Direct Plan.*Growth/i, '').trim(), 
+											fullName: schemeName, 
+											currentNAV: nav,
+											navDate: navDate
+										});
+									}
+								}
 							}
 						}
 					}
 				}
-				funds.sort((a, b) => a.name.localeCompare(b.name));
+				// Sort by NAV date (latest to oldest), then by name for same dates
+				funds.sort((a, b) => {
+					if (a.navDate && b.navDate) {
+						const dateDiff = b.navDate.getTime() - a.navDate.getTime();
+						if (dateDiff !== 0) return dateDiff;
+					}
+					return a.name.localeCompare(b.name);
+				});
 				setMfOptions(funds);
 			} catch {}
 		}
@@ -94,6 +126,14 @@ export default function AddHolding() {
 	function filterMFOptions(term: string) {
 		if (!term.trim()) { setFilteredMFOptions([]); setShowMFDropdown(false); return; }
 		const filtered = mfOptions.filter(o => o.name.toLowerCase().includes(term.toLowerCase()) || (o.fullName||'').toLowerCase().includes(term.toLowerCase()));
+		// Maintain date-based sorting (latest to oldest) for filtered results
+		filtered.sort((a, b) => {
+			if (a.navDate && b.navDate) {
+				const dateDiff = b.navDate.getTime() - a.navDate.getTime();
+				if (dateDiff !== 0) return dateDiff;
+			}
+			return a.name.localeCompare(b.name);
+		});
 		setFilteredMFOptions(filtered.slice(0, 10));
 		setShowMFDropdown(filtered.length > 0);
 	}
@@ -191,7 +231,14 @@ export default function AddHolding() {
 										<div key={opt.schemeCode} onClick={()=> { setSelectedMF(opt); setMfSearchTerm(opt.name); setName(opt.name); setSymbol(opt.schemeCode); setShowMFDropdown(false); }} className="px-4 py-3 cursor-pointer hover:bg-muted text-sm border-b border-border last:border-b-0 flex items-center justify-between">
 											<div>
 												<div className="font-medium text-foreground">{opt.name}</div>
-												<div className="text-xs text-muted-foreground">Direct Plan – Growth</div>
+												<div className="text-xs text-muted-foreground">
+													Direct Plan – Growth
+													{opt.navDate && (
+														<span className="ml-2 text-blue-600">
+															• NAV: {opt.navDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+														</span>
+													)}
+												</div>
 											</div>
 											<div className="text-right text-sm">₹{opt.currentNAV?.toFixed(4)}</div>
 										</div>
