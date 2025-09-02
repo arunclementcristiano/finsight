@@ -1138,7 +1138,7 @@ export default function HoldingsPage() {
 															}`}
 															placeholder={editingId !== null ? "Stock name cannot be changed during edit" : "Search for stocks..."}
 														/>
-														{showStockDropdown && !editingId && (
+														{showStockDropdown && filteredStockOptions.length > 0 && !editingId && stockSearchTerm.trim() !== '' && (
 															<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-auto">
 																{filteredStockOptions.map((stock) => (
 																	<div
@@ -1147,14 +1147,14 @@ export default function HoldingsPage() {
 																			setSelectedStock(stock);
 																			setStockSearchTerm(stock.name);
 																			setForm({ ...form, name: stock.name, symbol: stock.symbol, price: stock.price.toString() });
-																			setShowStockDropdown(false);
-																			setFilteredStockOptions([]);
-																		}}
-																		className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
-																	>
-																		<div className="font-medium text-sm">{stock.name}</div>
-																		<div className="text-xs text-muted-foreground">{stock.symbol} • ₹{stock.price}</div>
-																	</div>
+															setShowStockDropdown(false);
+															setFilteredStockOptions([]);
+														}}
+														className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
+													>
+														<div className="font-medium text-sm">{stock.name}</div>
+														<div className="text-xs text-muted-foreground">{stock.symbol} • ₹{stock.price}</div>
+													</div>
 																))}
 															</div>
 														)}
@@ -1224,7 +1224,7 @@ export default function HoldingsPage() {
 															}`}
 															placeholder={editingId !== null ? "Fund name cannot be changed during edit" : "Search for mutual funds..."}
 														/>
-														{showMFDropdown && filteredMFOptions.length > 0 && !editingId && (
+														{showMFDropdown && filteredMFOptions.length > 0 && !editingId && mfSearchTerm.trim() !== '' && (
 															<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-auto">
 																{filteredMFOptions.map((fund) => (
 																	<div
@@ -1313,7 +1313,7 @@ export default function HoldingsPage() {
 															}`}
 															placeholder={editingId !== null ? "ETF name cannot be changed during edit" : "Search for ETFs..."}
 														/>
-																																										{showMFDropdown && filteredMFOptions.length > 0 && !editingId && (
+																																										{showMFDropdown && filteredMFOptions.length > 0 && !editingId && mfSearchTerm.trim() !== '' && (
 															<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-auto">
 																{filteredMFOptions.map((fund) => (
 																	<div
