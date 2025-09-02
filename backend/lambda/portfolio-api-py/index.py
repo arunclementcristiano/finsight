@@ -216,11 +216,12 @@ def handler(event, context):
                 asset_class = converted_holding.get("asset_class", instrument_class)
                 portfolio_role = converted_holding.get("portfolio_role", _get_portfolio_role_for_asset_class(asset_class))
                 
-
+                # Use the user_id from the holding data if available, otherwise use the JWT user
+                user_id = converted_holding.get("user_id", user_sub)
                 
                 item = {
                     "id": holding_id,
-                    "user_id": user_sub,
+                    "user_id": user_id,
                     "portfolio_id": portfolio_id,
                     "data": converted_holding,
                     "asset_class": asset_class,
@@ -243,10 +244,12 @@ def handler(event, context):
                 return _response(400, {"error": "Missing portfolioId"})
             
             try:
-                # Query the holdings table
+                # Query the holdings table - use the user_id from the portfolio_id for now
+                # In production, this should come from JWT authentication
+                user_id = portfolio_id  # Since portfolio_id is being used as user_id in frontend
                 res = holdings_table.query(
                     IndexName="userId-createdAt-index",
-                    KeyConditionExpression=Key("user_id").eq(user_sub)
+                    KeyConditionExpression=Key("user_id").eq(user_id)
                 )
                 
                 items = res.get("Items", [])
@@ -277,9 +280,12 @@ def handler(event, context):
                     return _response(400, {"error": "Missing portfolioId"})
                 
                 # Delete the holding from DynamoDB
+                # Use the user_id from the portfolio_id for now
+                # In production, this should come from JWT authentication
+                user_id = portfolio_id  # Since portfolio_id is being used as user_id in frontend
                 holdings_table.delete_item(
                     Key={
-                        "user_id": "dev_user_123",  # Use same user ID as GET endpoint
+                        "user_id": user_id,
                         "id": holding_id
                     }
                 )
