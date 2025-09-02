@@ -109,13 +109,21 @@ def fetch_bse():
         logger.info(f"BSE data fetched successfully, size: {len(response.content)} bytes")
         
         csv_text = response.content.decode("utf-8", errors="ignore")
+        logger.info(f"BSE CSV content preview (first 500 chars): {csv_text[:500]}")
+        
         reader = csv.DictReader(io.StringIO(csv_text))
         
         # Log the column headers for debugging
         logger.info(f"BSE CSV headers: {reader.fieldnames}")
-
+        
+        # Log first few rows for debugging
+        rows_processed = 0
         items = []
         for row in reader:
+            rows_processed += 1
+            if rows_processed <= 3:  # Log first 3 rows
+                logger.info(f"BSE row {rows_processed}: {row}")
+            
             # Handle different possible column names
             symbol = row.get("Scrip code", row.get("SCRIP CODE", "")).strip()
             company_name = row.get("Security Name", row.get("SECURITY NAME", "")).strip()
@@ -123,7 +131,7 @@ def fetch_bse():
             
             # Skip rows with missing essential data
             if not symbol or not company_name:
-                logger.warning(f"Skipping BSE row with missing data: {row}")
+                logger.warning(f"Skipping BSE row {rows_processed} with missing data: symbol='{symbol}', company='{company_name}'")
                 continue
                 
             items.append({
@@ -133,6 +141,8 @@ def fetch_bse():
                 "isinNumber": isin_number,
                 "exchange": "BSE"
             })
+        
+        logger.info(f"BSE processing summary: {rows_processed} total rows, {len(items)} valid records")
         
         logger.info(f"Parsed {len(items)} BSE companies")
         return items
