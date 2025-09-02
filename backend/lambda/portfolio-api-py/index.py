@@ -247,9 +247,11 @@ def handler(event, context):
                 # Query the holdings table - use the user_id from the portfolio_id for now
                 # In production, this should come from JWT authentication
                 user_id = portfolio_id  # Since portfolio_id is being used as user_id in frontend
-                res = holdings_table.query(
-                    IndexName="userId-createdAt-index",
-                    KeyConditionExpression=Key("user_id").eq(user_id)
+                
+                # Use scan with filter to ensure we get all fields
+                # The GSI might not be returning all the main item fields
+                res = holdings_table.scan(
+                    FilterExpression=Key("user_id").eq(user_id)
                 )
                 
                 items = res.get("Items", [])
@@ -257,9 +259,11 @@ def handler(event, context):
                 holdings = []
                 for it in items:
                     holding_data = it.get("data") or {}
+                    
                     # Include asset class and portfolio role from the main item
                     holding_data["asset_class"] = it.get("asset_class", holding_data.get("instrumentClass", "Stocks"))
                     holding_data["portfolio_role"] = it.get("portfolio_role", "Equity")
+                    
                     holdings.append({"id": it.get("id"), **holding_data})
                 
                 return _response(200, {"items": holdings})

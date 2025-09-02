@@ -187,6 +187,8 @@ export default function HoldingsPage() {
 				price: dbHolding.price,
 				investedAmount: dbHolding.investedAmount,
 				currentValue: dbHolding.currentValue,
+				asset_class: dbHolding.asset_class,
+				portfolio_role: dbHolding.portfolio_role,
 				created_at: dbHolding.created_at // Ensure created_at is included
 			}));
 			
