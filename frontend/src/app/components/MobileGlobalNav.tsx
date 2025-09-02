@@ -24,7 +24,6 @@ export default function MobileGlobalNav() {
 				<div className="fixed inset-0 z-50">
 					<div className="absolute inset-0 bg-black/30" onClick={() => setOpen(false)} />
 					<div className="absolute bottom-0 inset-x-0 rounded-t-xl border border-border bg-card p-4 space-y-2">
-						<Link className="block py-2" href="/PortfolioManagement/Transactions" onClick={() => setOpen(false)}>Transactions</Link>
 						<Link className="block py-2" href="/PortfolioManagement/Insights" onClick={() => setOpen(false)}>Reports & Insights</Link>
 						<Link className="block py-2" href="/PortfolioManagement/Settings" onClick={() => setOpen(false)}>Settings / Profile</Link>
 						<button className="mt-2 w-full border border-border rounded-md py-2" onClick={() => setOpen(false)}>Close</button>
