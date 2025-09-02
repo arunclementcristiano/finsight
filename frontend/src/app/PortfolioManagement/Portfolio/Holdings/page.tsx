@@ -160,6 +160,17 @@ export default function HoldingsPage() {
 	const [mfGainLoss, setMfGainLoss] = useState<number | null>(null);
 	const [mfGainLossPercent, setMfGainLossPercent] = useState<number | null>(null);
 
+	// ETF functionality
+	const [etfSearchTerm, setEtfSearchTerm] = useState("");
+	const [selectedETF, setSelectedETF] = useState<TransformedFund | null>(null);
+	const [etfOptions, setEtfOptions] = useState<TransformedFund[]>([]);
+	const [filteredETFOptions, setFilteredETFOptions] = useState<TransformedFund[]>([]);
+	const [showETFDropdown, setShowETFDropdown] = useState(false);
+	const [etfCalculatedUnits, setEtfCalculatedUnits] = useState<number | null>(null);
+	const [etfCurrentValue, setEtfCurrentValue] = useState<number | null>(null);
+	const [etfGainLoss, setEtfGainLoss] = useState<number | null>(null);
+	const [etfGainLossPercent, setEtfGainLossPercent] = useState<number | null>(null);
+
 	// Load mutual fund and ETF data directly from DynamoDB
 	React.useEffect(() => {
 		async function loadMFData() {
@@ -167,13 +178,27 @@ export default function HoldingsPage() {
 				// Preload data on component mount
 				await preloadMutualFundData();
 				const funds = await fetchMutualFundSchemes();
-				setMfOptions(funds);
+				// Filter for mutual funds (is_etf = false)
+				const mfData = funds.filter(fund => !fund.isETF);
+				setMfOptions(mfData);
+			} catch (error) {
+				// Silent fail - user will see empty results
+			}
+		}
+		
+		async function loadETFData() {
+			try {
+				const funds = await fetchMutualFundSchemes();
+				// Filter for ETFs (is_etf = true)
+				const etfData = funds.filter(fund => fund.isETF);
+				setEtfOptions(etfData);
 			} catch (error) {
 				// Silent fail - user will see empty results
 			}
 		}
 		
 		loadMFData();
+		loadETFData();
 	}, []);
 
 	// Load holdings from DynamoDB
@@ -266,6 +291,32 @@ export default function HoldingsPage() {
 			// Clear results on error
 			setFilteredMFOptions([]);
 			setShowMFDropdown(false);
+		}
+	};
+
+	const filterETFOptions = async (term: string): Promise<void> => {
+		try {
+			// Filter ETFs only
+			let filtered = etfOptions.filter(fund => fund.isETF);
+			
+			// Then filter by search term if provided
+			if (term.trim()) {
+				const searchTerm = term.toLowerCase();
+				filtered = filtered.filter(fund => 
+					fund.name.toLowerCase().includes(searchTerm) || 
+					fund.fullName.toLowerCase().includes(searchTerm)
+				);
+			}
+			
+			// Limit results and set state
+			const limitedResults = filtered.slice(0, 10);
+			setFilteredETFOptions(limitedResults);
+			// Only show dropdown if there's a search term
+			setShowETFDropdown(term.trim() && limitedResults.length > 0);
+		} catch (error) {
+			// Clear results on error
+			setFilteredETFOptions([]);
+			setShowETFDropdown(false);
 		}
 	};
 
@@ -1319,17 +1370,17 @@ export default function HoldingsPage() {
 													<label className="block text-sm font-medium text-foreground mb-2">ETF Name *</label>
 													<div className="relative">
 														<input
-															value={mfSearchTerm}
+															value={etfSearchTerm}
 															onChange={(e) => {
-																setMfSearchTerm(e.target.value);
+																setEtfSearchTerm(e.target.value);
 																if (e.target.value.trim() === '') {
-																	setShowMFDropdown(false);
-																	setFilteredMFOptions([]);
+																	setShowETFDropdown(false);
+																	setFilteredETFOptions([]);
 																}
 															}}
-																														onFocus={() => {
-																if (mfSearchTerm.trim()) {
-																filterMFOptions(mfSearchTerm);
+															onFocus={() => {
+																if (etfSearchTerm.trim()) {
+																	filterETFOptions(etfSearchTerm);
 																}
 															}}
 															disabled={editingId !== null}
@@ -1340,17 +1391,17 @@ export default function HoldingsPage() {
 															}`}
 															placeholder={editingId !== null ? "ETF name cannot be changed during edit" : "Search for ETFs..."}
 														/>
-																																										{showMFDropdown && filteredMFOptions.length > 0 && !editingId && mfSearchTerm.trim() !== '' && (
+														{showETFDropdown && filteredETFOptions.length > 0 && !editingId && etfSearchTerm.trim() !== '' && (
 															<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-auto">
-																{filteredMFOptions.map((fund) => (
+																{filteredETFOptions.map((fund) => (
 																	<div
 														key={fund.schemeCode}
 														onClick={() => {
-															setSelectedMF(fund);
-															setMfSearchTerm(fund.name);
+															setSelectedETF(fund);
+															setEtfSearchTerm(fund.name);
 															setForm({ ...form, name: fund.name, symbol: fund.schemeCode, price: fund.currentNAV.toString() });
-															setShowMFDropdown(false);
-															setFilteredMFOptions([]);
+															setShowETFDropdown(false);
+															setFilteredETFOptions([]);
 														}}
 														className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
 																	>
@@ -1366,16 +1417,19 @@ export default function HoldingsPage() {
 												</div>
 												
 												<div>
-													<label className="block text-sm font-medium text-foreground mb-2">Units *</label>
-													<input
-														type="number"
-														value={form.units || ''}
-														onChange={(e) => setForm({ ...form, units: e.target.value })}
-														required
-														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-														placeholder="0"
-														step="0.01"
-													/>
+													<label className="block text-sm font-medium text-foreground mb-2">Investment Amount *</label>
+													<div className="relative">
+														<span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground">₹</span>
+														<input
+															type="number"
+															value={form.investedAmount || ''}
+															onChange={(e) => setForm({ ...form, investedAmount: e.target.value })}
+															required
+															className="w-full rounded-lg border border-border bg-background pl-8 pr-3 py-2 text-sm text-foreground"
+															placeholder="0.00"
+															step="0.01"
+														/>
+													</div>
 												</div>
 												
 												<div>
@@ -1546,6 +1600,20 @@ export default function HoldingsPage() {
 													<div className="text-right">
 														<div className="text-xs text-muted-foreground">Investment</div>
 														<div className="text-sm font-medium">₹{parseFloat(form.investedAmount || '0').toLocaleString()}</div>
+													</div>
+												)}
+												{/* Show calculated units for Mutual Funds */}
+												{selectedRole === 'Mutual Funds' && form.investedAmount && form.price && (
+													<div className="text-right">
+														<div className="text-xs text-muted-foreground">Units to be added</div>
+														<div className="text-sm font-medium">{(parseFloat(form.investedAmount || '0') / parseFloat(form.price || '1')).toFixed(4)}</div>
+													</div>
+												)}
+												{/* Show calculated units for ETFs */}
+												{selectedRole === 'ETF' && form.investedAmount && form.price && (
+													<div className="text-right">
+														<div className="text-xs text-muted-foreground">Units to be added</div>
+														<div className="text-sm font-medium">{(parseFloat(form.investedAmount || '0') / parseFloat(form.price || '1')).toFixed(4)}</div>
 													</div>
 												)}
 												{form.units && form.price && (
