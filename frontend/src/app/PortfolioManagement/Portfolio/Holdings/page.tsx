@@ -518,23 +518,17 @@ export default function HoldingsPage() {
 			// Use portfolio_role from holdings table if available, fallback to calculated role
 			const role = holding.portfolio_role || getRoleForAssetClass(holding.instrumentClass);
 			const currentValue = computeHoldingValue(holding);
-			console.log(`Holding: ${holding.name}, Asset Class: ${holding.asset_class}, Portfolio Role: ${holding.portfolio_role}, Computed Role: ${role}, Value: ${currentValue}`);
 			roleMap.set(role, (roleMap.get(role) || 0) + currentValue);
 		});
 
-		console.log('Role Map:', Array.from(roleMap.entries()));
-
 		const roleArray = Array.from(roleMap.entries()).map(([name, value]) => {
 			const color = ROLE_COLORS[name as keyof typeof ROLE_COLORS] || '#8B5CF6';
-			console.log(`Portfolio Role: ${name}, Value: ${value}, Color: ${color}`);
 			return {
 				name,
 				value,
 				color
 			};
 		}).sort((a, b) => b.value - a.value);
-
-		console.log('Final Portfolio Role Data:', roleArray);
 		return roleArray;
 	}, [filteredHoldings]);
 
