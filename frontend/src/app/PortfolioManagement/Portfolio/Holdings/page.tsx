@@ -16,6 +16,7 @@ const CLASS_COLORS = {
 	"Equity MF": { bg: "bg-emerald-100 dark:bg-emerald-900/30", text: "text-emerald-700 dark:text-emerald-300", chart: "#10B981" },
 	"Debt MF": { bg: "bg-purple-100 dark:bg-purple-900/30", text: "text-purple-700 dark:text-purple-300", chart: "#8B5CF6" },
 	"Liquid MF": { bg: "bg-orange-100 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-300", chart: "#F59E0B" },
+	"Liquid Fund": { bg: "bg-orange-100 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-300", chart: "#F59E0B" },
 	"Debt ETF": { bg: "bg-indigo-100 dark:bg-indigo-900/30", text: "text-indigo-700 dark:text-indigo-300", chart: "#6366F1" },
 	"Liquid ETF": { bg: "bg-cyan-100 dark:bg-cyan-900/30", text: "text-cyan-700 dark:text-cyan-300", chart: "#06B6D4" },
 	"ETF": { bg: "bg-violet-100 dark:bg-violet-900/30", text: "text-violet-700 dark:text-violet-300", chart: "#8B5CF6" },
@@ -23,6 +24,18 @@ const CLASS_COLORS = {
 	"Liquid": { bg: "bg-orange-100 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-300", chart: "#F59E0B" },
 	"Gold": { bg: "bg-yellow-100 dark:bg-yellow-900/30", text: "text-yellow-700 dark:text-yellow-300", chart: "#EAB308" },
 	"Real Estate": { bg: "bg-rose-100 dark:bg-rose-900/30", text: "text-rose-700 dark:text-rose-300", chart: "#F43F5E" },
+};
+
+// Portfolio role colors for charts
+const ROLE_COLORS = {
+	"Equity": "#3B82F6",      // Blue
+	"Defensive": "#10B981",   // Emerald
+	"Satellite": "#8B5CF6",   // Purple
+	"Core": "#F59E0B",        // Orange
+	"Growth": "#06B6D4",      // Cyan
+	"Value": "#EAB308",       // Yellow
+	"Balanced": "#F43F5E",    // Rose
+	"Conservative": "#6366F1", // Indigo
 };
 
 // Role-based instrument type mapping
@@ -486,15 +499,11 @@ export default function HoldingsPage() {
 		});
 		
 		// Convert to array and sort by value
-		const allocationArray = Array.from(allocationMap.entries()).map(([name, value]) => {
-			const color = CLASS_COLORS[name as keyof typeof CLASS_COLORS]?.chart || '#8B5CF6';
-			console.log(`Asset Class: ${name}, Color: ${color}`);
-			return {
-				name,
-				value,
-				color
-			};
-		}).sort((a, b) => b.value - a.value);
+		const allocationArray = Array.from(allocationMap.entries()).map(([name, value]) => ({
+			name,
+			value,
+			color: CLASS_COLORS[name as keyof typeof CLASS_COLORS]?.chart || '#8B5CF6'
+		})).sort((a, b) => b.value - a.value);
 		
 		return allocationArray;
 	}, [filteredHoldings]);
@@ -512,11 +521,15 @@ export default function HoldingsPage() {
 			roleMap.set(role, (roleMap.get(role) || 0) + currentValue);
 		});
 
-		const roleArray = Array.from(roleMap.entries()).map(([name, value]) => ({
-			name,
-			value,
-			color: name === 'Equity' ? '#3B82F6' : name === 'Defensive' ? '#10B981' : name === 'Satellite' ? '#8B5CF6' : '#F59E0B'
-		})).sort((a, b) => b.value - a.value);
+		const roleArray = Array.from(roleMap.entries()).map(([name, value]) => {
+			const color = ROLE_COLORS[name as keyof typeof ROLE_COLORS] || '#8B5CF6';
+			console.log(`Portfolio Role: ${name}, Color: ${color}`);
+			return {
+				name,
+				value,
+				color
+			};
+		}).sort((a, b) => b.value - a.value);
 
 		return roleArray;
 	}, [filteredHoldings]);
