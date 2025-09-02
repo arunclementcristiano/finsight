@@ -1,7 +1,23 @@
 import json
 import logging
-from fetch_stocks import lambda_handler as stocks_handler
-from fetch_mf_nav import lambda_handler as mf_handler
+import importlib.util
+import sys
+import os
+
+# Import modules with hyphens in their names
+def import_module_from_file(module_name, file_path):
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+# Import the handlers
+stocks_module = import_module_from_file("fetch_stocks", "fetch-stocks.py")
+mf_module = import_module_from_file("fetch_mf_nav", "fetch-mf-nav.py")
+
+stocks_handler = stocks_module.lambda_handler
+mf_handler = mf_module.lambda_handler
 
 # Configure logging
 logger = logging.getLogger()
