@@ -247,13 +247,13 @@ def show_deployment_outputs():
     
     print("\n🎯 Usage Examples:")
     print("   📊 Parse MF/Stocks (both):")
-    print("   aws lambda invoke --function-name parse-mf-stocks --payload '{\"type\":\"both\"}' response.json")
+    print("   aws lambda invoke --function-name parse-mf-stocks --payload 'eyJ0eXBlIjoiYm90aCJ9Cg==' both_response.json")
     print("   ")
     print("   📈 Parse stocks only:")
-    print("   aws lambda invoke --function-name parse-mf-stocks --payload '{\"type\":\"stocks\"}' stocks_response.json")
+    print("   aws lambda invoke --function-name parse-mf-stocks --payload 'eyJ0eXBlIjoic3RvY2tzIn0K' stocks_response.json")
     print("   ")
     print("   💰 Parse mutual funds only:")
-    print("   aws lambda invoke --function-name parse-mf-stocks --payload '{\"type\":\"mf\"}' mf_response.json")
+    print("   aws lambda invoke --function-name parse-mf-stocks --payload 'eyJ0eXBlIjoibWYifQo=' mf_response.json")
     print("   ")
     print("   🔍 Check response:")
     print("   cat response.json")
@@ -264,8 +264,9 @@ def show_deployment_outputs():
     print("   💸 Test Expenses API:")
     print("   curl -X GET https://your-api-gateway-url/expenses/transactions")
     print("   ")
-    print("   📝 Note: If you get 'Invalid base64' error, try:")
-    print("   aws lambda invoke --function-name parse-mf-stocks --payload '{\\\"type\\\":\\\"stocks\\\"}' response.json")
+    print("   📝 Alternative method (using file):")
+    print("   echo '{\"type\":\"stocks\"}' > payload.json")
+    print("   aws lambda invoke --function-name parse-mf-stocks --payload file://payload.json response.json")
 
 def main():
     """Main deployment function"""

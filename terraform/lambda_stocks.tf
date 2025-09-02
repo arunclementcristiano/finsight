@@ -1,6 +1,6 @@
 # Lambda function for fetching and storing MF and stock data
 resource "aws_lambda_function" "parse_mf_stocks" {
-  filename         = "parse_mf_stocks.zip"
+  filename         = "parse_mf_stocks_final.zip"
   function_name    = "parse-mf-stocks"
   role            = aws_iam_role.parse_mf_stocks_exec.arn
   handler         = "main.lambda_handler"
@@ -94,11 +94,11 @@ resource "aws_iam_role_policy_attachment" "parse_mf_stocks_basic" {
 }
 
 # Archive file for Lambda deployment
+# Note: This ZIP file is created by deploy-lambda.py with dependencies included
 data "archive_file" "parse_mf_stocks_zip" {
   type        = "zip"
-  source_dir  = "${path.module}/../backend/lambda/parse-mf-stocks"
-  output_path = "parse_mf_stocks.zip"
-  excludes    = ["__pycache__", "*.pyc", ".DS_Store"]
+  source_file = "parse_mf_stocks.zip"
+  output_path = "parse_mf_stocks_final.zip"
 }
 
 # CloudWatch Log Group for parse-mf-stocks Lambda
