@@ -284,12 +284,9 @@ def handler(event, context):
                     return _response(400, {"error": "Missing portfolioId"})
                 
                 # Delete the holding from DynamoDB
-                # Use the user_id from the portfolio_id for now
-                # In production, this should come from JWT authentication
-                user_id = portfolio_id  # Since portfolio_id is being used as user_id in frontend
+                # The holdings table uses 'id' as the primary key
                 holdings_table.delete_item(
                     Key={
-                        "user_id": user_id,
                         "id": holding_id
                     }
                 )

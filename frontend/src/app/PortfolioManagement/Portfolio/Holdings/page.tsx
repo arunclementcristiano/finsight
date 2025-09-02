@@ -254,7 +254,8 @@ export default function HoldingsPage() {
 			// Limit results and set state
 			const limitedResults = filtered.slice(0, 10);
 			setFilteredMFOptions(limitedResults);
-			setShowMFDropdown(limitedResults.length > 0);
+			// Only show dropdown if there's a search term
+			setShowMFDropdown(term.trim() && limitedResults.length > 0);
 		} catch (error) {
 			// Clear results on error
 			setFilteredMFOptions([]);
@@ -287,17 +288,13 @@ export default function HoldingsPage() {
 		if (debouncedMfSearchTerm.trim()) {
 			filterMFOptions(debouncedMfSearchTerm);
 		} else {
-			// When no search term, still show funds based on selected role
-			filterMFOptions("");
+			// When no search term, clear the dropdown and options
+			setFilteredMFOptions([]);
+			setShowMFDropdown(false);
 		}
 	}, [debouncedMfSearchTerm, selectedRole]);
 
-	// Show funds immediately when role changes
-	React.useEffect(() => {
-		if (selectedRole === 'Mutual Funds' || selectedRole === 'ETF') {
-			filterMFOptions("");
-		}
-	}, [selectedRole]);
+
 	
 	React.useEffect(() => {
 		if (debouncedStockSearchTerm.trim()) {
@@ -423,7 +420,7 @@ export default function HoldingsPage() {
 		const allocationArray = Array.from(allocationMap.entries()).map(([name, value]) => ({
 			name,
 			value,
-			color: CLASS_COLORS[name as keyof typeof CLASS_COLORS]?.chart || '#6B7280'
+			color: CLASS_COLORS[name as keyof typeof CLASS_COLORS]?.chart || '#8B5CF6'
 		})).sort((a, b) => b.value - a.value);
 		
 		return allocationArray;
@@ -445,7 +442,7 @@ export default function HoldingsPage() {
 		const roleArray = Array.from(roleMap.entries()).map(([name, value]) => ({
 			name,
 			value,
-			color: name === 'Equity' ? '#3B7280' : name === 'Defensive' ? '#10B981' : '#F59E0B'
+			color: name === 'Equity' ? '#3B82F6' : name === 'Defensive' ? '#10B981' : '#F59E0B'
 		})).sort((a, b) => b.value - a.value);
 
 		return roleArray;
