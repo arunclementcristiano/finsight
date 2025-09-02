@@ -85,7 +85,7 @@ export default function QuestionCard({
 							<button
 								key={option}
 								onClick={() => handleClick(option)}
-								className={`group rounded-xl ${compact ? "p-3 text-sm" : "p-4"} border font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-all duration-200 ${active ? "border-transparent bg-gradient-to-r from-indigo-500 to-emerald-500 text-white shadow-[0_0_0_3px_rgba(99,102,241,0.2)]" : "border-border bg-card text-foreground hover:bg-muted"}`}
+								className={`group rounded-xl ${compact ? "p-3 text-sm" : "p-4"} border font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-all duration-200 ${active ? "border-transparent bg-gradient-to-r from-emerald-500 to-indigo-600 text-white shadow-[0_0_0_3px_rgba(16,185,129,0.2)]" : "border-border bg-card text-foreground hover:bg-muted"}`}
 							>
 								<span className="inline-flex items-center gap-2">
 									{active ? <Check className="h-4 w-4" /> : null}

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { UserPlus } from "lucide-react";
 import { Button } from "../../components/Button";
 import "./floating-label.css";
 
@@ -100,6 +101,7 @@ export default function SignupForm({ name, email, password, onNameChange, onEmai
       <Button
         type="submit"
         size="sm"
+        leftIcon={<UserPlus className="h-4 w-4" />}
         className="mt-2"
       >
         Sign Up

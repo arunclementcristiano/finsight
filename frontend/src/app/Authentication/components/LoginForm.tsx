@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { LogIn } from "lucide-react";
 import { Button } from "../../components/Button";
 import "./floating-label.css";
 
@@ -76,6 +77,7 @@ export default function LoginForm({ email, password, onEmailChange, onPasswordCh
       <Button
         type="submit"
         size="sm"
+        leftIcon={<LogIn className="h-4 w-4" />}
         className="mt-2"
       >
         Login
