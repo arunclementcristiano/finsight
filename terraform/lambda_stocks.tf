@@ -1,29 +1,31 @@
-# Lambda function for fetching and storing stock data
-resource "aws_lambda_function" "fetch_stocks" {
-  filename         = "fetch_stocks.zip"
-  function_name    = "fetch-stocks"
-  role            = aws_iam_role.fetch_stocks_exec.arn
-  handler         = "fetch-stocks.lambda_handler"
-  source_code_hash = data.archive_file.fetch_stocks_zip.output_base64sha256
+# Lambda function for fetching and storing MF and stock data
+resource "aws_lambda_function" "parse_mf_stocks" {
+  filename         = "parse_mf_stocks.zip"
+  function_name    = "parse-mf-stocks"
+  role            = aws_iam_role.parse_mf_stocks_exec.arn
+  handler         = "combined_parser.lambda_handler"
+  source_code_hash = data.archive_file.parse_mf_stocks_zip.output_base64sha256
   runtime         = "python3.12"
   timeout         = 300  # 5 minutes timeout for data fetching
 
   environment {
     variables = {
       STOCK_COMPANIES_TABLE = aws_dynamodb_table.stock_companies.name
+      MUTUAL_FUND_SCHEMES_TABLE = aws_dynamodb_table.mutual_fund_schemes.name
+      KEEP_VARIANTS = "direct_growth_only"
     }
   }
 
   tags = {
-    Name        = "fetch-stocks"
+    Name        = "parse-mf-stocks"
     Environment = var.environment
     Project     = "finsight"
   }
 }
 
-# IAM role for fetch-stocks Lambda
-resource "aws_iam_role" "fetch_stocks_exec" {
-  name = "fetch-stocks-exec"
+# IAM role for parse-mf-stocks Lambda
+resource "aws_iam_role" "parse_mf_stocks_exec" {
+  name = "parse-mf-stocks-exec"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -39,16 +41,16 @@ resource "aws_iam_role" "fetch_stocks_exec" {
   })
 
   tags = {
-    Name        = "fetch-stocks-exec"
+    Name        = "parse-mf-stocks-exec"
     Environment = var.environment
     Project     = "finsight"
   }
 }
 
-# IAM policy for fetch-stocks Lambda
-resource "aws_iam_role_policy" "fetch_stocks_policy" {
-  name = "fetch-stocks-policy"
-  role = aws_iam_role.fetch_stocks_exec.id
+# IAM policy for parse-mf-stocks Lambda
+resource "aws_iam_role_policy" "parse_mf_stocks_policy" {
+  name = "parse-mf-stocks-policy"
+  role = aws_iam_role.parse_mf_stocks_exec.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -76,7 +78,9 @@ resource "aws_iam_role_policy" "fetch_stocks_policy" {
         ]
         Resource = [
           aws_dynamodb_table.stock_companies.arn,
-          "${aws_dynamodb_table.stock_companies.arn}/index/*"
+          aws_dynamodb_table.mutual_fund_schemes.arn,
+          "${aws_dynamodb_table.stock_companies.arn}/index/*",
+          "${aws_dynamodb_table.mutual_fund_schemes.arn}/index/*"
         ]
       }
     ]
@@ -84,36 +88,36 @@ resource "aws_iam_role_policy" "fetch_stocks_policy" {
 }
 
 # Attach basic execution role
-resource "aws_iam_role_policy_attachment" "fetch_stocks_basic" {
-  role       = aws_iam_role.fetch_stocks_exec.name
+resource "aws_iam_role_policy_attachment" "parse_mf_stocks_basic" {
+  role       = aws_iam_role.parse_mf_stocks_exec.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
 # Archive file for Lambda deployment
-data "archive_file" "fetch_stocks_zip" {
+data "archive_file" "parse_mf_stocks_zip" {
   type        = "zip"
-  source_dir  = "${path.module}/../backend/lambda/parse-stock-names"
-  output_path = "fetch_stocks.zip"
+  source_dir  = "${path.module}/../backend/lambda/parse-mf-stocks"
+  output_path = "parse_mf_stocks.zip"
   excludes    = ["__pycache__", "*.pyc", ".DS_Store"]
 }
 
-# CloudWatch Log Group for fetch-stocks Lambda
-resource "aws_cloudwatch_log_group" "fetch_stocks_logs" {
-  name              = "/aws/lambda/fetch-stocks"
+# CloudWatch Log Group for parse-mf-stocks Lambda
+resource "aws_cloudwatch_log_group" "parse_mf_stocks_logs" {
+  name              = "/aws/lambda/parse-mf-stocks"
   retention_in_days = 14
 
   tags = {
-    Name        = "fetch-stocks-logs"
+    Name        = "parse-mf-stocks-logs"
     Environment = var.environment
     Project     = "finsight"
   }
 }
 
 # Output the Lambda function name
-output "fetch_stocks_lambda_name" {
-  value = aws_lambda_function.fetch_stocks.function_name
+output "parse_mf_stocks_lambda_name" {
+  value = aws_lambda_function.parse_mf_stocks.function_name
 }
 
-output "fetch_stocks_lambda_arn" {
-  value = aws_lambda_function.fetch_stocks.arn
+output "parse_mf_stocks_lambda_arn" {
+  value = aws_lambda_function.parse_mf_stocks.arn
 }
