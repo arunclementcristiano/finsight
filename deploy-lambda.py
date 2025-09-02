@@ -97,20 +97,24 @@ def build_lambda_packages():
             print(f"   📦 Installing {func['name']} dependencies...")
             run_command([
                 "pip3", "install", "-r", str(requirements_file), 
-                "-t", str(build_dir), "--no-deps", "--upgrade"
+                "-t", str(build_dir), "--upgrade"
             ])
             
             # Verify critical dependencies
             if func['name'] == 'parse-mf-stocks':
-                requests_dir = build_dir / "requests"
-                boto3_dir = build_dir / "boto3"
-                if not requests_dir.exists():
-                    print(f"   ❌ ERROR: 'requests' library not found in {func['name']} build directory.")
+                required_deps = ['requests', 'boto3', 'charset_normalizer', 'urllib3', 'certifi', 'idna']
+                missing_deps = []
+                
+                for dep in required_deps:
+                    dep_dir = build_dir / dep
+                    if not dep_dir.exists():
+                        missing_deps.append(dep)
+                
+                if missing_deps:
+                    print(f"   ❌ ERROR: Missing dependencies in {func['name']} build directory: {missing_deps}")
                     sys.exit(1)
-                if not boto3_dir.exists():
-                    print(f"   ❌ ERROR: 'boto3' library not found in {func['name']} build directory.")
-                    sys.exit(1)
-                print(f"   ✅ Verified critical dependencies for {func['name']}")
+                
+                print(f"   ✅ Verified all critical dependencies for {func['name']}: {required_deps}")
             
             print(f"   ✅ {func['name']} dependencies installed successfully")
         
@@ -129,17 +133,25 @@ def build_lambda_packages():
             print(f"   📦 Verifying {func['name']} ZIP contents...")
             with zipfile.ZipFile(zip_file, 'r') as zipf:
                 file_list = zipf.namelist()
-                has_requests = any('requests' in f for f in file_list)
-                has_boto3 = any('boto3' in f for f in file_list)
-                has_main = any('main.py' in f for f in file_list)
+                required_deps = ['requests', 'boto3', 'charset_normalizer', 'urllib3', 'certifi', 'idna']
                 
-                print(f"      📄 Contains requests: {has_requests}")
-                print(f"      📄 Contains boto3: {has_boto3}")
+                has_main = any('main.py' in f for f in file_list)
+                has_deps = {}
+                for dep in required_deps:
+                    has_deps[dep] = any(dep in f for f in file_list)
+                
                 print(f"      📄 Contains main.py: {has_main}")
+                for dep, has_it in has_deps.items():
+                    print(f"      📄 Contains {dep}: {has_it}")
                 print(f"      📄 Total files: {len(file_list)}")
                 
-                if not has_requests or not has_boto3 or not has_main:
+                missing_deps = [dep for dep, has_it in has_deps.items() if not has_it]
+                if not has_main or missing_deps:
                     print(f"   ❌ ERROR: {func['name']} ZIP is missing critical files!")
+                    if not has_main:
+                        print(f"      Missing: main.py")
+                    if missing_deps:
+                        print(f"      Missing dependencies: {missing_deps}")
                     sys.exit(1)
         
         # Clean up build directory
