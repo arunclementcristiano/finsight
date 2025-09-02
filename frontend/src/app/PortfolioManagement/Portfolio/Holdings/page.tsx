@@ -7,7 +7,7 @@ import { Plus, Edit2, Trash2, X, Search, TrendingUp, BarChart3, PieChart as PieC
 import { v4 as uuidv4 } from "uuid";
 import { Card as PlanCard, CardContent as PlanCardContent, CardHeader as PlanCardHeader, CardTitle as PlanCardTitle } from "../../../components/Card";
 import { Button } from "../../../components/Button";
-import { fetchMutualFundSchemes, searchFundsByName, TransformedFund, saveHolding, fetchUserHoldings, HoldingData, preloadMutualFundData, clearMFCache, deleteHolding, fetchStockCompanies, searchStockCompanies, StockCompany } from "../../../../lib/dynamodb";
+import { fetchMutualFundSchemes, searchFundsByName, TransformedFund, saveHolding, fetchUserHoldings, HoldingData, preloadMutualFundData, clearMFCache, deleteHolding, fetchStockCompanies, searchStockCompanies, StockCompany, preloadStockData } from "../../../../lib/dynamodb";
 
 // Asset class colors for charts
 const CLASS_COLORS = {
@@ -204,6 +204,23 @@ export default function HoldingsPage() {
 		loadETFData();
 	}, []);
 
+	// Load stock data with preloading
+	React.useEffect(() => {
+		async function loadStockDataWithPreload() {
+			try {
+				// Preload stock data on component mount
+				await preloadStockData();
+				const stocks = await fetchStockCompanies();
+				setStockOptions(stocks);
+			} catch (error) {
+				console.error('Error loading stock data:', error);
+				// Silent fail - set empty array
+				setStockOptions([]);
+			}
+		}
+		loadStockDataWithPreload();
+	}, []);
+
 	// Load holdings from DynamoDB
 	async function loadHoldingsData() {
 		try {
@@ -240,33 +257,20 @@ export default function HoldingsPage() {
 		}
 	}
 
-	// Load stock data from API
-	async function loadStockData() {
-		try {
-			setIsLoadingStocks(true);
-			const stocks = await fetchStockCompanies();
-			setStockOptions(stocks);
-		} catch (error) {
-			console.error('Error loading stock data:', error);
-			// Fallback to empty array if API fails
-			setStockOptions([]);
-		} finally {
-			setIsLoadingStocks(false);
-		}
-	}
+
 	
 	React.useEffect(() => {
 		loadHoldingsData();
-		loadStockData();
 	}, []);
 
-	// Filter stock options using API search
+	// Filter stock options using cached data
 	const filterStockOptions = async (term: string): Promise<void> => {
 		if (term.trim() === "") {
 			setFilteredStockOptions([]);
 			setShowStockDropdown(false);
 		} else {
 			try {
+				// searchStockCompanies now uses cached data automatically
 				const filtered = await searchStockCompanies(term);
 				setFilteredStockOptions(filtered.slice(0, 10));
 				setShowStockDropdown(filtered.length > 0);

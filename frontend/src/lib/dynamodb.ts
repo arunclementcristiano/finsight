@@ -72,6 +72,9 @@ const API_BASE = PORTFOLIO_API_BASE || process.env.NEXT_PUBLIC_API_BASE || "";
 // Cache for mutual fund data with daily refresh at 6 AM
 let mfCache: { data: TransformedFund[]; timestamp: number } | null = null;
 
+// Cache for stock data with daily refresh at 6 AM
+let stockCache: { data: StockCompany[]; timestamp: number } | null = null;
+
 function getNextRefreshTime(): number {
   const now = new Date();
   const tomorrow = new Date(now);
@@ -132,9 +135,23 @@ export async function preloadMutualFundData(): Promise<void> {
   }
 }
 
+// Preload function for stock data to be called on server start
+export async function preloadStockData(): Promise<void> {
+  try {
+    await fetchStockCompanies();
+  } catch (error) {
+    // Silent fail on preload
+  }
+}
+
 // Function to clear cache (for testing)
 export function clearMFCache(): void {
   mfCache = null;
+}
+
+// Function to clear stock cache (for testing)
+export function clearStockCache(): void {
+  stockCache = null;
 }
 
 // Function to fetch funds by ETF status (deprecated - use role-based filtering instead)
@@ -508,13 +525,20 @@ export interface StockCompany {
   exchange: string;
 }
 
-// Fetch all stock companies
+// Fetch all stock companies with caching
 export async function fetchStockCompanies(): Promise<StockCompany[]> {
+  // Check if cache is valid
+  if (stockCache && !shouldRefreshCache()) {
+    return stockCache.data;
+  }
+
+  // Fetch from API
   if (!PORTFOLIO_API_BASE) {
     throw new Error('PORTFOLIO_API_BASE not configured');
   }
 
   try {
+    console.log('🔄 Stock cache loading in progress...');
     const res = await fetch(`${PORTFOLIO_API_BASE}/stocks`);
     
     if (!res.ok) {
@@ -523,33 +547,40 @@ export async function fetchStockCompanies(): Promise<StockCompany[]> {
     }
     
     const data = await res.json();
-    return data.items || [];
+    const stocks = (data.items || []) as StockCompany[];
+    
+    // Update cache
+    stockCache = { data: stocks, timestamp: Date.now() };
+    console.log('✅ Stock cache load completed');
+    return stocks;
   } catch (error) {
     throw error;
   }
 }
 
-// Search stock companies
+// Search stock companies using cached data
 export async function searchStockCompanies(query: string, exchange?: string): Promise<StockCompany[]> {
-  if (!PORTFOLIO_API_BASE) {
-    throw new Error('PORTFOLIO_API_BASE not configured');
+  // Use cached data for search to avoid API calls
+  const allStocks = await fetchStockCompanies();
+  
+  let filteredStocks = allStocks;
+  
+  // Filter by search term
+  if (query.trim()) {
+    const term = query.toLowerCase();
+    filteredStocks = filteredStocks.filter(stock => 
+      stock.symbol.toLowerCase().includes(term) || 
+      stock.companyName.toLowerCase().includes(term)
+    );
   }
-
-  try {
-    const params = new URLSearchParams();
-    if (query) params.append('q', query);
-    if (exchange) params.append('exchange', exchange);
-    
-    const res = await fetch(`${PORTFOLIO_API_BASE}/stocks/search?${params.toString()}`);
-    
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`API returned ${res.status}: ${errorText}`);
-    }
-    
-    const data = await res.json();
-    return data.items || [];
-  } catch (error) {
-    throw error;
+  
+  // Filter by exchange if specified
+  if (exchange) {
+    filteredStocks = filteredStocks.filter(stock => 
+      stock.exchange.toLowerCase() === exchange.toLowerCase()
+    );
   }
+  
+  // Return limited results
+  return filteredStocks.slice(0, 10);
 }
