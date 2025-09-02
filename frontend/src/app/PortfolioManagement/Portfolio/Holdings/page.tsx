@@ -486,11 +486,15 @@ export default function HoldingsPage() {
 		});
 		
 		// Convert to array and sort by value
-		const allocationArray = Array.from(allocationMap.entries()).map(([name, value]) => ({
-			name,
-			value,
-			color: CLASS_COLORS[name as keyof typeof CLASS_COLORS]?.chart || '#8B5CF6'
-		})).sort((a, b) => b.value - a.value);
+		const allocationArray = Array.from(allocationMap.entries()).map(([name, value]) => {
+			const color = CLASS_COLORS[name as keyof typeof CLASS_COLORS]?.chart || '#8B5CF6';
+			console.log(`Asset Class: ${name}, Color: ${color}`);
+			return {
+				name,
+				value,
+				color
+			};
+		}).sort((a, b) => b.value - a.value);
 		
 		return allocationArray;
 	}, [filteredHoldings]);
@@ -516,6 +520,19 @@ export default function HoldingsPage() {
 
 		return roleArray;
 	}, [filteredHoldings]);
+
+	// Get unique asset classes from holdings data
+	const uniqueAssetClasses = useMemo(() => {
+		if (!holdings || holdings.length === 0) return [];
+		const assetClasses = new Set<string>();
+		holdings.forEach(holding => {
+			const assetClass = holding.asset_class || holding.instrumentClass;
+			if (assetClass) {
+				assetClasses.add(assetClass);
+			}
+		});
+		return Array.from(assetClasses).sort();
+	}, [holdings]);
 
 	// Pagination logic
 	const totalPages = Math.ceil((sortedHoldings?.length || 0) / itemsPerPage);
@@ -827,12 +844,9 @@ export default function HoldingsPage() {
 									className="px-3 py-1.5 text-xs border border-border rounded-md bg-background"
 								>
 									<option value="">All Classes</option>
-									<option value="Stocks">Stocks</option>
-									<option value="Equity">Equity</option>
-									<option value="Debt">Debt</option>
-									<option value="Liquid">Liquid</option>
-									<option value="Gold">Gold</option>
-									<option value="Real Estate">Real Estate</option>
+									{uniqueAssetClasses.map(assetClass => (
+										<option key={assetClass} value={assetClass}>{assetClass}</option>
+									))}
 								</select>
 							</div>
 							<div className="flex items-center gap-2">
