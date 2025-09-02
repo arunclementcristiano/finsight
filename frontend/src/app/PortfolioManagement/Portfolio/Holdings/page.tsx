@@ -340,7 +340,19 @@ export default function HoldingsPage() {
 			// Use portfolio_role from holdings table if available, fallback to calculated role
 			const portfolioRole = holding.portfolio_role || getRoleForAssetClass(holding.instrumentClass);
 			
-			const matchesAssetClass = !filterAssetClass || assetClass === filterAssetClass;
+			// Enhanced asset class filtering to handle broader categories
+			let matchesAssetClass = true;
+			if (filterAssetClass) {
+				if (filterAssetClass === 'Equity') {
+					matchesAssetClass = assetClass === 'Equity MF' || assetClass === 'Stocks';
+				} else if (filterAssetClass === 'Debt') {
+					matchesAssetClass = assetClass === 'Debt MF' || assetClass === 'Debt ETF';
+				} else if (filterAssetClass === 'Liquid') {
+					matchesAssetClass = assetClass === 'Liquid MF' || assetClass === 'Liquid ETF';
+				} else {
+					matchesAssetClass = assetClass === filterAssetClass;
+				}
+			}
 			const matchesAssetRole = !filterAssetRole || portfolioRole === filterAssetRole;
 			return matchesAssetClass && matchesAssetRole;
 		});
@@ -752,12 +764,11 @@ export default function HoldingsPage() {
 								>
 									<option value="">All Classes</option>
 									<option value="Stocks">Stocks</option>
-									<option value="Equity MF">Equity MF</option>
-									<option value="Debt MF">Debt MF</option>
-									<option value="Liquid MF">Liquid MF</option>
+									<option value="Equity">Equity</option>
+									<option value="Debt">Debt</option>
+									<option value="Liquid">Liquid</option>
 									<option value="Gold">Gold</option>
 									<option value="Real Estate">Real Estate</option>
-									<option value="ETF">ETF</option>
 								</select>
 							</div>
 							<div className="flex items-center gap-2">
