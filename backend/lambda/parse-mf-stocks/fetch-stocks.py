@@ -110,14 +110,27 @@ def fetch_bse():
         
         csv_text = response.content.decode("utf-8", errors="ignore")
         reader = csv.DictReader(io.StringIO(csv_text))
+        
+        # Log the column headers for debugging
+        logger.info(f"BSE CSV headers: {reader.fieldnames}")
 
         items = []
         for row in reader:
+            # Handle different possible column names
+            symbol = row.get("Scrip code", row.get("SCRIP CODE", "")).strip()
+            company_name = row.get("Security Name", row.get("SECURITY NAME", "")).strip()
+            isin_number = row.get("ISIN", "").strip()
+            
+            # Skip rows with missing essential data
+            if not symbol or not company_name:
+                logger.warning(f"Skipping BSE row with missing data: {row}")
+                continue
+                
             items.append({
-                "symbol": row["Scrip code"].strip(),
-                "companyName": row["Security Name"].strip(),
+                "symbol": symbol,
+                "companyName": company_name,
                 "listingDate": None,  # BSE file doesn't provide
-                "isinNumber": row["ISIN"].strip(),
+                "isinNumber": isin_number,
                 "exchange": "BSE"
             })
         
