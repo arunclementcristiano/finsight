@@ -60,9 +60,24 @@ resource "aws_iam_role_policy" "lambda_ddb_access" {
         aws_dynamodb_table.expenses.arn,
         aws_dynamodb_table.category_rules.arn,
         aws_dynamodb_table.user_budgets.arn,
-        aws_dynamodb_table.invest.arn,
-        "${aws_dynamodb_table.invest.arn}/index/*"
+        "${aws_dynamodb_table.expenses.arn}/index/userId-date-index"
       ]
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "lambda_kms_access" {
+  name = "${var.lambda_name}-kms-access"
+  role = aws_iam_role.lambda_exec.id
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement: [{
+      Effect: "Allow",
+      Action: [
+        "kms:Decrypt",
+        "kms:DescribeKey"
+      ],
+      Resource: "arn:aws:kms:*:*:key/*"
     }]
   })
 }
@@ -75,6 +90,8 @@ resource "aws_lambda_function" "expenses" {
   filename      = data.archive_file.lambda_zip.output_path
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
+  timeout = 60
+  
   environment {
     variables = {
       REGION                   = var.aws_region
@@ -83,7 +100,6 @@ resource "aws_lambda_function" "expenses" {
       CATEGORY_RULES_TABLE     = aws_dynamodb_table.category_rules.name
       USER_BUDGETS_TABLE       = aws_dynamodb_table.user_budgets.name
       GROQ_MODEL               = "llama-3.1-8b-instant"
-      INVEST_TABLE             = aws_dynamodb_table.invest.name
     }
   }
 }
@@ -120,37 +136,22 @@ resource "aws_apigatewayv2_integration" "lambda" {
 resource "aws_apigatewayv2_route" "routes_public" {
   for_each = toset([
     "POST /add",
-    "PUT /add",
+    "PUT /add", 
     "POST /list",
     "POST /edit",
     "POST /delete",
     "POST /summary/monthly",
     "POST /summary/category",
     "GET /budgets",
-    "PUT /budgets"
+    "PUT /budgets",
+    "GET /health"
   ])
   api_id    = aws_apigatewayv2_api.http.id
   route_key = each.value
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
-resource "aws_apigatewayv2_route" "routes_protected" {
-  for_each = toset([
-    "POST /portfolio",
-    "GET /portfolio",
-    "PUT /portfolio/plan",
-    "GET /portfolio/plan",
-    "POST /holdings",
-    "GET /holdings",
-    "POST /transactions",
-    "GET /transactions"
-  ])
-  api_id             = aws_apigatewayv2_api.http.id
-  route_key          = each.value
-  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
-  authorization_type = length(var.cognito_user_pool_id) > 0 && length(var.cognito_audience) > 0 ? "JWT" : "NONE"
-  authorizer_id      = length(var.cognito_user_pool_id) > 0 && length(var.cognito_audience) > 0 ? aws_apigatewayv2_authorizer.jwt[0].id : null
-}
+
 
 resource "aws_lambda_permission" "apigw_invoke" {
   statement_id  = "AllowAPIGatewayInvoke"

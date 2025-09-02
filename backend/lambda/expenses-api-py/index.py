@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import traceback
 import uuid
 from datetime import datetime
 from urllib import request as urlrequest
@@ -16,13 +17,11 @@ CATEGORY_RULES_TABLE = os.environ.get("CATEGORY_RULES_TABLE", "CategoryRules")
 USER_BUDGETS_TABLE = os.environ.get("USER_BUDGETS_TABLE", "UserBudgets")
 GROQ_API_KEY = (os.environ.get("GROQ_API_KEY") or "").strip()
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-70b-versatile")
-INVEST_TABLE = os.environ.get("INVEST_TABLE", "InvestApp")
 
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
 expenses_table = dynamodb.Table(EXPENSES_TABLE)
 category_rules_table = dynamodb.Table(CATEGORY_RULES_TABLE)
 user_budgets_table = dynamodb.Table(USER_BUDGETS_TABLE)
-invest_table = dynamodb.Table(INVEST_TABLE)
 
 
 def _cors_headers():
@@ -52,7 +51,7 @@ ALLOWED_CATEGORIES = [
     "Housing",       # rent, maintenance, home repairs
     "Healthcare",    # doctor visits, pharmacy, health checkup
     "Entertainment", # movies, OTT, gaming, outings
-    "Investment",    # stocks, mutual funds, SIP, gold
+    "Investment",    # stocks, equity mutual funds, SIP, gold
     "Loans",         # EMI, credit card payment, personal loan
     "Insurance",     # life, health, vehicle, home
     "Grooming",      # haircut, salon, spa, beauty, cosmetics
@@ -85,79 +84,29 @@ def _get_category_from_ai(raw_text: str):
         req = urlrequest.Request(
             "https://api.groq.com/openai/v1/chat/completions",
             data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "Authorization": f"Bearer {GROQ_API_KEY}",
-                "User-Agent": "finsight-lambda/1.0 (+https://github.com/arunclementcristiano/finsight)"
-            },
-            method="POST",
+            headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
         )
-        try:
-            with urlrequest.urlopen(req, timeout=10) as resp:
-                content = resp.read().decode("utf-8")
-                data = json.loads(content)
-        except HTTPError as he:
+        with urlrequest.urlopen(req) as response:
+            result = json.loads(response.read().decode("utf-8"))
+            content = result["choices"][0]["message"]["content"]
             try:
-                err_body = he.read().decode("utf-8")
+                parsed = json.loads(content)
+                return {"category": parsed.get("category", ""), "confidence": float(parsed.get("confidence", 0))}
             except Exception:
-                err_body = ""
-            print("GROQ_HTTP_ERROR", he.code, err_body[:500])
-            # Cloudflare 1010 is often due to missing headers/UA; we added UA/Accept above
-            return {"category": "", "confidence": 0.0}
-        except URLError as ue:
-            print("GROQ_URL_ERROR", str(ue))
-            return {"category": "", "confidence": 0.0}
-        txt = (
-            (data.get("choices") or [{}])[0].get("message", {}).get("content", "")
-            if isinstance(data, dict)
-            else ""
-        )
-        try:
-            parsed = json.loads(txt)
-            cat = parsed.get("category", "")
-            conf = parsed.get("confidence", 0.7)
-        except Exception:
-            # Best-effort extraction
-            mcat = re.search(r"category\W+([A-Za-z]+)", txt, re.I)
-            mconf = re.search(r"confidence\W+(\d+(?:\.\d+)?)", txt, re.I)
-            cat = (mcat.group(1) if mcat else "")
-            conf = float(mconf.group(1)) if mconf else 0.7
-            if conf > 1:
-                conf = conf / 100.0
-        return {"category": cat, "confidence": conf}
+                return {"category": "", "confidence": 0.0}
     except Exception as e:
-        print("GROQ_ERROR", str(e))
+        print(f"AI categorization error: {e}")
         return {"category": "", "confidence": 0.0}
 
 
-def _parse_amount(raw_text: str):
-    m = re.search(r"(?:[₹$€£])?\s*(\d+(?:\.\d{1,2})?)", raw_text)
-    return float(m.group(1)) if m else None
-
-
-def _extract_term(raw_text: str) -> str:
-    # Prefer a phrase following prepositions; normalize to last up-to-3 tokens to add context (e.g., "dog food" instead of "food")
-    m = re.search(r"\b(?:on|for|at|to)\s+([A-Za-z][A-Za-z\s]{1,40})", raw_text, flags=re.IGNORECASE)
-    if m:
-        cand = m.group(1).strip()
-        cand = re.split(r"\b(yesterday|today|tomorrow|\d{4}-\d{2}-\d{2})\b", cand, flags=re.IGNORECASE)[0].strip()
-        cand = re.sub(r"[^A-Za-z\s]", "", cand).strip()
-        cand = re.sub(r"\s+", " ", cand)
-        if cand:
-            words = cand.split(" ")
-            if len(words) > 3:
-                cand = " ".join(words[-3:])
-            return cand.lower()
-    tokens = re.findall(r"[A-Za-z]+", raw_text)
-    if tokens:
-        # last two tokens give more context than one
-        if len(tokens) >= 2:
-            return f"{tokens[-2].lower()} {tokens[-1].lower()}"
-        return tokens[-1].lower()
-    return ""
-
-# CategoryMemory support removed
+def _user_from_jwt(evt):
+    """Extract user ID from JWT token"""
+    try:
+        claims = (((evt.get("requestContext") or {}).get("authorizer") or {}).get("jwt") or {}).get("claims") or {}
+        sub = claims.get("sub")
+        return sub
+    except Exception:
+        return None
 
 
 def handler(event, context):
@@ -176,447 +125,331 @@ def handler(event, context):
             except Exception:
                 body = {}
         qs = event.get("queryStringParameters") or {}
+        path_params = event.get("pathParameters") or {}
 
-        if route_key == "POST /add":
-            user_id = body.get("userId")
-            raw_text = body.get("rawText", "")
-            if not user_id or not raw_text:
-                return _response(400, {"error": "Missing userId or rawText"})
-            amount = _parse_amount(raw_text)
+        # ----------------------- EXPENSE APIs (JWT-protected via API Gateway) -----------------------
 
-            # Fixed categories (predefined rules)
-            synonyms = {
-                # Food
-                "groceries": "Food", "grocery": "Food", "restaurant": "Food", "dining": "Food", 
-                "lunch": "Food", "dinner": "Food", "pizza": "Food", "breakfast": "Food", 
-                "snacks": "Food", "coffee": "Food", "swiggy": "Food", "zomato": "Food", 
-                "ubereats": "Food",
-
-                # Travel
-                "travel": "Travel", "transport": "Travel", "taxi": "Travel", "uber": "Travel", 
-                "ola": "Travel", "bus": "Travel", "train": "Travel", "flight": "Travel", 
-                "airline": "Travel", "fuel": "Travel", "petrol": "Travel", "gas": "Travel",
-
-                # Entertainment (experiences & gaming, NOT subscriptions)
-                "entertainment": "Entertainment", "cinema": "Entertainment", "movie": "Entertainment", 
-                "movies": "Entertainment", "theatre": "Entertainment", "outing": "Entertainment", 
-                "playstation": "Entertainment", "xbox": "Entertainment", "gaming": "Entertainment",
-
-                # Shopping
-                "shopping": "Shopping", "amazon": "Shopping", "flipkart": "Shopping", "myntra": "Shopping", 
-                "apparel": "Shopping", "clothing": "Shopping", "mall": "Shopping", "electronics": "Shopping", 
-                "gadget": "Shopping", "laptop": "Shopping", "mobile": "Shopping",
-
-                # Utilities
-                "utilities": "Utilities", "electricity": "Utilities", "water": "Utilities", "internet": "Utilities", 
-                "broadband": "Utilities", "jio": "Utilities", "airtel": "Utilities", "bsnl": "Utilities", 
-                "bill": "Utilities", "phone": "Utilities", "gas bill": "Utilities",
-
-                # Healthcare
-                "health": "Healthcare", "healthcare": "Healthcare", "medicine": "Healthcare", 
-                "hospital": "Healthcare", "doctor": "Healthcare", "pharmacy": "Healthcare", 
-                "apollo": "Healthcare", "pharmeasy": "Healthcare", "practo": "Healthcare",
-
-                # Subscription (recurring digital services)
-                "netflix": "Subscription", "spotify": "Subscription", "prime": "Subscription", 
-                "disney": "Subscription", "hotstar": "Subscription", "sunnxt": "Subscription", 
-                "membership": "Subscription", "subscription": "Subscription", "zee5": "Subscription",
-                "apple music": "Subscription", "youtube premium": "Subscription",
-            }
-
-            lower = raw_text.lower()
-            extracted_term = _extract_term(raw_text)
-
-            # 1) Rule-based (predefined)
-            matched_key = next((k for k in synonyms.keys() if k in lower), None)
-            matched = synonyms.get(matched_key) if matched_key else None
-            final_category = matched if matched else ""
-            ai_conf = None
-
-            # If matched by predefined, also upsert into CategoryRules for future
-            if final_category:
-                try:
-                    if extracted_term:
-                        # Conditional put to avoid duplicates
-                        category_rules_table.put_item(
-                            Item={"rule": extracted_term, "category": final_category},
-                            ConditionExpression="attribute_not_exists(#r)",
-                            ExpressionAttributeNames={"#r": "rule"}
-                        )
-                except Exception:
-                    pass
-
-            # 2) CategoryRules table (global rules configured by you). If matched, return directly without acknowledgment
-            if not final_category and extracted_term:
-                try:
-                    r = category_rules_table.get_item(Key={"rule": extracted_term})
-                    rule_cat = (r.get("Item", {}) or {}).get("category")
-                    if rule_cat:
-                        final_category = rule_cat
-                except Exception:
-                    pass
-                # Fuzzy contains for reversed word order (e.g., "150 laptop repair")
-                if not final_category:
-                    try:
-                        w = extracted_term.split()
-                        if len(w) >= 2:
-                            scan = category_rules_table.scan(ProjectionExpression="#r, category", ExpressionAttributeNames={"#r": "rule"})
-                            items = scan.get("Items", [])
-                            for it in items:
-                                r = str(it.get("rule", "")).lower()
-                                if w[0].lower() in r and w[1].lower() in r:
-                                    final_category = it.get("category")
-                                    break
-                    except Exception:
-                        pass
-
-            # 3) Skip CategoryMemory per new requirement (global rules only)
-
-            # 4) Groq fallback
-            if not final_category:
-                print("GROQ_CALL_START")
-                ai = _get_category_from_ai(raw_text)
-                print("GROQ_CALL_END", ai)
-                ai_cat_raw = (ai.get("category") or "").strip()
-                ai_cat = ai_cat_raw.lower()
-                ai_conf = ai.get("confidence")
-                # Normalize to one of the allowed categories, else "Other"
-                matched_allowed = next((c for c in ALLOWED_CATEGORIES if c.lower() == ai_cat), None)
-                mapped_ai = matched_allowed or "Other"
-
-                # Always provide acknowledgment when Groq was used
-                msg = (
-                    f"Could not parse amount; AI suggestion {mapped_ai}. Pick a category."
-                    if amount is None
-                    else f"Parsed amount {amount}; AI suggestion {mapped_ai}. Pick a category."
-                )
-                # Optionally include AI's raw suggestion first
-                opts = list(dict.fromkeys([ai_cat_raw] + ALLOWED_CATEGORIES))
-                return _response(200, {"amount": amount, "category": mapped_ai, "AIConfidence": ai_conf, "options": opts, "message": msg})
-
-            msg = (
-                f"Parsed amount {amount} and category {final_category}" if amount is not None
-                else f"Could not parse amount; suggested category {final_category}"
-            )
-            resp = {"amount": amount, "category": final_category, "message": msg}
-            if ai_conf is not None:
-                resp["AIConfidence"] = ai_conf
-            return _response(200, resp)
-
-        if route_key == "GET /budgets":
-            user_id = qs.get("userId") or body.get("userId")
-            if not user_id:
-                return _response(400, {"error": "Missing userId"})
-            try:
-                res = user_budgets_table.get_item(Key={"userId": user_id})
-                budgets = (res.get("Item", {}) or {}).get("budgets", {})
-                # Normalize Decimals -> float via _to_json in _response
-                return _response(200, {"budgets": budgets})
-            except Exception as e:
-                print("BUDGETS_GET_ERROR", str(e))
-                return _response(200, {"budgets": {}})
-
-        if route_key == "PUT /budgets":
-            user_id = body.get("userId")
-            budgets = body.get("budgets") or {}
-            if not user_id or not isinstance(budgets, dict):
-                return _response(400, {"error": "Missing userId or budgets"})
-            try:
-                # Convert to Decimal for DynamoDB
-                put_budgets = {k: Decimal(str(v)) for k, v in budgets.items()}
-                user_budgets_table.put_item(Item={
-                    "userId": user_id,
-                    "budgets": put_budgets,
-                    "updatedAt": datetime.utcnow().isoformat(),
-                })
-                return _response(200, {"ok": True})
-            except Exception as e:
-                print("BUDGETS_PUT_ERROR", str(e))
-                return _response(500, {"error": "Failed to save budgets"})
-
-        if route_key == "PUT /add":
-            user_id = body.get("userId")
+        # Create expense (POST /expenses) — body: { amount, category, description, date }
+        if route_key == "POST /expenses":
+            user_sub = _user_from_jwt(event)
+            if not user_sub:
+                return _response(401, {"error": "Unauthorized"})
+            
             amount = body.get("amount")
-            category = body.get("category")
-            raw_text = body.get("rawText")
-            date = body.get("date") or datetime.utcnow().strftime("%Y-%m-%d")
-            if not user_id or raw_text is None or category is None or amount is None:
-                return _response(400, {"error": "Missing fields"})
+            category = body.get("category", "").strip()
+            description = body.get("description", "").strip()
+            date = body.get("date", datetime.utcnow().strftime("%Y-%m-%d"))
+            
+            if not amount or not category:
+                return _response(400, {"error": "Missing amount or category"})
+            
+            # Auto-categorize if category is missing or low confidence
+            if not category or category.lower() == "auto":
+                ai_result = _get_category_from_ai(description)
+                category = ai_result["category"]
+            
             expense_id = str(uuid.uuid4())
-            expenses_table.put_item(
-                Item={
-                    "expenseId": expense_id,
-                    "userId": user_id,
-                    "amount": Decimal(str(amount)),
-                    "category": category,
-                    "rawText": raw_text,
-                    "date": date,
-                    "createdAt": datetime.utcnow().isoformat(),
+            now = datetime.utcnow().isoformat()
+            
+            item = {
+                "pk": f"USER#{user_sub}",
+                "sk": f"EXPENSE#{date}#{expense_id}",
+                "entityType": "EXPENSE",
+                "expenseId": expense_id,
+                "amount": Decimal(str(amount)),
+                "category": category,
+                "description": description,
+                "date": date,
+                "createdAt": now,
+                "GSI1PK": f"CATEGORY#{category}",
+                "GSI1SK": f"DATE#{date}#{expense_id}",
+            }
+            
+            expenses_table.put_item(Item=item)
+            return _response(200, {"expenseId": expense_id})
+
+        # List expenses (GET /expenses?start=YYYY-MM-DD&end=YYYY-MM-DD&category=...)
+        if route_key == "GET /expenses":
+            user_sub = _user_from_jwt(event)
+            if not user_sub:
+                return _response(401, {"error": "Unauthorized"})
+            
+            start = qs.get("start")
+            end = qs.get("end")
+            category = qs.get("category")
+            
+            # Query expenses for the user
+            if category:
+                # Query by category using GSI
+                res = expenses_table.query(
+                    IndexName="GSI1",
+                    KeyConditionExpression=Key("GSI1PK").eq(f"CATEGORY#{category}"),
+                    FilterExpression=Key("pk").eq(f"USER#{user_sub}")
+                )
+            else:
+                # Query by user and date range
+                res = expenses_table.query(
+                    KeyConditionExpression=Key("pk").eq(f"USER#{user_sub}") & Key("sk").begins_with("EXPENSE#")
+                )
+            
+            items = res.get("Items", [])
+            
+            # Filter by date range if specified
+            if start or end:
+                filtered_items = []
+                for item in items:
+                    item_date = item.get("date", "")
+                    if start and item_date < start:
+                        continue
+                    if end and item_date > end:
+                        continue
+                    filtered_items.append(item)
+                items = filtered_items
+            
+            # Transform to frontend format
+            expenses = []
+            for item in items:
+                expense = {
+                    "id": item.get("expenseId"),
+                    "amount": float(item.get("amount", 0)),
+                    "category": item.get("category", ""),
+                    "description": item.get("description", ""),
+                    "date": item.get("date", ""),
+                    "createdAt": item.get("createdAt", "")
+                }
+                expenses.append(expense)
+            
+            # Sort by date (newest first)
+            expenses.sort(key=lambda x: x["date"], reverse=True)
+            
+            total = sum(float(x.get("amount", 0)) for x in expenses)
+            return _response(200, {"items": expenses, "total": total})
+
+        # Get expense categories (GET /categories)
+        if route_key == "GET /categories":
+            return _response(200, {"categories": ALLOWED_CATEGORIES})
+
+        # Get expense summary (GET /expenses/summary?start=YYYY-MM-DD&end=YYYY-MM-DD)
+        if route_key == "GET /expenses/summary":
+            user_sub = _user_from_jwt(event)
+            if not user_sub:
+                return _response(401, {"error": "Unauthorized"})
+            
+            start = qs.get("start")
+            end = qs.get("end")
+            
+            # Query all expenses for the user
+            res = expenses_table.query(
+                KeyConditionExpression=Key("pk").eq(f"USER#{user_sub}") & Key("sk").begins_with("EXPENSE#")
+            )
+            items = res.get("Items", [])
+            
+            # Filter by date range if specified
+            if start or end:
+                filtered_items = []
+                for item in items:
+                    item_date = item.get("date", "")
+                    if start and item_date < start:
+                        continue
+                    if end and item_date > end:
+                        continue
+                    filtered_items.append(item)
+                items = filtered_items
+            
+            # Group by category
+            category_totals = {}
+            for item in items:
+                category = item.get("category", "Other")
+                amount = float(item.get("amount", 0))
+                if category in category_totals:
+                    category_totals[category] += amount
+                else:
+                    category_totals[category] = amount
+            
+            # Convert to list format
+            summary = [{"category": cat, "total": total} for cat, total in category_totals.items()]
+            summary.sort(key=lambda x: x["total"], reverse=True)
+            
+            total_amount = sum(category_totals.values())
+            return _response(200, {"summary": summary, "total": total_amount})
+
+        # Create category rule (POST /category-rules) — body: { pattern, category, priority }
+        if route_key == "POST /category-rules":
+            user_sub = _user_from_jwt(event)
+            if not user_sub:
+                return _response(401, {"error": "Unauthorized"})
+            
+            pattern = body.get("pattern", "").strip()
+            category = body.get("category", "").strip()
+            priority = body.get("priority", 1)
+            
+            if not pattern or not category:
+                return _response(400, {"error": "Missing pattern or category"})
+            
+            if category not in ALLOWED_CATEGORIES:
+                return _response(400, {"error": "Invalid category"})
+            
+            rule_id = str(uuid.uuid4())
+            now = datetime.utcnow().isoformat()
+            
+            item = {
+                "pk": f"USER#{user_sub}",
+                "sk": f"RULE#{rule_id}",
+                "entityType": "CATEGORY_RULE",
+                "ruleId": rule_id,
+                "pattern": pattern,
+                "category": category,
+                "priority": priority,
+                "createdAt": now,
+                "GSI1PK": f"PRIORITY#{priority}",
+                "GSI1SK": f"RULE#{rule_id}",
+            }
+            
+            category_rules_table.put_item(Item=item)
+            return _response(200, {"ruleId": rule_id})
+
+        # List category rules (GET /category-rules)
+        if route_key == "GET /category-rules":
+            user_sub = _user_from_jwt(event)
+            if not user_sub:
+                return _response(401, {"error": "Unauthorized"})
+            
+            res = category_rules_table.query(
+                KeyConditionExpression=Key("pk").eq(f"USER#{user_sub}") & Key("sk").begins_with("RULE#")
+            )
+            items = res.get("Items", [])
+            
+            rules = []
+            for item in items:
+                rule = {
+                    "id": item.get("ruleId"),
+                    "pattern": item.get("pattern", ""),
+                    "category": item.get("category", ""),
+                    "priority": item.get("priority", 1),
+                    "createdAt": item.get("createdAt", "")
+                }
+                rules.append(rule)
+            
+            # Sort by priority (highest first)
+            rules.sort(key=lambda x: x["priority"], reverse=True)
+            return _response(200, {"items": rules})
+
+        # Delete category rule (DELETE /category-rules/{id})
+        if route_key == "DELETE /category-rules/{id}":
+            user_sub = _user_from_jwt(event)
+            if not user_sub:
+                return _response(401, {"error": "Unauthorized"})
+            
+            rule_id = path_params.get("id")
+            if not rule_id:
+                return _response(400, {"error": "Missing rule ID"})
+            
+            category_rules_table.delete_item(
+                Key={"pk": f"USER#{user_sub}", "sk": f"RULE#{rule_id}"}
+            )
+            
+            return _response(200, {"message": "Rule deleted successfully"})
+
+        # Create budget (POST /budgets) — body: { category, amount, period }
+        if route_key == "POST /budgets":
+            user_sub = _user_from_jwt(event)
+            if not user_sub:
+                return _response(401, {"error": "Unauthorized"})
+            
+            category = body.get("category", "").strip()
+            amount = body.get("amount")
+            period = body.get("period", "monthly")
+            
+            if not category or not amount:
+                return _response(400, {"error": "Missing category or amount"})
+            
+            if category not in ALLOWED_CATEGORIES:
+                return _response(400, {"error": "Invalid category"})
+            
+            budget_id = str(uuid.uuid4())
+            now = datetime.utcnow().isoformat()
+            
+            item = {
+                "pk": f"USER#{user_sub}",
+                "sk": f"BUDGET#{category}",
+                "entityType": "BUDGET",
+                "budgetId": budget_id,
+                "category": category,
+                "amount": Decimal(str(amount)),
+                "period": period,
+                "createdAt": now,
+                "updatedAt": now,
+            }
+            
+            user_budgets_table.put_item(Item=item)
+            return _response(200, {"budgetId": budget_id})
+
+        # List budgets (GET /budgets)
+        if route_key == "GET /budgets":
+            user_sub = _user_from_jwt(event)
+            if not user_sub:
+                return _response(401, {"error": "Unauthorized"})
+            
+            res = user_budgets_table.query(
+                KeyConditionExpression=Key("pk").eq(f"USER#{user_sub}") & Key("sk").begins_with("BUDGET#")
+            )
+            items = res.get("Items", [])
+            
+            budgets = []
+            for item in items:
+                budget = {
+                    "id": item.get("budgetId"),
+                    "category": item.get("category", ""),
+                    "amount": float(item.get("amount", 0)),
+                    "period": item.get("period", "monthly"),
+                    "createdAt": item.get("createdAt", ""),
+                    "updatedAt": item.get("updatedAt", "")
+                }
+                budgets.append(budget)
+            
+            return _response(200, {"items": budgets})
+
+        # Update budget (PUT /budgets/{category})
+        if route_key == "PUT /budgets/{category}":
+            user_sub = _user_from_jwt(event)
+            if not user_sub:
+                return _response(401, {"error": "Unauthorized"})
+            
+            category = path_params.get("category")
+            amount = body.get("amount")
+            period = body.get("period")
+            
+            if not category or not amount:
+                return _response(400, {"error": "Missing category or amount"})
+            
+            now = datetime.utcnow().isoformat()
+            
+            user_budgets_table.update_item(
+                Key={"pk": f"USER#{user_sub}", "sk": f"BUDGET#{category}"},
+                UpdateExpression="SET amount = :amount, updatedAt = :updatedAt",
+                ExpressionAttributeValues={
+                    ":amount": Decimal(str(amount)),
+                    ":updatedAt": now
                 }
             )
-            # Persist rule->category mapping for future global use
-            try:
-                if category != "Uncategorized":
-                    term = _extract_term(raw_text)
-                    if term:
-                        category_rules_table.put_item(
-                            Item={"rule": term, "category": category},
-                            ConditionExpression="attribute_not_exists(#r)",
-                            ExpressionAttributeNames={"#r": "rule"}
-                        )
-            except Exception:
-                pass
-            return _response(200, {"ok": True, "expenseId": expense_id})
+            
+            return _response(200, {"message": "Budget updated successfully"})
 
-        if route_key == "POST /list":
-            user_id = body.get("userId")
-            start = body.get("start")
-            end = body.get("end")
-            category = body.get("category")
-            if not user_id:
-                return _response(400, {"error": "Missing userId"})
-            items = expenses_table.scan().get("Items", [])
-            items = [x for x in items if x.get("userId") == user_id]
-            def _ok_date(it):
-                if not start and not end:
-                    return True
-                d = datetime.strptime(it.get("date"), "%Y-%m-%d")
-                if start and d < datetime.strptime(start, "%Y-%m-%d"):
-                    return False
-                if end and d > datetime.strptime(end, "%Y-%m-%d"):
-                    return False
-                return True
-            items = [x for x in items if (category is None or x.get("category") == category) and _ok_date(x)]
-            return _response(200, {"items": items})
-
-        if route_key == "POST /edit":
-            expense_id = body.get("expenseId")
-            updates = body.get("updates") or {}
-            if not expense_id or not updates:
-                return _response(400, {"error": "Missing expenseId or updates"})
-            exprs = []
-            vals = {}
-            if "amount" in updates and updates["amount"] is not None:
-                exprs.append("amount = :a")
-                vals[":a"] = Decimal(str(updates["amount"]))
-            if "category" in updates and updates["category"] is not None:
-                exprs.append("category = :c")
-                vals[":c"] = updates["category"]
-            if "rawText" in updates and updates["rawText"] is not None:
-                exprs.append("rawText = :r")
-                vals[":r"] = updates["rawText"]
-            if not exprs:
-                return _response(400, {"error": "No valid updates"})
-            expenses_table.update_item(
-                Key={"expenseId": expense_id},
-                UpdateExpression="SET " + ", ".join(exprs),
-                ExpressionAttributeValues=vals,
+        # Delete budget (DELETE /budgets/{category})
+        if route_key == "DELETE /budgets/{category}":
+            user_sub = _user_from_jwt(event)
+            if not user_sub:
+                return _response(401, {"error": "Unauthorized"})
+            
+            category = path_params.get("category")
+            if not category:
+                return _response(400, {"error": "Missing category"})
+            
+            user_budgets_table.delete_item(
+                Key={"pk": f"USER#{user_sub}", "sk": f"BUDGET#{category}"}
             )
-            return _response(200, {"ok": True})
-
-        if route_key == "POST /delete":
-            expense_id = body.get("expenseId")
-            if not expense_id:
-                return _response(400, {"error": "Missing expenseId"})
-            expenses_table.delete_item(Key={"expenseId": expense_id})
-            return _response(200, {"ok": True})
-
-        if route_key == "POST /summary/monthly":
-            user_id = body.get("userId")
-            month = body.get("month")
-            if not user_id:
-                return _response(400, {"error": "Missing userId"})
-            if not month:
-                now = datetime.utcnow()
-                month = f"{now.year}-{str(now.month).zfill(2)}"
-            items = expenses_table.scan().get("Items", [])
-            items = [x for x in items if x.get("userId") == user_id and str(x.get("date", "")).startswith(month)]
-            totals = {}
-            for it in items:
-                cat = it.get("category", "Other")
-                totals[cat] = float(totals.get(cat, 0)) + float(it.get("amount", 0))
-            return _response(200, {"month": month, "totals": totals})
-
-        if route_key == "POST /summary/category":
-            user_id = body.get("userId")
-            category = body.get("category")
-            if not user_id or not category:
-                return _response(400, {"error": "Missing userId or category"})
-            items = expenses_table.scan().get("Items", [])
-            items = [x for x in items if x.get("userId") == user_id and x.get("category") == category]
-            total = sum(float(x.get("amount", 0)) for x in items)
-            return _response(200, {"items": items, "total": total})
-
-        # ----------------------- PORTFOLIO APIs (JWT-protected via API Gateway) -----------------------
-        def _user_from_jwt(evt):
-            try:
-                claims = (((evt.get("requestContext") or {}).get("authorizer") or {}).get("jwt") or {}).get("claims") or {}
-                sub = claims.get("sub")
-                return sub
-            except Exception:
-                return None
-
-        # Create portfolio (POST /portfolio) — body: { name }
-        if route_key == "POST /portfolio":
-            user_sub = _user_from_jwt(event)
-            if not user_sub:
-                return _response(401, {"error": "Unauthorized"})
-            name = (body.get("name") or "").strip()
-            if not name:
-                return _response(400, {"error": "Missing name"})
-            portfolio_id = str(uuid.uuid4())
-            now = datetime.utcnow().isoformat()
-            invest_table.put_item(Item={
-                "pk": f"USER#{user_sub}",
-                "sk": f"PORTFOLIO#{portfolio_id}",
-                "entityType": "PORTFOLIO",
-                "name": name,
-                "createdAt": now,
-                "updatedAt": now,
-                "GSI1PK": f"PORTFOLIO#{portfolio_id}",
-                "GSI1SK": now,
-            })
-            return _response(200, {"portfolioId": portfolio_id, "name": name})
-
-        # Read portfolios (GET /portfolio) — list user's portfolios
-        if route_key == "GET /portfolio":
-            user_sub = _user_from_jwt(event)
-            if not user_sub:
-                return _response(401, {"error": "Unauthorized"})
-            res = invest_table.query(
-                KeyConditionExpression=Key("pk").eq(f"USER#{user_sub}") & Key("sk").begins_with("PORTFOLIO#")
-            )
-            items = res.get("Items", [])
-            portfolios = [{"portfolioId": it["sk"].split("#",1)[1], "name": it.get("name"), "createdAt": it.get("createdAt") } for it in items]
-            return _response(200, {"items": portfolios})
-
-        # Save allocation plan (PUT /portfolio/plan) — body: { portfolioId, plan }
-        if route_key == "PUT /portfolio/plan":
-            user_sub = _user_from_jwt(event)
-            if not user_sub:
-                return _response(401, {"error": "Unauthorized"})
-            portfolio_id = body.get("portfolioId")
-            plan = body.get("plan")
-            if not portfolio_id or not plan:
-                return _response(400, {"error": "Missing portfolioId or plan"})
-            now = datetime.utcnow().isoformat()
-            invest_table.put_item(Item={
-                "pk": f"USER#{user_sub}",
-                "sk": f"ALLOCATION#{portfolio_id}",
-                "entityType": "ALLOCATION",
-                "plan": plan,
-                "updatedAt": now,
-                "GSI1PK": f"PORTFOLIO#{portfolio_id}",
-                "GSI1SK": f"ALLOCATION#{now}",
-            })
-            return _response(200, {"ok": True})
-
-        # Fetch allocation plan (GET /portfolio/plan?portfolioId=...)
-        if route_key == "GET /portfolio/plan":
-            user_sub = _user_from_jwt(event)
-            if not user_sub:
-                return _response(401, {"error": "Unauthorized"})
-            portfolio_id = (qs or {}).get("portfolioId")
-            if not portfolio_id:
-                return _response(400, {"error": "Missing portfolioId"})
-            res = invest_table.get_item(Key={"pk": f"USER#{user_sub}", "sk": f"ALLOCATION#{portfolio_id}"})
-            item = res.get("Item") or {}
-            return _response(200, {"plan": item.get("plan")})
-
-        # Create holding (POST /holdings) — body: { portfolioId, holding }
-        if route_key == "POST /holdings":
-            user_sub = _user_from_jwt(event)
-            if not user_sub:
-                return _response(401, {"error": "Unauthorized"})
-            portfolio_id = body.get("portfolioId")
-            holding = body.get("holding") or {}
-            if not portfolio_id or not isinstance(holding, dict):
-                return _response(400, {"error": "Missing portfolioId or holding"})
-            holding_id = holding.get("id") or str(uuid.uuid4())
-            now = datetime.utcnow().isoformat()
-            item = {
-                "pk": f"USER#{user_sub}",
-                "sk": f"HOLDING#{portfolio_id}#{holding_id}",
-                "entityType": "HOLDING",
-                "portfolioId": portfolio_id,
-                "holdingId": holding_id,
-                "data": holding,
-                "updatedAt": now,
-                "GSI1PK": f"PORTFOLIO#{portfolio_id}",
-                "GSI1SK": f"HOLDING#{holding_id}",
-            }
-            invest_table.put_item(Item=item)
-            return _response(200, {"holdingId": holding_id})
-
-        # List holdings (GET /holdings?portfolioId=...)
-        if route_key == "GET /holdings":
-            user_sub = _user_from_jwt(event)
-            if not user_sub:
-                return _response(401, {"error": "Unauthorized"})
-            portfolio_id = (qs or {}).get("portfolioId")
-            if not portfolio_id:
-                return _response(400, {"error": "Missing portfolioId"})
-            res = invest_table.query(
-                KeyConditionExpression=Key("pk").eq(f"USER#{user_sub}") & Key("sk").begins_with(f"HOLDING#{portfolio_id}#")
-            )
-            items = res.get("Items", [])
-            holdings = [{"id": it.get("holdingId"), **(it.get("data") or {})} for it in items]
-            return _response(200, {"items": holdings})
-
-        # Create transaction (POST /transactions) — body: { portfolioId, txn }
-        if route_key == "POST /transactions":
-            user_sub = _user_from_jwt(event)
-            if not user_sub:
-                return _response(401, {"error": "Unauthorized"})
-            portfolio_id = body.get("portfolioId")
-            txn = body.get("txn") or {}
-            if not portfolio_id or not isinstance(txn, dict):
-                return _response(400, {"error": "Missing portfolioId or txn"})
-            txn_id = txn.get("id") or str(uuid.uuid4())
-            now = datetime.utcnow().isoformat()
-            date = txn.get("date") or now[:10]
-            item = {
-                "pk": f"USER#{user_sub}",
-                "sk": f"TRANSACTION#{portfolio_id}#{date}#{txn_id}",
-                "entityType": "TRANSACTION",
-                "portfolioId": portfolio_id,
-                "transactionId": txn_id,
-                "data": txn,
-                "createdAt": now,
-                "GSI1PK": f"PORTFOLIO#{portfolio_id}",
-                "GSI1SK": f"TRANSACTION#{date}#{txn_id}",
-            }
-            invest_table.put_item(Item=item)
-            return _response(200, {"transactionId": txn_id})
-
-        # List transactions (GET /transactions?portfolioId=...&start=YYYY-MM-DD&end=YYYY-MM-DD)
-        if route_key == "GET /transactions":
-            user_sub = _user_from_jwt(event)
-            if not user_sub:
-                return _response(401, {"error": "Unauthorized"})
-            portfolio_id = (qs or {}).get("portfolioId")
-            start = (qs or {}).get("start")
-            end = (qs or {}).get("end")
-            if not portfolio_id:
-                return _response(400, {"error": "Missing portfolioId"})
-            # Query by PK and filter SK prefix for TRANSACTION#PORTFOLIOID#
-            res = invest_table.query(
-                KeyConditionExpression=Key("pk").eq(f"USER#{user_sub}") & Key("sk").begins_with(f"TRANSACTION#{portfolio_id}#")
-            )
-            items = res.get("Items", [])
-            def in_range(sk: str) -> bool:
-                try:
-                    parts = sk.split("#")
-                    date_str = parts[2]
-                    if start and date_str < start:
-                        return False
-                    if end and date_str > end:
-                        return False
-                    return True
-                except Exception:
-                    return True
-            txns = [{"id": it.get("transactionId"), **(it.get("data") or {})} for it in items if in_range(it.get("sk",""))]
-            return _response(200, {"items": txns})
+            
+            return _response(200, {"message": "Budget deleted successfully"})
 
         return _response(404, {"error": "Not found", "routeKey": route_key})
     except Exception as e:

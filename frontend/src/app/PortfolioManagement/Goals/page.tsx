@@ -1,203 +1,188 @@
-"use client";
-import React, { useMemo, useState, useEffect } from "react";
-import { Button } from "../../components/Button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/Card";
-import { Modal } from "../../components/Modal";
-import { useApp } from "../../store";
-import { Target, Plus, CalendarDays, Shield, AlertCircle, Trash2 } from "lucide-react";
+'use client';
 
-export default function GoalsPage() {
-	const { activePortfolioId, getConstraints, setConstraints } = useApp() as any;
-	const [addOpen, setAddOpen] = useState(false);
-	const [filter, setFilter] = useState<"all"|"0-2"|"3-5"|"6-10"|"10+">("all");
-	const c = getConstraints?.(activePortfolioId || "") || {};
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/Card';
+import { Button } from '../../components/Button';
+import { formatCurrency, formatNumber } from '../../utils/format';
 
-	const [goals, setGoals] = useState<any[]>([]);
-	const [gName, setGName] = useState("");
-	const [gAmount, setGAmount] = useState(0);
-	const [gDate, setGDate] = useState("");
-	const [gPriority, setGPriority] = useState("Medium");
-	const [loading, setLoading] = useState(false);
-	const [error, setError] = useState<string | null>(null);
+interface Goal {
+  id: string;
+  name: string;
+  category?: string;
+  targetAmount: number;
+  targetDate: string | Date;
+  priority: 'low'|'medium'|'high';
+  currentProgress: number;
+  isActive: boolean;
+  createdAt: string | Date;
+}
 
-	async function loadGoals() {
-		if (!activePortfolioId) return;
-		try {
-			const res = await fetch(`/api/portfolio/goals?portfolioId=${activePortfolioId}`);
-			const data = await res.json();
-			setGoals((data?.goals||[]).map((it:any)=> ({ id: (it.goal?.id)|| (it.sk||'').split('#').pop(), ...it.goal })));
-		} catch (e:any) {
-			setError(String(e?.message||e));
-		}
-	}
+function useGoals(): Goal[] {
+  const [goals, setGoals] = React.useState<Goal[]>([]);
+  React.useEffect(()=>{
+    try {
+      const raw = localStorage.getItem('investmentGoals');
+      if (!raw) { setGoals([]); return; }
+      const arr = JSON.parse(raw).map((g:any)=> ({
+        ...g,
+        targetDate: new Date(g.targetDate).toISOString(),
+        createdAt: new Date(g.createdAt).toISOString(),
+      })) as Goal[];
+      setGoals(arr);
+    } catch { setGoals([]); }
+  }, []);
+  return goals;
+}
 
-	useEffect(()=>{ loadGoals(); }, [activePortfolioId]);
+function progressPct(goal: Goal): number {
+  const t = Number(goal.targetAmount||0) || 0;
+  const p = Number(goal.currentProgress||0) || 0;
+  if (t <= 0) return 0;
+  return Math.max(0, Math.min(100, +(p*100/t).toFixed(2)));
+}
 
-	async function saveGoal() {
-		try {
-			if (!activePortfolioId) { console.warn('No active portfolio selected'); setError('Select a portfolio first'); return; }
-			if (!gName.trim() || !gDate) { setError('Please enter name and target date'); return; }
-			setLoading(true); setError(null);
-			const id = crypto.randomUUID();
-			const body = { portfolioId: activePortfolioId, goal: { id, name: gName.trim(), targetAmount: Math.max(0, Number(gAmount)||0), targetDate: gDate, priority: gPriority } };
-			console.log('Saving goal', body);
-			const res = await fetch('/api/portfolio/goals', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-			console.log('Save response', res.status);
-			if (!res.ok) throw new Error('Failed to save');
-			setAddOpen(false); setGName(""); setGAmount(0); setGDate(""); setGPriority("Medium");
-			await loadGoals();
-		} catch (e:any) {
-			console.error('Save goal error', e);
-			setError(String(e?.message||e));
-		} finally { setLoading(false); }
-	}
+function statusLabel(goal: Goal): string {
+  const pct = progressPct(goal);
+  const months = Math.round((new Date(goal.targetDate).getTime() - Date.now())/(1000*60*60*24*30.44));
+  if (months <= 0) return pct >= 100 ? 'Completed' : 'Past Due';
+  if (pct >= 80) return 'Ahead';
+  if (pct >= 40) return 'On Track';
+  return 'Behind';
+}
 
-	async function deleteGoal(id: string) {
-		if (!activePortfolioId) return;
-		await fetch(`/api/portfolio/goals?portfolioId=${activePortfolioId}&goalId=${id}`, { method: 'DELETE' });
-		await loadGoals();
-	}
+function sipAdvice(goal: Goal): string {
+  const t = Number(goal.targetAmount||0) || 0;
+  const p = Number(goal.currentProgress||0) || 0;
+  const remain = Math.max(0, t - p);
+  const months = Math.max(1, Math.round((new Date(goal.targetDate).getTime() - Date.now())/(1000*60*60*24*30.44)));
+  const sip = Math.ceil(remain / months);
+  if (remain === 0) return 'You are fully funded.';
+  return `Increase SIP by ${formatCurrency(sip)} to stay on track`;
+}
 
-	const kpis = useMemo(()=> ({ efMonths: Number(c.efMonths||0), liquidity: { amount: Number(c.liquidityAmount||0), months: Number(c.liquidityMonths||0) }, monthlySip: 0, coveragePct: 0 }), [c]);
+export default function GoalsDashboardPage() {
+  const goals = useGoals();
+  const active = goals.filter(g=> g.isActive);
 
-	return (
-		<div className="max-w-5xl mx-auto space-y-4">
-			<div className="flex items-center justify-between">
-				<div>
-					<h1 className="text-lg font-semibold">Goals & Constraints</h1>
-					<p className="text-xs text-muted-foreground">Set your goals and liquidity needs. We’ll keep your plan aligned.</p>
-				</div>
-				<div className="flex items-center gap-2">
-					<Button leftIcon={<Plus className="h-4 w-4" />} onClick={()=> setAddOpen(true)}>Add Goal</Button>
-					<Button variant="outline" leftIcon={<Target className="h-4 w-4" />} onClick={()=> window.location.href='/PortfolioManagement/Plan'}>Propose Rebalance</Button>
-				</div>
-			</div>
+  return (
+    <div className="max-w-full space-y-4 pl-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="text-sm text-muted-foreground">Goals Dashboard</div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={()=> window.location.assign('/PortfolioManagement/Plan?goals=open')}>Add / Edit Goals</Button>
+        </div>
+      </div>
 
-			<div className="grid grid-cols-4 gap-2">
-				<Card>
-					<CardContent className="p-3 text-center">
-						<div className="text-[11px] text-muted-foreground">EF Coverage</div>
-						<div className="text-base font-semibold">{kpis.efMonths} months</div>
-					</CardContent>
-				</Card>
-				<Card>
-					<CardContent className="p-3 text-center">
-						<div className="text-[11px] text-muted-foreground">Near-term Liquidity</div>
-						<div className="text-base font-semibold">{kpis.liquidity.amount ? `₹${kpis.liquidity.amount}` : '—'}</div>
-					</CardContent>
-				</Card>
-				<Card>
-					<CardContent className="p-3 text-center">
-						<div className="text-[11px] text-muted-foreground">Monthly SIP</div>
-						<div className="text-base font-semibold">—</div>
-					</CardContent>
-				</Card>
-				<Card>
-					<CardContent className="p-3 text-center">
-						<div className="text-[11px] text-muted-foreground">Goal Coverage</div>
-						<div className="text-base font-semibold">—</div>
-					</CardContent>
-				</Card>
-			</div>
+      {/* Summary KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <Card>
+          <CardContent className="p-3 text-center">
+            <div className="text-[11px] text-muted-foreground">Active Goals</div>
+            <div className="text-lg font-semibold">{active.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 text-center">
+            <div className="text-[11px] text-muted-foreground">Total Target</div>
+            <div className="text-lg font-semibold">{formatCurrency(active.reduce((s,g)=> s + (Number(g.targetAmount)||0), 0))}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 text-center">
+            <div className="text-[11px] text-muted-foreground">Total Progress</div>
+            <div className="text-lg font-semibold">{formatCurrency(active.reduce((s,g)=> s + (Number(g.currentProgress)||0), 0))}</div>
+          </CardContent>
+        </Card>
+      </div>
 
-			<Card>
-				<CardHeader className="py-2">
-					<div className="flex items-center justify-between">
-						<CardTitle className="text-base">Your Goals</CardTitle>
-						<div className="inline-flex items-center gap-2 text-xs">
-							<span className={`px-2 py-0.5 rounded border ${filter==='all'?'bg-muted':''}`} onClick={()=> setFilter('all')}>All</span>
-							<span className={`px-2 py-0.5 rounded border ${filter==='0-2'?'bg-muted':''}`} onClick={()=> setFilter('0-2')}>0–2y</span>
-							<span className={`px-2 py-0.5 rounded border ${filter==='3-5'?'bg-muted':''}`} onClick={()=> setFilter('3-5')}>3–5y</span>
-							<span className={`px-2 py-0.5 rounded border ${filter==='6-10'?'bg-muted':''}`} onClick={()=> setFilter('6-10')}>6–10y</span>
-							<span className={`px-2 py-0.5 rounded border ${filter==='10+'?'bg-muted':''}`} onClick={()=> setFilter('10+')}>10y+</span>
-						</div>
-					</div>
-				</CardHeader>
-				<CardContent className="pt-0">
-					{goals.length ? (
-						<div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-							{goals.map((g)=> (
-								<div key={g.id} className="rounded-lg border border-border p-3">
-									<div className="flex items-center justify-between text-sm">
-										<div className="font-medium">{g.name}</div>
-										<div className="inline-flex items-center gap-1 text-muted-foreground"><CalendarDays className="h-3.5 w-3.5" /> {g.targetDate}</div>
-									</div>
-									<div className="mt-1 text-[11px] text-muted-foreground">Target ₹{g.targetAmount||0} · Priority {g.priority||'Medium'}</div>
-									<div className="mt-2 h-1.5 rounded bg-muted overflow-hidden"><div className="h-1.5 bg-indigo-500" style={{ width: `${Math.min(100, 0)}%` }}></div></div>
-									<div className="mt-2 flex items-center gap-2">
-										<Button variant="outline" size="sm" onClick={()=> deleteGoal(g.id)} leftIcon={<Trash2 className="h-3.5 w-3.5" />}>Delete</Button>
-									</div>
-								</div>
-							))}
-						</div>
-					) : (
-						<div className="text-muted-foreground text-sm">No goals yet. Click “Add Goal” to get started.</div>
-					)}
-				</CardContent>
-			</Card>
+      {/* Goal list with progress + advice */}
+      <Card>
+        <CardHeader className="py-2">
+          <CardTitle className="text-base">Goals Overview</CardTitle>
+          <CardDescription className="text-xs">Funding progress and advice</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {active.length === 0 ? (
+            <div className="text-xs text-muted-foreground">No active goals yet.</div>
+          ) : (
+            <div className="space-y-2">
+              {active.map(g=> {
+                const pct = progressPct(g);
+                const label = statusLabel(g);
+                const advice = sipAdvice(g);
+                return (
+                  <div key={g.id} className="rounded border border-border p-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-medium">{g.name}</div>
+                      <div className="text-[11px] text-muted-foreground">Target: {new Date(g.targetDate).toISOString().slice(0,10)}</div>
+                    </div>
+                    <div className="mt-1 grid grid-cols-3 gap-2 text-xs">
+                      <div>
+                        <div className="text-[11px] text-muted-foreground">Target</div>
+                        <div className="font-medium">{formatCurrency(Number(g.targetAmount)||0)}</div>
+                      </div>
+                      <div>
+                        <div className="text-[11px] text-muted-foreground">Progress</div>
+                        <div className="font-medium">{formatCurrency(Number(g.currentProgress)||0)} ({pct}%)</div>
+                      </div>
+                      <div>
+                        <div className="text-[11px] text-muted-foreground">Status</div>
+                        <div className={`font-medium ${label==='Behind'?'text-rose-600': label==='Ahead'?'text-emerald-600':'text-amber-600'}`}>{label}</div>
+                      </div>
+                    </div>
+                    <div className="mt-2 h-1.5 rounded bg-muted overflow-hidden">
+                      <div className={`h-1.5 ${label==='Behind'?'bg-rose-500': label==='Ahead'?'bg-emerald-500':'bg-amber-500'}`} style={{ width: `${pct}%` }} />
+                    </div>
+                    <div className="mt-2 text-[11px] text-muted-foreground">{advice}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-			<Card>
-				<CardHeader className="py-2">
-					<CardTitle className="text-base">Constraints</CardTitle>
-					<CardDescription className="text-xs">Emergency fund and near-term liquidity.</CardDescription>
-				</CardHeader>
-				<CardContent className="pt-0 text-xs">
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-						<div className="rounded-md border border-border p-2">
-							<div className="text-[11px] text-muted-foreground">Emergency fund coverage</div>
-							<div className="mt-1 flex items-center gap-2">
-								<Shield className="h-4 w-4" />
-								<input type="number" min={0} max={24} className="w-24 rounded border border-border bg-background px-2 py-1" value={Number(c.efMonths||0)} onChange={e=> setConstraints?.(activePortfolioId||"", { efMonths: Math.max(0, Math.min(24, Math.round(Number(e.target.value)||0))) })} />
-								<span className="text-muted-foreground">months</span>
-							</div>
-						</div>
-						<div className="rounded-md border border-border p-2">
-							<div className="text-[11px] text-muted-foreground">Near-term liquidity</div>
-							<div className="mt-1 flex items-center gap-2">
-								<AlertCircle className="h-4 w-4" />
-								<input type="number" min={0} className="w-28 rounded border border-border bg-background px-2 py-1" placeholder="₹ amount" value={Number(c.liquidityAmount||0)} onChange={e=> setConstraints?.(activePortfolioId||"", { liquidityAmount: Math.max(0, Math.round(Number(e.target.value)||0)) })} />
-								<input type="number" min={0} max={36} className="w-20 rounded border border-border bg-background px-2 py-1" placeholder="months" value={Number(c.liquidityMonths||0)} onChange={e=> setConstraints?.(activePortfolioId||"", { liquidityMonths: Math.max(0, Math.min(36, Math.round(Number(e.target.value)||0))) })} />
-							</div>
-						</div>
-						<div className="rounded-md border border-border p-2">
-							<div className="text-[11px] text-muted-foreground">Notes</div>
-							<textarea className="mt-1 w-full rounded border border-border bg-background px-2 py-1" rows={2} placeholder="Any special constraints" value={c.notes||""} onChange={e=> setConstraints?.(activePortfolioId||"", { notes: e.target.value })} />
-						</div>
-					</div>
-				</CardContent>
-			</Card>
+      {/* Contributions placeholder */}
+      <Card>
+        <CardHeader className="py-2">
+          <CardTitle className="text-base">Instruments Contribution</CardTitle>
+          <CardDescription className="text-xs">Breakdown by asset class (placeholder)</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-0 text-xs text-muted-foreground">
+          Coming soon: per-goal pie/stacked bars (class → contribution%), derived from holdings mapping.
+        </CardContent>
+      </Card>
 
-			<Modal open={addOpen} onClose={()=> setAddOpen(false)} title="Add Goal" footer={(
-				<>
-					<Button variant="outline" onClick={()=> setAddOpen(false)}>Cancel</Button>
-					<Button onClick={saveGoal} disabled={loading}>Save</Button>
-				</>
-			)}>
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-					<div className="space-y-2">
-						<div>
-							<div className="text-[11px] text-muted-foreground">Name</div>
-							<input className="w-full rounded border border-border bg-background px-2 py-1" placeholder="e.g., Emergency, House, Education" value={gName} onChange={e=> setGName(e.target.value)} />
-						</div>
-						<div>
-							<div className="text-[11px] text-muted-foreground">Target amount</div>
-							<input className="w-full rounded border border-border bg-background px-2 py-1" placeholder="₹" value={gAmount} onChange={e=> setGAmount(Math.max(0, Number(e.target.value)||0))} />
-						</div>
-						<div>
-							<div className="text-[11px] text-muted-foreground">Target date</div>
-							<input type="date" className="w-full rounded border border-border bg-background px-2 py-1" value={gDate} onChange={e=> setGDate(e.target.value)} />
-						</div>
-						<div>
-							<div className="text-[11px] text-muted-foreground">Priority</div>
-							<select className="w-full rounded border border-border bg-background px-2 py-1" value={gPriority} onChange={e=> setGPriority(e.target.value)}><option>Medium</option><option>High</option><option>Low</option></select>
-						</div>
-					</div>
-					<div className="space-y-2">
-						<div className="rounded-md border border-dashed p-2 text-muted-foreground">Live preview of target mix will appear here…</div>
-					</div>
-				</div>
-				{error ? <div className="mt-2 text-[11px] text-rose-600">{error}</div> : null}
-			</Modal>
-		</div>
-	);
+      {/* Timeline view */}
+      <Card>
+        <CardHeader className="py-2">
+          <CardTitle className="text-base">Timeline</CardTitle>
+          <CardDescription className="text-xs">Goals by target date</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="space-y-2 text-xs">
+            {[...active].sort((a,b)=> new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime()).map(g=> (
+              <div key={`timeline-${g.id}`} className="flex items-center justify-between rounded border border-border p-2">
+                <div className="font-medium">{g.name}</div>
+                <div className="text-[11px] text-muted-foreground">{new Date(g.targetDate).toISOString().slice(0,10)}</div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Impact placeholder */}
+      <Card>
+        <CardHeader className="py-2">
+          <CardTitle className="text-base">Impact of Changes</CardTitle>
+          <CardDescription className="text-xs">Before / After comparisons (placeholder)</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-0 text-xs text-muted-foreground">
+          Coming soon: compare allocation or risk profile changes on goal outcomes.
+        </CardContent>
+      </Card>
+    </div>
+  );
 }

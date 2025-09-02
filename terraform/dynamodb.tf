@@ -4,7 +4,12 @@ variable "expenses_table_name" {
   default     = "Expenses"
 }
 
-// CategoryMemory removed per simplified flow
+// CategoryMemory removed per simplified 
+
+
+output "mutual_fund_schemes_table_name" {
+  value = aws_dynamodb_table.mutual_fund_schemes.name
+}
 
 variable "category_rules_table_name" {
   description = "DynamoDB table name for global category rules"
@@ -22,6 +27,30 @@ variable "invest_table_name" {
   description = "Single-table DynamoDB for user, portfolios, allocations, holdings, transactions"
   type        = string
   default     = "InvestApp"
+}
+
+variable "mutual_fund_schemes_table_name" {
+  description = "DynamoDB table name for mutual fund schemes"
+  type        = string
+  default     = "MutualFundSchemes"
+}
+
+variable "holdings_table_name" {
+  description = "DynamoDB table name for holdings"
+  type        = string
+  default     = "holdings"
+}
+
+variable "asset_class_mapping_table_name" {
+  description = "DynamoDB table name for asset class to portfolio role mapping"
+  type        = string
+  default     = "AssetClassMapping"
+}
+
+variable "environment" {
+  description = "Environment name"
+  type        = string
+  default     = "dev"
 }
 
 resource "aws_dynamodb_table" "expenses" {
@@ -113,6 +142,192 @@ resource "aws_dynamodb_table" "invest" {
   }
 }
 
+# DynamoDB table for mutual fund schemes
+resource "aws_dynamodb_table" "mutual_fund_schemes" {
+  name         = var.mutual_fund_schemes_table_name
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "scheme_code"
+
+  attribute {
+    name = "scheme_code"
+    type = "S"
+  }
+
+  attribute {
+    name = "date"
+    type = "S"
+  }
+
+  attribute {
+    name = "amc"
+    type = "S"
+  }
+
+  attribute {
+    name = "scheme_type"
+    type = "S"
+  }
+
+  attribute {
+    name = "asset_class"
+    type = "S"
+  }
+
+  attribute {
+    name = "portfolio_role"
+    type = "S"
+  }
+
+  attribute {
+    name = "plan"
+    type = "S"
+  }
+
+  attribute {
+    name = "option"
+    type = "S"
+  }
+
+  attribute {
+    name = "is_etf"
+    type = "S"
+  }
+
+  attribute {
+    name = "fund_name"
+    type = "S"
+  }
+
+  # GSI for querying by date
+  global_secondary_index {
+    name     = "DateIndex"
+    hash_key = "date"
+    projection_type = "ALL"
+  }
+
+  # GSI for querying by AMC
+  global_secondary_index {
+    name     = "AMC-Date-Index"
+    hash_key = "amc"
+    range_key = "date"
+    projection_type = "ALL"
+  }
+
+  # GSI for querying by scheme type
+  global_secondary_index {
+    name     = "SchemeType-Date-Index" 
+    hash_key = "scheme_type"
+    range_key = "date"
+    projection_type = "ALL"
+  }
+
+  # GSI for querying by asset class - useful for portfolio analysis
+  global_secondary_index {
+    name     = "AssetClass-Date-Index" 
+    hash_key = "asset_class"
+    range_key = "date"
+    projection_type = "ALL"
+  }
+
+  # GSI for querying by portfolio role - useful for portfolio analysis
+  global_secondary_index {
+    name     = "PortfolioRole-Date-Index" 
+    hash_key = "portfolio_role"
+    range_key = "date"
+    projection_type = "ALL"
+  }
+
+  # GSI for querying by plan (Direct/Regular)
+  global_secondary_index {
+    name     = "Plan-Date-Index" 
+    hash_key = "plan"
+    range_key = "date"
+    projection_type = "ALL"
+  }
+
+  # GSI for querying by option (Growth/IDCW)
+  global_secondary_index {
+    name     = "Option-Date-Index" 
+    hash_key = "option"
+    range_key = "date"
+    projection_type = "ALL"
+  }
+
+  # GSI for querying by ETF status - essential for portfolio allocation
+  global_secondary_index {
+    name     = "ETF-Status-Index" 
+    hash_key = "is_etf"
+    projection_type = "ALL"
+  }
+
+  # GSI for querying by fund name for search functionality
+  global_secondary_index {
+    name     = "FundName-Index" 
+    hash_key = "fund_name"
+    projection_type = "ALL"
+  }
+
+  tags = {
+    Name        = var.mutual_fund_schemes_table_name
+    Environment = var.environment
+    Project     = "finsight"
+  }
+}
+
+# Dedicated holdings table for portfolio holdings
+resource "aws_dynamodb_table" "holdings" {
+  name         = var.holdings_table_name
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "id"
+
+  attribute {
+    name = "id"
+    type = "S"
+  }
+
+  # Attributes used by the GSI must be defined here
+  attribute {
+    name = "user_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "created_at"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "userId-createdAt-index"
+    hash_key        = "user_id"
+    range_key       = "created_at"
+    projection_type = "ALL"
+  }
+
+  tags = {
+    Name        = var.holdings_table_name
+    Environment = var.environment
+    Project     = "finsight"
+  }
+}
+
+# Asset class to portfolio role mapping table
+resource "aws_dynamodb_table" "asset_class_mapping" {
+  name         = var.asset_class_mapping_table_name
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "asset_class"
+
+  attribute {
+    name = "asset_class"
+    type = "S"
+  }
+
+  tags = {
+    Name        = var.asset_class_mapping_table_name
+    Environment = var.environment
+    Project     = "finsight"
+  }
+}
+
 output "expenses_table_name" {
   value = aws_dynamodb_table.expenses.name
 }
@@ -127,7 +342,10 @@ output "user_budgets_table_name" {
   value = aws_dynamodb_table.user_budgets.name
 }
 
-output "invest_table_name" {
-  value = aws_dynamodb_table.invest.name
+output "holdings_table_name" {
+  value = aws_dynamodb_table.holdings.name
 }
 
+output "asset_class_mapping_table_name" {
+  value = aws_dynamodb_table.asset_class_mapping.name
+}

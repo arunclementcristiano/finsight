@@ -13,6 +13,7 @@ import { RotateCcw, Save as SaveIcon, AlertTriangle, ShieldOff } from "lucide-re
 
 import { advisorTune } from "../domain/advisorTune";
 import PlanKPIs from "../components/PlanKPIs";
+import GoalsPanel from "../components/GoalsPanel";
 
 export default function PlanPage() {
 	const { plan, setPlan, activePortfolioId, questionnaire, setQuestionAnswer, setQuestionnaire, getCustomDraft, setCustomDraft, getCustomLocks, setCustomLocks, getCustomSaved, setCustomSaved, holdings } = useApp() as any;
@@ -31,6 +32,37 @@ export default function PlanPage() {
 	const [mode, setMode] = useState<'advisor'|'custom'>('advisor');
 	const [customLocks, setLocalCustomLocks] = useState<Record<string, boolean>>({});
 	const [advisorPins, setAdvisorPins] = useState<Record<string, boolean>>({});
+        const [goalsPanelOpen, setGoalsPanelOpen] = useState(false);
+        const [draftGoal, setDraftGoal] = useState<any | null>(null);
+        const previewPlan = useMemo(()=>{
+                try {
+                        if (!draftGoal) return null;
+                        const storedGoals = (()=>{ try { return JSON.parse(localStorage.getItem('investmentGoals')||'[]'); } catch { return []; } })();
+                        const mergedGoals = [...storedGoals, { ...draftGoal, isActive: true }];
+                        const q = { ...questionnaire, goals: mergedGoals };
+                        return buildPlan(q);
+                } catch { return null; }
+        }, [draftGoal, questionnaire]);
+	const getEnhancedQuestionnaire = () => {
+		const storedGoals = localStorage.getItem("investmentGoals");
+		const goals = storedGoals ? JSON.parse(storedGoals) : [];
+		return {
+			...questionnaire,
+			goals: goals
+		};
+	};
+
+	// Listen for goals-updated event and recalculate plan
+	useEffect(() => {
+		function handleGoalsUpdated() {
+			const enhancedQ = getEnhancedQuestionnaire();
+			const newPlan = buildPlan(enhancedQ);
+			setPlan(newPlan);
+			setLocal(newPlan);
+		}
+		window.addEventListener("goals-updated", handleGoalsUpdated);
+		return () => window.removeEventListener("goals-updated", handleGoalsUpdated);
+	}, [questionnaire]);
 	
 	// Always use professional mode
 	const displayMode = 'advisor';
@@ -225,6 +257,14 @@ export default function PlanPage() {
 					setAiLoading(true);
 					const baseline = buildPlan(questionnaire);
 					const res = await fetch('/api/plan/suggest?debug=1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionnaire, baseline }) });
+					if (!res.ok) {
+						// Fallback to baseline if provider key missing or error
+						setLocal(baseline);
+						setAiInfo({ rationale: 'AI unavailable. Showing baseline recommendation.', confidence: undefined });
+						setAiSummary(undefined);
+						setAiViewOn(false);
+						return;
+					}
 					const data = await res.json();
 					if (data?.aiPlan?.buckets) {
 						setLocal((prev:any)=> ({ ...(prev||{}), buckets: data.aiPlan.buckets }));
@@ -232,7 +272,18 @@ export default function PlanPage() {
 						setAiCache((prev)=> ({ ...prev, [sig]: { buckets: data.aiPlan.buckets, explanation: data.explanation || data.rationale } }));
 						setAiSummary(makeSummary(baseline, data.aiPlan.buckets));
 						setAiViewOn(true);
+					} else {
+						setLocal(baseline);
+						setAiInfo({ rationale: 'AI did not return a plan. Showing baseline.', confidence: undefined });
+						setAiSummary(undefined);
+						setAiViewOn(false);
 					}
+				} catch {
+					const baseline = buildPlan(questionnaire);
+					setLocal(baseline);
+					setAiInfo({ rationale: 'AI unavailable. Showing baseline recommendation.', confidence: undefined });
+					setAiSummary(undefined);
+					setAiViewOn(false);
 				} finally { setAiLoading(false); }
 			})();
 		} else {
@@ -397,6 +448,15 @@ export default function PlanPage() {
 		return () => { cancelled = true; };
 	}, [activePortfolioId]);
 
+	useEffect(() => {
+		try {
+			if (typeof window !== 'undefined') {
+				const sp = new URLSearchParams(window.location.search);
+				if (sp.get('goals') === 'open') setGoalsPanelOpen(true);
+			}
+		} catch {}
+	}, []);
+
 	function normalizeCustom(next: any, changedIndex: number, newPct: number) {
 		const buckets = [...(next?.buckets||[])];
 		if (!buckets[changedIndex]) return next;
@@ -479,8 +539,8 @@ export default function PlanPage() {
 		);
 	}
 
-	return (
-		<div className="max-w-4xl mx-auto space-y-4">
+       return (
+	       <div className="max-w-full space-y-4 pl-2">
 			<div className="flex items-center justify-between">
 				<div className="flex items-center gap-2">
 					<div className="text-sm text-muted-foreground">Allocation Plan</div>
@@ -538,6 +598,7 @@ export default function PlanPage() {
 						helperText={(questions[ansStep] as any)?.helperText}
 						maxSelect={(questions[ansStep] as any)?.maxSelect}
 						compact
+						type={(questions[ansStep] as any)?.type}
 					/>
 					<div className="flex items-center justify-between">
 						<Button variant="outline" onClick={()=> setAnsStep(s=> Math.max(0, s-1))} disabled={ansStep===0}>Back</Button>
@@ -557,7 +618,7 @@ export default function PlanPage() {
 
 			<PlanSummary
 				plan={local}
-				onEditAnswers={()=>{ setEditAnswers({ ...(questionnaire||{}) }); setAnsStep(0); setAnswersOpen(true); }}
+				setGoalsPanelOpen={setGoalsPanelOpen}				onEditAnswers={()=>{ setEditAnswers({ ...(questionnaire||{}) }); setAnsStep(0); setAnswersOpen(true); }}
 				onBuildBaseline={()=>{ const allocation = buildPlan(questionnaire); setLocal(allocation); setAiInfo(null); setAiSummary(undefined); setAiViewOn(false); setAnswersDrift(false); setAdvisorPins({}); }}
 				onChangeBucketPct={handleChangeBucketPct}
 				aiViewOn={aiViewOn}
@@ -570,11 +631,49 @@ export default function PlanPage() {
 				locks={customLocks}
 				onToggleLock={(cls)=> { setLocalCustomLocks(prev=> ({ ...(prev||{}), [cls]: !prev?.[cls] })); try { if (activePortfolioId) setCustomLocks(activePortfolioId, { [cls]: !customLocks?.[cls] }); } catch {} }}
 			/>
+
 			{toast && (
 				<div className={`fixed bottom-4 right-4 z-50 rounded-md border px-3 py-2 text-sm shadow-lg ${toast.type==='success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : toast.type==='info' ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
 					{toast.msg}
 				</div>
 			)}
+
+                        <GoalsPanel
+                                isOpen={goalsPanelOpen}
+                                baselinePlan={local}
+                                previewPlan={previewPlan}
+                                onDraftGoalChanged={(g)=> setDraftGoal(g)}
+                                onClose={() => {
+                                        setGoalsPanelOpen(false);
+                                        setDraftGoal(null);
+                                        try {
+                                                const allocation = buildPlan(getEnhancedQuestionnaire());
+                                                setLocal(allocation);
+                                                setAiViewOn(false);
+                                                setAiSummary(undefined);
+                                        } catch {}
+                                }}
+                                onGoalsUpdated={(goals) => {
+                                        console.log("Goals updated:", goals);
+                                        setDraftGoal(null);
+                                        if (mode === "advisor") {
+                                                const allocation = buildPlan(getEnhancedQuestionnaire());
+                                                setLocal(allocation);
+                                                setAiViewOn(false);
+                                                setAiSummary(undefined);
+                                        }
+										   // Always dispatch event so PlanPage updates after edit/delete
+										   try { window.dispatchEvent(new Event('goals-updated')); } catch {}
+                                }}
+                        />
+
+                        {/* Mobile sticky action bar */}
+                        <div className="md:hidden fixed bottom-14 left-0 right-0 z-30 px-3">
+                          <div className="rounded-xl border border-border bg-card shadow flex items-center justify-between p-2">
+                            <Button variant="outline" size="sm" onClick={()=> setGoalsPanelOpen(true)}>Add Goal</Button>
+                            <Button size="sm" onClick={handleSaveClick}>Save Plan</Button>
+                          </div>
+                        </div>
 		</div>
 	);
 }

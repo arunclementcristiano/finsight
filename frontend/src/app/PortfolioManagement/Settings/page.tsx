@@ -6,7 +6,15 @@ import { useApp } from "../../store";
 export default function SettingsPage() {
   const { driftTolerancePct, setDriftTolerancePct, emergencyMonths, setEmergencyMonths } = useApp();
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="max-w-full space-y-4 pl-2">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="text-sm text-muted-foreground">Settings</div>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <Card>
         <CardHeader>
           <CardTitle>Rebalancing</CardTitle>

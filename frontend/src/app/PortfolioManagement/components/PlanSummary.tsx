@@ -9,12 +9,13 @@ import { LineChart, Layers, Banknote, Coins, Home, Droplet, Edit3, RefreshCw, Ch
 import { Target } from "lucide-react";
 import { Sparkles } from "lucide-react";
 import { Modal } from "../../components/Modal";
-import GoalsInlineModal from "./GoalsInlineModal";
+import GoalsPanel from "./GoalsPanel";
 import RiskProfile from "./RiskProfile";
 import { transformText, transformRiskLevel, transformRiskScore, transformAllocationRange, transformStressTestResult } from "../domain/languageTransform";
 
 export default function PlanSummary({ 
 	plan, 
+  setGoalsPanelOpen,
 	onChangeBucketPct, 
 	onEditAnswers, 
 	onBuildBaseline, 
@@ -27,8 +28,10 @@ export default function PlanSummary({
 	aiDisabled, 
 	locks, 
 	onToggleLock
+
 }: { 
 	plan: any; 
+  setGoalsPanelOpen?: (open: boolean) => void;
 	onChangeBucketPct?: (index: number, newPct: number) => void; 
 	onEditAnswers?: () => void; 
 	onBuildBaseline?: () => void; 
@@ -59,8 +62,6 @@ export default function PlanSummary({
   const [goalsOpen, setGoalsOpen] = useState(false);
   
   // Enhanced sections expand/collapse state
-  const [signalsExpanded, setSignalsExpanded] = useState(true); // Expanded by default for professional mode
-  const [stressTestExpanded, setStressTestExpanded] = useState(true); // Expanded by default for professional mode
   const [rationaleExpanded, setRationaleExpanded] = useState(false);
   const [rebalanceExpanded, setRebalanceExpanded] = useState(false);
   const [rebalanceOptionsExpanded, setRebalanceOptionsExpanded] = useState(false);
@@ -103,7 +104,7 @@ export default function PlanSummary({
     
     for (const bucket of (plan?.buckets || [])) {
       if (bucket.pct > 0) { // Only count positive allocations
-        if (bucket.class === "Stocks" || bucket.class === "Mutual Funds") {
+        		if (bucket.class === "Stocks" || bucket.class === "Equity MF") {
           equity += bucket.pct;
         } else if (bucket.class === "Debt" || bucket.class === "Liquid") {
           defensive += bucket.pct;
@@ -132,7 +133,7 @@ export default function PlanSummary({
     try {
       const total = (rebalance as any).totalCurrentValue || holdings.reduce((s:any,h:any)=> s + (h.currentValue||0), 0);
       if (!plan || total <= 0) return null;
-      const eqPct = (plan.buckets||[]).filter((b:any)=> b.class==='Stocks' || b.class==='Mutual Funds').reduce((s:number,b:any)=> s + (b.pct||0), 0) / 100;
+      		const eqPct = (plan.buckets||[]).filter((b:any)=> b.class==='Stocks' || b.class==='Equity MF').reduce((s:number,b:any)=> s + (b.pct||0), 0) / 100;
       const shock = 0.20; // 20% equity drop
       const impact = Math.round(total * eqPct * shock);
       const liquidPct = (plan.buckets||[]).find((b:any)=> b.class==='Liquid')?.pct || 0;
@@ -163,7 +164,7 @@ export default function PlanSummary({
         if (d.includes('Debt clamp->Liquid')) return 'Excess Debt flows into Liquid to keep balance.';
         if (d.includes('Debt minimum')) return 'We ensure a minimum level of Debt for stability.';
         if (d.includes('Equity floor')) return 'We maintain a sensible equity floor for long-term growth.';
-        if (d.includes('Beginner MF routing')) return 'As a beginner, equity is routed via diversified mutual funds rather than direct stocks.';
+        		if (d.includes('Beginner MF routing')) return 'As a beginner, equity is routed via diversified equity mutual funds rather than direct stocks.';
         return null;
       };
       const msgs: string[] = [];
@@ -192,7 +193,30 @@ export default function PlanSummary({
     return new Set(arr as string[]);
   }, [questionnaire]);
 
-  const visibleBuckets = useMemo(()=> (mode==='custom' ? (plan?.buckets||[]) : (plan?.buckets||[]).filter((b:any)=> !avoidSet.has(b.class))), [plan, avoidSet, mode]);
+  const visibleBuckets = useMemo(()=> {
+    const buckets = mode==='custom' ? (plan?.buckets||[]) : (plan?.buckets||[]).filter((b:any)=> !avoidSet.has(b.class));
+    
+    // Define consistent order for asset classes
+    const assetClassOrder = ['Stocks', 'Equity MF', 'Debt', 'Liquid', 'Gold', 'Real Estate'];
+    
+    // Sort buckets by the defined order
+    return buckets.sort((a: any, b: any) => {
+      const aIndex = assetClassOrder.indexOf(a.class);
+      const bIndex = assetClassOrder.indexOf(b.class);
+      
+      // If both are in the order array, sort by their position
+      if (aIndex !== -1 && bIndex !== -1) {
+        return aIndex - bIndex;
+      }
+      
+      // If only one is in the order array, prioritize it
+      if (aIndex !== -1) return -1;
+      if (bIndex !== -1) return 1;
+      
+      // If neither is in the order array, maintain original order
+      return 0;
+    });
+  }, [plan, avoidSet, mode]);
 
   async function handleAcceptProposal() {
     try {
@@ -210,24 +234,6 @@ export default function PlanSummary({
 
   return (
     <div className="space-y-3">
-      {/* Additional Metrics */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-lg border border-border bg-card p-3 text-center">
-          <div className="text-xs text-muted-foreground mb-1">Real Estate</div>
-          <div className="text-lg font-semibold text-foreground mb-1">{kpiExtras.rePct}%</div>
-          <div className="text-[10px] text-muted-foreground">Household</div>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-3 text-center">
-          <div className="text-xs text-muted-foreground mb-1">Rebalance Cost</div>
-          <div className="text-lg font-semibold text-foreground mb-1">₹{kpiExtras.estCost.toLocaleString()}</div>
-          <div className="text-[10px] text-muted-foreground">Turnover {kpiExtras.turnover}%</div>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-3 text-center">
-          <div className="text-xs text-muted-foreground mb-1">Portfolio Status</div>
-          <div className="text-lg font-semibold text-foreground mb-1">Active</div>
-          <div className="text-[10px] text-muted-foreground">Monitoring</div>
-        </div>
-      </div>
       <Card>
         <CardHeader className="py-2">
           <div className="flex items-center justify-between">
@@ -245,9 +251,11 @@ export default function PlanSummary({
                   Adjust Risk Profile
                 </Button>
               ) : null}
-              <Button variant="outline" leftIcon={<Target className="h-4 w-4 text-amber-600" />} onClick={()=> setGoalsOpen(true)}>
-                Goals & Constraints
-              </Button>
+              {mode !== 'custom' && (
+                <Button variant="outline" leftIcon={<Target className="h-4 w-4 text-amber-600" />} onClick={()=> { if (setGoalsPanelOpen) setGoalsPanelOpen(true); else setGoalsOpen(true); }}>
+                  Investment Goals
+                </Button>
+              )}
               {mode !== 'custom' ? (
                 <div className="inline-flex items-center gap-2 ml-2">
                   <Sparkles className="h-4 w-4 text-amber-500" />
@@ -279,7 +287,7 @@ export default function PlanSummary({
                 <tbody>
                   {visibleBuckets.map((b: any, idx: number) => (
                     <tr key={b.class} className="border-t border-border/50">
-                      <td className="py-2 px-3 font-medium"><span className="inline-flex items-center">{(() => { const common = "h-4 w-4 mr-2"; if (b.class === "Stocks") return <LineChart className={common} />; if (b.class === "Mutual Funds") return <Layers className={common} />; if (b.class === "Debt") return <Banknote className={common} />; if (b.class === "Gold") return <Coins className={common} />; if (b.class === "Real Estate") return <Home className={common} />; if (b.class === "Liquid") return <Droplet className={common} />; return <LineChart className={common} />; })()}{b.class}</span></td>
+                      <td className="py-2 px-3 font-medium"><span className="inline-flex items-center">{(() => { const common = "h-4 w-4 mr-2"; if (b.class === "Stocks") return <LineChart className={common} />; 		if (b.class === "Equity MF") return <Layers className={common} />; if (b.class === "Debt") return <Banknote className={common} />; if (b.class === "Gold") return <Coins className={common} />; if (b.class === "Real Estate") return <Home className={common} />; if (b.class === "Liquid") return <Droplet className={common} />; return <LineChart className={common} />; })()}{b.class}</span></td>
                       <td className="py-2 px-3 text-right">{Math.round(b.pct)}%</td>
                       <td className="py-2 px-3">
                         <div className="group flex items-center gap-2">
@@ -314,17 +322,15 @@ export default function PlanSummary({
                                   </div>
                                   {mode==='custom' ? (
                                     (()=>{ const current = Math.round(Number(b.pct)||0); const sumOthersAll = ((plan?.buckets||[]) as any[]).reduce((s:any, x:any)=> s + (x.class !== b.class ? (Number(x.pct)||0) : 0), 0); const capValue = Math.max(0, Math.floor(100 - sumOthersAll)); const incAllowed = Math.max(0, capValue - current); return (<span className="text-[10px] text-muted-foreground whitespace-nowrap">free {Math.round(incAllowed)}%</span>); })()
-                                  ) : (
-                                    (()=>{ const current = Math.round(Number(b.pct)||0); const sumOthersAll = ((plan?.buckets||[]) as any[]).reduce((s:any, x:any)=> s + (x.class !== b.class ? (Number(x.pct)||0) : 0), 0); const capValue = Math.max(0, Math.floor(100 - sumOthersAll)); const incBand = Math.max(0, bandMax - current); const incByTotal = Math.max(0, capValue - current); const incAllowed = Math.max(0, Math.min(incBand, incByTotal)); return (<span className="text-[10px] text-muted-foreground whitespace-nowrap">free {Math.round(incAllowed)}% · safe {bandMin}–{bandMax}%</span>); })()
-                                  )}
+                                  ) : null}
                                 </>
                               ); })()}
                             </>
                           ); })()}
                         </div>
                       </td>
-                      <td className="py-2 px-3">{b.riskCategory || (b.class === 'Stocks' || b.class === 'Mutual Funds' ? 'Core' : (b.class === 'Gold' || b.class === 'Real Estate' ? 'Satellite' : (b.class === 'Debt' || b.class === 'Liquid' ? 'Defensive' : '')))}</td>
-                      <td className="py-2 px-3">{b.notes || (b.class === 'Stocks' ? 'Growth focus' : b.class === 'Mutual Funds' ? 'Diversified equity' : b.class === 'Debt' ? 'Stability & income' : b.class === 'Liquid' ? 'Emergency buffer' : b.class === 'Gold' ? 'Inflation hedge' : b.class === 'Real Estate' ? 'Long-term asset' : '')}</td>
+                      		<td className="py-2 px-3">{b.riskCategory || (b.class === 'Stocks' || b.class === 'Equity MF' ? 'Core' : (b.class === 'Gold' || b.class === 'Real Estate' ? 'Satellite' : (b.class === 'Debt' || b.class === 'Liquid' ? 'Defensive' : '')))}</td>
+                      		<td className="py-2 px-3">{b.notes || (b.class === 'Stocks' ? 'Growth focus' : b.class === 'Equity MF' ? 'Diversified equity' : b.class === 'Debt' ? 'Stability & income' : b.class === 'Liquid' ? 'Emergency buffer' : b.class === 'Gold' ? 'Inflation hedge' : b.class === 'Real Estate' ? 'Long-term asset' : '')}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -344,12 +350,7 @@ export default function PlanSummary({
               </div>
             ) : null}
 
-            {stress ? (
-              <div className="mt-3 rounded-md border border-border p-3">
-                <div className="text-xs font-semibold mb-1">Stress check</div>
-                <div className="text-[11px] text-muted-foreground">If equity falls 20%, portfolio impact ≈ {stress.impact.toLocaleString()} · Liquid covers ≈ {stress.months} months at a typical spend rate.</div>
-              </div>
-            ) : null}
+            {/* Stress check removed for Advisor/AI/engine view as per requirements. */}
             </>
           ) : (
             <div className="text-muted-foreground text-sm">No plan yet.</div>
@@ -358,7 +359,7 @@ export default function PlanSummary({
       </Card>
 
       {/* Enhanced Why This Mix - Right after allocation table */}
-      {plan?.rationale && (Array.isArray(plan.rationale) ? plan.rationale.length > 0 : plan.rationale.length > 100) && (
+      {mode !== 'custom' && plan?.rationale && (Array.isArray(plan.rationale) ? plan.rationale.length > 0 : plan.rationale.length > 100) && (
         <Card className="mt-4">
           <CardHeader 
             className="cursor-pointer" 
@@ -392,55 +393,7 @@ export default function PlanSummary({
         </Card>
       )}
 
-      <Card>
-        <CardHeader 
-          className="py-2 cursor-pointer" 
-          onClick={() => setRebalanceExpanded(!rebalanceExpanded)}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">
-                Rebalancing Suggestions
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Based on drift tolerance of {driftTolerancePct}%
-              </CardDescription>
-            </div>
-            {rebalanceExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </div>
-        </CardHeader>
-        {rebalanceExpanded && (
-          <CardContent className="pt-0">
-            {plan && rebalance.items.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                {rebalance.items.map((item) => (
-                  <div key={item.class} className="rounded-lg border border-border p-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="font-medium">{item.class}</div>
-                      <div className="text-muted-foreground">{item.actualPct}% → {item.targetPct}%</div>
-                    </div>
-                    <div className="mt-1 flex items-center gap-2">
-                      <div className="h-2 rounded bg-muted w-full overflow-hidden">
-                        <div className={`h-2 ${item.action === 'Increase' ? 'bg-indigo-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(100, Math.max(5, Math.round((item.amount / Math.max(1, rebalance.totalCurrentValue)) * 100)))}%` }}></div>
-                      </div>
-                      <div className={`text-xs ${item.action === 'Increase' ? 'text-indigo-600' : 'text-rose-600'}`}>
-                        {item.action} {item.amount.toFixed(0)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-muted-foreground text-sm">
-                {!plan 
-                  ? "No plan yet."
-                  : "All good! No rebalancing needed."
-                }
-              </div>
-            )}
-          </CardContent>
-        )}
-      </Card>
+  {/* Rebalancing Suggestions moved to Insights view. */}
 
       <Modal open={rebalanceOpen} onClose={()=> setRebalanceOpen(false)} title="Rebalance Proposal" footer={(
         <>
@@ -498,116 +451,7 @@ export default function PlanSummary({
         </div>
       </Modal>
 
-      {/* Enhanced Features from 10-Advisor Council Engine */}
-      <Card className="mt-4">
-        <CardHeader 
-          className="cursor-pointer" 
-          onClick={() => setSignalsExpanded(!signalsExpanded)}
-        >
-          <CardTitle className="text-sm flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-yellow-500" />
-              Signal Analysis
-            </div>
-            {signalsExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Factors that influenced your allocation
-          </CardDescription>
-        </CardHeader>
-        {signalsExpanded && (
-          <CardContent className="space-y-2">
-            {plan?.signals && plan.signals.length > 0 ? (
-              plan.signals
-                .sort((a: any, b: any) => Math.abs(b.equitySignal * b.weight) - Math.abs(a.equitySignal * a.weight))
-                .slice(0, 5)
-                .map((signal: any, index: number) => {
-                  const impact = signal.equitySignal * signal.weight;
-                  const isPositive = impact > 0;
-                  
-                  return (
-                    <div key={index} className="flex items-center justify-between p-2 bg-muted/20 rounded text-xs">
-                      <div className="flex-1">
-                        <div className="font-medium capitalize">
-                          {signal.factor?.replace(/_/g, ' ') || 'Unknown Factor'}
-                        </div>
-                        <div className="text-muted-foreground text-[11px]">
-                          {signal.explanation}
-                        </div>
-                      </div>
-                      <div className={`text-right font-semibold ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                        {isPositive ? '+' : ''}{Math.round(impact)}
-                      </div>
-                    </div>
-                  );
-                })
-            ) : (
-              <div className="text-xs text-muted-foreground p-2 bg-muted/20 rounded">
-                No signal data available. Complete the questionnaire to generate allocation signals.
-              </div>
-            )}
-          </CardContent>
-        )}
-      </Card>
-
-      <Card className="mt-4">
-        <CardHeader 
-          className="cursor-pointer" 
-          onClick={() => setStressTestExpanded(!stressTestExpanded)}
-        >
-          <CardTitle className="text-sm flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Target className="h-4 w-4 text-orange-500" />
-              Stress Test Results
-            </div>
-            {stressTestExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </CardTitle>
-          <CardDescription className="text-xs">
-            How your portfolio might perform in market downturns
-          </CardDescription>
-        </CardHeader>
-        {stressTestExpanded && (
-          <CardContent className="space-y-3">
-            {plan?.stressTest && Object.keys(plan.stressTest.scenarios).length > 0 ? (
-              Object.entries(plan.stressTest.scenarios).slice(0, 3).map(([scenario, result]: [string, any]) => (
-                <div key={scenario} className="p-2 border rounded text-xs">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="font-medium">{scenario}</div>
-                    <div className={`font-semibold ${
-                      result.portfolioImpact > 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {result.portfolioImpact > 0 ? '+' : ''}{result.portfolioImpact.toFixed(1)}%
-                    </div>
-                  </div>
-                  <div className="text-muted-foreground text-[11px]">
-                    Emergency coverage: {result.monthsCovered.toFixed(1)} months
-                  </div>
-                  {result.historicalDrop && (
-                    <div className="text-muted-foreground text-[11px] mt-1">
-                      Historical drop: {result.historicalDrop}
-                    </div>
-                  )}
-                  {result.evidence && (
-                    <div className="text-muted-foreground text-[11px]">
-                      Evidence: {result.evidence}
-                    </div>
-                  )}
-                  {result.recovery && (
-                    <div className="text-muted-foreground text-[11px]">
-                      Recovery: {result.recovery}
-                    </div>
-                  )}
-                </div>
-              ))
-            ) : (
-              <div className="text-xs text-muted-foreground p-2 bg-muted/20 rounded">
-                No stress test data available. Complete the questionnaire to generate stress test scenarios.
-              </div>
-            )}
-          </CardContent>
-        )}
-      </Card>
-
+      {/* Rebalance Options Section */}
       {/* Rebalance Options Section */}
       <Card className="mt-4">
         <CardHeader 
@@ -693,7 +537,7 @@ export default function PlanSummary({
         )}
       </Card>
 
-      <GoalsInlineModal open={goalsOpen} onClose={()=> setGoalsOpen(false)} onChanged={()=>{ try { const e = new Event('goals-updated'); window.dispatchEvent(e); } catch {} }} />
+  <GoalsPanel isOpen={goalsOpen} onClose={()=> setGoalsOpen(false)} onGoalsUpdated={()=>{}} />
       <style jsx>{`
         @keyframes shake { 10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(2px); } 30%, 50%, 70% { transform: translateX(-4px); } 40%, 60% { transform: translateX(4px); } }
         .animate-shake { animation: shake 0.3s linear; }

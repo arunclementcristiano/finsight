@@ -451,9 +451,17 @@ export default function ExpenseTrackerPage() {
   function next() { setPage(p => Math.min(totalPages, p + 1)); }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-5rem)] overflow-hidden">
-      {/* Sticky Command Bar */}
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+    <div className="max-w-full space-y-4 pl-2">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="text-sm text-muted-foreground">Expense Tracker</div>
+        </div>
+      </div>
+      
+      <div className="flex flex-col h-[calc(100vh-5rem)] overflow-hidden">
+        {/* Sticky Command Bar */}
+        <div className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
         <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-4 p-4">
           {/* Chat input */}
           <div>
@@ -465,7 +473,7 @@ export default function ExpenseTrackerPage() {
               {dateOpen && (
                 <input type="date" value={selectedDate} onChange={(e)=> setSelectedDate(e.target.value)} className="h-11 rounded-xl border border-border px-3 bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]" />
               )}
-              <Button type="submit">Add Expense</Button>
+              <Button type="submit" size="sm">Add Expense</Button>
             </form>
             {ai && (
               <div className="mt-3 rounded-xl border border-border p-3 text-sm space-y-2">
@@ -478,7 +486,7 @@ export default function ExpenseTrackerPage() {
                     ))}
                   </select>
                   <input ref={customRef} type="text" placeholder="Custom category (optional)" className="h-9 rounded-md border border-border px-2 bg-card"/>
-                  <Button onClick={()=>{
+                  <Button size="sm" onClick={()=>{
                     const custom = (customRef.current?.value || "").trim();
                     const chosen = custom || (selectedCategory || ai.category || "Other");
                     confirm(chosen, amountRef.current?.value);
@@ -489,15 +497,15 @@ export default function ExpenseTrackerPage() {
           </div>
           {/* Actions */}
           <div className="flex items-start justify-end gap-2">
-            <Button variant="outline" onClick={()=> setShowBudgetsModal(true)}>
+            <Button variant="outline" size="sm" onClick={()=> setShowBudgetsModal(true)}>
               <Settings2 className="h-4 w-4 mr-2"/>
               Set Budgets
             </Button>
-            <Button variant="outline" onClick={()=> setPrivacy(p=>!p)}>
+            <Button variant="outline" size="sm" onClick={()=> setPrivacy(p=>!p)}>
               {privacy ? <EyeOff className="h-4 w-4 mr-2"/> : <Eye className="h-4 w-4 mr-2"/>}
               {privacy ? "Unmask" : "Privacy"}
             </Button>
-            <Button variant="outline" onClick={()=> setExportOpen(true)}>
+            <Button variant="outline" size="sm" onClick={()=> setExportOpen(true)}>
               <Download className="h-4 w-4 mr-2"/>
               Export CSV
             </Button>
@@ -616,7 +624,7 @@ export default function ExpenseTrackerPage() {
             {(monthlyCategorySpend.arr).length > 0 ? (
               <div className="space-y-3">
                 {(monthlyCategorySpend.arr).map(([cat, spent]) => {
-                  const budget = (defaultCategoryBudgets?.[cat]) || 0;
+                  const budget = getMonthlyBudgetFor(currentYm, cat);
                   const pct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
                   const warn = pct >= 80 && pct < 100;
                   const alert = pct >= 100;
@@ -1158,6 +1166,7 @@ export default function ExpenseTrackerPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

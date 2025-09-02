@@ -104,8 +104,8 @@ function applyLiquidFloor(target: Record<string, number>, efMonths: number, liqA
 	if (cur >= minLiquid) return out;
 	let need = minLiquid - cur;
 	out["Liquid"] = minLiquid;
-	// Reduce from Debt, then Stocks, then Mutual Funds, then Gold, then Real Estate
-	const order = ["Debt", "Stocks", "Mutual Funds", "Gold", "Real Estate"];
+	// Reduce from Debt, then Stocks, then Equity MF, then Gold, then Real Estate
+	const order = ["Debt", "Stocks", "Equity MF", "Gold", "Real Estate"];
 	for (const cls of order) {
 		if (need <= 0) break;
 		const have = Math.round(Number(out[cls] || 0));

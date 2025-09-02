@@ -18,7 +18,10 @@ data "aws_iam_policy_document" "ddb_access" {
     resources = [
       aws_dynamodb_table.expenses.arn,
       aws_dynamodb_table.category_rules.arn,
-      aws_dynamodb_table.user_budgets.arn
+      aws_dynamodb_table.user_budgets.arn,
+      aws_dynamodb_table.invest.arn,
+      "${aws_dynamodb_table.expenses.arn}/index/userId-date-index",
+      "${aws_dynamodb_table.invest.arn}/index/*"
     ]
   }
 }
@@ -48,4 +51,3 @@ resource "aws_iam_role_policy_attachment" "attach_ddb" {
 output "app_role_arn" {
   value = aws_iam_role.app_role.arn
 }
-

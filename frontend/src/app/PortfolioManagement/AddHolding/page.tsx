@@ -1,373 +1,315 @@
-"use client";
-import React, { useMemo, useState } from "react";
-import { Button } from "../../components/Button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "../../components/Card";
-import { useApp } from "../../store";
-import type { AssetClass } from "../../PortfolioManagement/domain/allocationEngine";
-import { v4 as uuidv4 } from "uuid";
-import { formatCurrency, formatNumber } from "../../utils/format";
-import { Banknote, BarChart3, IndianRupee, Percent, Layers, ChevronLeft, ChevronRight } from "lucide-react";
-import { cn } from "../../components/utils";
+'use client';
+import React, { useEffect, useState } from 'react';
+import { Search } from 'lucide-react';
 
-type EntryMode = "units" | "amount";
+const ASSET_CLASSES = [
+	{ id: 'stocks', label: 'Stocks' },
+			{ id: 'mutual_funds', label: 'Mutual Funds' },
+	{ id: 'debt', label: 'Debt' },
+	{ id: 'liquid', label: 'Liquid' },
+	{ id: 'gold', label: 'Gold' },
+	{ id: 'real_estate', label: 'Real Estate' }
+] as const;
 
-interface HoldingFormState {
-	instrumentClass: AssetClass | "";
-	name: string;
-	symbol: string;
-	units: string;
-	price: string;
-	investedAmount: string;
-	currentValue: string;
-}
+type AssetClassId = typeof ASSET_CLASSES[number]['id'];
 
-const instrumentOptions: AssetClass[] = ["Stocks", "Mutual Funds", "Gold", "Real Estate", "Debt", "Liquid"];
+type DebtOption = 'bonds' | 'debt_mf';
+type LiquidOption = 'cash' | 'liquid_mf';
+type GoldOption = 'gold_etf' | 'gold_mf' | 'physical_gold';
+type RealEstateOption = 'reit' | 'property';
 
-export default function AddHoldingPage() {
-	const { addHolding, profile } = useApp();
-	const currency = profile.currency || "INR";
-	const [mode, setMode] = useState<EntryMode>("units");
-	const [form, setForm] = useState<HoldingFormState>({ instrumentClass: "", name: "", symbol: "", units: "", price: "", investedAmount: "", currentValue: "" });
-	const [submitted, setSubmitted] = useState(false);
-	const [tab, setTab] = useState<"holdings" | "add">("holdings");
-	const [showImport, setShowImport] = useState(false);
+export default function AddHolding() {
+	const [selectedClass, setSelectedClass] = useState<AssetClassId>('stocks');
+	const [debtType, setDebtType] = useState<DebtOption>('bonds');
+	const [liquidType, setLiquidType] = useState<LiquidOption>('cash');
+	const [goldType, setGoldType] = useState<GoldOption>('gold_etf');
+	const [reType, setReType] = useState<RealEstateOption>('reit');
 
-	function onChange<K extends keyof HoldingFormState>(key: K) {
-		return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-			setForm(prev => ({ ...prev, [key]: e.target.value }));
-		};
+	// Shared minimal form state
+	const [name, setName] = useState('');
+	const [symbol, setSymbol] = useState('');
+	const [investedAmount, setInvestedAmount] = useState('');
+	const [currentValue, setCurrentValue] = useState('');
+	const [units, setUnits] = useState('');
+	const [price, setPrice] = useState('');
+
+	// Stocks autocomplete
+	const [stockSearchTerm, setStockSearchTerm] = useState('');
+	const [selectedStock, setSelectedStock] = useState<{ name: string; symbol: string; currentPrice?: number } | null>(null);
+	const stockOptions: { name: string; symbol: string; currentPrice: number }[] = [
+		{ name: 'Reliance Industries Ltd', symbol: 'RELIANCE', currentPrice: 2720 },
+		{ name: 'Tata Consultancy Services Ltd', symbol: 'TCS', currentPrice: 3850 },
+		{ name: 'HDFC Bank Ltd', symbol: 'HDFCBANK', currentPrice: 1650 },
+		{ name: 'Infosys Ltd', symbol: 'INFY', currentPrice: 1820 }
+	];
+	const [filteredStockOptions, setFilteredStockOptions] = useState<typeof stockOptions>([]);
+	const [showStockDropdown, setShowStockDropdown] = useState(false);
+	const [stockEntryMode, setStockEntryMode] = useState<'units'|'amount'>('units');
+
+	function filterStockOptions(term: string) {
+		if (!term.trim()) { setFilteredStockOptions([]); setShowStockDropdown(false); return; }
+		const filtered = stockOptions.filter(o => o.name.toLowerCase().includes(term.toLowerCase()) || o.symbol.toLowerCase().includes(term.toLowerCase()));
+		setFilteredStockOptions(filtered.slice(0, 10));
+		setShowStockDropdown(filtered.length > 0);
 	}
 
-	const numeric = React.useMemo(() => {
-		const n = { units: parseFloat(form.units), price: parseFloat(form.price), investedAmount: parseFloat(form.investedAmount), currentValue: parseFloat(form.currentValue) };
-		return {
-			units: Number.isFinite(n.units) ? n.units : NaN,
-			price: Number.isFinite(n.price) ? n.price : NaN,
-			investedAmount: Number.isFinite(n.investedAmount) ? n.investedAmount : NaN,
-			currentValue: Number.isFinite(n.currentValue) ? n.currentValue : NaN,
-		};
-	}, [form]);
+			// Mutual Funds autocomplete (Direct Plan – Growth)
+	const [mfSearchTerm, setMfSearchTerm] = useState('');
+	const [selectedMF, setSelectedMF] = useState<{ name: string; schemeCode: string; currentNAV?: number; fullName?: string } | null>(null);
+	const [mfOptions, setMfOptions] = useState<any[]>([]);
+	const [filteredMFOptions, setFilteredMFOptions] = useState<any[]>([]);
+	const [showMFDropdown, setShowMFDropdown] = useState(false);
+	const [mfCalculatedUnits, setMfCalculatedUnits] = useState<number | null>(null);
+	const [mfCurrentValue, setMfCurrentValue] = useState<number | null>(null);
+	const [mfGainLoss, setMfGainLoss] = useState<number | null>(null);
+	const [mfGainLossPercent, setMfGainLossPercent] = useState<number | null>(null);
 
-	const computed = React.useMemo(() => {
-		const totalByUnits = !Number.isNaN(numeric.units) && !Number.isNaN(numeric.price) ? numeric.units * numeric.price : NaN;
-		const totalByAmount = !Number.isNaN(numeric.currentValue) ? numeric.currentValue : NaN;
-		const invested = mode === "units" ? (!Number.isNaN(totalByUnits) ? totalByUnits : NaN) : (!Number.isNaN(numeric.investedAmount) ? numeric.investedAmount : NaN);
-		const current = mode === "units" ? totalByUnits : totalByAmount;
-		const pnl = !Number.isNaN(invested) && !Number.isNaN(current) ? current - invested : NaN;
-		const pnlPct = !Number.isNaN(invested) && invested > 0 && !Number.isNaN(current) ? ((current - invested) / invested) * 100 : NaN;
-		return { invested, current, pnl, pnlPct };
-	}, [numeric, mode]);
-
-	const errors = React.useMemo(() => {
-		const e: Partial<Record<keyof HoldingFormState | "_form", string>> = {};
-		if (!form.instrumentClass) e.instrumentClass = "Select an instrument class";
-		if (!form.name.trim()) e.name = "Enter a name";
-		if (mode === "units") {
-			if (Number.isNaN(numeric.units) || numeric.units <= 0) e.units = "Enter units > 0";
-			if (Number.isNaN(numeric.price) || numeric.price <= 0) e.price = "Enter price > 0";
-		} else {
-			if (Number.isNaN(numeric.investedAmount) || numeric.investedAmount < 0) e.investedAmount = "Enter invested amount ≥ 0";
-			if (Number.isNaN(numeric.currentValue) || numeric.currentValue <= 0) e.currentValue = "Enter current value > 0";
+	useEffect(() => {
+		async function loadMFData() {
+			try {
+				const res = await fetch('/navall.txt');
+				const text = await res.text();
+				const lines = text.split('\n');
+				const funds: any[] = [];
+				for (const line of lines) {
+					if (line.includes('Direct Plan') && line.includes('Growth') && line.includes(';')) {
+						const parts = line.split(';');
+						if (parts.length >= 5) {
+							const schemeCode = parts[0]?.trim();
+							const schemeName = parts[3]?.trim();
+							const nav = parseFloat(parts[4]?.trim());
+							if (schemeCode && schemeName && !isNaN(nav)) {
+								funds.push({ schemeCode, name: schemeName.replace(/- Direct Plan.*Growth/i, '').trim(), fullName: schemeName, currentNAV: nav });
+							}
+						}
+					}
+				}
+				funds.sort((a, b) => a.name.localeCompare(b.name));
+				setMfOptions(funds);
+			} catch {}
 		}
-		return e;
-	}, [form, mode, numeric]);
+		loadMFData();
+	}, []);
 
-	const isValid = React.useMemo(() => Object.keys(errors).length === 0, [errors]);
-
-	function handleSubmit(e: React.FormEvent) {
-		e.preventDefault();
-		if (!isValid) return;
-		const id = uuidv4();
-		addHolding({
-			id,
-			instrumentClass: form.instrumentClass as AssetClass,
-			name: form.name.trim(),
-			symbol: form.symbol.trim() || undefined,
-			units: mode === "units" && !Number.isNaN(numeric.units) ? numeric.units : undefined,
-			price: mode === "units" && !Number.isNaN(numeric.price) ? numeric.price : undefined,
-			investedAmount: !Number.isNaN(computed.invested) ? Number(computed.invested.toFixed(2)) : undefined,
-			currentValue: !Number.isNaN(computed.current) ? Number(computed.current.toFixed(2)) : undefined,
-		});
-		setSubmitted(true);
+	function filterMFOptions(term: string) {
+		if (!term.trim()) { setFilteredMFOptions([]); setShowMFDropdown(false); return; }
+		const filtered = mfOptions.filter(o => o.name.toLowerCase().includes(term.toLowerCase()) || (o.fullName||'').toLowerCase().includes(term.toLowerCase()));
+		setFilteredMFOptions(filtered.slice(0, 10));
+		setShowMFDropdown(filtered.length > 0);
 	}
 
-	function resetForm() {
-		setForm({ instrumentClass: "", name: "", symbol: "", units: "", price: "", investedAmount: "", currentValue: "" });
-		setSubmitted(false);
-	}
+	useEffect(() => {
+		if (selectedMF && investedAmount && selectedMF.currentNAV) {
+			const amt = parseFloat(investedAmount);
+			if (!isNaN(amt) && amt > 0) {
+				const unitsCalc = amt / selectedMF.currentNAV;
+				const currVal = unitsCalc * selectedMF.currentNAV;
+				const gain = currVal - amt;
+				const gainPct = (gain / amt) * 100;
+				setMfCalculatedUnits(unitsCalc);
+				setMfCurrentValue(currVal);
+				setMfGainLoss(gain);
+				setMfGainLossPercent(gainPct);
+				setCurrentValue(currVal.toFixed(2));
+			}
+		}
+	}, [selectedMF, investedAmount]);
 
 	return (
-		<div className="space-y-4">
-			<div className="flex items-center gap-2 border-b border-border">
-				<button onClick={() => setTab("holdings")} className={`px-4 py-2 text-sm rounded-t-md transition-colors ${tab === "holdings" ? "text-indigo-600 border-b-2 border-indigo-600 -mb-px" : "text-foreground hover:bg-muted"}`}>Holdings</button>
-				<button onClick={() => setTab("add")} className={`px-4 py-2 text-sm rounded-t-md transition-colors ${tab === "add" ? "text-indigo-600 border-b-2 border-indigo-600 -mb-px" : "text-foreground hover:bg-muted"}`}>Add Holding</button>
-			</div>
-
-			{tab === "holdings" && (
-				<HoldingsTableWithPagination onImport={() => setShowImport(true)} />
-			)}
-
-			{tab === "add" && (
-				<div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-					<div className="flex flex-col gap-6 order-1 xl:order-none">
-						<Card>
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2"><Layers className="h-5 w-5 text-indigo-600" /> Add Holding</CardTitle>
-								<CardDescription>Record a new asset in your portfolio. Choose how you'd like to enter values.</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<div className="mb-4 inline-flex rounded-xl border border-border bg-card p-1 transition-colors">
-									<button type="button" className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === "units" ? "bg-gradient-to-r from-emerald-500 to-indigo-600 text-white" : "text-foreground hover:bg-muted"}`} onClick={() => setMode("units")}>
-										By Units
-									</button>
-									<button type="button" className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === "amount" ? "bg-gradient-to-r from-emerald-500 to-indigo-600 text-white" : "text-foreground hover:bg-muted"}`} onClick={() => setMode("amount")}>
-										By Amount
-									</button>
-								</div>
-
-								<form onSubmit={handleSubmit} className="space-y-5">
-									<div>
-										<label className="block text-sm font-medium text-muted-foreground mb-1">Instrument Class</label>
-										<select value={form.instrumentClass} onChange={onChange("instrumentClass")} className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors">
-											<option value="">Select</option>
-											{instrumentOptions.map(opt => (<option key={opt} value={opt}>{opt}</option>))}
-										</select>
-										{errors.instrumentClass ? <p className="mt-1 text-sm text-rose-600">{errors.instrumentClass}</p> : null}
-									</div>
-
-									<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-										<div>
-											<label className="block text-sm font-medium text-muted-foreground mb-1">Name</label>
-											<input value={form.name} onChange={onChange("name")} className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="e.g., Reliance Industries" />
-											{errors.name ? <p className="mt-1 text-sm text-rose-600">{errors.name}</p> : null}
-										</div>
-										<div>
-											<label className="block text-sm font-medium text-muted-foreground mb-1">Symbol (optional)</label>
-											<input value={form.symbol} onChange={onChange("symbol")} className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="e.g., RELIANCE" />
-										</div>
-									</div>
-
-									{mode === "units" ? (
-										<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-											<div>
-												<label className="block text-sm font-medium text-muted-foreground mb-1">Units</label>
-												<div className="relative">
-													<input inputMode="decimal" type="number" step="0.0001" value={form.units} onChange={onChange("units")} className="w-full h-11 rounded-xl border border-border pl-3 pr-10 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
-													<BarChart3 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-												</div>
-												{errors.units ? <p className="mt-1 text-sm text-rose-600">{errors.units}</p> : null}
-											</div>
-											<div>
-												<label className="block text-sm font-medium text-muted-foreground mb-1">Price</label>
-												<div className="relative">
-													<input inputMode="decimal" type="number" step="0.01" value={form.price} onChange={onChange("price")} className="w-full h-11 rounded-xl border border-border pl-9 pr-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
-													<IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-												</div>
-												{errors.price ? <p className="mt-1 text-sm text-rose-600">{errors.price}</p> : null}
-											</div>
-										</div>
-									) : (
-										<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-											<div>
-												<label className="block text-sm font-medium text-muted-foreground mb-1">Invested Amount</label>
-												<div className="relative">
-													<input inputMode="decimal" type="number" step="0.01" value={form.investedAmount} onChange={onChange("investedAmount")} className="w-full h-11 rounded-xl border border-border pl-9 pr-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
-													<Banknote className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-												</div>
-												{errors.investedAmount ? <p className="mt-1 text-sm text-rose-600">{errors.investedAmount}</p> : null}
-											</div>
-											<div>
-												<label className="block text-sm font-medium text-muted-foreground mb-1">Current Value</label>
-												<div className="relative">
-													<input inputMode="decimal" type="number" step="0.01" value={form.currentValue} onChange={onChange("currentValue")} className="w-full h-11 rounded-xl border border-border pl-9 pr-3 bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] transition-colors" placeholder="0.00" />
-													<IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-												</div>
-												{errors.currentValue ? <p className="mt-1 text-sm text-rose-600">{errors.currentValue}</p> : null}
-											</div>
-										</div>
-									)}
-
-								<CardFooter className="pt-2 flex items-center gap-3">
-									<Button type="submit" disabled={!isValid} className="min-w-[160px]">Save Holding</Button>
-									<Button type="button" variant="outline" onClick={resetForm}>Reset</Button>
-									{submitted && (<span className="text-sm text-emerald-600">Saved!</span>)}
-								</CardFooter>
-							</form>
-						</CardContent>
-					</Card>
-					</div>
-					<div className="flex flex-col gap-6 order-none xl:order-1">
-						<Card className="xl:sticky xl:top-20">
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2"><TrendingUpIcon /> Live Summary</CardTitle>
-								<CardDescription>Real-time preview updates as you type.</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-									<SummaryStat label="Invested" value={formatCurrency(computed.invested, currency)} icon={<Banknote className="h-4 w-4" />} />
-									<SummaryStat label="Current" value={formatCurrency(computed.current, currency)} icon={<IndianRupee className="h-4 w-4" />} />
-									<SummaryStat label="P/L" value={Number.isNaN(computed.pnl) ? "—" : `${formatCurrency(computed.pnl, currency)} (${Number.isNaN(computed.pnlPct) ? "—" : formatNumber(computed.pnlPct, 2)}%)`} icon={<Percent className="h-4 w-4" />} valueClassName={computed.pnl > 0 ? "text-emerald-600" : computed.pnl < 0 ? "text-rose-600" : ""} />
-								</div>
-							</CardContent>
-						</Card>
-					</div>
-				</div>
-			)}
-
-			{showImport && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-					<div className="w-full max-w-md rounded-xl border border-border bg-card p-5 text-foreground">
-						<div className="flex items-center justify-between mb-3">
-							<h3 className="text-lg font-semibold">Import Holdings</h3>
-							<button className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-muted" onClick={() => setShowImport(false)}>✕</button>
-						</div>
-						<div className="space-y-3">
-							<input type="file" className="w-full h-11 rounded-xl border border-border px-3 bg-card text-foreground" />
-							<p className="text-sm text-muted-foreground">CSV/XLSX supported. This is a UI stub.</p>
-							<div className="flex justify-end gap-2 pt-2">
-								<Button variant="outline" onClick={() => setShowImport(false)}>Cancel</Button>
-								<Button onClick={() => setShowImport(false)}>Continue</Button>
-							</div>
-						</div>
-					</div>
-				</div>
-			)}
-		</div>
-	);
-}
-
-function SummaryStat({ label, value, icon, valueClassName = "" }: { label: string; value: string; icon?: React.ReactNode; valueClassName?: string }) {
-	return (
-		<div className="rounded-xl border border-border p-4 bg-card transition-colors">
-			<div className="flex items-center gap-2 mb-1 text-muted-foreground">
-				<span className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-muted text-foreground/80">{icon}</span>
-				<span className="text-sm">{label}</span>
-			</div>
-			<div className={`text-xl font-semibold ${valueClassName}`}>{value}</div>
-		</div>
-	);
-}
-
-function TrendingUpIcon() {
-	return <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-indigo-100 text-indigo-700"> <BarChart3 className="h-4 w-4" /> </span>;
-}
-
-function HoldingsTableWithPagination({ onImport }: { onImport?: () => void }) {
-	const { holdings, deleteHolding, profile } = useApp();
-	const currency = profile.currency || "INR";
-	const [page, setPage] = useState(1);
-	const [pageSize, setPageSize] = useState(8);
-
-	function classTextColor(cls: AssetClass) {
-		switch (cls) {
-			case "Stocks": return "text-indigo-600 dark:text-indigo-300";
-			case "Mutual Funds": return "text-emerald-600 dark:text-emerald-300";
-			case "Gold": return "text-amber-600 dark:text-amber-300";
-			case "Real Estate": return "text-violet-600 dark:text-violet-300";
-			case "Debt": return "text-sky-600 dark:text-sky-300";
-			case "Liquid": return "text-cyan-600 dark:text-cyan-300";
-			default: return "";
-		}
-	}
-
-	const totals = useMemo(() => {
-		let invested = 0, current = 0;
-		for (const h of holdings) {
-			const inv = typeof h.investedAmount === 'number' ? h.investedAmount : (typeof h.units === 'number' && typeof h.price === 'number' ? h.units * h.price : 0);
-			const cur = typeof h.currentValue === 'number' ? h.currentValue : inv;
-			invested += inv; current += cur;
-		}
-		const pnl = current - invested;
-		const pnlPct = invested > 0 ? (pnl / invested) * 100 : 0;
-		return { invested, current, pnl, pnlPct };
-	}, [holdings]);
-
-	const totalPages = Math.max(1, Math.ceil(holdings.length / pageSize));
-	const startIdx = (page - 1) * pageSize;
-	const pageRows = holdings.slice(startIdx, startIdx + pageSize);
-
-	function prev() { setPage(p => Math.max(1, p - 1)); }
-	function next() { setPage(p => Math.min(totalPages, p + 1)); }
-
-	return (
-		<Card className="flex flex-col">
-			<CardHeader className="flex-shrink-0">
-				<div className="flex items-center justify-between gap-3">
-					<div>
-						<CardTitle>Your Holdings</CardTitle>
-						<CardDescription>Overview of positions you have added</CardDescription>
-					</div>
-					<div className="flex items-center gap-2">
-						<Button onClick={onImport} className="h-9" leftIcon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M21 21H3"/></svg>}>Import</Button>
-					</div>
-				</div>
-			</CardHeader>
-			<CardContent>
-				{holdings.length === 0 ? (
-					<div className="text-foreground/80">No holdings yet. Add your first holding using the form.</div>
-				) : (
-					<>
-						<div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-							<div className="rounded-xl border border-border p-3">
-								<div className="text-xs text-foreground/80">Total Invested</div>
-								<div className="text-lg font-semibold">{formatNumber(totals.invested, 2)}</div>
-							</div>
-							<div className="rounded-xl border border-border p-3">
-								<div className="text-xs text-foreground/80">Total Current</div>
-								<div className="text-lg font-semibold">{formatNumber(totals.current, 2)}</div>
-							</div>
-							<div className="rounded-xl border border-border p-3">
-								<div className="text-xs text-foreground/80">P/L</div>
-								<div className={cn("text-lg font-semibold", totals.pnlPct >= 0 ? "text-emerald-600" : "text-rose-600")}>{formatNumber(totals.pnlPct, 2)}%</div>
-							</div>
-						</div>
-						<table className="w-full text-left border rounded-xl overflow-hidden border-border text-sm">
-							<thead className="bg-card sticky top-0 z-10">
-								<tr>
-									<th className="px-3 py-2 border-b">Class</th>
-									<th className="px-3 py-2 border-b">Name / Symbol</th>
-									<th className="px-3 py-2 border-b text-right">Units</th>
-									<th className="px-3 py-2 border-b text-right">Price</th>
-									<th className="px-3 py-2 border-b text-right">Invested</th>
-									<th className="px-3 py-2 border-b text-right">Current</th>
-									<th className="px-3 py-2 border-b text-right">P/L</th>
-									<th className="px-3 py-2 border-b">Actions</th>
-								</tr>
-							</thead>
-							<tbody>
-								{pageRows.map(h => {
-									const invested = h.investedAmount ?? (h.units && h.price ? h.units * h.price : 0);
-									const current = h.currentValue ?? invested;
-									const pnl = current - invested;
-									const pnlPct = invested > 0 ? (pnl / invested) * 100 : 0;
-									return (
-										<tr key={h.id} className="border-b align-top">
-											<td className={cn("px-3 py-2 whitespace-nowrap font-semibold", classTextColor(h.instrumentClass))}>{h.instrumentClass}</td>
-											<td className="px-3 py-2">
-												<div className="font-medium leading-tight">{h.name}</div>
-												<div className="text-foreground/80 text-xs leading-tight">{h.symbol || "—"}</div>
-											</td>
-											<td className="px-3 py-2 text-right">{typeof h.units === "number" ? formatNumber(h.units, 2) : "—"}</td>
-											<td className="px-3 py-2 text-right">{typeof h.price === "number" ? formatNumber(h.price, 2) : "—"}</td>
-											<td className="px-3 py-2 text-right">{formatNumber(invested, 2)}</td>
-											<td className="px-3 py-2 text-right">{formatNumber(current, 2)}</td>
-											<td className="px-3 py-2 text-right"><span className={cn("font-semibold", pnlPct >= 0 ? "text-emerald-600" : "text-rose-600")}>{formatNumber(pnlPct, 2)}%</span></td>
-											<td className="px-3 py-2"><button className="text-xs text-rose-600 hover:underline" onClick={() => deleteHolding(h.id)}>Delete</button></td>
-										</tr>
-									);
-								})}
-							</tbody>
-						</table>
-					</>
-				)}
-			</CardContent>
-			<CardFooter className="flex items-center justify-between gap-3 flex-shrink-0">
-				<div className="text-sm text-foreground/80">Page {page} of {totalPages}</div>
+		<div className="max-w-full space-y-4 pl-2">
+			{/* Header */}
+			<div className="flex items-center justify-between">
 				<div className="flex items-center gap-2">
-					<Button variant="outline" size="sm" onClick={prev} disabled={page === 1} leftIcon={<ChevronLeft className="h-4 w-4" />}>Prev</Button>
-					<Button variant="outline" size="sm" onClick={next} disabled={page === totalPages}><ChevronRight className="h-4 w-4 mr-2" />Next</Button>
+					<div className="text-sm text-muted-foreground">Add Holding</div>
 				</div>
-			</CardFooter>
-		</Card>
+			</div>
+
+			{/* Segmented control */}
+			<div className="flex flex-wrap gap-2 mb-6">
+				{ASSET_CLASSES.map(opt => (
+					<button key={opt.id} onClick={() => setSelectedClass(opt.id)} className={`h-9 px-3 rounded-lg text-sm transition-colors border ${selectedClass===opt.id ? 'bg-muted text-foreground border-border' : 'bg-background text-foreground border-border hover:bg-muted'}`} aria-pressed={selectedClass===opt.id}>{opt.label}</button>
+				))}
+			</div>
+
+			{/* Stocks */}
+			{selectedClass === 'stocks' && (
+				<div className="rounded-xl border border-border bg-card p-4 space-y-4">
+					<h2 className="text-sm font-medium text-foreground">Stocks</h2>
+					<div className="relative">
+						<label className="block text-xs text-muted-foreground mb-2">Search Stock (Name / Symbol) *</label>
+						<div className="relative">
+							<Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+							<input value={stockSearchTerm} onChange={e => { setStockSearchTerm(e.target.value); filterStockOptions(e.target.value); }} onFocus={()=> stockSearchTerm && filterStockOptions(stockSearchTerm)} onBlur={()=> setTimeout(()=> setShowStockDropdown(false), 200)} placeholder="Start typing stock name or symbol..." className="w-full pl-10 pr-3 py-2.5 border border-border rounded-lg bg-background text-foreground text-sm" />
+							{showStockDropdown && filteredStockOptions.length>0 && (
+								<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+									{filteredStockOptions.map(opt => (
+										<div key={opt.symbol} onClick={()=> { setSelectedStock(opt); setStockSearchTerm(opt.name); setName(opt.name); setSymbol(opt.symbol); setShowStockDropdown(false); if (!price) setPrice(String(opt.currentPrice)); }} className="px-4 py-3 cursor-pointer hover:bg-muted text-sm border-b border-border last:border-b-0 flex items-center justify-between">
+											<div>
+												<div className="font-medium text-foreground">{opt.name}</div>
+												<div className="text-xs text-muted-foreground">({opt.symbol})</div>
+											</div>
+											<div className="text-right text-sm">₹{opt.currentPrice.toLocaleString()}</div>
+										</div>
+									))}
+								</div>
+							)}
+						</div>
+					</div>
+					{selectedStock && (
+						<div className="rounded-xl border border-border bg-card p-4 space-y-4 mt-4">
+							<div className="flex bg-muted/50 rounded-lg p-1">
+								<button type="button" onClick={()=> setStockEntryMode('units')} className={`flex-1 py-2 px-4 rounded-md text-sm ${stockEntryMode==='units' ? 'bg-card text-blue-600 shadow-sm border border-border' : 'text-muted-foreground hover:text-foreground'}`}>By Units & Buy Price</button>
+								<button type="button" onClick={()=> setStockEntryMode('amount')} className={`flex-1 py-2 px-4 rounded-md text-sm ${stockEntryMode==='amount' ? 'bg-card text-blue-600 shadow-sm border border-border' : 'text-muted-foreground hover:text-foreground'}`}>By Total Invested Amount</button>
+							</div>
+							{stockEntryMode==='units' ? (
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+									<input placeholder="Units" type="number" value={units} onChange={e=> setUnits(e.target.value)} className="h-10 rounded-md border border-border bg-background px-3 text-sm" />
+									<input placeholder="Buy Price (₹)" type="number" value={price} onChange={e=> setPrice(e.target.value)} className="h-10 rounded-md border border-border bg-background px-3 text-sm" />
+								</div>
+							) : (
+								<div>
+									<input placeholder="Invested Amount (₹)" type="number" value={investedAmount} onChange={e=> setInvestedAmount(e.target.value)} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm" />
+								</div>
+							)}
+						</div>
+					)}
+				</div>
+			)}
+
+			{/* Mutual Funds */}
+			{selectedClass === 'mutual_funds' && (
+				<div className="rounded-xl border border-border bg-card p-4 space-y-4">
+					<h2 className="text-sm font-medium text-foreground">Mutual Funds</h2>
+					<div className="relative">
+						<label className="block text-xs text-muted-foreground mb-2">Search Mutual Fund (Direct Growth) *</label>
+						<div className="relative">
+							<Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+							<input value={mfSearchTerm} onChange={e => { setMfSearchTerm(e.target.value); filterMFOptions(e.target.value); }} onFocus={()=> mfSearchTerm && filterMFOptions(mfSearchTerm)} onBlur={()=> setTimeout(()=> setShowMFDropdown(false), 200)} placeholder="Start typing fund name..." className="w-full pl-10 pr-3 py-2.5 border border-border rounded-lg bg-background text-foreground text-sm" />
+							{showMFDropdown && filteredMFOptions.length>0 && (
+								<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+									{filteredMFOptions.map(opt => (
+										<div key={opt.schemeCode} onClick={()=> { setSelectedMF(opt); setMfSearchTerm(opt.name); setName(opt.name); setSymbol(opt.schemeCode); setShowMFDropdown(false); }} className="px-4 py-3 cursor-pointer hover:bg-muted text-sm border-b border-border last:border-b-0 flex items-center justify-between">
+											<div>
+												<div className="font-medium text-foreground">{opt.name}</div>
+												<div className="text-xs text-muted-foreground">Direct Plan – Growth</div>
+											</div>
+											<div className="text-right text-sm">₹{opt.currentNAV?.toFixed(4)}</div>
+										</div>
+									))}
+								</div>
+							)}
+						</div>
+					</div>
+					{selectedMF && (
+						<div className="rounded-xl border border-border bg-card p-4 space-y-4 mt-4">
+							<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+								<input placeholder="Invested Amount (₹)" type="number" value={investedAmount} onChange={e=> setInvestedAmount(e.target.value)} className="h-10 rounded-md border border-border bg-background px-3 text-sm" />
+								<input placeholder="Investment Date (optional)" type="date" className="h-10 rounded-md border border-border bg-background px-3 text-sm" />
+							</div>
+							{investedAmount && mfCalculatedUnits && (
+								<div className="p-4 rounded-xl border border-border bg-muted/30">
+									<div className="grid grid-cols-2 gap-3 text-sm">
+										<div><div className="text-xs text-muted-foreground">Units</div><div className="font-medium">{mfCalculatedUnits.toFixed(4)}</div></div>
+										<div><div className="text-xs text-muted-foreground">Current Value</div><div className="font-medium">₹{mfCurrentValue?.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div></div>
+										<div><div className="text-xs text-muted-foreground">Gain/Loss</div><div className={`font-semibold ${Number(mfGainLoss)>=0?'text-emerald-600':'text-rose-600'}`}>{Number(mfGainLoss)>=0?'+':''}₹{mfGainLoss?.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div></div>
+										<div><div className="text-xs text-muted-foreground">% Return</div><div className={`font-semibold ${Number(mfGainLossPercent)>=0?'text-emerald-600':'text-rose-600'}`}>{Number(mfGainLossPercent)>=0?'+':''}{mfGainLossPercent?.toFixed(2)}%</div></div>
+									</div>
+								</div>
+							)}
+						</div>
+					)}
+				</div>
+			)}
+
+			{/* Other classes minimal forms */}
+			{selectedClass === 'debt' && (
+				<div className="rounded-xl border border-border bg-card p-4 space-y-4">
+					<h2 className="text-sm font-medium text-foreground">Debt</h2>
+					<div className="inline-flex gap-2">
+						<button className={`h-8 px-3 rounded-md text-sm border ${debtType==='bonds'?'bg-muted':'hover:bg-muted'}`} onClick={()=> setDebtType('bonds')}>Bonds</button>
+						<button className={`h-8 px-3 rounded-md text-sm border ${debtType==='debt_mf'?'bg-muted':'hover:bg-muted'}`} onClick={()=> setDebtType('debt_mf')}>Debt MF</button>
+					</div>
+					{debtType==='bonds' ? (
+						<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+							<input placeholder="Bond name" className="h-10 rounded-md border border-border bg-background px-3 text-sm" />
+							<input placeholder="Face value (₹)" type="number" className="h-10 rounded-md border border-border bg-background px-3 text-sm" />
+							<input placeholder="Units" type="number" className="h-10 rounded-md border border-border bg-background px-3 text-sm" />
+						</div>
+					) : (
+						<div className="space-y-2">
+							<p className="text-xs text-muted-foreground">Filter NAVAll: fund_category contains "Debt" or "Fixed Income"; scheme: Direct Plan – Growth.</p>
+							<input placeholder="Search Debt MF (Direct Growth)" className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm" />
+						</div>
+					)}
+				</div>
+			)}
+
+			{selectedClass === 'liquid' && (
+				<div className="rounded-xl border border-border bg-card p-4 space-y-4">
+					<h2 className="text-sm font-medium text-foreground">Liquid</h2>
+					<div className="inline-flex gap-2">
+						<button className={`h-8 px-3 rounded-md text-sm border ${liquidType==='cash'?'bg-muted':'hover:bg-muted'}`} onClick={()=> setLiquidType('cash')}>Cash</button>
+						<button className={`h-8 px-3 rounded-md text-sm border ${liquidType==='liquid_mf'?'bg-muted':'hover:bg-muted'}`} onClick={()=> setLiquidType('liquid_mf')}>Liquid MF</button>
+					</div>
+					{liquidType==='cash' ? (
+						<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+							<input placeholder="Amount (₹)" type="number" className="h-10 rounded-md border border-border bg-background px-3 text-sm" />
+						</div>
+					) : (
+						<div className="space-y-2">
+							<p className="text-xs text-muted-foreground">Filter NAVAll: fund_category = "Liquid Fund"; scheme: Direct Plan – Growth.</p>
+							<input placeholder="Search Liquid MF (Direct Growth)" className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm" />
+						</div>
+					)}
+				</div>
+			)}
+
+			{selectedClass === 'gold' && (
+				<div className="rounded-xl border border-border bg-card p-4 space-y-4">
+					<h2 className="text-sm font-medium text-foreground">Gold</h2>
+					<div className="inline-flex gap-2">
+						<button className={`h-8 px-3 rounded-md text-sm border ${goldType==='gold_etf'?'bg-muted':'hover:bg-muted'}`} onClick={()=> setGoldType('gold_etf')}>Gold ETF</button>
+						<button className={`h-8 px-3 rounded-md text-sm border ${goldType==='gold_mf'?'bg-muted':'hover:bg-muted'}`} onClick={()=> setGoldType('gold_mf')}>Gold MF</button>
+						<button className={`h-8 px-3 rounded-md text-sm border ${goldType==='physical_gold'?'bg-muted':'hover:bg-muted'}`} onClick={()=> setGoldType('physical_gold')}>Physical Gold</button>
+					</div>
+					{goldType==='physical_gold' ? (
+						<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+							<input placeholder="Value (₹) or grams" className="h-10 rounded-md border border-border bg-background px-3 text-sm" />
+						</div>
+					) : (
+						<div className="space-y-2">
+							<p className="text-xs text-muted-foreground">Filter NAVAll: ETF name contains "Gold" (for ETF) or fund_category = "Gold Fund" (for MF), scheme: Direct Plan – Growth.</p>
+							<input placeholder="Search Gold ETF/MF (Direct Growth)" className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm" />
+						</div>
+					)}
+				</div>
+			)}
+
+			{selectedClass === 'real_estate' && (
+				<div className="rounded-xl border border-border bg-card p-4 space-y-4">
+					<h2 className="text-sm font-medium text-foreground">Real Estate</h2>
+					<div className="inline-flex gap-2">
+						<button className={`h-8 px-3 rounded-md text-sm border ${reType==='reit'?'bg-muted':'hover:bg-muted'}`} onClick={()=> setReType('reit')}>REIT</button>
+						<button className={`h-8 px-3 rounded-md text-sm border ${reType==='property'?'bg-muted':'hover:bg-muted'}`} onClick={()=> setReType('property')}>Property</button>
+					</div>
+					{reType==='reit' ? (
+						<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+							<select className="h-10 rounded-md border border-border bg-background px-3 text-sm">
+								<option>Embassy</option>
+								<option>Mindspace</option>
+								<option>Brookfield</option>
+								<option>Nexus</option>
+							</select>
+							<input placeholder="Units or Value" className="h-10 rounded-md border border-border bg-background px-3 text-sm" />
+						</div>
+					) : (
+						<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+							<input placeholder="Property name" className="h-10 rounded-md border border-border bg-background px-3 text-sm" />
+							<input placeholder="Value (₹)" type="number" className="h-10 rounded-md border border-border bg-background px-3 text-sm" />
+						</div>
+					)}
+				</div>
+			)}
+		</div>
 	);
 }

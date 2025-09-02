@@ -6,6 +6,7 @@ interface Question {
   helperText?: string;
   maxSelect?: number;
   optional?: boolean;
+  isGoalsPage?: boolean; // Special flag for goals management question
 }
 
 export const questions: Question[] = [
@@ -67,16 +68,7 @@ export const questions: Question[] = [
     text: "What is your investment knowledge level?",
     options: ["beginner", "some_knowledge", "experienced", "expert"],
     helperText: "Your familiarity with investments."
-  },
-  
-  // Goals & Objectives (20% weight)
-  {
-    key: "primaryGoal",
-    text: "What is your primary investment goal?",
-    options: ["retirement", "wealth_building", "income_generation", "child_education", "home_purchase", "preservation"],
-    helperText: "Your main objective guides asset allocation."
-  },
-  
+  }, 
   // Additional Context
   {
     key: "hasInsurance",
@@ -87,7 +79,7 @@ export const questions: Question[] = [
   {
     key: "avoidAssets",
     text: "Are there any assets you want to avoid? (Optional)",
-    options: ["Stocks", "Mutual Funds", "Gold", "Real Estate", "Debt", "Liquid"],
+    		options: ["Stocks", "Equity MF", "Gold", "Real Estate", "Debt", "Liquid"],
     helperText: "We will set avoided assets to 0% (safety sleeves remain).",
     maxSelect: 6,
     optional: true
