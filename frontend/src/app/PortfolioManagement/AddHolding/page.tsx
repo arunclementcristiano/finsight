@@ -4,7 +4,8 @@ import { Search } from 'lucide-react';
 
 const ASSET_CLASSES = [
 	{ id: 'stocks', label: 'Stocks' },
-			{ id: 'mutual_funds', label: 'Mutual Funds' },
+	{ id: 'mutual_funds', label: 'Mutual Funds' },
+	{ id: 'etf', label: 'ETF' },
 	{ id: 'debt', label: 'Debt' },
 	{ id: 'liquid', label: 'Liquid' },
 	{ id: 'gold', label: 'Gold' },
@@ -64,14 +65,27 @@ export default function AddHolding() {
 	const [mfGainLoss, setMfGainLoss] = useState<number | null>(null);
 	const [mfGainLossPercent, setMfGainLossPercent] = useState<number | null>(null);
 
+	// ETF autocomplete
+	const [etfSearchTerm, setEtfSearchTerm] = useState('');
+	const [selectedETF, setSelectedETF] = useState<{ name: string; schemeCode: string; currentNAV?: number; fullName?: string } | null>(null);
+	const [etfOptions, setEtfOptions] = useState<any[]>([]);
+	const [filteredETFOptions, setFilteredETFOptions] = useState<any[]>([]);
+	const [showETFDropdown, setShowETFDropdown] = useState(false);
+	const [etfCalculatedUnits, setEtfCalculatedUnits] = useState<number | null>(null);
+	const [etfCurrentValue, setEtfCurrentValue] = useState<number | null>(null);
+	const [etfGainLoss, setEtfGainLoss] = useState<number | null>(null);
+	const [etfGainLossPercent, setEtfGainLossPercent] = useState<number | null>(null);
+
 	useEffect(() => {
 		async function loadMFData() {
 			try {
 				const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_PORTFOLIO || ''}/mutual-funds`);
 				const data = await res.json();
 				if (data && Array.isArray(data)) {
+					// Filter for mutual funds (is_etf = false)
+					const mfData = data.filter(fund => !fund.is_etf);
 					// Sort by date (latest to oldest), then by name for same dates
-					const sortedFunds = data.sort((a, b) => {
+					const sortedFunds = mfData.sort((a, b) => {
 						// Parse dates from the API response
 						const dateA = a.date ? new Date(a.date) : new Date(0);
 						const dateB = b.date ? new Date(b.date) : new Date(0);
@@ -88,6 +102,34 @@ export default function AddHolding() {
 			} catch {}
 		}
 		loadMFData();
+	}, []);
+
+	useEffect(() => {
+		async function loadETFData() {
+			try {
+				const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_PORTFOLIO || ''}/mutual-funds`);
+				const data = await res.json();
+				if (data && Array.isArray(data)) {
+					// Filter for ETFs (is_etf = true)
+					const etfData = data.filter(fund => fund.is_etf);
+					// Sort by date (latest to oldest), then by name for same dates
+					const sortedETFs = etfData.sort((a, b) => {
+						// Parse dates from the API response
+						const dateA = a.date ? new Date(a.date) : new Date(0);
+						const dateB = b.date ? new Date(b.date) : new Date(0);
+						
+						const dateDiff = dateB.getTime() - dateA.getTime();
+						if (dateDiff !== 0) return dateDiff;
+						
+						// If dates are the same, sort by name
+						return (a.fund_name || '').localeCompare(b.fund_name || '');
+					});
+					
+					setEtfOptions(sortedETFs);
+				}
+			} catch {}
+		}
+		loadETFData();
 	}, []);
 
 	function filterMFOptions(term: string) {
@@ -111,6 +153,27 @@ export default function AddHolding() {
 		setShowMFDropdown(filtered.length > 0);
 	}
 
+	function filterETFOptions(term: string) {
+		if (!term.trim()) { setFilteredETFOptions([]); setShowETFDropdown(false); return; }
+		const filtered = etfOptions.filter(o => 
+			(o.fund_name || '').toLowerCase().includes(term.toLowerCase()) || 
+			(o.scheme_name || '').toLowerCase().includes(term.toLowerCase())
+		);
+		// Maintain date-based sorting (latest to oldest) for filtered results
+		filtered.sort((a, b) => {
+			const dateA = a.date ? new Date(a.date) : new Date(0);
+			const dateB = b.date ? new Date(b.date) : new Date(0);
+			
+			const dateDiff = dateB.getTime() - dateA.getTime();
+			if (dateDiff !== 0) return dateDiff;
+			
+			// If dates are the same, sort by name
+			return (a.fund_name || '').localeCompare(b.fund_name || '');
+		});
+		setFilteredETFOptions(filtered.slice(0, 10));
+		setShowETFDropdown(filtered.length > 0);
+	}
+
 	useEffect(() => {
 		if (selectedMF && investedAmount && selectedMF.nav) {
 			const amt = parseFloat(investedAmount);
@@ -127,6 +190,23 @@ export default function AddHolding() {
 			}
 		}
 	}, [selectedMF, investedAmount]);
+
+	useEffect(() => {
+		if (selectedETF && investedAmount && selectedETF.nav) {
+			const amt = parseFloat(investedAmount);
+			if (!isNaN(amt) && amt > 0) {
+				const unitsCalc = amt / selectedETF.nav;
+				const currVal = unitsCalc * selectedETF.nav;
+				const gain = currVal - amt;
+				const gainPct = (gain / amt) * 100;
+				setEtfCalculatedUnits(unitsCalc);
+				setEtfCurrentValue(currVal);
+				setEtfGainLoss(gain);
+				setEtfGainLossPercent(gainPct);
+				setCurrentValue(currVal.toFixed(2));
+			}
+		}
+	}, [selectedETF, investedAmount]);
 
 	return (
 		<div className="max-w-full space-y-4 pl-2">
@@ -201,7 +281,7 @@ export default function AddHolding() {
 							{showMFDropdown && filteredMFOptions.length>0 && (
 								<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
 									{filteredMFOptions.map(opt => (
-										<div key={opt.scheme_code} onClick={()=> { setSelectedMF(opt); setMfSearchTerm(opt.fund_name); setName(opt.fund_name); setSymbol(opt.scheme_code); setShowMFDropdown(false); }} className="px-4 py-3 cursor-pointer hover:bg-muted text-sm border-b border-border last:border-b-0 flex items-center justify-between">
+										<div key={opt.scheme_code} onClick={()=> { setSelectedMF(opt); setMfSearchTerm(opt.fund_name); setName(opt.fund_name); setSymbol(opt.scheme_code); setShowMFDropdown(false); setFilteredMFOptions([]); }} className="px-4 py-3 cursor-pointer hover:bg-muted text-sm border-b border-border last:border-b-0 flex items-center justify-between">
 											<div>
 												<div className="font-medium text-foreground">{opt.fund_name}</div>
 												<div className="text-xs text-muted-foreground">
@@ -238,6 +318,78 @@ export default function AddHolding() {
 							)}
 						</div>
 					)}
+				</div>
+			)}
+
+			{/* ETF */}
+			{selectedClass === 'etf' && (
+				<div className="rounded-xl border border-border bg-card p-4 space-y-4">
+					<h2 className="text-sm font-medium text-foreground">ETF</h2>
+					<div className="relative">
+						<label className="block text-xs text-muted-foreground mb-2">Search ETF *</label>
+						<div className="relative">
+							<Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+							<input value={etfSearchTerm} onChange={e => { setEtfSearchTerm(e.target.value); filterETFOptions(e.target.value); }} onFocus={()=> etfSearchTerm && filterETFOptions(etfSearchTerm)} onBlur={()=> setTimeout(()=> setShowETFDropdown(false), 200)} placeholder="Start typing ETF name..." className="w-full pl-10 pr-3 py-2.5 border border-border rounded-lg bg-background text-foreground text-sm" />
+							{showETFDropdown && filteredETFOptions.length>0 && (
+								<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+									{filteredETFOptions.map(opt => (
+										<div key={opt.scheme_code} onClick={()=> { setSelectedETF(opt); setEtfSearchTerm(opt.fund_name); setName(opt.fund_name); setSymbol(opt.scheme_code); setShowETFDropdown(false); setFilteredETFOptions([]); }} className="px-4 py-3 cursor-pointer hover:bg-muted text-sm border-b border-border last:border-b-0 flex items-center justify-between">
+											<div>
+												<div className="font-medium text-foreground">{opt.fund_name}</div>
+												<div className="text-xs text-muted-foreground">
+													{opt.asset_class || 'ETF'}
+													{opt.date && (
+														<span className="ml-2 text-blue-600">
+															• NAV: {new Date(opt.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+														</span>
+													)}
+												</div>
+											</div>
+											<div className="text-right text-sm">₹{opt.nav?.toFixed(4)}</div>
+										</div>
+									))}
+								</div>
+							)}
+						</div>
+					</div>
+					{selectedETF && (
+						<div className="rounded-xl border border-border bg-card p-4 space-y-4 mt-4">
+							<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+								<input placeholder="Invested Amount (₹)" type="number" value={investedAmount} onChange={e=> setInvestedAmount(e.target.value)} className="h-10 rounded-md border border-border bg-background px-3 text-sm" />
+								<input placeholder="Investment Date (optional)" type="date" className="h-10 rounded-md border border-border bg-background px-3 text-sm" />
+							</div>
+							{investedAmount && etfCalculatedUnits && (
+								<div className="p-4 rounded-xl border border-border bg-muted/30">
+									<div className="grid grid-cols-2 gap-3 text-sm">
+										<div><div className="text-xs text-muted-foreground">Units</div><div className="font-medium">{etfCalculatedUnits.toFixed(4)}</div></div>
+										<div><div className="text-xs text-muted-foreground">Current Value</div><div className="font-medium">₹{etfCurrentValue?.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div></div>
+										<div><div className="text-xs text-muted-foreground">Gain/Loss</div><div className={`font-semibold ${Number(etfGainLoss)>=0?'text-emerald-600':'text-rose-600'}`}>{Number(etfGainLoss)>=0?'+':''}₹{etfGainLoss?.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div></div>
+										<div><div className="text-xs text-muted-foreground">% Return</div><div className={`font-semibold ${Number(etfGainLossPercent)>=0?'text-emerald-600':'text-rose-600'}`}>{Number(etfGainLossPercent)>=0?'+':''}{etfGainLossPercent?.toFixed(2)}%</div></div>
+									</div>
+								</div>
+							)}
+						</div>
+					)}
+				</div>
+			)}
+
+			{/* Submit Button with Units Display */}
+			{(selectedClass === 'mutual_funds' || selectedClass === 'etf') && (selectedMF || selectedETF) && (
+				<div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl border border-border">
+					<div className="flex items-center gap-4">
+						{(mfCalculatedUnits || etfCalculatedUnits) && (
+							<div className="text-sm">
+								<span className="text-muted-foreground">Units to be added: </span>
+								<span className="font-medium text-foreground">{(mfCalculatedUnits || etfCalculatedUnits)?.toFixed(4)}</span>
+							</div>
+						)}
+					</div>
+					<Button size="sm" onClick={() => {
+						// TODO: Implement form submission
+						console.log('Add holding:', { selectedClass, selectedMF, selectedETF, investedAmount, mfCalculatedUnits, etfCalculatedUnits });
+					}}>
+						Add Holding
+					</Button>
 				</div>
 			)}
 

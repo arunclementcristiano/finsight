@@ -12,7 +12,13 @@ import { fetchMutualFundSchemes, searchFundsByName, TransformedFund, saveHolding
 // Asset class colors for charts
 const CLASS_COLORS = {
 	"Stocks": { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-300", chart: "#3B82F6" },
-	"Mutual Funds": { bg: "bg-emerald-100 dark:bg-emerald-900/30", text: "text-emerald-700 dark:text-blue-300", chart: "#10B981" },
+	"Mutual Funds": { bg: "bg-emerald-100 dark:bg-emerald-900/30", text: "text-emerald-700 dark:text-emerald-300", chart: "#10B981" },
+	"Equity MF": { bg: "bg-emerald-100 dark:bg-emerald-900/30", text: "text-emerald-700 dark:text-emerald-300", chart: "#10B981" },
+	"Debt MF": { bg: "bg-purple-100 dark:bg-purple-900/30", text: "text-purple-700 dark:text-purple-300", chart: "#8B5CF6" },
+	"Liquid MF": { bg: "bg-orange-100 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-300", chart: "#F59E0B" },
+	"Debt ETF": { bg: "bg-indigo-100 dark:bg-indigo-900/30", text: "text-indigo-700 dark:text-indigo-300", chart: "#6366F1" },
+	"Liquid ETF": { bg: "bg-cyan-100 dark:bg-cyan-900/30", text: "text-cyan-700 dark:text-cyan-300", chart: "#06B6D4" },
+	"ETF": { bg: "bg-violet-100 dark:bg-violet-900/30", text: "text-violet-700 dark:text-violet-300", chart: "#8B5CF6" },
 	"Debt": { bg: "bg-purple-100 dark:bg-purple-900/30", text: "text-purple-700 dark:text-purple-300", chart: "#8B5CF6" },
 	"Liquid": { bg: "bg-orange-100 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-300", chart: "#F59E0B" },
 	"Gold": { bg: "bg-yellow-100 dark:bg-yellow-900/30", text: "text-yellow-700 dark:text-yellow-300", chart: "#EAB308" },
@@ -454,7 +460,7 @@ export default function HoldingsPage() {
 		const roleArray = Array.from(roleMap.entries()).map(([name, value]) => ({
 			name,
 			value,
-			color: name === 'Equity' ? '#3B82F6' : name === 'Defensive' ? '#10B981' : '#F59E0B'
+			color: name === 'Equity' ? '#3B82F6' : name === 'Defensive' ? '#10B981' : name === 'Satellite' ? '#8B5CF6' : '#F59E0B'
 		})).sort((a, b) => b.value - a.value);
 
 		return roleArray;
@@ -813,12 +819,7 @@ export default function HoldingsPage() {
 												return (
 													<tr key={holding.id} className="border-t border-border/50">
 														<td className="py-2 px-3 font-medium">
-															<div>
-																<div className="text-foreground">{holding.name}</div>
-																{holding.symbol && (
-																	<div className="text-muted-foreground">{holding.symbol}</div>
-																)}
-															</div>
+															<div className="text-foreground">{holding.name}</div>
 														</td>
 														<td className="py-2 px-3">
 															<div className="space-y-0.5">
