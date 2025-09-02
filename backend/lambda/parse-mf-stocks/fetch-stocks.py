@@ -119,15 +119,50 @@ def fetch_bse():
         # Log first few rows for debugging
         rows_processed = 0
         items = []
+        
+        # Try to identify the correct columns dynamically
+        symbol_col = None
+        company_col = None
+        isin_col = None
+        
+        # Look for common column name patterns
+        for col in reader.fieldnames:
+            col_lower = col.lower().strip()
+            if 'scrip' in col_lower or 'code' in col_lower:
+                symbol_col = col
+            elif 'security' in col_lower or 'name' in col_lower or 'company' in col_lower:
+                company_col = col
+            elif 'isin' in col_lower:
+                isin_col = col
+        
+        logger.info(f"BSE detected columns - Symbol: {symbol_col}, Company: {company_col}, ISIN: {isin_col}")
+        
         for row in reader:
             rows_processed += 1
             if rows_processed <= 3:  # Log first 3 rows
                 logger.info(f"BSE row {rows_processed}: {row}")
             
-            # Handle different possible column names
-            symbol = row.get("Scrip code", row.get("SCRIP CODE", "")).strip()
-            company_name = row.get("Security Name", row.get("SECURITY NAME", "")).strip()
-            isin_number = row.get("ISIN", "").strip()
+            # Use detected columns or fallback to common names
+            symbol = ""
+            company_name = ""
+            isin_number = ""
+            
+            if symbol_col:
+                symbol = row.get(symbol_col, "").strip()
+            else:
+                # Fallback to common column names
+                symbol = row.get("Scrip code", row.get("SCRIP CODE", row.get("Code", ""))).strip()
+            
+            if company_col:
+                company_name = row.get(company_col, "").strip()
+            else:
+                # Fallback to common column names
+                company_name = row.get("Security Name", row.get("SECURITY NAME", row.get("Company Name", ""))).strip()
+            
+            if isin_col:
+                isin_number = row.get(isin_col, "").strip()
+            else:
+                isin_number = row.get("ISIN", "").strip()
             
             # Skip rows with missing essential data
             if not symbol or not company_name:
