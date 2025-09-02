@@ -50,26 +50,54 @@ def lambda_handler(event, context):
         # Route based on type
         if parse_type == "stocks":
             logger.info("Executing stocks parsing only")
-            stocks_result = stocks_handler(event, context)
-            results["stocks"] = stocks_result
+            try:
+                stocks_result = stocks_handler(event, context)
+                results["stocks"] = stocks_result
+            except Exception as e:
+                logger.error(f"Stocks parsing failed: {str(e)}")
+                results["stocks"] = {
+                    "statusCode": 500,
+                    "body": f"Stocks parsing failed: {str(e)}"
+                }
             
         elif parse_type == "mf":
             logger.info("Executing mutual fund parsing only")
-            mf_result = mf_handler(event, context)
-            results["mutual_funds"] = mf_result
+            try:
+                mf_result = mf_handler(event, context)
+                results["mutual_funds"] = mf_result
+            except Exception as e:
+                logger.error(f"Mutual fund parsing failed: {str(e)}")
+                results["mutual_funds"] = {
+                    "statusCode": 500,
+                    "body": f"Mutual fund parsing failed: {str(e)}"
+                }
             
         elif parse_type == "both":
             logger.info("Executing both stocks and mutual fund parsing")
             
             # Parse stocks
             logger.info("Starting stocks parsing...")
-            stocks_result = stocks_handler(event, context)
-            results["stocks"] = stocks_result
+            try:
+                stocks_result = stocks_handler(event, context)
+                results["stocks"] = stocks_result
+            except Exception as e:
+                logger.error(f"Stocks parsing failed: {str(e)}")
+                results["stocks"] = {
+                    "statusCode": 500,
+                    "body": f"Stocks parsing failed: {str(e)}"
+                }
             
             # Parse mutual funds
             logger.info("Starting mutual fund parsing...")
-            mf_result = mf_handler(event, context)
-            results["mutual_funds"] = mf_result
+            try:
+                mf_result = mf_handler(event, context)
+                results["mutual_funds"] = mf_result
+            except Exception as e:
+                logger.error(f"Mutual fund parsing failed: {str(e)}")
+                results["mutual_funds"] = {
+                    "statusCode": 500,
+                    "body": f"Mutual fund parsing failed: {str(e)}"
+                }
             
         else:
             return {
