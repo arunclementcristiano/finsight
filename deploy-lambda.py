@@ -97,8 +97,21 @@ def build_lambda_packages():
             print(f"   📦 Installing {func['name']} dependencies...")
             run_command([
                 "pip3", "install", "-r", str(requirements_file), 
-                "-t", str(build_dir)
+                "-t", str(build_dir), "--no-deps", "--upgrade"
             ])
+            
+            # Verify critical dependencies
+            if func['name'] == 'parse-mf-stocks':
+                requests_dir = build_dir / "requests"
+                boto3_dir = build_dir / "boto3"
+                if not requests_dir.exists():
+                    print(f"   ❌ ERROR: 'requests' library not found in {func['name']} build directory.")
+                    sys.exit(1)
+                if not boto3_dir.exists():
+                    print(f"   ❌ ERROR: 'boto3' library not found in {func['name']} build directory.")
+                    sys.exit(1)
+                print(f"   ✅ Verified critical dependencies for {func['name']}")
+            
             print(f"   ✅ {func['name']} dependencies installed successfully")
         
         # Create deployment ZIP
@@ -110,6 +123,24 @@ def build_lambda_packages():
                     zipf.write(file_path, arcname)
         
         print(f"   ✅ Created {zip_file}")
+        
+        # Verify ZIP contents for critical functions
+        if func['name'] == 'parse-mf-stocks':
+            print(f"   📦 Verifying {func['name']} ZIP contents...")
+            with zipfile.ZipFile(zip_file, 'r') as zipf:
+                file_list = zipf.namelist()
+                has_requests = any('requests' in f for f in file_list)
+                has_boto3 = any('boto3' in f for f in file_list)
+                has_main = any('main.py' in f for f in file_list)
+                
+                print(f"      📄 Contains requests: {has_requests}")
+                print(f"      📄 Contains boto3: {has_boto3}")
+                print(f"      📄 Contains main.py: {has_main}")
+                print(f"      📄 Total files: {len(file_list)}")
+                
+                if not has_requests or not has_boto3 or not has_main:
+                    print(f"   ❌ ERROR: {func['name']} ZIP is missing critical files!")
+                    sys.exit(1)
         
         # Clean up build directory
         shutil.rmtree(build_dir)
@@ -219,16 +250,22 @@ def show_deployment_outputs():
     print("   aws lambda invoke --function-name parse-mf-stocks --payload '{\"type\":\"both\"}' response.json")
     print("   ")
     print("   📈 Parse stocks only:")
-    print("   aws lambda invoke --function-name parse-mf-stocks --payload '{\"type\":\"stocks\"}' response.json")
+    print("   aws lambda invoke --function-name parse-mf-stocks --payload '{\"type\":\"stocks\"}' stocks_response.json")
     print("   ")
     print("   💰 Parse mutual funds only:")
-    print("   aws lambda invoke --function-name parse-mf-stocks --payload '{\"type\":\"mf\"}' response.json")
+    print("   aws lambda invoke --function-name parse-mf-stocks --payload '{\"type\":\"mf\"}' mf_response.json")
+    print("   ")
+    print("   🔍 Check response:")
+    print("   cat response.json")
     print("   ")
     print("   💼 Test Portfolio API:")
     print("   curl -X GET https://your-api-gateway-url/portfolio/holdings")
     print("   ")
     print("   💸 Test Expenses API:")
     print("   curl -X GET https://your-api-gateway-url/expenses/transactions")
+    print("   ")
+    print("   📝 Note: If you get 'Invalid base64' error, try:")
+    print("   aws lambda invoke --function-name parse-mf-stocks --payload '{\\\"type\\\":\\\"stocks\\\"}' response.json")
 
 def main():
     """Main deployment function"""
