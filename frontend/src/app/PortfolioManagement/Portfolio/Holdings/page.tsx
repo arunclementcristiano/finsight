@@ -814,7 +814,7 @@ export default function HoldingsPage() {
 														<td className="py-2 px-3">
 															<div className="space-y-0.5">
 																<div className="text-sm text-foreground font-medium">{holding.asset_class || holding.instrumentClass}</div>
-																<div className="text-xs text-muted-foreground">Role: {holding.portfolio_role || getRoleForAssetClass(holding.instrumentClass)}</div>
+																<div className="text-xs text-muted-foreground italic">{holding.portfolio_role || getRoleForAssetClass(holding.instrumentClass)}</div>
 															</div>
 														</td>
 														<td className="py-2 px-3">{holding.units?.toFixed(2) || '0.00'}</td>
