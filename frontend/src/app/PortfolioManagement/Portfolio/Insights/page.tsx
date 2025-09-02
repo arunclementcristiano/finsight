@@ -74,10 +74,13 @@ export default function PortfolioInsightsPage() {
 			setIsLoading(true);
 			// Using the same mock user ID as Holdings page
 			const mockUserId = 'user-123';
+			console.log('🔍 Loading holdings data for user:', mockUserId);
 			const dbHoldings = await fetchUserHoldings(mockUserId);
+			console.log('📊 Holdings data loaded:', dbHoldings.length, 'holdings');
+			console.log('📊 Holdings data:', dbHoldings);
 			setHoldings(dbHoldings);
 		} catch (error) {
-			console.error('Error loading holdings data:', error);
+			console.error('❌ Error loading holdings data:', error);
 			setHoldings([]);
 		} finally {
 			setIsLoading(false);
@@ -90,7 +93,9 @@ export default function PortfolioInsightsPage() {
 
 	// Comprehensive portfolio analytics
 	const portfolioAnalytics = useMemo(() => {
+		console.log('🔍 Computing portfolio analytics for holdings:', holdings?.length || 0);
 		if (!holdings || holdings.length === 0) {
+			console.log('⚠️ No holdings data available for analytics');
 			return {
 				totalInvested: 0,
 				totalCurrent: 0,
@@ -112,10 +117,14 @@ export default function PortfolioInsightsPage() {
 		const roleData: Record<string, { invested: number; current: number; count: number }> = {};
 		const performanceData: any[] = [];
 
+		console.log('📊 Processing holdings for analytics:', holdings);
+
 		// Process each holding
 		holdings.forEach((holding: any) => {
 			const invested = holding.investedAmount || (holding.units && holding.price ? holding.units * holding.price : 0);
 			const current = holding.currentValue || invested;
+			
+			console.log('📊 Processing holding:', holding.name, 'Invested:', invested, 'Current:', current, 'Asset Class:', holding.asset_class, 'Role:', holding.portfolio_role);
 			
 			totalInvested += invested;
 			totalCurrent += current;
@@ -217,7 +226,7 @@ export default function PortfolioInsightsPage() {
 			};
 		}).filter(d => Math.abs(d.drift) > 1) : [];
 
-		return {
+		const result = {
 			totalInvested,
 			totalCurrent,
 			totalPnL,
@@ -230,6 +239,12 @@ export default function PortfolioInsightsPage() {
 			riskMetrics,
 			allocationDrift
 		};
+
+		console.log('📊 Final portfolio analytics result:', result);
+		console.log('📊 Asset breakdown:', assetBreakdown);
+		console.log('📊 Role breakdown:', roleBreakdown);
+
+		return result;
 	}, [holdings, plan, driftTolerancePct]);
 
 	// Mock time series data for portfolio performance
