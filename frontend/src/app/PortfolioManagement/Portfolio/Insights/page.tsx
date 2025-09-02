@@ -243,6 +243,8 @@ export default function PortfolioInsightsPage() {
 		console.log('📊 Final portfolio analytics result:', result);
 		console.log('📊 Asset breakdown:', assetBreakdown);
 		console.log('📊 Role breakdown:', roleBreakdown);
+		console.log('📊 Asset breakdown details:', JSON.stringify(assetBreakdown, null, 2));
+		console.log('📊 Role breakdown details:', JSON.stringify(roleBreakdown, null, 2));
 
 		return result;
 	}, [holdings, plan, driftTolerancePct]);
@@ -574,6 +576,7 @@ export default function PortfolioInsightsPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="h-80">
+							{console.log('🎯 Rendering Portfolio Role Distribution with data:', portfolioAnalytics.roleBreakdown)}
 							<ResponsiveContainer width="100%" height="100%">
 								<BarChart data={portfolioAnalytics.roleBreakdown} layout="horizontal">
 									<XAxis type="number" />
@@ -635,6 +638,7 @@ export default function PortfolioInsightsPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="h-80">
+							{console.log('🎯 Rendering Asset Class Performance with data:', portfolioAnalytics.assetBreakdown)}
 							<ResponsiveContainer width="100%" height="100%">
 								<BarChart data={portfolioAnalytics.assetBreakdown}>
 									<XAxis dataKey="assetClass" angle={-45} textAnchor="end" height={80} />
