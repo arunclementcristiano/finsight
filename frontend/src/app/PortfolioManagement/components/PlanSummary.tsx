@@ -193,7 +193,30 @@ export default function PlanSummary({
     return new Set(arr as string[]);
   }, [questionnaire]);
 
-  const visibleBuckets = useMemo(()=> (mode==='custom' ? (plan?.buckets||[]) : (plan?.buckets||[]).filter((b:any)=> !avoidSet.has(b.class))), [plan, avoidSet, mode]);
+  const visibleBuckets = useMemo(()=> {
+    const buckets = mode==='custom' ? (plan?.buckets||[]) : (plan?.buckets||[]).filter((b:any)=> !avoidSet.has(b.class));
+    
+    // Define consistent order for asset classes
+    const assetClassOrder = ['Stocks', 'Equity MF', 'Debt', 'Liquid', 'Gold', 'Real Estate'];
+    
+    // Sort buckets by the defined order
+    return buckets.sort((a: any, b: any) => {
+      const aIndex = assetClassOrder.indexOf(a.class);
+      const bIndex = assetClassOrder.indexOf(b.class);
+      
+      // If both are in the order array, sort by their position
+      if (aIndex !== -1 && bIndex !== -1) {
+        return aIndex - bIndex;
+      }
+      
+      // If only one is in the order array, prioritize it
+      if (aIndex !== -1) return -1;
+      if (bIndex !== -1) return 1;
+      
+      // If neither is in the order array, maintain original order
+      return 0;
+    });
+  }, [plan, avoidSet, mode]);
 
   async function handleAcceptProposal() {
     try {
