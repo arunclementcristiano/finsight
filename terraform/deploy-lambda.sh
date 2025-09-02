@@ -65,23 +65,18 @@ terraform plan -out=tfplan
 
 echo "🤔 Do you want to apply these changes? (y/N)"
 read -r response
-if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-    echo "🚀 Applying Terraform changes..."
-    terraform apply --auto-approve tfplan
-    
-    echo "✅ Deployment completed!"
-    echo ""
-    echo "📊 Lambda Function Details:"
-    terraform output fetch_mf_nav_lambda_function_name
-    terraform output fetch_mf_nav_lambda_arn
-    echo ""
-    echo "📝 CloudWatch Logs:"
-    terraform output fetch_mf_nav_cloudwatch_log_group
-    echo ""
-    echo "🕐 The Lambda is scheduled to run daily at 6 PM UTC"
-    echo "🧪 You can test it manually from the AWS Console or CLI"
-    
-else
-    echo "❌ Deployment cancelled."
-    rm -f tfplan
-fi
+echo "🚀 Applying Terraform changes..."
+terraform apply --auto-approve tfplan
+
+echo "✅ Deployment completed!"
+echo ""
+echo "📊 Lambda Function Details:"
+terraform output fetch_mf_nav_lambda_function_name
+terraform output fetch_mf_nav_lambda_arn
+echo ""
+echo "📝 CloudWatch Logs:"
+terraform output fetch_mf_nav_cloudwatch_log_group
+echo ""
+echo "🕐 The Lambda is scheduled to run daily at 6 PM UTC"
+echo "🧪 You can test it manually from the AWS Console or CLI"
+rm -f tfplan

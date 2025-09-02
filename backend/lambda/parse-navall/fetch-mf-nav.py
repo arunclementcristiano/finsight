@@ -182,7 +182,12 @@ def lambda_handler(event, context):
 
             # Asset Class & Portfolio Role
             asset_class = map_to_allocation(curr_category[0], curr_category[1], fund_name)
+
+            # ✅ Override equity to store as "Equity MF"
             if asset_class == "Equity":
+                asset_class = "Equity MF"
+
+            if asset_class == "Equity MF":
                 portfolio_role = "Equity"
             elif asset_class in ["Debt Fund", "Liquid Fund"]:
                 portfolio_role = "Defensive"
