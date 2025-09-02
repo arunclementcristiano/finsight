@@ -1122,7 +1122,21 @@ export default function HoldingsPage() {
 															value={selectedStock ? `${selectedStock.name} (${selectedStock.symbol})` : stockSearchTerm}
 															onChange={(e) => {
 																if (editingId) return; // Disable in edit mode
-																setStockSearchTerm(e.target.value);
+																const newValue = e.target.value;
+																setStockSearchTerm(newValue);
+																
+																// If user is typing something different from the selected stock, clear the selection
+																if (selectedStock && newValue !== selectedStock.name) {
+																	setSelectedStock(null);
+																	setForm({ ...form, name: '', symbol: '', price: '' });
+																}
+																
+																if (newValue.trim() === '') {
+																	setShowStockDropdown(false);
+																	setFilteredStockOptions([]);
+																	setSelectedStock(null);
+																	setForm({ ...form, name: '', symbol: '', price: '' });
+																}
 															}}
 															onFocus={() => {
 																if (editingId) return; // Disable in edit mode
@@ -1138,7 +1152,7 @@ export default function HoldingsPage() {
 															}`}
 															placeholder={editingId !== null ? "Stock name cannot be changed during edit" : "Search for stocks..."}
 														/>
-														{showStockDropdown && filteredStockOptions.length > 0 && !editingId && stockSearchTerm.trim() !== '' && (
+																												{showStockDropdown && filteredStockOptions.length > 0 && !editingId && stockSearchTerm.trim() !== '' && !selectedStock && (
 															<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-auto">
 																{filteredStockOptions.map((stock) => (
 																	<div
@@ -1146,7 +1160,7 @@ export default function HoldingsPage() {
 																		onClick={() => {
 																			setSelectedStock(stock);
 																			setStockSearchTerm(stock.name);
-																			setForm({ ...form, name: stock.name, symbol: stock.symbol, price: stock.price.toString() });
+															setForm({ ...form, name: stock.name, symbol: stock.symbol, price: stock.price.toString() });
 															setShowStockDropdown(false);
 															setFilteredStockOptions([]);
 														}}
@@ -1313,7 +1327,7 @@ export default function HoldingsPage() {
 															}`}
 															placeholder={editingId !== null ? "ETF name cannot be changed during edit" : "Search for ETFs..."}
 														/>
-																																										{showMFDropdown && filteredMFOptions.length > 0 && !editingId && mfSearchTerm.trim() !== '' && (
+																																										{showMFDropdown && filteredMFOptions.length > 0 && !editingId && mfSearchTerm.trim() !== '' && !selectedMF && (
 															<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-auto">
 																{filteredMFOptions.map((fund) => (
 																	<div
