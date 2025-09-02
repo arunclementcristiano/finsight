@@ -67,57 +67,24 @@ export default function AddHolding() {
 	useEffect(() => {
 		async function loadMFData() {
 			try {
-				const res = await fetch('/navall.txt');
-				const text = await res.text();
-				const lines = text.split('\n');
-				const funds: any[] = [];
-				for (const line of lines) {
-					if (line.includes('Direct Plan') && line.includes('Growth') && line.includes(';')) {
-						const parts = line.split(';');
-						if (parts.length >= 6) {
-							const schemeCode = parts[0]?.trim();
-							const schemeName = parts[3]?.trim();
-							const nav = parseFloat(parts[4]?.trim());
-							const dateStr = parts[5]?.trim();
-							if (schemeCode && schemeName && !isNaN(nav) && dateStr) {
-								// Parse date string (format: "26-Aug-2025")
-								const dateParts = dateStr.split('-');
-								if (dateParts.length === 3) {
-									const day = parseInt(dateParts[0]);
-									const monthStr = dateParts[1];
-									const year = parseInt(dateParts[2]);
-									
-									// Convert month string to number
-									const monthMap: { [key: string]: number } = {
-										'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
-										'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
-									};
-									const month = monthMap[monthStr];
-									
-									if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-										const navDate = new Date(year, month, day);
-										funds.push({ 
-											schemeCode, 
-											name: schemeName.replace(/- Direct Plan.*Growth/i, '').trim(), 
-											fullName: schemeName, 
-											currentNAV: nav,
-											navDate: navDate
-										});
-									}
-								}
-							}
-						}
-					}
-				}
-				// Sort by NAV date (latest to oldest), then by name for same dates
-				funds.sort((a, b) => {
-					if (a.navDate && b.navDate) {
-						const dateDiff = b.navDate.getTime() - a.navDate.getTime();
+				const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_PORTFOLIO || ''}/mutual-funds`);
+				const data = await res.json();
+				if (data && Array.isArray(data)) {
+					// Sort by date (latest to oldest), then by name for same dates
+					const sortedFunds = data.sort((a, b) => {
+						// Parse dates from the API response
+						const dateA = a.date ? new Date(a.date) : new Date(0);
+						const dateB = b.date ? new Date(b.date) : new Date(0);
+						
+						const dateDiff = dateB.getTime() - dateA.getTime();
 						if (dateDiff !== 0) return dateDiff;
-					}
-					return a.name.localeCompare(b.name);
-				});
-				setMfOptions(funds);
+						
+						// If dates are the same, sort by name
+						return (a.fund_name || '').localeCompare(b.fund_name || '');
+					});
+					
+					setMfOptions(sortedFunds);
+				}
 			} catch {}
 		}
 		loadMFData();
@@ -125,25 +92,31 @@ export default function AddHolding() {
 
 	function filterMFOptions(term: string) {
 		if (!term.trim()) { setFilteredMFOptions([]); setShowMFDropdown(false); return; }
-		const filtered = mfOptions.filter(o => o.name.toLowerCase().includes(term.toLowerCase()) || (o.fullName||'').toLowerCase().includes(term.toLowerCase()));
+		const filtered = mfOptions.filter(o => 
+			(o.fund_name || '').toLowerCase().includes(term.toLowerCase()) || 
+			(o.scheme_name || '').toLowerCase().includes(term.toLowerCase())
+		);
 		// Maintain date-based sorting (latest to oldest) for filtered results
 		filtered.sort((a, b) => {
-			if (a.navDate && b.navDate) {
-				const dateDiff = b.navDate.getTime() - a.navDate.getTime();
-				if (dateDiff !== 0) return dateDiff;
-			}
-			return a.name.localeCompare(b.name);
+			const dateA = a.date ? new Date(a.date) : new Date(0);
+			const dateB = b.date ? new Date(b.date) : new Date(0);
+			
+			const dateDiff = dateB.getTime() - dateA.getTime();
+			if (dateDiff !== 0) return dateDiff;
+			
+			// If dates are the same, sort by name
+			return (a.fund_name || '').localeCompare(b.fund_name || '');
 		});
 		setFilteredMFOptions(filtered.slice(0, 10));
 		setShowMFDropdown(filtered.length > 0);
 	}
 
 	useEffect(() => {
-		if (selectedMF && investedAmount && selectedMF.currentNAV) {
+		if (selectedMF && investedAmount && selectedMF.nav) {
 			const amt = parseFloat(investedAmount);
 			if (!isNaN(amt) && amt > 0) {
-				const unitsCalc = amt / selectedMF.currentNAV;
-				const currVal = unitsCalc * selectedMF.currentNAV;
+				const unitsCalc = amt / selectedMF.nav;
+				const currVal = unitsCalc * selectedMF.nav;
 				const gain = currVal - amt;
 				const gainPct = (gain / amt) * 100;
 				setMfCalculatedUnits(unitsCalc);
@@ -228,19 +201,19 @@ export default function AddHolding() {
 							{showMFDropdown && filteredMFOptions.length>0 && (
 								<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
 									{filteredMFOptions.map(opt => (
-										<div key={opt.schemeCode} onClick={()=> { setSelectedMF(opt); setMfSearchTerm(opt.name); setName(opt.name); setSymbol(opt.schemeCode); setShowMFDropdown(false); }} className="px-4 py-3 cursor-pointer hover:bg-muted text-sm border-b border-border last:border-b-0 flex items-center justify-between">
+										<div key={opt.scheme_code} onClick={()=> { setSelectedMF(opt); setMfSearchTerm(opt.fund_name); setName(opt.fund_name); setSymbol(opt.scheme_code); setShowMFDropdown(false); }} className="px-4 py-3 cursor-pointer hover:bg-muted text-sm border-b border-border last:border-b-0 flex items-center justify-between">
 											<div>
-												<div className="font-medium text-foreground">{opt.name}</div>
+												<div className="font-medium text-foreground">{opt.fund_name}</div>
 												<div className="text-xs text-muted-foreground">
-													Direct Plan – Growth
-													{opt.navDate && (
+													{opt.asset_class || 'Mutual Fund'}
+													{opt.date && (
 														<span className="ml-2 text-blue-600">
-															• NAV: {opt.navDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+															• NAV: {new Date(opt.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
 														</span>
 													)}
 												</div>
 											</div>
-											<div className="text-right text-sm">₹{opt.currentNAV?.toFixed(4)}</div>
+											<div className="text-right text-sm">₹{opt.nav?.toFixed(4)}</div>
 										</div>
 									))}
 								</div>
