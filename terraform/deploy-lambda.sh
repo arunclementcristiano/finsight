@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Deploy the fetch-mf-nav Lambda function
-# This script handles the complete deployment process
+# Deploy the parse-mf-stocks Lambda function
+# This script handles the complete deployment process for the combined MF and stock parsing lambda
 
 set -e
 
-echo "🚀 Starting fetch-mf-nav Lambda deployment..."
+echo "🚀 Starting parse-mf-stocks Lambda deployment..."
 
 # Check if terraform is installed
 if ! command -v terraform &> /dev/null; then
@@ -21,9 +21,9 @@ fi
 
 # Build clean Lambda deployment package
 echo "📦 Building Lambda deployment package..."
-LAMBDA_SRC="../backend/lambda/parse-navall"
+LAMBDA_SRC="../backend/lambda/parse-mf-stocks"
 BUILD_DIR="lambda_build"
-ZIP_FILE="fetch-mf-nav.zip"
+ZIP_FILE="parse_mf_stocks.zip"
 
 # Navigate to terraform directory first
 cd "$(dirname "$0")"
@@ -31,8 +31,8 @@ cd "$(dirname "$0")"
 rm -rf "$BUILD_DIR" "$ZIP_FILE"
 mkdir "$BUILD_DIR"
 
-# Copy only the Lambda code
-cp "$LAMBDA_SRC/fetch-mf-nav.py" "$BUILD_DIR/index.py"
+# Copy all Lambda source files
+cp "$LAMBDA_SRC"/*.py "$BUILD_DIR/"
 
 # Install only required dependencies
 if [ -f "$LAMBDA_SRC/requirements.txt" ]; then
@@ -71,12 +71,20 @@ terraform apply --auto-approve tfplan
 echo "✅ Deployment completed!"
 echo ""
 echo "📊 Lambda Function Details:"
-terraform output fetch_mf_nav_lambda_function_name
-terraform output fetch_mf_nav_lambda_arn
+terraform output parse_mf_stocks_lambda_name
+terraform output parse_mf_stocks_lambda_arn
 echo ""
-echo "📝 CloudWatch Logs:"
-terraform output fetch_mf_nav_cloudwatch_log_group
+echo "📊 DynamoDB Tables:"
+terraform output stock_companies_table_name
+terraform output mutual_fund_schemes_table_name
 echo ""
-echo "🕐 The Lambda is scheduled to run daily at 6 PM UTC"
-echo "🧪 You can test it manually from the AWS Console or CLI"
+echo "🎯 Usage Examples:"
+echo "   📊 Parse both stocks and mutual funds:"
+echo "   aws lambda invoke --function-name parse-mf-stocks --payload '{\"type\":\"both\"}' response.json"
+echo "   "
+echo "   📈 Parse stocks only:"
+echo "   aws lambda invoke --function-name parse-mf-stocks --payload '{\"type\":\"stocks\"}' response.json"
+echo "   "
+echo "   💰 Parse mutual funds only:"
+echo "   aws lambda invoke --function-name parse-mf-stocks --payload '{\"type\":\"mf\"}' response.json"
 rm -f tfplan
