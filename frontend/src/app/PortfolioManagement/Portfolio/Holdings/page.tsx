@@ -7,7 +7,7 @@ import { Plus, Edit2, Trash2, X, Search, TrendingUp, BarChart3, PieChart as PieC
 import { v4 as uuidv4 } from "uuid";
 import { Card as PlanCard, CardContent as PlanCardContent, CardHeader as PlanCardHeader, CardTitle as PlanCardTitle } from "../../../components/Card";
 import { Button } from "../../../components/Button";
-import { fetchMutualFundSchemes, searchFundsByName, TransformedFund, saveHolding, fetchUserHoldings, HoldingData, preloadMutualFundData, clearMFCache, deleteHolding } from "../../../../lib/dynamodb";
+import { fetchMutualFundSchemes, searchFundsByName, TransformedFund, saveHolding, fetchUserHoldings, HoldingData, preloadMutualFundData, clearMFCache, deleteHolding, fetchStockCompanies, searchStockCompanies, StockCompany } from "../../../../lib/dynamodb";
 
 // Asset class colors for charts
 const CLASS_COLORS = {
@@ -129,24 +129,14 @@ export default function HoldingsPage() {
 	
 	// Enhanced stock functionality
 	const [stockSearchTerm, setStockSearchTerm] = useState("");
-	const [selectedStock, setSelectedStock] = useState<any>(null);
-	const [filteredStockOptions, setFilteredStockOptions] = useState<any[]>([]);
+	const [selectedStock, setSelectedStock] = useState<StockCompany | null>(null);
+	const [filteredStockOptions, setFilteredStockOptions] = useState<StockCompany[]>([]);
 	const [showStockDropdown, setShowStockDropdown] = useState(false);
 	const [stockEntryMode, setStockEntryMode] = useState<'units' | 'amount'>('units');
 	
-	// Hardcoded stock options (later fetch from DB)
-	const stockOptions = [
-		{ symbol: "RELIANCE", name: "Reliance Industries Ltd", price: 2450.50 },
-		{ symbol: "TCS", name: "Tata Consultancy Services Ltd", price: 3850.75 },
-		{ symbol: "HDFC", name: "HDFC Bank Ltd", price: 1650.25 },
-		{ symbol: "INFY", name: "Infosys Ltd", price: 1450.80 },
-		{ symbol: "ICICIBANK", name: "ICICI Bank Ltd", price: 950.40 },
-		{ symbol: "HINDUNILVR", name: "Hindustan Unilever Ltd", price: 2850.90 },
-		{ symbol: "ITC", name: "ITC Ltd", price: 450.60 },
-		{ symbol: "SBIN", name: "State Bank of India", price: 650.30 },
-		{ symbol: "BHARTIARTL", name: "Bharti Airtel Ltd", price: 1150.20 },
-		{ symbol: "AXISBANK", name: "Axis Bank Ltd", price: 1050.45 }
-	];
+	// Stock data state
+	const [stockOptions, setStockOptions] = useState<StockCompany[]>([]);
+	const [isLoadingStocks, setIsLoadingStocks] = useState(false);
 	
 	// Entry mode: 'units' or 'amount'
 	const [form, setForm] = useState({
@@ -249,23 +239,42 @@ export default function HoldingsPage() {
 			setHoldings([]);
 		}
 	}
+
+	// Load stock data from API
+	async function loadStockData() {
+		try {
+			setIsLoadingStocks(true);
+			const stocks = await fetchStockCompanies();
+			setStockOptions(stocks);
+		} catch (error) {
+			console.error('Error loading stock data:', error);
+			// Fallback to empty array if API fails
+			setStockOptions([]);
+		} finally {
+			setIsLoadingStocks(false);
+		}
+	}
 	
 	React.useEffect(() => {
 		loadHoldingsData();
+		loadStockData();
 	}, []);
 
-	// Filter stock options
-	const filterStockOptions = (term: string): void => {
+	// Filter stock options using API search
+	const filterStockOptions = async (term: string): Promise<void> => {
 		if (term.trim() === "") {
 			setFilteredStockOptions([]);
 			setShowStockDropdown(false);
 		} else {
-			const filtered = stockOptions.filter(option =>
-				option.name.toLowerCase().includes(term.toLowerCase()) ||
-				option.symbol.toLowerCase().includes(term.toLowerCase())
-			);
-			setFilteredStockOptions(filtered.slice(0, 10));
-			setShowStockDropdown(filtered.length > 0);
+			try {
+				const filtered = await searchStockCompanies(term);
+				setFilteredStockOptions(filtered.slice(0, 10));
+				setShowStockDropdown(filtered.length > 0);
+			} catch (error) {
+				console.error('Error searching stocks:', error);
+				setFilteredStockOptions([]);
+				setShowStockDropdown(false);
+			}
 		}
 	};
 
@@ -1216,14 +1225,14 @@ export default function HoldingsPage() {
 													<label className="block text-sm font-medium text-foreground mb-2">Stock Name *</label>
 													<div className="relative">
 														<input
-															value={selectedStock ? `${selectedStock.name} (${selectedStock.symbol})` : stockSearchTerm}
+															value={selectedStock ? `${selectedStock.companyName} (${selectedStock.symbol})` : stockSearchTerm}
 															onChange={(e) => {
 																if (editingId) return; // Disable in edit mode
 																const newValue = e.target.value;
 																setStockSearchTerm(newValue);
 																
 																// If user is typing something different from the selected stock, clear the selection
-																if (selectedStock && newValue !== selectedStock.name) {
+																if (selectedStock && newValue !== selectedStock.companyName) {
 																	setSelectedStock(null);
 																	setForm({ ...form, name: '', symbol: '', price: '' });
 																}
@@ -1256,15 +1265,15 @@ export default function HoldingsPage() {
 																		key={stock.symbol}
 																		onClick={() => {
 																			setSelectedStock(stock);
-																			setStockSearchTerm(stock.name);
-															setForm({ ...form, name: stock.name, symbol: stock.symbol, price: stock.price.toString() });
+																			setStockSearchTerm(stock.companyName);
+															setForm({ ...form, name: stock.companyName, symbol: stock.symbol, price: '' });
 															setShowStockDropdown(false);
 															setFilteredStockOptions([]);
 														}}
 														className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
 													>
-														<div className="font-medium text-sm">{stock.name}</div>
-														<div className="text-xs text-muted-foreground">{stock.symbol} • ₹{stock.price}</div>
+														<div className="font-medium text-sm">{stock.companyName}</div>
+														<div className="text-xs text-muted-foreground">{stock.symbol} • {stock.exchange}</div>
 													</div>
 																))}
 															</div>

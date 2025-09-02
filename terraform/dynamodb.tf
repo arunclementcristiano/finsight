@@ -47,6 +47,12 @@ variable "asset_class_mapping_table_name" {
   default     = "AssetClassMapping"
 }
 
+variable "stock_companies_table_name" {
+  description = "DynamoDB table name for stock companies data"
+  type        = string
+  default     = "StockCompanies"
+}
+
 variable "environment" {
   description = "Environment name"
   type        = string
@@ -328,6 +334,61 @@ resource "aws_dynamodb_table" "asset_class_mapping" {
   }
 }
 
+# Stock companies table for NSE and BSE data
+resource "aws_dynamodb_table" "stock_companies" {
+  name         = var.stock_companies_table_name
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "symbol"
+  range_key    = "exchange"
+
+  attribute {
+    name = "symbol"
+    type = "S"
+  }
+
+  attribute {
+    name = "exchange"
+    type = "S"
+  }
+
+  attribute {
+    name = "companyName"
+    type = "S"
+  }
+
+  attribute {
+    name = "isinNumber"
+    type = "S"
+  }
+
+  # GSI for searching by company name
+  global_secondary_index {
+    name     = "companyName-index"
+    hash_key = "companyName"
+    projection_type = "ALL"
+  }
+
+  # GSI for searching by ISIN
+  global_secondary_index {
+    name     = "isinNumber-index"
+    hash_key = "isinNumber"
+    projection_type = "ALL"
+  }
+
+  # GSI for searching by exchange
+  global_secondary_index {
+    name     = "exchange-index"
+    hash_key = "exchange"
+    projection_type = "ALL"
+  }
+
+  tags = {
+    Name        = var.stock_companies_table_name
+    Environment = var.environment
+    Project     = "finsight"
+  }
+}
+
 output "expenses_table_name" {
   value = aws_dynamodb_table.expenses.name
 }
@@ -348,4 +409,8 @@ output "holdings_table_name" {
 
 output "asset_class_mapping_table_name" {
   value = aws_dynamodb_table.asset_class_mapping.name
+}
+
+output "stock_companies_table_name" {
+  value = aws_dynamodb_table.stock_companies.name
 }

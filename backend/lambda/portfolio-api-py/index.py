@@ -12,12 +12,14 @@ INVEST_TABLE = os.environ.get("INVEST_TABLE", "InvestApp")
 MUTUAL_FUND_SCHEMES_TABLE = os.environ.get("MUTUAL_FUND_SCHEMES_TABLE", "MutualFundSchemes")
 HOLDINGS_TABLE = os.environ.get("HOLDINGS_TABLE", "holdings")
 ASSET_CLASS_MAPPING_TABLE = os.environ.get("ASSET_CLASS_MAPPING_TABLE", "AssetClassMapping")
+STOCK_COMPANIES_TABLE = os.environ.get("STOCK_COMPANIES_TABLE", "StockCompanies")
 
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
 invest_table = dynamodb.Table(INVEST_TABLE)
 mutual_fund_schemes_table = dynamodb.Table(MUTUAL_FUND_SCHEMES_TABLE)
 holdings_table = dynamodb.Table(HOLDINGS_TABLE)
 asset_class_mapping_table = dynamodb.Table(ASSET_CLASS_MAPPING_TABLE)
+stock_companies_table = dynamodb.Table(STOCK_COMPANIES_TABLE)
 
 
 def _cors_headers():
@@ -429,6 +431,69 @@ def handler(event, context):
                 return _response(200, {"items": filtered_funds[:10]})
             except Exception as e:
                 return _response(500, {"error": f"Failed to search mutual funds: {str(e)}"})
+
+        # Get stock companies (GET /stocks)
+        if route_key == "GET /stocks":
+            try:
+                res = stock_companies_table.scan()
+                items = res.get("Items", [])
+                
+                # Transform to match frontend expectations
+                stocks = []
+                for item in items:
+                    stock = {
+                        "symbol": item.get("symbol", ""),
+                        "companyName": item.get("companyName", ""),
+                        "listingDate": item.get("listingDate"),
+                        "isinNumber": item.get("isinNumber", ""),
+                        "exchange": item.get("exchange", "")
+                    }
+                    stocks.append(stock)
+                
+                # Sort by company name
+                stocks.sort(key=lambda x: x["companyName"])
+                return _response(200, {"items": stocks})
+            except Exception as e:
+                return _response(500, {"error": f"Failed to fetch stocks: {str(e)}"})
+
+        # Search stock companies (GET /stocks/search?q=...&exchange=...)
+        if route_key == "GET /stocks/search":
+            try:
+                q = (qs or {}).get("q", "").lower()
+                exchange = (qs or {}).get("exchange")
+                
+                # Scan the stock companies table
+                res = stock_companies_table.scan()
+                items = res.get("Items", [])
+                
+                # Filter results
+                filtered_stocks = []
+                for item in items:
+                    company_name = item.get("companyName", "").lower()
+                    symbol = item.get("symbol", "").lower()
+                    
+                    # Check if query matches company name or symbol
+                    if q and q not in company_name and q not in symbol:
+                        continue
+                    
+                    # Filter by exchange if specified
+                    if exchange and item.get("exchange", "").upper() != exchange.upper():
+                        continue
+                    
+                    stock = {
+                        "symbol": item.get("symbol", ""),
+                        "companyName": item.get("companyName", ""),
+                        "listingDate": item.get("listingDate"),
+                        "isinNumber": item.get("isinNumber", ""),
+                        "exchange": item.get("exchange", "")
+                    }
+                    filtered_stocks.append(stock)
+                
+                # Sort by company name and limit results
+                filtered_stocks.sort(key=lambda x: x["companyName"])
+                return _response(200, {"items": filtered_stocks[:20]})
+            except Exception as e:
+                return _response(500, {"error": f"Failed to search stocks: {str(e)}"})
 
         return _response(404, {"error": "Not found", "routeKey": route_key})
     except Exception as e:

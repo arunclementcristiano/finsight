@@ -498,3 +498,58 @@ export async function deleteBudget(category: string): Promise<boolean> {
     throw error;
   }
 }
+
+// Stock Companies API functions
+export interface StockCompany {
+  symbol: string;
+  companyName: string;
+  listingDate?: string;
+  isinNumber: string;
+  exchange: string;
+}
+
+// Fetch all stock companies
+export async function fetchStockCompanies(): Promise<StockCompany[]> {
+  if (!PORTFOLIO_API_BASE) {
+    throw new Error('PORTFOLIO_API_BASE not configured');
+  }
+
+  try {
+    const res = await fetch(`${PORTFOLIO_API_BASE}/stocks`);
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`API returned ${res.status}: ${errorText}`);
+    }
+    
+    const data = await res.json();
+    return data.items || [];
+  } catch (error) {
+    throw error;
+  }
+}
+
+// Search stock companies
+export async function searchStockCompanies(query: string, exchange?: string): Promise<StockCompany[]> {
+  if (!PORTFOLIO_API_BASE) {
+    throw new Error('PORTFOLIO_API_BASE not configured');
+  }
+
+  try {
+    const params = new URLSearchParams();
+    if (query) params.append('q', query);
+    if (exchange) params.append('exchange', exchange);
+    
+    const res = await fetch(`${PORTFOLIO_API_BASE}/stocks/search?${params.toString()}`);
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`API returned ${res.status}: ${errorText}`);
+    }
+    
+    const data = await res.json();
+    return data.items || [];
+  } catch (error) {
+    throw error;
+  }
+}
