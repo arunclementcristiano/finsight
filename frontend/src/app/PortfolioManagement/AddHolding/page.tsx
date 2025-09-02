@@ -116,8 +116,13 @@ export default function AddHolding() {
 	}, [selectedMF, investedAmount]);
 
 	return (
-		<div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-			<h1 className="text-2xl font-bold text-foreground mb-4">Add Holding</h1>
+		<div className="max-w-full space-y-4 pl-2">
+			{/* Header */}
+			<div className="flex items-center justify-between">
+				<div className="flex items-center gap-2">
+					<div className="text-sm text-muted-foreground">Add Holding</div>
+				</div>
+			</div>
 
 			{/* Segmented control */}
 			<div className="flex flex-wrap gap-2 mb-6">

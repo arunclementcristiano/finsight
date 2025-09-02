@@ -65,14 +65,13 @@ export default function GoalsDashboardPage() {
   const active = goals.filter(g=> g.isActive);
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-full space-y-4 pl-2">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold">Goals Dashboard</h1>
-          <p className="text-xs text-muted-foreground">Track progress, contributions, gaps, and timeline.</p>
+        <div className="flex items-center gap-2">
+          <div className="text-sm text-muted-foreground">Goals Dashboard</div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={()=> window.location.assign('/PortfolioManagement/Plan?goals=open')}>Add / Edit Goals</Button>
+          <Button variant="outline" size="sm" onClick={()=> window.location.assign('/PortfolioManagement/Plan?goals=open')}>Add / Edit Goals</Button>
         </div>
       </div>
 

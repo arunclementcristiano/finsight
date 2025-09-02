@@ -23,7 +23,14 @@ export default function InsightsPage() {
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-full space-y-4 pl-2">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="text-sm text-muted-foreground">Insights</div>
+        </div>
+      </div>
+      
       <Card>
         <CardHeader>
           <CardTitle>Portfolio Drift & Rebalance Insights</CardTitle>

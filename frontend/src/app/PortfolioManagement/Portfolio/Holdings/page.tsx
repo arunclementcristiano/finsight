@@ -688,21 +688,22 @@ export default function HoldingsPage() {
 	}
 
 	return (
-		<div className="space-y-6">
+		<div className="max-w-full space-y-4 pl-2">
 			{/* Header */}
 			<div className="flex items-center justify-between">
-				<div>
-					<h1 className="text-lg font-semibold tracking-tight">Holdings</h1>
-					<p className="text-sm text-muted-foreground">Capture your investments and view allocation.</p>
+				<div className="flex items-center gap-2">
+					<div className="text-sm text-muted-foreground">Holdings</div>
 				</div>
-				<Button 
-					onClick={() => setIsModalOpen(true)} 
-					variant="outline" 
-					size="md"
-					leftIcon={<Plus size={18} />}
-				>
-					Add Holding
-				</Button>
+				<div className="flex items-center gap-2">
+					<Button 
+						onClick={() => setIsModalOpen(true)} 
+						variant="outline" 
+						size="sm"
+						leftIcon={<Plus size={16} />}
+					>
+						Add Holding
+					</Button>
+				</div>
 			</div>
 			
 			{/* KPI Row */}
