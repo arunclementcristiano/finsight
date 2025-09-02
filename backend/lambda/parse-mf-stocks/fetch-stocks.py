@@ -137,6 +137,18 @@ def fetch_bse():
         
         logger.info(f"BSE detected columns - Symbol: {symbol_col}, Company: {company_col}, ISIN: {isin_col}")
         
+        # If no columns detected, try exact matches for known BSE format
+        if not symbol_col or not company_col:
+            logger.info("No columns detected by pattern matching, trying exact matches...")
+            for col in reader.fieldnames:
+                if col.strip() == "Scrip code":
+                    symbol_col = col
+                elif col.strip() == "Security Name":
+                    company_col = col
+                elif col.strip() == "ISIN":
+                    isin_col = col
+            logger.info(f"BSE exact match columns - Symbol: {symbol_col}, Company: {company_col}, ISIN: {isin_col}")
+        
         for row in reader:
             rows_processed += 1
             if rows_processed <= 3:  # Log first 3 rows
