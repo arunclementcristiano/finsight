@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Deploy the parse-mf-stocks Lambda function
-This script handles the complete deployment process for the combined MF and stock parsing lambda
+Unified Terraform Deployment Script
+This script handles the complete deployment process for all Lambda functions and infrastructure
 """
 
 import os
@@ -40,64 +40,79 @@ def check_prerequisites():
         print("❌ AWS CLI is not configured. Please run 'aws configure' first.")
         sys.exit(1)
 
-def build_lambda_package():
-    """Build the Lambda deployment package"""
-    print("📦 Building Lambda deployment package...")
+def build_lambda_packages():
+    """Build all Lambda deployment packages"""
+    print("📦 Building Lambda deployment packages...")
     
-    # Paths
-    lambda_src = Path("backend/lambda/parse-mf-stocks")
-    build_dir = Path("terraform/lambda_build")
-    zip_file = Path("terraform/parse_mf_stocks.zip")
+    # Define all lambda functions to build
+    lambda_functions = [
+        {
+            "name": "parse-mf-stocks",
+            "src": "backend/lambda/parse-mf-stocks",
+            "zip": "terraform/parse_mf_stocks.zip"
+        },
+        {
+            "name": "portfolio-api",
+            "src": "backend/lambda/portfolio-api-py",
+            "zip": "terraform/portfolio_api.zip"
+        },
+        {
+            "name": "expenses-api",
+            "src": "backend/lambda/expenses-api-py",
+            "zip": "terraform/expenses_api.zip"
+        }
+    ]
     
-    # Clean up previous builds
-    if build_dir.exists():
-        shutil.rmtree(build_dir)
-    if zip_file.exists():
-        zip_file.unlink()
-    
-    # Create build directory
-    build_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Copy Lambda source files
-    print("📋 Copying Lambda source files...")
-    for file in lambda_src.glob("*.py"):
-        shutil.copy2(file, build_dir)
-        print(f"   ✅ Copied {file.name}")
-    
-    # Install dependencies
-    requirements_file = lambda_src / "requirements.txt"
-    if requirements_file.exists():
-        print("📦 Installing Python dependencies...")
-        run_command([
-            "pip3", "install", "-r", str(requirements_file), 
-            "-t", str(build_dir)
-        ])
+    for func in lambda_functions:
+        print(f"\n🔧 Building {func['name']}...")
         
-        # Verify critical dependencies
-        requests_dir = build_dir / "requests"
-        if not requests_dir.exists():
-            print("❌ ERROR: 'requests' library not found in build directory.")
-            sys.exit(1)
-        print("✅ Dependencies installed successfully")
-    
-    # Create deployment ZIP
-    print("📦 Creating deployment ZIP...")
-    with zipfile.ZipFile(zip_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        for file_path in build_dir.rglob("*"):
-            if file_path.is_file():
-                arcname = file_path.relative_to(build_dir)
-                zipf.write(file_path, arcname)
-    
-    print(f"✅ Created {zip_file}")
-    
-    # Verify ZIP contents
-    print("📦 Verifying ZIP contents...")
-    with zipfile.ZipFile(zip_file, 'r') as zipf:
-        file_list = zipf.namelist()[:10]  # Show first 10 files
-        for file in file_list:
-            print(f"   📄 {file}")
-        if len(zipf.namelist()) > 10:
-            print(f"   ... and {len(zipf.namelist()) - 10} more files")
+        # Paths
+        lambda_src = Path(func["src"])
+        build_dir = Path(f"terraform/lambda_build_{func['name'].replace('-', '_')}")
+        zip_file = Path(func["zip"])
+        
+        # Skip if source doesn't exist
+        if not lambda_src.exists():
+            print(f"   ⚠️  Source directory {lambda_src} not found, skipping...")
+            continue
+        
+        # Clean up previous builds
+        if build_dir.exists():
+            shutil.rmtree(build_dir)
+        if zip_file.exists():
+            zip_file.unlink()
+        
+        # Create build directory
+        build_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Copy Lambda source files
+        print(f"   📋 Copying {func['name']} source files...")
+        for file in lambda_src.glob("*.py"):
+            shutil.copy2(file, build_dir)
+            print(f"      ✅ Copied {file.name}")
+        
+        # Install dependencies
+        requirements_file = lambda_src / "requirements.txt"
+        if requirements_file.exists():
+            print(f"   📦 Installing {func['name']} dependencies...")
+            run_command([
+                "pip3", "install", "-r", str(requirements_file), 
+                "-t", str(build_dir)
+            ])
+            print(f"   ✅ {func['name']} dependencies installed successfully")
+        
+        # Create deployment ZIP
+        print(f"   📦 Creating {func['name']} deployment ZIP...")
+        with zipfile.ZipFile(zip_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for file_path in build_dir.rglob("*"):
+                if file_path.is_file():
+                    arcname = file_path.relative_to(build_dir)
+                    zipf.write(file_path, arcname)
+        
+        print(f"   ✅ Created {zip_file}")
+        
+        # Clean up build directory
+        shutil.rmtree(build_dir)
 
 def deploy_terraform():
     """Deploy using Terraform"""
@@ -129,33 +144,7 @@ def deploy_terraform():
             
             # Show outputs
             print("\n✅ Deployment completed!")
-            print("\n📊 Lambda Function Details:")
-            try:
-                lambda_name = run_command(["terraform", "output", "-raw", "parse_mf_stocks_lambda_name"], capture_output=True)
-                lambda_arn = run_command(["terraform", "output", "-raw", "parse_mf_stocks_lambda_arn"], capture_output=True)
-                print(f"   Function Name: {lambda_name}")
-                print(f"   Function ARN: {lambda_arn}")
-            except subprocess.CalledProcessError:
-                print("   (Outputs not available)")
-            
-            print("\n📊 DynamoDB Tables:")
-            try:
-                stock_table = run_command(["terraform", "output", "-raw", "stock_companies_table_name"], capture_output=True)
-                mf_table = run_command(["terraform", "output", "-raw", "mutual_fund_schemes_table_name"], capture_output=True)
-                print(f"   Stock Companies: {stock_table}")
-                print(f"   Mutual Fund Schemes: {mf_table}")
-            except subprocess.CalledProcessError:
-                print("   (Table outputs not available)")
-            
-            print("\n🎯 Usage Examples:")
-            print("   📊 Parse both stocks and mutual funds:")
-            print(f"   aws lambda invoke --function-name {lambda_name} --payload '{{\"type\":\"both\"}}' response.json")
-            print("   ")
-            print("   📈 Parse stocks only:")
-            print(f"   aws lambda invoke --function-name {lambda_name} --payload '{{\"type\":\"stocks\"}}' response.json")
-            print("   ")
-            print("   💰 Parse mutual funds only:")
-            print(f"   aws lambda invoke --function-name {lambda_name} --payload '{{\"type\":\"mf\"}}' response.json")
+            show_deployment_outputs()
             
         else:
             print("❌ Deployment cancelled by user")
@@ -169,16 +158,95 @@ def deploy_terraform():
     
     return True
 
+def show_deployment_outputs():
+    """Show all deployment outputs"""
+    print("\n📊 Lambda Functions:")
+    
+    # Parse MF Stocks Lambda
+    try:
+        lambda_name = run_command(["terraform", "output", "-raw", "parse_mf_stocks_lambda_name"], capture_output=True)
+        lambda_arn = run_command(["terraform", "output", "-raw", "parse_mf_stocks_lambda_arn"], capture_output=True)
+        print(f"   📊 Parse MF Stocks: {lambda_name}")
+        print(f"      ARN: {lambda_arn}")
+    except subprocess.CalledProcessError:
+        print("   📊 Parse MF Stocks: (not deployed)")
+    
+    # Portfolio API Lambda
+    try:
+        portfolio_name = run_command(["terraform", "output", "-raw", "portfolio_lambda_name"], capture_output=True)
+        portfolio_arn = run_command(["terraform", "output", "-raw", "portfolio_lambda_arn"], capture_output=True)
+        print(f"   💼 Portfolio API: {portfolio_name}")
+        print(f"      ARN: {portfolio_arn}")
+    except subprocess.CalledProcessError:
+        print("   💼 Portfolio API: (not deployed)")
+    
+    # Expenses API Lambda
+    try:
+        expenses_name = run_command(["terraform", "output", "-raw", "expenses_lambda_name"], capture_output=True)
+        expenses_arn = run_command(["terraform", "output", "-raw", "expenses_lambda_arn"], capture_output=True)
+        print(f"   💰 Expenses API: {expenses_name}")
+        print(f"      ARN: {expenses_arn}")
+    except subprocess.CalledProcessError:
+        print("   💰 Expenses API: (not deployed)")
+    
+    print("\n📊 DynamoDB Tables:")
+    try:
+        stock_table = run_command(["terraform", "output", "-raw", "stock_companies_table_name"], capture_output=True)
+        print(f"   📈 Stock Companies: {stock_table}")
+    except subprocess.CalledProcessError:
+        print("   📈 Stock Companies: (not deployed)")
+    
+    try:
+        mf_table = run_command(["terraform", "output", "-raw", "mutual_fund_schemes_table_name"], capture_output=True)
+        print(f"   💰 Mutual Fund Schemes: {mf_table}")
+    except subprocess.CalledProcessError:
+        print("   💰 Mutual Fund Schemes: (not deployed)")
+    
+    try:
+        invest_table = run_command(["terraform", "output", "-raw", "invest_table_name"], capture_output=True)
+        print(f"   💼 Holdings: {invest_table}")
+    except subprocess.CalledProcessError:
+        print("   💼 Holdings: (not deployed)")
+    
+    try:
+        expenses_table = run_command(["terraform", "output", "-raw", "expenses_table_name"], capture_output=True)
+        print(f"   💸 Expenses: {expenses_table}")
+    except subprocess.CalledProcessError:
+        print("   💸 Expenses: (not deployed)")
+    
+    print("\n🎯 Usage Examples:")
+    print("   📊 Parse MF/Stocks (both):")
+    print("   aws lambda invoke --function-name parse-mf-stocks --payload '{\"type\":\"both\"}' response.json")
+    print("   ")
+    print("   📈 Parse stocks only:")
+    print("   aws lambda invoke --function-name parse-mf-stocks --payload '{\"type\":\"stocks\"}' response.json")
+    print("   ")
+    print("   💰 Parse mutual funds only:")
+    print("   aws lambda invoke --function-name parse-mf-stocks --payload '{\"type\":\"mf\"}' response.json")
+    print("   ")
+    print("   💼 Test Portfolio API:")
+    print("   curl -X GET https://your-api-gateway-url/portfolio/holdings")
+    print("   ")
+    print("   💸 Test Expenses API:")
+    print("   curl -X GET https://your-api-gateway-url/expenses/transactions")
+
 def main():
     """Main deployment function"""
-    print("🚀 Starting parse-mf-stocks Lambda deployment...")
+    print("🚀 Starting Unified Terraform Deployment...")
+    print("=" * 60)
+    print("This will deploy all Lambda functions and infrastructure:")
+    print("  📊 Parse MF/Stocks Lambda (parse-mf-stocks)")
+    print("  💼 Portfolio API Lambda (portfolio-api)")
+    print("  💰 Expenses API Lambda (expenses-api)")
+    print("  📊 All DynamoDB Tables")
+    print("  🌐 API Gateway Routes")
     print("=" * 60)
     
     # Check prerequisites
     check_prerequisites()
     
-    # Build Lambda package
-    build_lambda_package()
+    # Build all Lambda packages
+    build_lambda_packages()
     
     # Deploy with Terraform
     success = deploy_terraform()
@@ -186,9 +254,11 @@ def main():
     if success:
         print("\n🎉 Deployment completed successfully!")
         print("\n📝 Next steps:")
-        print("1. Test the Lambda function with different payload types")
+        print("1. Test the Lambda functions with different payload types")
         print("2. Check CloudWatch logs for any issues")
         print("3. Verify data in DynamoDB tables")
+        print("4. Test API Gateway endpoints")
+        print("5. Update frontend environment variables if needed")
     else:
         print("\n❌ Deployment failed or was cancelled")
         sys.exit(1)
