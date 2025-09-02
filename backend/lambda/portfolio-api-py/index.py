@@ -278,8 +278,11 @@ def handler(event, context):
                     return _response(400, {"error": "Missing holding ID"})
                 
                 # Parse request body for portfolio ID
+                print(f"DEBUG: Raw event body: {event.get('body')}")
                 body = json.loads(event.get("body", "{}"))
+                print(f"DEBUG: Parsed body: {body}")
                 portfolio_id = body.get("portfolioId")
+                print(f"DEBUG: Portfolio ID extracted: {portfolio_id}")
                 if not portfolio_id:
                     return _response(400, {"error": "Missing portfolioId"})
                 

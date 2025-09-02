@@ -665,7 +665,7 @@ export default function HoldingsPage() {
 		if (confirm("Are you sure you want to delete this holding?")) {
 			try {
 				// Delete from DynamoDB
-				await deleteHolding(id, 'user-123'); // Mock user ID - should come from authentication
+				await deleteHolding(id, 'user-123'); // portfolioId - should come from authentication
 				
 				// Remove from local state after successful deletion
 				setHoldings(prev => prev.filter(h => h.id !== id));
@@ -1148,6 +1148,7 @@ export default function HoldingsPage() {
 																			setStockSearchTerm(stock.name);
 																			setForm({ ...form, name: stock.name, symbol: stock.symbol, price: stock.price.toString() });
 																			setShowStockDropdown(false);
+																			setFilteredStockOptions([]);
 																		}}
 																		className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
 																	>
@@ -1233,6 +1234,7 @@ export default function HoldingsPage() {
 															setMfSearchTerm(fund.name);
 															setForm({ ...form, name: fund.name, symbol: fund.schemeCode, price: fund.currentNAV.toString() });
 															setShowMFDropdown(false);
+															setFilteredMFOptions([]);
 														}}
 														className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
 																	>
@@ -1298,9 +1300,9 @@ export default function HoldingsPage() {
 																	setFilteredMFOptions([]);
 																}
 															}}
-															onFocus={() => {
+																														onFocus={() => {
 																if (mfSearchTerm.trim()) {
-																	filterMFOptions(mfSearchTerm);
+																filterMFOptions(mfSearchTerm);
 																}
 															}}
 															disabled={editingId !== null}
@@ -1321,6 +1323,7 @@ export default function HoldingsPage() {
 															setMfSearchTerm(fund.name);
 															setForm({ ...form, name: fund.name, symbol: fund.schemeCode, price: fund.currentNAV.toString() });
 															setShowMFDropdown(false);
+															setFilteredMFOptions([]);
 														}}
 														className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
 																	>
