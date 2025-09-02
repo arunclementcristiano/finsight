@@ -100,6 +100,7 @@ export default function SignupForm({ name, email, password, onNameChange, onEmai
       {success && <div className="text-emerald-600 text-sm mb-2">{success}</div>}
       <Button
         type="submit"
+        variant="outline"
         size="sm"
         leftIcon={<UserPlus className="h-4 w-4" />}
         className="mt-2"

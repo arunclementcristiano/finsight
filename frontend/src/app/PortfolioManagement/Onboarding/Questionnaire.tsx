@@ -229,6 +229,7 @@ export default function Questionnaire() {
 						Back
 					</Button>
 					<Button 
+						variant="outline"
 						size="sm" 
 						leftIcon={step === questions.length - 1 ? <Check className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
 						onClick={nextStep} 

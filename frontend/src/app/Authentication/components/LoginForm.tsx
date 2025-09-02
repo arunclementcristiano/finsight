@@ -76,6 +76,7 @@ export default function LoginForm({ email, password, onEmailChange, onPasswordCh
       {success && <div className="text-emerald-600 text-sm mb-2">{success}</div>}
       <Button
         type="submit"
+        variant="outline"
         size="sm"
         leftIcon={<LogIn className="h-4 w-4" />}
         className="mt-2"
