@@ -1,9 +1,10 @@
 "use client";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useApp } from "../../../store";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../../components/Card";
 import { formatNumber } from "../../../utils/format";
 import { computeRebalance } from "../../domain/rebalance";
+import { fetchUserHoldings, HoldingData } from "../../../../lib/dynamodb";
 import { 
 	BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, 
 	PieChart, Pie, LineChart, Line as RechartsLine, Area, AreaChart,
@@ -61,9 +62,31 @@ const ROLE_COLORS = {
 };
 
 export default function PortfolioInsightsPage() {
-	const { plan, holdings, questionnaire, profile, driftTolerancePct, goals } = useApp() as any;
+	const { plan, questionnaire, profile, driftTolerancePct, goals } = useApp() as any;
 	const [selectedTimeframe, setSelectedTimeframe] = useState('1Y');
 	const [showDetailedView, setShowDetailedView] = useState(false);
+	const [holdings, setHoldings] = useState<HoldingData[]>([]);
+	const [isLoading, setIsLoading] = useState(true);
+
+	// Load holdings data from API
+	const loadHoldingsData = async () => {
+		try {
+			setIsLoading(true);
+			// Using the same mock user ID as Holdings page
+			const mockUserId = 'user-123';
+			const dbHoldings = await fetchUserHoldings(mockUserId);
+			setHoldings(dbHoldings);
+		} catch (error) {
+			console.error('Error loading holdings data:', error);
+			setHoldings([]);
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	useEffect(() => {
+		loadHoldingsData();
+	}, []);
 
 	// Comprehensive portfolio analytics
 	const portfolioAnalytics = useMemo(() => {
@@ -282,6 +305,28 @@ export default function PortfolioInsightsPage() {
 		}
 	}, []);
 
+	// Loading state
+	if (isLoading) {
+		return (
+			<div className="max-w-full space-y-4 pl-2">
+				<div className="flex items-center justify-between">
+					<div className="flex items-center gap-2">
+						<div className="text-sm text-muted-foreground">Portfolio Insights</div>
+					</div>
+				</div>
+				
+				<div className="text-center py-20">
+					<div className="text-6xl mb-6">⏳</div>
+					<h2 className="text-2xl font-bold text-foreground mb-4">Loading Portfolio Data...</h2>
+					<p className="text-muted-foreground mb-8 max-w-md mx-auto">
+						Fetching your portfolio insights and analytics.
+					</p>
+				</div>
+			</div>
+		);
+	}
+
+	// Empty state
 	if (!holdings || holdings.length === 0) {
 		return (
 			<div className="max-w-full space-y-4 pl-2">
@@ -316,6 +361,15 @@ export default function PortfolioInsightsPage() {
 					<div className="text-sm text-muted-foreground">Portfolio Insights</div>
 				</div>
 				<div className="flex items-center gap-2">
+					<Button
+						variant="outline"
+						size="sm"
+						leftIcon={<RefreshCw className="h-4 w-4" />}
+						onClick={loadHoldingsData}
+						disabled={isLoading}
+					>
+						Refresh
+					</Button>
 					<Button
 						variant="outline"
 						size="sm"
