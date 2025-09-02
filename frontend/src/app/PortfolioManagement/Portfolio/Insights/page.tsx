@@ -573,22 +573,31 @@ export default function PortfolioInsightsPage() {
 							Portfolio Role Distribution
 						</CardTitle>
 						<CardDescription>Investment strategy breakdown by portfolio role</CardDescription>
+						<div className="text-xs text-muted-foreground">
+							Debug: {portfolioAnalytics.roleBreakdown.length} roles loaded
+						</div>
 					</CardHeader>
 					<CardContent>
 						<div className="h-80">
 							{console.log('🎯 Rendering Portfolio Role Distribution with data:', portfolioAnalytics.roleBreakdown)}
-							<ResponsiveContainer width="100%" height="100%">
-								<BarChart data={portfolioAnalytics.roleBreakdown} layout="horizontal">
-									<XAxis type="number" />
-									<YAxis dataKey="role" type="category" width={80} />
-									<Tooltip formatter={(value: any) => [`${formatNumber(value, 1)}%`, 'Allocation']} />
-									<Bar dataKey="allocation">
-										{portfolioAnalytics.roleBreakdown.map((entry, index) => (
-											<Cell key={`cell-${index}`} fill={entry.color} />
-										))}
-									</Bar>
-								</BarChart>
-							</ResponsiveContainer>
+							{portfolioAnalytics.roleBreakdown.length === 0 ? (
+								<div className="flex items-center justify-center h-full text-muted-foreground">
+									No role data available
+								</div>
+							) : (
+								<ResponsiveContainer width="100%" height="100%">
+									<BarChart data={portfolioAnalytics.roleBreakdown} layout="horizontal">
+										<XAxis type="number" />
+										<YAxis dataKey="role" type="category" width={80} />
+										<Tooltip formatter={(value: any) => [`${formatNumber(value, 1)}%`, 'Allocation']} />
+										<Bar dataKey="allocation">
+											{portfolioAnalytics.roleBreakdown.map((entry, index) => (
+												<Cell key={`cell-${index}`} fill={entry.color} />
+											))}
+										</Bar>
+									</BarChart>
+								</ResponsiveContainer>
+							)}
 						</div>
 					</CardContent>
 				</Card>
@@ -635,22 +644,31 @@ export default function PortfolioInsightsPage() {
 							Asset Class Performance
 						</CardTitle>
 						<CardDescription>Returns by asset class</CardDescription>
+						<div className="text-xs text-muted-foreground">
+							Debug: {portfolioAnalytics.assetBreakdown.length} asset classes loaded
+						</div>
 					</CardHeader>
 					<CardContent>
 						<div className="h-80">
 							{console.log('🎯 Rendering Asset Class Performance with data:', portfolioAnalytics.assetBreakdown)}
-							<ResponsiveContainer width="100%" height="100%">
-								<BarChart data={portfolioAnalytics.assetBreakdown}>
-									<XAxis dataKey="assetClass" angle={-45} textAnchor="end" height={80} />
-									<YAxis />
-									<Tooltip formatter={(value: any) => [`${formatNumber(value, 2)}%`, 'Returns']} />
-									<Bar dataKey="pnlPercent">
-										{portfolioAnalytics.assetBreakdown.map((entry, index) => (
-											<Cell key={`cell-${index}`} fill={entry.pnlPercent >= 0 ? COLORS.success : COLORS.danger} />
-										))}
-									</Bar>
-								</BarChart>
-							</ResponsiveContainer>
+							{portfolioAnalytics.assetBreakdown.length === 0 ? (
+								<div className="flex items-center justify-center h-full text-muted-foreground">
+									No asset class data available
+								</div>
+							) : (
+								<ResponsiveContainer width="100%" height="100%">
+									<BarChart data={portfolioAnalytics.assetBreakdown}>
+										<XAxis dataKey="assetClass" angle={-45} textAnchor="end" height={80} />
+										<YAxis />
+										<Tooltip formatter={(value: any) => [`${formatNumber(value, 2)}%`, 'Returns']} />
+										<Bar dataKey="pnlPercent">
+											{portfolioAnalytics.assetBreakdown.map((entry, index) => (
+												<Cell key={`cell-${index}`} fill={entry.pnlPercent >= 0 ? COLORS.success : COLORS.danger} />
+											))}
+										</Bar>
+									</BarChart>
+								</ResponsiveContainer>
+							)}
 						</div>
 					</CardContent>
 				</Card>
