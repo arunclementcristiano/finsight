@@ -1152,7 +1152,7 @@ export default function HoldingsPage() {
 															}`}
 															placeholder={editingId !== null ? "Stock name cannot be changed during edit" : "Search for stocks..."}
 														/>
-																												{showStockDropdown && filteredStockOptions.length > 0 && !editingId && stockSearchTerm.trim() !== '' && !selectedStock && (
+																												{showStockDropdown && filteredStockOptions.length > 0 && !editingId && stockSearchTerm.trim() !== '' && (
 															<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-auto">
 																{filteredStockOptions.map((stock) => (
 																	<div
@@ -1327,7 +1327,7 @@ export default function HoldingsPage() {
 															}`}
 															placeholder={editingId !== null ? "ETF name cannot be changed during edit" : "Search for ETFs..."}
 														/>
-																																										{showMFDropdown && filteredMFOptions.length > 0 && !editingId && mfSearchTerm.trim() !== '' && !selectedMF && (
+																																										{showMFDropdown && filteredMFOptions.length > 0 && !editingId && mfSearchTerm.trim() !== '' && (
 															<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-auto">
 																{filteredMFOptions.map((fund) => (
 																	<div
