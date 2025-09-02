@@ -46,7 +46,7 @@ def fetch_nse():
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
         
-        response = session.get(url, timeout=30, headers=headers)
+        response = session.get(url, headers=headers)
         response.raise_for_status()
         
         logger.info(f"NSE data fetched successfully, size: {len(response.content)} bytes")
@@ -69,7 +69,7 @@ def fetch_nse():
         
     except requests.exceptions.Timeout:
         logger.error("NSE request timed out")
-        raise Exception("NSE data fetch timed out after 30 seconds")
+        raise Exception("NSE data fetch timed out")
     except requests.exceptions.RequestException as e:
         logger.error(f"NSE request failed: {str(e)}")
         raise Exception(f"NSE data fetch failed: {str(e)}")
@@ -89,7 +89,7 @@ def fetch_bse():
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
         
-        response = session.get(url, timeout=30, headers=headers)
+        response = session.get(url, headers=headers)
         response.raise_for_status()
         
         logger.info(f"BSE data fetched successfully, size: {len(response.content)} bytes")
@@ -112,7 +112,7 @@ def fetch_bse():
         
     except requests.exceptions.Timeout:
         logger.error("BSE request timed out")
-        raise Exception("BSE data fetch timed out after 30 seconds")
+        raise Exception("BSE data fetch timed out")
     except requests.exceptions.RequestException as e:
         logger.error(f"BSE request failed: {str(e)}")
         raise Exception(f"BSE data fetch failed: {str(e)}")

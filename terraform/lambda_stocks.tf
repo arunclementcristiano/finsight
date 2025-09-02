@@ -6,7 +6,7 @@ resource "aws_lambda_function" "parse_mf_stocks" {
   handler         = "main.lambda_handler"
   source_code_hash = filebase64sha256("parse_mf_stocks.zip")
   runtime         = "python3.12"
-  timeout         = 300  # 5 minutes timeout for data fetching
+  timeout         = 600  # 10 minutes timeout for data fetching
 
   environment {
     variables = {
