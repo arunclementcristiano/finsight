@@ -111,7 +111,25 @@ def fetch_bse():
         csv_text = response.content.decode("utf-8", errors="ignore")
         logger.info(f"BSE CSV content preview (first 500 chars): {csv_text[:500]}")
         
-        reader = csv.DictReader(io.StringIO(csv_text))
+        # BSE CSV has malformed structure with title row - find the actual header row
+        lines = csv_text.split('\n')
+        header_line_index = None
+        
+        # Find the actual header row (contains "Sr. No.,Scrip code,Security Name,ISIN,GSM Stage")
+        for i, line in enumerate(lines):
+            if 'Sr. No.' in line and 'Scrip code' in line and 'Security Name' in line:
+                header_line_index = i
+                break
+        
+        if header_line_index is None:
+            logger.error("Could not find BSE header row with expected columns")
+            return {"statusCode": 500, "body": "BSE CSV structure not recognized"}
+        
+        # Use the correct header line and subsequent data
+        corrected_csv = '\n'.join(lines[header_line_index:])
+        logger.info(f"BSE corrected CSV starts from line {header_line_index + 1}")
+        
+        reader = csv.DictReader(io.StringIO(corrected_csv))
         
         # Log the column headers for debugging
         logger.info(f"BSE CSV headers: {reader.fieldnames}")
