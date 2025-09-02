@@ -12,11 +12,30 @@ import { fetchMutualFundSchemes, searchFundsByName, TransformedFund, saveHolding
 // Asset class colors for charts
 const CLASS_COLORS = {
 	"Stocks": { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-300", chart: "#3B82F6" },
-	"Mutual Funds": { bg: "bg-emerald-100 dark:bg-emerald-900/30", text: "text-emerald-700 dark:text-blue-300", chart: "#10B981" },
+	"Mutual Funds": { bg: "bg-emerald-100 dark:bg-emerald-900/30", text: "text-emerald-700 dark:text-emerald-300", chart: "#10B981" },
+	"Equity MF": { bg: "bg-emerald-100 dark:bg-emerald-900/30", text: "text-emerald-700 dark:text-emerald-300", chart: "#10B981" },
+	"Debt MF": { bg: "bg-purple-100 dark:bg-purple-900/30", text: "text-purple-700 dark:text-purple-300", chart: "#8B5CF6" },
+	"Liquid MF": { bg: "bg-orange-100 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-300", chart: "#F59E0B" },
+	"Liquid Fund": { bg: "bg-orange-100 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-300", chart: "#F59E0B" },
+	"Debt ETF": { bg: "bg-indigo-100 dark:bg-indigo-900/30", text: "text-indigo-700 dark:text-indigo-300", chart: "#6366F1" },
+	"Liquid ETF": { bg: "bg-cyan-100 dark:bg-cyan-900/30", text: "text-cyan-700 dark:text-cyan-300", chart: "#06B6D4" },
+	"ETF": { bg: "bg-violet-100 dark:bg-violet-900/30", text: "text-violet-700 dark:text-violet-300", chart: "#8B5CF6" },
 	"Debt": { bg: "bg-purple-100 dark:bg-purple-900/30", text: "text-purple-700 dark:text-purple-300", chart: "#8B5CF6" },
 	"Liquid": { bg: "bg-orange-100 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-300", chart: "#F59E0B" },
 	"Gold": { bg: "bg-yellow-100 dark:bg-yellow-900/30", text: "text-yellow-700 dark:text-yellow-300", chart: "#EAB308" },
 	"Real Estate": { bg: "bg-rose-100 dark:bg-rose-900/30", text: "text-rose-700 dark:text-rose-300", chart: "#F43F5E" },
+};
+
+// Portfolio role colors for charts
+const ROLE_COLORS = {
+	"Equity": "#3B82F6",      // Blue
+	"Defensive": "#10B981",   // Emerald
+	"Satellite": "#8B5CF6",   // Purple
+	"Core": "#F59E0B",        // Orange
+	"Growth": "#06B6D4",      // Cyan
+	"Value": "#EAB308",       // Yellow
+	"Balanced": "#F43F5E",    // Rose
+	"Conservative": "#6366F1", // Indigo
 };
 
 // Role-based instrument type mapping
@@ -154,6 +173,17 @@ export default function HoldingsPage() {
 	const [mfGainLoss, setMfGainLoss] = useState<number | null>(null);
 	const [mfGainLossPercent, setMfGainLossPercent] = useState<number | null>(null);
 
+	// ETF functionality
+	const [etfSearchTerm, setEtfSearchTerm] = useState("");
+	const [selectedETF, setSelectedETF] = useState<TransformedFund | null>(null);
+	const [etfOptions, setEtfOptions] = useState<TransformedFund[]>([]);
+	const [filteredETFOptions, setFilteredETFOptions] = useState<TransformedFund[]>([]);
+	const [showETFDropdown, setShowETFDropdown] = useState(false);
+	const [etfCalculatedUnits, setEtfCalculatedUnits] = useState<number | null>(null);
+	const [etfCurrentValue, setEtfCurrentValue] = useState<number | null>(null);
+	const [etfGainLoss, setEtfGainLoss] = useState<number | null>(null);
+	const [etfGainLossPercent, setEtfGainLossPercent] = useState<number | null>(null);
+
 	// Load mutual fund and ETF data directly from DynamoDB
 	React.useEffect(() => {
 		async function loadMFData() {
@@ -161,13 +191,27 @@ export default function HoldingsPage() {
 				// Preload data on component mount
 				await preloadMutualFundData();
 				const funds = await fetchMutualFundSchemes();
-				setMfOptions(funds);
+				// Filter for mutual funds (is_etf = false)
+				const mfData = funds.filter(fund => !fund.isETF);
+				setMfOptions(mfData);
+			} catch (error) {
+				// Silent fail - user will see empty results
+			}
+		}
+		
+		async function loadETFData() {
+			try {
+				const funds = await fetchMutualFundSchemes();
+				// Filter for ETFs (is_etf = true)
+				const etfData = funds.filter(fund => fund.isETF);
+				setEtfOptions(etfData);
 			} catch (error) {
 				// Silent fail - user will see empty results
 			}
 		}
 		
 		loadMFData();
+		loadETFData();
 	}, []);
 
 	// Load holdings from DynamoDB
@@ -260,6 +304,32 @@ export default function HoldingsPage() {
 			// Clear results on error
 			setFilteredMFOptions([]);
 			setShowMFDropdown(false);
+		}
+	};
+
+	const filterETFOptions = async (term: string): Promise<void> => {
+		try {
+			// Filter ETFs only
+			let filtered = etfOptions.filter(fund => fund.isETF);
+			
+			// Then filter by search term if provided
+			if (term.trim()) {
+				const searchTerm = term.toLowerCase();
+				filtered = filtered.filter(fund => 
+					fund.name.toLowerCase().includes(searchTerm) || 
+					fund.fullName.toLowerCase().includes(searchTerm)
+				);
+			}
+			
+			// Limit results and set state
+			const limitedResults = filtered.slice(0, 10);
+			setFilteredETFOptions(limitedResults);
+			// Only show dropdown if there's a search term
+			setShowETFDropdown(term.trim() && limitedResults.length > 0);
+		} catch (error) {
+			// Clear results on error
+			setFilteredETFOptions([]);
+			setShowETFDropdown(false);
 		}
 	};
 
@@ -448,17 +518,38 @@ export default function HoldingsPage() {
 			// Use portfolio_role from holdings table if available, fallback to calculated role
 			const role = holding.portfolio_role || getRoleForAssetClass(holding.instrumentClass);
 			const currentValue = computeHoldingValue(holding);
+			console.log(`Holding: ${holding.name}, Asset Class: ${holding.asset_class}, Portfolio Role: ${holding.portfolio_role}, Computed Role: ${role}, Value: ${currentValue}`);
 			roleMap.set(role, (roleMap.get(role) || 0) + currentValue);
 		});
 
-		const roleArray = Array.from(roleMap.entries()).map(([name, value]) => ({
-			name,
-			value,
-			color: name === 'Equity' ? '#3B82F6' : name === 'Defensive' ? '#10B981' : '#F59E0B'
-		})).sort((a, b) => b.value - a.value);
+		console.log('Role Map:', Array.from(roleMap.entries()));
 
+		const roleArray = Array.from(roleMap.entries()).map(([name, value]) => {
+			const color = ROLE_COLORS[name as keyof typeof ROLE_COLORS] || '#8B5CF6';
+			console.log(`Portfolio Role: ${name}, Value: ${value}, Color: ${color}`);
+			return {
+				name,
+				value,
+				color
+			};
+		}).sort((a, b) => b.value - a.value);
+
+		console.log('Final Portfolio Role Data:', roleArray);
 		return roleArray;
 	}, [filteredHoldings]);
+
+	// Get unique asset classes from holdings data
+	const uniqueAssetClasses = useMemo(() => {
+		if (!holdings || holdings.length === 0) return [];
+		const assetClasses = new Set<string>();
+		holdings.forEach(holding => {
+			const assetClass = holding.asset_class || holding.instrumentClass;
+			if (assetClass) {
+				assetClasses.add(assetClass);
+			}
+		});
+		return Array.from(assetClasses).sort();
+	}, [holdings]);
 
 	// Pagination logic
 	const totalPages = Math.ceil((sortedHoldings?.length || 0) / itemsPerPage);
@@ -542,9 +633,9 @@ export default function HoldingsPage() {
 			} else if (selectedRole === 'ETF') {
 				instrumentClass = "ETF";
 				// For ETFs, use the values from the selected fund
-				if (selectedMF) {
-					assetClass = selectedMF.asset_class || "Equity MF";
-					portfolioRole = selectedMF.portfolioRole || "Equity";
+				if (selectedETF) {
+					assetClass = selectedETF.asset_class || "ETF";
+					portfolioRole = selectedETF.portfolioRole || "Equity";
 				}
 			} else if (selectedRole === 'Gold') {
 				instrumentClass = "Gold";
@@ -557,12 +648,18 @@ export default function HoldingsPage() {
 			}
 		}
 		
+		// Calculate units for Mutual Funds and ETFs based on investment amount and NAV
+		let calculatedUnits: number | undefined;
+		if ((selectedRole === 'Mutual Funds' || selectedRole === 'ETF') && form.investedAmount && form.price) {
+			calculatedUnits = parseFloat(form.investedAmount) / parseFloat(form.price);
+		}
+
 		const holding: Holding = {
 			id: editingId || uuidv4(),
 			instrumentClass: instrumentClass,
 			name: form.name.trim(),
 			symbol: form.symbol.trim() || undefined,
-			units: form.units ? parseFloat(form.units) : undefined,
+			units: calculatedUnits || (form.units ? parseFloat(form.units) : undefined),
 			price: form.price ? parseFloat(form.price) : undefined,
 			investedAmount: form.investedAmount ? parseFloat(form.investedAmount) : undefined,
 			currentValue: form.currentValue ? parseFloat(form.currentValue) : undefined
@@ -576,7 +673,7 @@ export default function HoldingsPage() {
 				instrumentClass: holding.instrumentClass,
 				name: holding.name,
 				symbol: holding.symbol,
-				units: holding.units,
+				units: calculatedUnits || holding.units,
 				price: holding.price,
 				investedAmount: holding.investedAmount,
 				currentValue: holding.currentValue,
@@ -764,12 +861,9 @@ export default function HoldingsPage() {
 									className="px-3 py-1.5 text-xs border border-border rounded-md bg-background"
 								>
 									<option value="">All Classes</option>
-									<option value="Stocks">Stocks</option>
-									<option value="Equity">Equity</option>
-									<option value="Debt">Debt</option>
-									<option value="Liquid">Liquid</option>
-									<option value="Gold">Gold</option>
-									<option value="Real Estate">Real Estate</option>
+									{uniqueAssetClasses.map(assetClass => (
+										<option key={assetClass} value={assetClass}>{assetClass}</option>
+									))}
 								</select>
 							</div>
 							<div className="flex items-center gap-2">
@@ -813,12 +907,7 @@ export default function HoldingsPage() {
 												return (
 													<tr key={holding.id} className="border-t border-border/50">
 														<td className="py-2 px-3 font-medium">
-															<div>
-																<div className="text-foreground">{holding.name}</div>
-																{holding.symbol && (
-																	<div className="text-muted-foreground">{holding.symbol}</div>
-																)}
-															</div>
+															<div className="text-foreground">{holding.name}</div>
 														</td>
 														<td className="py-2 px-3">
 															<div className="space-y-0.5">
@@ -1025,9 +1114,11 @@ export default function HoldingsPage() {
 														boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
 													}}
 												/>
-												{portfolioRoleData.map((entry, index) => (
-													<Bar key={entry.name} dataKey="value" fill={entry.color} radius={[2, 2, 0, 0]} xAxisId={0} />
-												))}
+												<Bar dataKey="value" radius={[2, 2, 0, 0]} xAxisId={0}>
+													{portfolioRoleData.map((entry, index) => (
+														<Cell key={`cell-${index}`} fill={entry.color} />
+													))}
+												</Bar>
 											</BarChart>
 										</ResponsiveContainer>
 									</div>
@@ -1235,6 +1326,8 @@ export default function HoldingsPage() {
 																if (e.target.value.trim() === '') {
 																	setShowMFDropdown(false);
 																	setFilteredMFOptions([]);
+																} else {
+																	filterMFOptions(e.target.value);
 																}
 															}}
 															onFocus={() => {
@@ -1318,17 +1411,19 @@ export default function HoldingsPage() {
 													<label className="block text-sm font-medium text-foreground mb-2">ETF Name *</label>
 													<div className="relative">
 														<input
-															value={mfSearchTerm}
+															value={etfSearchTerm}
 															onChange={(e) => {
-																setMfSearchTerm(e.target.value);
+																setEtfSearchTerm(e.target.value);
 																if (e.target.value.trim() === '') {
-																	setShowMFDropdown(false);
-																	setFilteredMFOptions([]);
+																	setShowETFDropdown(false);
+																	setFilteredETFOptions([]);
+																} else {
+																	filterETFOptions(e.target.value);
 																}
 															}}
-																														onFocus={() => {
-																if (mfSearchTerm.trim()) {
-																filterMFOptions(mfSearchTerm);
+															onFocus={() => {
+																if (etfSearchTerm.trim()) {
+																	filterETFOptions(etfSearchTerm);
 																}
 															}}
 															disabled={editingId !== null}
@@ -1339,17 +1434,17 @@ export default function HoldingsPage() {
 															}`}
 															placeholder={editingId !== null ? "ETF name cannot be changed during edit" : "Search for ETFs..."}
 														/>
-																																										{showMFDropdown && filteredMFOptions.length > 0 && !editingId && mfSearchTerm.trim() !== '' && (
+														{showETFDropdown && filteredETFOptions.length > 0 && !editingId && etfSearchTerm.trim() !== '' && (
 															<div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-auto">
-																{filteredMFOptions.map((fund) => (
+																{filteredETFOptions.map((fund) => (
 																	<div
 														key={fund.schemeCode}
 														onClick={() => {
-															setSelectedMF(fund);
-															setMfSearchTerm(fund.name);
+															setSelectedETF(fund);
+															setEtfSearchTerm(fund.name);
 															setForm({ ...form, name: fund.name, symbol: fund.schemeCode, price: fund.currentNAV.toString() });
-															setShowMFDropdown(false);
-															setFilteredMFOptions([]);
+															setShowETFDropdown(false);
+															setFilteredETFOptions([]);
 														}}
 														className="px-3 py-2 hover:bg-muted cursor-pointer border-b border-border last:border-b-0"
 																	>
@@ -1365,16 +1460,19 @@ export default function HoldingsPage() {
 												</div>
 												
 												<div>
-													<label className="block text-sm font-medium text-foreground mb-2">Units *</label>
-													<input
-														type="number"
-														value={form.units || ''}
-														onChange={(e) => setForm({ ...form, units: e.target.value })}
-														required
-														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-														placeholder="0"
-														step="0.01"
-													/>
+													<label className="block text-sm font-medium text-foreground mb-2">Investment Amount *</label>
+													<div className="relative">
+														<span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground">₹</span>
+														<input
+															type="number"
+															value={form.investedAmount || ''}
+															onChange={(e) => setForm({ ...form, investedAmount: e.target.value })}
+															required
+															className="w-full rounded-lg border border-border bg-background pl-8 pr-3 py-2 text-sm text-foreground"
+															placeholder="0.00"
+															step="0.01"
+														/>
+													</div>
 												</div>
 												
 												<div>
@@ -1545,6 +1643,20 @@ export default function HoldingsPage() {
 													<div className="text-right">
 														<div className="text-xs text-muted-foreground">Investment</div>
 														<div className="text-sm font-medium">₹{parseFloat(form.investedAmount || '0').toLocaleString()}</div>
+													</div>
+												)}
+												{/* Show calculated units for Mutual Funds */}
+												{selectedRole === 'Mutual Funds' && form.investedAmount && form.price && (
+													<div className="text-right">
+														<div className="text-xs text-muted-foreground">Units to be added</div>
+														<div className="text-sm font-medium">{(parseFloat(form.investedAmount || '0') / parseFloat(form.price || '1')).toFixed(4)}</div>
+													</div>
+												)}
+												{/* Show calculated units for ETFs */}
+												{selectedRole === 'ETF' && form.investedAmount && form.price && (
+													<div className="text-right">
+														<div className="text-xs text-muted-foreground">Units to be added</div>
+														<div className="text-sm font-medium">{(parseFloat(form.investedAmount || '0') / parseFloat(form.price || '1')).toFixed(4)}</div>
 													</div>
 												)}
 												{form.units && form.price && (
