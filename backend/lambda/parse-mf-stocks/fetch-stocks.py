@@ -111,23 +111,15 @@ def fetch_bse():
         csv_text = response.content.decode("utf-8", errors="ignore")
         logger.info(f"BSE CSV content preview (first 500 chars): {csv_text[:500]}")
         
-        # BSE CSV has malformed structure with title row - find the actual header row
+        # BSE CSV has title row in first line, actual headers in second line - skip first row
         lines = csv_text.split('\n')
-        header_line_index = None
-        
-        # Find the actual header row (contains "Sr. No.,Scrip code,Security Name,ISIN,GSM Stage")
-        for i, line in enumerate(lines):
-            if 'Sr. No.' in line and 'Scrip code' in line and 'Security Name' in line:
-                header_line_index = i
-                break
-        
-        if header_line_index is None:
-            logger.error("Could not find BSE header row with expected columns")
+        if len(lines) < 2:
+            logger.error("BSE CSV has insufficient lines")
             return {"statusCode": 500, "body": "BSE CSV structure not recognized"}
         
-        # Use the correct header line and subsequent data
-        corrected_csv = '\n'.join(lines[header_line_index:])
-        logger.info(f"BSE corrected CSV starts from line {header_line_index + 1}")
+        # Skip first row (title) and use second row onwards (header + data)
+        corrected_csv = '\n'.join(lines[1:])
+        logger.info(f"BSE CSV: Skipped title row, using line 2 as header")
         
         reader = csv.DictReader(io.StringIO(corrected_csv))
         
