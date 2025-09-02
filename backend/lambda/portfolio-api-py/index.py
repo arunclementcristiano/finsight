@@ -283,17 +283,46 @@ def handler(event, context):
                 if not portfolio_id:
                     return _response(400, {"error": "Missing portfolioId"})
                 
-                # Delete the holding from DynamoDB
-                # The holdings table uses 'id' as the primary key
-                holdings_table.delete_item(
-                    Key={
-                        "id": holding_id
-                    }
-                )
+                # Debug: Log what we're trying to delete
+                print(f"DEBUG: Attempting to delete holding with ID: {holding_id}")
+                print(f"DEBUG: Portfolio ID from body: {portfolio_id}")
+                
+                # First, try to get the holding to see its structure
+                try:
+                    # Try to get the holding first to understand its key structure
+                    response = holdings_table.get_item(
+                        Key={
+                            "id": holding_id
+                        }
+                    )
+                    print(f"DEBUG: Get item response: {response}")
+                    
+                    if 'Item' in response:
+                        item = response['Item']
+                        print(f"DEBUG: Found item: {item}")
+                        # Use the actual key structure from the item
+                        delete_key = {"id": holding_id}
+                        if "user_id" in item:
+                            delete_key["user_id"] = item["user_id"]
+                        print(f"DEBUG: Using delete key: {delete_key}")
+                        
+                        holdings_table.delete_item(Key=delete_key)
+                    else:
+                        return _response(404, {"error": "Holding not found"})
+                        
+                except Exception as get_error:
+                    print(f"DEBUG: Get item failed: {get_error}")
+                    # Fallback: try with just id
+                    holdings_table.delete_item(
+                        Key={
+                            "id": holding_id
+                        }
+                    )
                 
                 return _response(200, {"message": "Holding deleted successfully"})
             except Exception as e:
-                return _response(500, {"error": "Failed to delete holding"})
+                print(f"DEBUG: Delete failed with error: {e}")
+                return _response(500, {"error": f"Failed to delete holding: {str(e)}"})
 
         # Create transaction (POST /transactions) — body: { portfolioId, txn }
         if route_key == "POST /transactions":
