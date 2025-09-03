@@ -34,7 +34,22 @@ export default function AddRepaymentForm({ selectedType, onBack, onSave, onCance
   const [isCalculating, setIsCalculating] = useState(false);
 
   const handleInputChange = (field: keyof RepaymentFormData, value: string | number) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const newData = { ...prev, [field]: value };
+      
+      // Auto-calculate end date when start date or tenure changes
+      if (field === 'start_date' || field === 'tenure_months') {
+        if (newData.start_date && newData.tenure_months) {
+          const startDate = new Date(newData.start_date);
+          const endDate = new Date(startDate);
+          endDate.setMonth(endDate.getMonth() + newData.tenure_months);
+          newData.due_date = endDate.toISOString().split('T')[0];
+        }
+      }
+      
+      return newData;
+    });
+    
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: undefined }));
@@ -53,8 +68,8 @@ export default function AddRepaymentForm({ selectedType, onBack, onSave, onCance
     if (formData.interest_rate < 0) {
       newErrors.interest_rate = 'Interest rate must be 0 or greater';
     }
-    if (!formData.emi_amount || formData.emi_amount <= 0) {
-      newErrors.emi_amount = 'EMI amount must be greater than 0';
+    if (formData.emi_amount < 0) {
+      newErrors.emi_amount = 'EMI amount cannot be negative';
     }
     if (!formData.tenure_months || formData.tenure_months <= 0) {
       newErrors.tenure_months = 'Tenure must be greater than 0 months';
@@ -126,30 +141,20 @@ export default function AddRepaymentForm({ selectedType, onBack, onSave, onCance
         {/* Institution */}
         <div>
           <Label htmlFor="institution">Institution *</Label>
-          <select
+          <Input
             id="institution"
+            type="text"
+            placeholder="Enter institution name (e.g., HDFC Bank, Local Bank, etc.)"
             value={formData.institution}
             onChange={(e) => {
-              console.log('Institution selected:', e.target.value);
+              console.log('Institution entered:', e.target.value);
               handleInputChange('institution', e.target.value);
             }}
-            className={`flex h-10 w-full items-center justify-between rounded-md border px-3 py-2 text-sm bg-background ${
-              errors.institution ? 'border-red-500' : 'border-input'
-            } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
-          >
-            <option value="">Select institution</option>
-            {INSTITUTIONS.map((institution) => (
-              <option key={institution} value={institution}>
-                {institution}
-              </option>
-            ))}
-          </select>
+            className={errors.institution ? 'border-red-500' : ''}
+          />
           {errors.institution && (
             <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errors.institution}</p>
           )}
-          <p className="text-xs text-muted-foreground mt-1">
-            Current value: {formData.institution || 'None selected'}
-          </p>
         </div>
 
         {/* Principal Amount */}
@@ -219,7 +224,7 @@ export default function AddRepaymentForm({ selectedType, onBack, onSave, onCance
           <Input
             id="emi_amount"
             type="number"
-            placeholder="Enter EMI amount"
+            placeholder="Enter EMI amount (0 for gold loans, etc.)"
             value={formData.emi_amount || ''}
             onChange={(e) => handleInputChange('emi_amount', parseFloat(e.target.value) || 0)}
             className={errors.emi_amount ? 'border-red-500' : ''}
@@ -227,6 +232,9 @@ export default function AddRepaymentForm({ selectedType, onBack, onSave, onCance
           {errors.emi_amount && (
             <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errors.emi_amount}</p>
           )}
+          <p className="text-xs text-muted-foreground mt-1">
+            Set to 0 for loans without regular EMI (like gold loans)
+          </p>
         </div>
 
         {/* Start Date */}
@@ -257,6 +265,9 @@ export default function AddRepaymentForm({ selectedType, onBack, onSave, onCance
           {errors.due_date && (
             <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errors.due_date}</p>
           )}
+          <p className="text-xs text-muted-foreground mt-1">
+            Auto-calculated from start date + tenure (can be edited)
+          </p>
         </div>
       </div>
 

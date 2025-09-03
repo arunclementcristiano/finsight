@@ -2,13 +2,14 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/Card";
 import { Button } from "../../../components/Button";
-import { Plus, TrendingDown, Calendar, DollarSign, AlertTriangle, CreditCard, Home, Car, User, Smartphone, Calculator, Target, Zap, Clock, TrendingUp } from "lucide-react";
+import { Plus, TrendingDown, Calendar, DollarSign, AlertTriangle, CreditCard, Home, Car, User, Smartphone, Calculator, Target, Zap, Clock, TrendingUp, Trash2 } from "lucide-react";
 import { Modal } from "../../../components/Modal";
 import AddRepaymentForm from "./components/AddRepaymentForm";
 import PrepaymentCalculator from "./components/PrepaymentCalculator";
 import { 
   fetchRepayments, 
   createRepayment, 
+  deleteRepayment,
   formatCurrency, 
   formatPercentage, 
   calculateProgressPercentage, 
@@ -109,6 +110,18 @@ export default function RepaymentsPage() {
   const handlePrepayClick = (repayment: Repayment) => {
     setSelectedRepayment(repayment);
     setShowCalculatorModal(true);
+  };
+
+  const handleDeleteRepayment = async (repaymentId: string) => {
+    if (confirm('Are you sure you want to delete this repayment? This action cannot be undone.')) {
+      try {
+        await deleteRepayment(repaymentId);
+        loadRepayments(); // Refresh the list
+      } catch (error) {
+        console.error('Error deleting repayment:', error);
+        alert('Error deleting repayment. Please try again.');
+      }
+    }
   };
 
   if (loading) {
@@ -320,6 +333,15 @@ export default function RepaymentsPage() {
                           >
                             <Calculator className="w-4 h-4 mr-1" />
                             Prepay
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteRepayment(repayment.repayment_id)}
+                            className="text-destructive border-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Delete
                           </Button>
                         </div>
                       </div>
