@@ -25,6 +25,7 @@ import {
   Info
 } from 'lucide-react';
 import { LoanEngine, UltraSimpleLiabilityInput, EnhancedLoanStatus, LoanCategory } from '../../domain/Repaymentadvisor/repaymentEngine';
+import { fetchRepayments, createRepayment, Repayment, RepaymentFormData } from '../../../../lib/repayments';
 
 // Modern Loan Type Icons
 const loanIcons: Record<LoanCategory, React.ReactNode> = {
@@ -49,8 +50,10 @@ const loanColors: Record<LoanCategory, string> = {
 
 export default function RepaymentsPage() {
   const [liabilities, setLiabilities] = useState<EnhancedLoanStatus[]>([]);
+  const [dbRepayments, setDbRepayments] = useState<Repayment[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  const [loading, setLoading] = useState(true);
   const [engine] = useState(new LoanEngine());
 
   // Quick Add Form State
@@ -63,21 +66,84 @@ export default function RepaymentsPage() {
     tenure_months: 36
   });
 
-  const addLiability = () => {
-    if (!formData.type || !formData.institution || !formData.original_amount) return;
-    
-    const input: UltraSimpleLiabilityInput = {
-      type: formData.type as LoanCategory,
-      interest_rate: formData.interest_rate || 12,
-      institution: formData.institution,
-      start_date: formData.start_date || new Date().toISOString().split('T')[0],
-      original_amount: formData.original_amount,
-      tenure_months: formData.tenure_months
+  // Load repayments from database on component mount
+  useEffect(() => {
+    const loadRepayments = async () => {
+      try {
+        setLoading(true);
+        const summary = await fetchRepayments();
+        setDbRepayments(summary.repayments);
+        
+        // Convert DB repayments to engine format and calculate
+        const calculatedLiabilities = summary.repayments.map(repayment => {
+          const input: UltraSimpleLiabilityInput = {
+            type: repayment.type as LoanCategory,
+            interest_rate: repayment.interest_rate,
+            institution: repayment.institution,
+            start_date: repayment.start_date,
+            original_amount: repayment.principal,
+            tenure_months: repayment.tenure_months
+          };
+          return engine.calculateEverything(input);
+        });
+        
+        setLiabilities(calculatedLiabilities);
+      } catch (error) {
+        console.error('Error loading repayments:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    const result = engine.calculateEverything(input);
-    setLiabilities([...liabilities, result]);
-    setShowAddForm(false);
+    loadRepayments();
+  }, [engine]);
+
+  const addLiability = async () => {
+    if (!formData.type || !formData.institution || !formData.original_amount) return;
+    
+    try {
+      // Calculate EMI using the engine first
+      const input: UltraSimpleLiabilityInput = {
+        type: formData.type as LoanCategory,
+        interest_rate: formData.interest_rate || 12,
+        institution: formData.institution,
+        start_date: formData.start_date || new Date().toISOString().split('T')[0],
+        original_amount: formData.original_amount,
+        tenure_months: formData.tenure_months
+      };
+
+      const result = engine.calculateEverything(input);
+      
+      // Save to database
+      const repaymentData: RepaymentFormData = {
+        type: formData.type as string,
+        institution: formData.institution,
+        principal: formData.original_amount,
+        interest_rate: formData.interest_rate || 12,
+        emi_amount: result.emi || 0,
+        tenure_months: formData.tenure_months || 36,
+        start_date: formData.start_date || new Date().toISOString().split('T')[0],
+        due_date: new Date().toISOString().split('T')[0]
+      };
+
+      await createRepayment(repaymentData);
+      
+      // Update local state
+      setLiabilities([...liabilities, result]);
+      setShowAddForm(false);
+      resetForm();
+      
+      // Reload from database to get the latest data
+      const summary = await fetchRepayments();
+      setDbRepayments(summary.repayments);
+      
+    } catch (error) {
+      console.error('Error adding liability:', error);
+      alert('Failed to add liability. Please try again.');
+    }
+  };
+
+  const resetForm = () => {
     setFormData({
       type: 'personal_loan',
       interest_rate: 12,
@@ -95,6 +161,45 @@ export default function RepaymentsPage() {
   const avgInterestRate = liabilities.length > 0 
     ? liabilities.reduce((sum, loan) => sum + (loan.emi ? 12 : 0), 0) / liabilities.length 
     : 0;
+
+  // Calculate repayment strategies
+  const calculateAvalancheStrategy = () => {
+    return liabilities
+      .filter(loan => loan.emi && loan.emi > 0)
+      .sort((a, b) => (b.interest_rate || 0) - (a.interest_rate || 0))
+      .map(loan => ({
+        ...loan,
+        priority: 'High Interest First',
+        monthlyExtra: 0,
+        totalSavings: 0
+      }));
+  };
+
+  const calculateSnowballStrategy = () => {
+    return liabilities
+      .filter(loan => loan.emi && loan.emi > 0)
+      .sort((a, b) => a.outstandingBalance - b.outstandingBalance)
+      .map(loan => ({
+        ...loan,
+        priority: 'Smallest Balance First',
+        monthlyExtra: 0,
+        totalSavings: 0
+      }));
+  };
+
+  const avalancheLoans = calculateAvalancheStrategy();
+  const snowballLoans = calculateSnowballStrategy();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-slate-600 dark:text-slate-400">Loading your repayments...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
@@ -302,84 +407,273 @@ export default function RepaymentsPage() {
           {/* Optimize Tab */}
           {activeTab === 'optimize' && (
             <div className="space-y-6">
-            <Card className="p-6 shadow-lg bg-white dark:bg-slate-800">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
-                  <Zap className="w-6 h-6 text-green-600" />
-                </div>
-                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
-                  Repayment Optimization
-                </h3>
-              </div>
-              <p className="text-slate-600 dark:text-slate-400 mb-6">
-                AI-powered strategies to minimize interest and pay off debt faster
-              </p>
-              
-              <div className="grid gap-4">
-                <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-semibold text-slate-900 dark:text-white">Avalanche Method</h4>
-                    <Badge className="bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
-                      Highest Interest First
-                    </Badge>
+              <Card className="p-6 shadow-lg bg-white dark:bg-slate-800">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                    <Zap className="w-6 h-6 text-green-600" />
                   </div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Pay extra towards the highest interest rate loan first
-                  </p>
+                  <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
+                    Repayment Optimization
+                  </h3>
                 </div>
+                <p className="text-slate-600 dark:text-slate-400 mb-6">
+                  AI-powered strategies to minimize interest and pay off debt faster
+                </p>
                 
-                <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-semibold text-slate-900 dark:text-white">Snowball Method</h4>
-                    <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
-                      Smallest Balance First
-                    </Badge>
+                {liabilities.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-slate-600 dark:text-slate-400">
+                      Add some liabilities to see optimization strategies
+                    </p>
                   </div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Pay off smallest balances first for psychological wins
-                  </p>
-                </div>
-              </div>
-            </Card>
+                ) : (
+                  <div className="grid gap-6">
+                    {/* Avalanche Strategy */}
+                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="font-semibold text-slate-900 dark:text-white">Avalanche Method</h4>
+                        <Badge className="bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
+                          Highest Interest First
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                        Pay extra towards the highest interest rate loan first - saves more money in interest
+                      </p>
+                      
+                      {avalancheLoans.length > 0 ? (
+                        <div className="space-y-2">
+                          {avalancheLoans.map((loan, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                              <div className="flex items-center space-x-3">
+                                <div className={`p-2 rounded-lg ${loanColors[loan.loanCategory]} text-white`}>
+                                  {loanIcons[loan.loanCategory]}
+                                </div>
+                                <div>
+                                  <p className="font-medium text-slate-900 dark:text-white">
+                                    {loan.loanCategory.replace('_', ' ').toUpperCase()}
+                                  </p>
+                                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                                    {loan.interest_rate}% • ₹{loan.outstandingBalance.toLocaleString()}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-medium text-slate-900 dark:text-white">
+                                  Priority #{index + 1}
+                                </p>
+                                <p className="text-xs text-slate-600 dark:text-slate-400">
+                                  {loan.emi ? `EMI: ₹${loan.emi.toLocaleString()}` : 'No EMI'}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          No EMI-based loans found for avalanche strategy
+                        </p>
+                      )}
+                    </div>
+                    
+                    {/* Snowball Strategy */}
+                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="font-semibold text-slate-900 dark:text-white">Snowball Method</h4>
+                        <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+                          Smallest Balance First
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                        Pay off smallest balances first for psychological wins and momentum
+                      </p>
+                      
+                      {snowballLoans.length > 0 ? (
+                        <div className="space-y-2">
+                          {snowballLoans.map((loan, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                              <div className="flex items-center space-x-3">
+                                <div className={`p-2 rounded-lg ${loanColors[loan.loanCategory]} text-white`}>
+                                  {loanIcons[loan.loanCategory]}
+                                </div>
+                                <div>
+                                  <p className="font-medium text-slate-900 dark:text-white">
+                                    {loan.loanCategory.replace('_', ' ').toUpperCase()}
+                                  </p>
+                                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                                    {loan.interest_rate}% • ₹{loan.outstandingBalance.toLocaleString()}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-medium text-slate-900 dark:text-white">
+                                  Priority #{index + 1}
+                                </p>
+                                <p className="text-xs text-slate-600 dark:text-slate-400">
+                                  {loan.emi ? `EMI: ₹${loan.emi.toLocaleString()}` : 'No EMI'}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          No EMI-based loans found for snowball strategy
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </Card>
             </div>
           )}
 
           {/* Scenarios Tab */}
           {activeTab === 'scenarios' && (
             <div className="space-y-6">
-            <Card className="p-6 shadow-lg bg-white dark:bg-slate-800">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
-                  <Calculator className="w-6 h-6 text-purple-600" />
+              <Card className="p-6 shadow-lg bg-white dark:bg-slate-800">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+                    <Calculator className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
+                    What-If Scenarios
+                  </h3>
                 </div>
-                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
-                  What-If Scenarios
-                </h3>
-              </div>
-              <p className="text-slate-600 dark:text-slate-400 mb-6">
-                Test different repayment strategies and see the impact
-              </p>
-              
-              <div className="grid gap-4">
-                <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                  <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
-                    Extra ₹5,000 Monthly Payment
-                  </h4>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    See how much you can save with additional monthly payments
-                  </p>
-                </div>
+                <p className="text-slate-600 dark:text-slate-400 mb-6">
+                  Test different repayment strategies and see the impact
+                </p>
                 
-                <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                  <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
-                    Lump Sum Prepayment
-                  </h4>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Calculate savings from one-time prepayments
-                  </p>
-                </div>
-              </div>
-            </Card>
+                {liabilities.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-slate-600 dark:text-slate-400">
+                      Add some liabilities to see scenario calculations
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-6">
+                    {/* Extra Monthly Payment Scenario */}
+                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                      <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
+                        Extra ₹5,000 Monthly Payment
+                      </h4>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                        Apply extra payment to highest interest loan (Avalanche method)
+                      </p>
+                      
+                      {avalancheLoans.length > 0 ? (
+                        <div className="space-y-3">
+                          {avalancheLoans.slice(0, 3).map((loan, index) => {
+                            const extraPayment = index === 0 ? 5000 : 0;
+                            const newEMI = (loan.emi || 0) + extraPayment;
+                            const monthsSaved = extraPayment > 0 ? Math.floor(loan.outstandingBalance / newEMI) : 0;
+                            const interestSaved = extraPayment > 0 ? (loan.outstandingBalance * (loan.interest_rate || 0) / 100) * (monthsSaved / 12) : 0;
+                            
+                            return (
+                              <div key={index} className="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-3">
+                                    <div className={`p-2 rounded-lg ${loanColors[loan.loanCategory]} text-white`}>
+                                      {loanIcons[loan.loanCategory]}
+                                    </div>
+                                    <div>
+                                      <p className="font-medium text-slate-900 dark:text-white">
+                                        {loan.loanCategory.replace('_', ' ').toUpperCase()}
+                                      </p>
+                                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                                        {loan.interest_rate}% • ₹{loan.outstandingBalance.toLocaleString()}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    {extraPayment > 0 ? (
+                                      <>
+                                        <p className="text-sm font-medium text-green-600">
+                                          New EMI: ₹{newEMI.toLocaleString()}
+                                        </p>
+                                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                                          Save {monthsSaved} months • ₹{interestSaved.toLocaleString()} interest
+                                        </p>
+                                      </>
+                                    ) : (
+                                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                                        Standard EMI: ₹{(loan.emi || 0).toLocaleString()}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          No EMI-based loans found for scenario calculation
+                        </p>
+                      )}
+                    </div>
+                    
+                    {/* Lump Sum Prepayment Scenario */}
+                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                      <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
+                        ₹50,000 Lump Sum Prepayment
+                      </h4>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                        Apply lump sum to highest interest loan
+                      </p>
+                      
+                      {avalancheLoans.length > 0 ? (
+                        <div className="space-y-3">
+                          {avalancheLoans.slice(0, 2).map((loan, index) => {
+                            const lumpSum = index === 0 ? 50000 : 0;
+                            const newBalance = Math.max(0, loan.outstandingBalance - lumpSum);
+                            const interestSaved = lumpSum > 0 ? (lumpSum * (loan.interest_rate || 0) / 100) * (loan.remainingMonths / 12) : 0;
+                            
+                            return (
+                              <div key={index} className="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-3">
+                                    <div className={`p-2 rounded-lg ${loanColors[loan.loanCategory]} text-white`}>
+                                      {loanIcons[loan.loanCategory]}
+                                    </div>
+                                    <div>
+                                      <p className="font-medium text-slate-900 dark:text-white">
+                                        {loan.loanCategory.replace('_', ' ').toUpperCase()}
+                                      </p>
+                                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                                        {loan.interest_rate}% • Original: ₹{loan.outstandingBalance.toLocaleString()}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    {lumpSum > 0 ? (
+                                      <>
+                                        <p className="text-sm font-medium text-green-600">
+                                          New Balance: ₹{newBalance.toLocaleString()}
+                                        </p>
+                                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                                          Interest Saved: ₹{interestSaved.toLocaleString()}
+                                        </p>
+                                      </>
+                                    ) : (
+                                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                                        No prepayment applied
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          No EMI-based loans found for scenario calculation
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </Card>
             </div>
           )}
 
@@ -529,6 +823,13 @@ export default function RepaymentsPage() {
                   className="flex-1"
                 >
                   Cancel
+                </Button>
+                <Button
+                  onClick={resetForm}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Reset
                 </Button>
                 <Button
                   onClick={addLiability}
