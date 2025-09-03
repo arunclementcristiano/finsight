@@ -43,6 +43,7 @@ export interface EnhancedLoanStatus {
   loanType: 'emi' | 'credit_card' | 'gold_loan' | 'generic';
   loanCategory: LoanCategory;
   originalAmount: number;
+  interest_rate: number; // Added missing field
   emi: number;
   outstandingBalance: number;
   monthsElapsed: number;
@@ -77,11 +78,27 @@ export class LoanEngine {
     return defaults[type];
   }
 
+  // Validate input data
+  private validateInput(input: UltraSimpleLiabilityInput | CreditCardInput | GoldLoanInput): void {
+    if (!input.type) throw new Error('Loan type is required');
+    if (input.interest_rate < 0 || input.interest_rate > 100) {
+      throw new Error('Interest rate must be between 0 and 100');
+    }
+    if (input.original_amount <= 0) {
+      throw new Error('Original amount must be positive');
+    }
+    if (input.tenure_months !== undefined && input.tenure_months < 0) {
+      throw new Error('Tenure cannot be negative');
+    }
+  }
+
   // Main entry point
   calculateEverything(
     input: UltraSimpleLiabilityInput | CreditCardInput | GoldLoanInput,
     prepayments?: PrepaymentEntry[]
   ): EnhancedLoanStatus {
+    // Validate input first
+    this.validateInput(input);
     const startDate = new Date(input.start_date);
     const currentDate = new Date();
     const monthsElapsed = this.getMonthsElapsed(startDate, currentDate);
@@ -115,11 +132,23 @@ export class LoanEngine {
     tenure: number
   ): EnhancedLoanStatus {
     const monthlyRate = input.interest_rate / 100 / 12;
-    const emi =
-      (input.original_amount *
-        monthlyRate *
-        Math.pow(1 + monthlyRate, tenure)) /
-      (Math.pow(1 + monthlyRate, tenure) - 1);
+    
+    // Handle edge cases
+    let emi: number;
+    if (monthlyRate === 0) {
+      // Zero interest rate - simple division
+      emi = input.original_amount / tenure;
+    } else if (tenure === 0) {
+      // No tenure - treat as one-time payment
+      emi = input.original_amount;
+    } else {
+      // Standard EMI calculation
+      emi =
+        (input.original_amount *
+          monthlyRate *
+          Math.pow(1 + monthlyRate, tenure)) /
+        (Math.pow(1 + monthlyRate, tenure) - 1);
+    }
 
     const outstanding = this.calculateOutstandingBalanceAccurate(
       input.original_amount,
@@ -133,6 +162,7 @@ export class LoanEngine {
       loanType: 'emi',
       loanCategory: input.type,
       originalAmount: input.original_amount,
+      interest_rate: input.interest_rate, // Added missing field
       emi,
       outstandingBalance: outstanding,
       monthsElapsed,
@@ -155,7 +185,11 @@ export class LoanEngine {
     tenure: number
   ): number {
     const monthlyRate = annualRate / 100 / 12;
+    
+    // Handle edge cases
     if (monthsElapsed >= tenure) return 0;
+    if (tenure === 0) return Math.max(0, principal - (emi * monthsElapsed));
+    if (monthlyRate === 0) return Math.max(0, principal - (emi * monthsElapsed));
 
     const numerator =
       Math.pow(1 + monthlyRate, tenure) -
@@ -198,6 +232,7 @@ export class LoanEngine {
       loanType: 'credit_card',
       loanCategory: input.type,
       originalAmount: input.original_amount,
+      interest_rate: input.interest_rate, // Added missing field
       emi: 0,
       outstandingBalance: balance,
       monthsElapsed,
@@ -255,6 +290,7 @@ export class LoanEngine {
       loanType: 'gold_loan',
       loanCategory: input.type,
       originalAmount: input.original_amount,
+      interest_rate: input.interest_rate, // Added missing field
       emi: 0,
       outstandingBalance: outstanding,
       monthsElapsed,
@@ -281,6 +317,7 @@ export class LoanEngine {
       loanType: 'generic',
       loanCategory: input.type,
       originalAmount: input.original_amount,
+      interest_rate: input.interest_rate, // Added missing field
       emi: 0,
       outstandingBalance: outstanding,
       monthsElapsed,

@@ -89,15 +89,32 @@ export default function RepaymentsPage() {
         
         // Convert DB repayments to engine format and calculate
         const calculatedLiabilities = summary.repayments.map(repayment => {
-          const input: UltraSimpleLiabilityInput = {
-            type: repayment.type as LoanCategory,
-            interest_rate: repayment.interest_rate,
-            institution: repayment.institution,
-            start_date: repayment.start_date,
-            original_amount: repayment.principal,
-            tenure_months: repayment.tenure_months
-          };
-          return engine.calculateEverything(input);
+          try {
+            const input: UltraSimpleLiabilityInput = {
+              type: repayment.type as LoanCategory,
+              interest_rate: repayment.interest_rate || 12, // Default to 12% if missing
+              institution: repayment.institution || 'Unknown',
+              start_date: repayment.start_date || new Date().toISOString().split('T')[0],
+              original_amount: repayment.principal || 0,
+              tenure_months: repayment.tenure_months || undefined
+            };
+            return engine.calculateEverything(input);
+          } catch (error) {
+            console.error('Error calculating liability for repayment:', repayment, error);
+            // Return a fallback liability with basic info
+            return {
+              loanType: 'generic' as const,
+              loanCategory: repayment.type as LoanCategory,
+              originalAmount: repayment.principal || 0,
+              interest_rate: repayment.interest_rate || 12,
+              emi: repayment.emi_amount || 0,
+              outstandingBalance: repayment.outstanding_balance || repayment.principal || 0,
+              monthsElapsed: 0,
+              remainingMonths: repayment.tenure_months || 0,
+              monthlyInterestAccrual: 0,
+              explanation: `Error calculating loan details for ${repayment.type}. Please check the data.`
+            };
+          }
         });
         
         setLiabilities(calculatedLiabilities);
