@@ -584,10 +584,10 @@ export default function PortfolioInsightsPage() {
 											{ role: 'Equity', allocation: 34.9 },
 											{ role: 'Satellite', allocation: 21.2 }
 										]} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-											<XAxis dataKey="role" tick={{ fontSize: 12 }} />
-											<YAxis domain={[0, 50]} tick={{ fontSize: 12 }} />
+											<XAxis dataKey="role" tick={{ fontSize: 12 }} hide />
+											<YAxis domain={[0, 50]} tick={{ fontSize: 12 }} hide />
 											<Tooltip formatter={(value: any) => [`${formatNumber(value, 1)}%`, 'Allocation']} />
-											<Bar dataKey="allocation" fill="#3B82F6">
+											<Bar dataKey="allocation" fill="#3B82F6" radius={[4, 4, 0, 0]}>
 												{[
 													{ role: 'Defensive', allocation: 44.0 },
 													{ role: 'Equity', allocation: 34.9 },
@@ -681,10 +681,10 @@ export default function PortfolioInsightsPage() {
 											{ assetClass: 'Real Estate', pnlPercent: 4.0 },
 											{ assetClass: 'Gold', pnlPercent: 1.0 }
 										]} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-											<XAxis dataKey="assetClass" angle={-45} textAnchor="end" height={80} />
-											<YAxis domain={[0, 10]} tick={{ fontSize: 12 }} />
+											<XAxis dataKey="assetClass" angle={-45} textAnchor="end" height={80} hide />
+											<YAxis domain={[0, 10]} tick={{ fontSize: 12 }} hide />
 											<Tooltip formatter={(value: any) => [`${formatNumber(value, 2)}%`, 'Returns']} />
-											<Bar dataKey="pnlPercent" fill="#10B981">
+											<Bar dataKey="pnlPercent" fill="#10B981" radius={[4, 4, 0, 0]}>
 												{[
 													{ assetClass: 'Stocks', pnlPercent: 5.0 },
 													{ assetClass: 'Debt Fund', pnlPercent: 3.0 },
