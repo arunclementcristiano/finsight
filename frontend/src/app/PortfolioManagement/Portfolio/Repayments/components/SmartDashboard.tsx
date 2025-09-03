@@ -86,79 +86,43 @@ export default function SmartDashboard({
 
   return (
     <div className="space-y-6">
-      {/* Smart Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-800">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Total Outstanding</p>
-                <p className="text-3xl font-bold text-blue-700 dark:text-blue-300">
-                  {formatCurrency(totalOutstanding)}
-                </p>
-                <p className="text-xs text-blue-500 dark:text-blue-400">Across {liabilities.length} liabilities</p>
-              </div>
-              <div className="p-4 bg-blue-500/20 rounded-2xl">
-                <DollarSign className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-              </div>
-            </div>
-            <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/10 rounded-full -translate-y-10 translate-x-10"></div>
-          </CardContent>
-        </Card>
+      {/* Smart Summary Cards - Consistent with Plan page style */}
+      <div className="grid grid-cols-4 gap-3">
+        {/* Total Outstanding */}
+        <div className="rounded-lg border border-border bg-card p-3 text-center">
+          <div className="text-xs text-muted-foreground mb-1">Total Outstanding</div>
+          <div className="text-lg font-semibold text-red-600 dark:text-red-400 mb-1">
+            {formatCurrency(totalOutstanding)}
+          </div>
+          <div className="text-[10px] text-muted-foreground">Debt to repay</div>
+        </div>
 
-        <Card className="relative overflow-hidden bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200 dark:border-green-800">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-green-600 dark:text-green-400">Monthly EMIs</p>
-                <p className="text-3xl font-bold text-green-700 dark:text-green-300">
-                  {formatCurrency(totalEMI)}
-                </p>
-                <p className="text-xs text-green-500 dark:text-green-400">Debt-to-income ratio</p>
-              </div>
-              <div className="p-4 bg-green-500/20 rounded-2xl">
-                <Calendar className="w-8 h-8 text-green-600 dark:text-green-400" />
-              </div>
-            </div>
-            <div className="absolute top-0 right-0 w-20 h-20 bg-green-500/10 rounded-full -translate-y-10 translate-x-10"></div>
-          </CardContent>
-        </Card>
+        {/* Monthly EMIs */}
+        <div className="rounded-lg border border-border bg-card p-3 text-center">
+          <div className="text-xs text-muted-foreground mb-1">Monthly EMIs</div>
+          <div className="text-lg font-semibold text-blue-600 dark:text-blue-400 mb-1">
+            {formatCurrency(totalEMI)}
+          </div>
+          <div className="text-[10px] text-muted-foreground">Due every month</div>
+        </div>
 
-        <Card className="relative overflow-hidden bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border-orange-200 dark:border-orange-800">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-orange-600 dark:text-orange-400">Avg Interest Rate</p>
-                <p className="text-3xl font-bold text-orange-700 dark:text-orange-300">
-                  {formatPercentage(avgInterestRate)}
-                </p>
-                <p className="text-xs text-orange-500 dark:text-orange-400">Weighted average</p>
-              </div>
-              <div className="p-4 bg-orange-500/20 rounded-2xl">
-                <Percent className="w-8 h-8 text-orange-600 dark:text-orange-400" />
-              </div>
-            </div>
-            <div className="absolute top-0 right-0 w-20 h-20 bg-orange-500/10 rounded-full -translate-y-10 translate-x-10"></div>
-          </CardContent>
-        </Card>
+        {/* Avg Interest Rate */}
+        <div className="rounded-lg border border-border bg-card p-3 text-center">
+          <div className="text-xs text-muted-foreground mb-1">Avg Interest Rate</div>
+          <div className="text-lg font-semibold text-orange-600 dark:text-orange-400 mb-1">
+            {formatPercentage(avgInterestRate)}
+          </div>
+          <div className="text-[10px] text-muted-foreground">Weighted average</div>
+        </div>
 
-        <Card className="relative overflow-hidden bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border-red-200 dark:border-red-800">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-red-600 dark:text-red-400">High Risk</p>
-                <p className="text-3xl font-bold text-red-700 dark:text-red-300">
-                  {highRiskLiabilities}
-                </p>
-                <p className="text-xs text-red-500 dark:text-red-400">Need attention</p>
-              </div>
-              <div className="p-4 bg-red-500/20 rounded-2xl">
-                <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
-              </div>
-            </div>
-            <div className="absolute top-0 right-0 w-20 h-20 bg-red-500/10 rounded-full -translate-y-10 translate-x-10"></div>
-          </CardContent>
-        </Card>
+        {/* High Risk */}
+        <div className="rounded-lg border border-border bg-card p-3 text-center">
+          <div className="text-xs text-muted-foreground mb-1">High Risk</div>
+          <div className="text-lg font-semibold text-red-600 dark:text-red-400 mb-1">
+            {highRiskLiabilities}
+          </div>
+          <div className="text-[10px] text-muted-foreground">Need attention</div>
+        </div>
       </div>
 
       {/* AI-Powered Insights */}

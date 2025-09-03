@@ -243,22 +243,22 @@ export default function SmartLiabilityForm({ onSave, onCancel, initialData }: Sm
         </CardContent>
       </Card>
 
-      {/* Basic Information */}
+      {/* Simple Information */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <DollarSign className="w-5 h-5" />
-            <span>Basic Information</span>
+            <span>Basic Details</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-4">
             <div>
               <Label htmlFor="institution">Institution Name *</Label>
               <Input
                 id="institution"
                 type="text"
-                placeholder="Enter institution name"
+                placeholder="e.g., HDFC Bank, Local Bank"
                 value={formData.institution}
                 onChange={(e) => handleInputChange('institution', e.target.value)}
                 className={errors.institution ? 'border-red-500' : ''}
@@ -268,204 +268,159 @@ export default function SmartLiabilityForm({ onSave, onCancel, initialData }: Sm
               )}
             </div>
 
-            <div>
-              <Label htmlFor="principal">Principal Amount (₹) *</Label>
-              <Input
-                id="principal"
-                type="number"
-                placeholder="Enter principal amount"
-                value={formData.principal || ''}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value) || 0;
-                  handleInputChange('principal', value);
-                  handleInputChange('outstanding_balance', value);
-                  calculateRiskScore();
-                }}
-                className={errors.principal ? 'border-red-500' : ''}
-              />
-              {errors.principal && (
-                <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errors.principal}</p>
-              )}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="principal">Amount (₹) *</Label>
+                <Input
+                  id="principal"
+                  type="number"
+                  placeholder="100000"
+                  value={formData.principal || ''}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    handleInputChange('principal', value);
+                    handleInputChange('outstanding_balance', value);
+                    calculateRiskScore();
+                  }}
+                  className={errors.principal ? 'border-red-500' : ''}
+                />
+                {errors.principal && (
+                  <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errors.principal}</p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="interest_rate">Interest Rate (%) *</Label>
+                <Input
+                  id="interest_rate"
+                  type="number"
+                  step="0.01"
+                  placeholder="12.5"
+                  value={formData.interest_rate || ''}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    handleInputChange('interest_rate', value);
+                    calculateRiskScore();
+                  }}
+                  className={errors.interest_rate ? 'border-red-500' : ''}
+                />
+                {errors.interest_rate && (
+                  <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errors.interest_rate}</p>
+                )}
+              </div>
             </div>
 
-            <div>
-              <Label htmlFor="interest_rate">Interest Rate (% per annum) *</Label>
-              <Input
-                id="interest_rate"
-                type="number"
-                step="0.01"
-                placeholder="Enter interest rate"
-                value={formData.interest_rate || ''}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value) || 0;
-                  handleInputChange('interest_rate', value);
-                  calculateRiskScore();
-                }}
-                className={errors.interest_rate ? 'border-red-500' : ''}
-              />
-              {errors.interest_rate && (
-                <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errors.interest_rate}</p>
-              )}
-            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="emi_amount">Monthly EMI (₹) *</Label>
+                <Input
+                  id="emi_amount"
+                  type="number"
+                  placeholder="5000 (0 for gold loans)"
+                  value={formData.emi_amount || ''}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    handleInputChange('emi_amount', value);
+                    calculateRiskScore();
+                  }}
+                  className={errors.emi_amount ? 'border-red-500' : ''}
+                />
+                {errors.emi_amount && (
+                  <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errors.emi_amount}</p>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  Set to 0 for loans without regular EMI
+                </p>
+              </div>
 
-            <div>
-              <Label htmlFor="tenure_months">Tenure (months) *</Label>
-              <Input
-                id="tenure_months"
-                type="number"
-                placeholder="Enter tenure in months"
-                value={formData.tenure_months || ''}
-                onChange={(e) => handleInputChange('tenure_months', parseInt(e.target.value) || 0)}
-                className={errors.tenure_months ? 'border-red-500' : ''}
-              />
-              {errors.tenure_months && (
-                <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errors.tenure_months}</p>
-              )}
+              <div>
+                <Label htmlFor="tenure_months">Tenure (months) *</Label>
+                <Input
+                  id="tenure_months"
+                  type="number"
+                  placeholder="60"
+                  value={formData.tenure_months || ''}
+                  onChange={(e) => handleInputChange('tenure_months', parseInt(e.target.value) || 0)}
+                  className={errors.tenure_months ? 'border-red-500' : ''}
+                />
+                {errors.tenure_months && (
+                  <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errors.tenure_months}</p>
+                )}
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* EMI Calculation */}
+      {/* Quick EMI Calculator */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Calculator className="w-5 h-5" />
-            <span>EMI Calculation</span>
+            <span>Quick EMI Calculator</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="emi_amount">EMI Amount (₹) *</Label>
-              <Input
-                id="emi_amount"
-                type="number"
-                placeholder="Enter EMI amount (0 for gold loans, etc.)"
-                value={formData.emi_amount || ''}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value) || 0;
-                  handleInputChange('emi_amount', value);
-                  calculateRiskScore();
-                }}
-                className={errors.emi_amount ? 'border-red-500' : ''}
-              />
-              {errors.emi_amount && (
-                <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errors.emi_amount}</p>
-              )}
-              <p className="text-xs text-muted-foreground mt-1">
-                Set to 0 for loans without regular EMI (like gold loans)
+          <div className="flex items-center space-x-4">
+            <div className="flex-1">
+              <p className="text-sm text-muted-foreground mb-2">
+                Don't know your EMI? We can calculate it for you.
               </p>
             </div>
-
-            <div className="flex items-end">
-              <Button
-                onClick={calculateEMI}
-                disabled={isCalculating || !formData.principal || !formData.interest_rate || !formData.tenure_months}
-                className="w-full"
-              >
-                <Calculator className="w-4 h-4 mr-2" />
-                {isCalculating ? 'Calculating...' : 'Calculate EMI'}
-              </Button>
-            </div>
+            <Button
+              onClick={calculateEMI}
+              disabled={isCalculating || !formData.principal || !formData.interest_rate || !formData.tenure_months}
+              variant="outline"
+            >
+              <Calculator className="w-4 h-4 mr-2" />
+              {isCalculating ? 'Calculating...' : 'Calculate EMI'}
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Advanced Settings */}
+      {/* Smart Assessment */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Zap className="w-5 h-5" />
-            <span>Advanced Settings</span>
+            <Brain className="w-5 h-5" />
+            <span>Smart Assessment</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="interest_type">Interest Type</Label>
-              <select
-                id="interest_type"
-                value={formData.interest_type}
-                onChange={(e) => handleInputChange('interest_type', e.target.value)}
-                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                {INTEREST_TYPES.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-lg border border-border bg-card p-3 text-center">
+              <div className="text-xs text-muted-foreground mb-1">Risk Level</div>
+              <div className={`text-lg font-semibold mb-1 ${
+                formData.risk_score > 7 ? 'text-red-600 dark:text-red-400' : 
+                formData.risk_score > 4 ? 'text-orange-600 dark:text-orange-400' : 
+                'text-green-600 dark:text-green-400'
+              }`}>
+                {formData.risk_score > 7 ? 'High' : formData.risk_score > 4 ? 'Medium' : 'Low'}
+              </div>
+              <div className="text-[10px] text-muted-foreground">Risk Score</div>
             </div>
-
-            <div>
-              <Label htmlFor="prepayment_penalty">Prepayment Penalty (%)</Label>
-              <Input
-                id="prepayment_penalty"
-                type="number"
-                step="0.01"
-                placeholder="Enter prepayment penalty"
-                value={formData.prepayment_penalty || ''}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value) || 0;
-                  handleInputChange('prepayment_penalty', value);
-                  calculateRiskScore();
-                }}
-              />
+            <div className="rounded-lg border border-border bg-card p-3 text-center">
+              <div className="text-xs text-muted-foreground mb-1">Priority</div>
+              <div className={`text-lg font-semibold mb-1 capitalize ${
+                formData.priority_level === 'high' ? 'text-red-600 dark:text-red-400' : 
+                formData.priority_level === 'medium' ? 'text-orange-600 dark:text-orange-400' : 
+                'text-green-600 dark:text-green-400'
+              }`}>
+                {formData.priority_level}
+              </div>
+              <div className="text-[10px] text-muted-foreground">Payoff Priority</div>
             </div>
-
-            <div>
-              <Label htmlFor="grace_period_days">Grace Period (days)</Label>
-              <Input
-                id="grace_period_days"
-                type="number"
-                placeholder="Enter grace period"
-                value={formData.grace_period_days || ''}
-                onChange={(e) => handleInputChange('grace_period_days', parseInt(e.target.value) || 0)}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="late_fee_percentage">Late Fee (%)</Label>
-              <Input
-                id="late_fee_percentage"
-                type="number"
-                step="0.01"
-                placeholder="Enter late fee percentage"
-                value={formData.late_fee_percentage || ''}
-                onChange={(e) => handleInputChange('late_fee_percentage', parseFloat(e.target.value) || 0)}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Risk Assessment */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <AlertTriangle className="w-5 h-5" />
-            <span>AI Risk Assessment</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-muted rounded-lg">
-              <p className="text-sm text-muted-foreground">Risk Score</p>
-              <p className="text-2xl font-bold text-foreground">{formData.risk_score}/10</p>
-              <p className="text-xs text-muted-foreground">
-                {formData.risk_score > 7 ? 'High Risk' : formData.risk_score > 4 ? 'Medium Risk' : 'Low Risk'}
-              </p>
-            </div>
-            <div className="text-center p-4 bg-muted rounded-lg">
-              <p className="text-sm text-muted-foreground">Priority Level</p>
-              <p className="text-2xl font-bold text-foreground capitalize">{formData.priority_level}</p>
-              <p className="text-xs text-muted-foreground">Based on interest rate & type</p>
-            </div>
-            <div className="text-center p-4 bg-muted rounded-lg">
-              <p className="text-sm text-muted-foreground">Credit Impact</p>
-              <p className="text-2xl font-bold text-foreground capitalize">{formData.impact_on_credit_score}</p>
-              <p className="text-xs text-muted-foreground">Estimated impact on credit score</p>
+            <div className="rounded-lg border border-border bg-card p-3 text-center">
+              <div className="text-xs text-muted-foreground mb-1">Credit Impact</div>
+              <div className={`text-lg font-semibold mb-1 capitalize ${
+                formData.impact_on_credit_score === 'high' ? 'text-red-600 dark:text-red-400' : 
+                formData.impact_on_credit_score === 'medium' ? 'text-orange-600 dark:text-orange-400' : 
+                'text-green-600 dark:text-green-400'
+              }`}>
+                {formData.impact_on_credit_score}
+              </div>
+              <div className="text-[10px] text-muted-foreground">Credit Score</div>
             </div>
           </div>
         </CardContent>
