@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Modal } from '@/components/ui/modal';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../../components/Card';
+import { Button } from '../../../../components/Button';
+import { Input } from '../../../../components/Input';
+import { Label } from '../../../../components/Label';
+import { Badge } from '../../../../components/Badge';
+import { Modal } from '../../../../components/Modal';
 import { 
   DollarSign, 
   Clock, 
