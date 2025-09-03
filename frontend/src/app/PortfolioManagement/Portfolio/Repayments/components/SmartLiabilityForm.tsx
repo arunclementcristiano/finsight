@@ -303,7 +303,7 @@ export default function SmartLiabilityForm({ onSave, onCancel, initialData }: Sm
       {/* Step 3: EMI Details */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">3. Do you pay monthly EMI?</CardTitle>
+          <CardTitle className="text-base">3. EMI & Timeline Details</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -331,7 +331,7 @@ export default function SmartLiabilityForm({ onSave, onCancel, initialData }: Sm
               </div>
 
               <div>
-                <Label htmlFor="tenure_months">Tenure (months)</Label>
+                <Label htmlFor="tenure_months">Total Tenure (months)</Label>
                 <Input
                   id="tenure_months"
                   type="number"
@@ -340,9 +340,23 @@ export default function SmartLiabilityForm({ onSave, onCancel, initialData }: Sm
                   onChange={(e) => handleInputChange('tenure_months', parseInt(e.target.value) || 0)}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Optional - we can calculate this
+                  Total loan duration
                 </p>
               </div>
+            </div>
+
+            <div>
+              <Label htmlFor="start_date">Loan Start Date *</Label>
+              <Input
+                id="start_date"
+                type="date"
+                value={formData.start_date}
+                onChange={(e) => handleInputChange('start_date', e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                When did you start this loan?
+              </p>
             </div>
 
             {/* Quick EMI Calculator */}

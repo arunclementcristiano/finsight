@@ -5,6 +5,7 @@ import { Button } from "../../../components/Button";
 import { Plus, TrendingDown, Calendar, DollarSign, AlertTriangle, CreditCard, Home, Car, User, Smartphone, Calculator, Target, Zap, Clock, TrendingUp, Trash2, Brain, ArrowUpRight } from "lucide-react";
 import { Modal } from "../../../components/Modal";
 import SmartLiabilityForm from "./components/SmartLiabilityForm";
+import LiabilityCard from "./components/LiabilityCard";
 import { SmartLiability, formatCurrency, formatPercentage } from "@/lib/smartRepayments";
 
 export default function RepaymentsPage() {
@@ -52,7 +53,7 @@ export default function RepaymentsPage() {
         priority: 'high',
         type: 'optimization',
         title: 'High Interest Rate Alert',
-        description: `You have ${highInterestLiabilities.length} liability(ies) with interest rates above 15%`,
+        description: `${highInterestLiabilities.map(l => l.institution).join(', ')} have rates above 15%`,
         impact: 'High interest rates are significantly increasing your debt burden',
         action: 'Consider refinancing or prepayment strategies',
         savings: highInterestLiabilities.reduce((sum, l) => sum + l.outstanding_balance * 0.05, 0)
@@ -66,7 +67,7 @@ export default function RepaymentsPage() {
         priority: 'high',
         type: 'warning',
         title: 'Interest Accumulation Alert',
-        description: `${noEMILiabilities.length} liability(ies) have no EMI - interest is accumulating daily`,
+        description: `${noEMILiabilities.map(l => l.institution).join(', ')} have no EMI - interest accumulating daily`,
         impact: 'Interest is piling up without regular payments',
         action: 'Consider making regular payments to reduce interest burden',
         savings: noEMILiabilities.reduce((sum, l) => sum + l.outstanding_balance * l.interest_rate / 100 / 12, 0)
@@ -80,11 +81,29 @@ export default function RepaymentsPage() {
         priority: 'medium',
         type: 'opportunity',
         title: 'Prepayment Opportunity',
-        description: `${prepaymentCandidates.length} liability(ies) are good candidates for prepayment`,
+        description: `${prepaymentCandidates.map(l => l.institution).join(', ')} are good candidates for prepayment`,
         impact: 'Strategic prepayments could save significant interest',
         action: 'Use prepayment calculator to find optimal strategies',
         savings: prepaymentCandidates.reduce((sum, l) => sum + l.outstanding_balance * 0.1, 0)
       });
+    }
+    
+    // Debt consolidation opportunity
+    if (liabilities.length > 3) {
+      const totalEMI = liabilities.reduce((sum, l) => sum + l.emi_amount, 0);
+      const avgInterestRate = liabilities.reduce((sum, l) => sum + l.interest_rate, 0) / liabilities.length;
+      
+      if (avgInterestRate > 12) {
+        recommendations.push({
+          priority: 'medium',
+          type: 'consolidation',
+          title: 'Debt Consolidation Opportunity',
+          description: 'Multiple high-interest liabilities could be consolidated',
+          impact: `Potential monthly savings of ${formatCurrency(totalEMI * 0.15)}`,
+          action: 'Explore debt consolidation loan options',
+          savings: totalEMI * 0.15 * 12
+        });
+      }
     }
     
     return recommendations;
@@ -202,95 +221,11 @@ export default function RepaymentsPage() {
             <CardContent>
               <div className="space-y-4">
                 {smartLiabilities.map((liability) => (
-                  <div key={liability.id} className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-3">
-                        <div className={`p-2 rounded-lg ${
-                          liability.type === 'home_loan' ? 'bg-blue-100 dark:bg-blue-900/30' :
-                          liability.type === 'car_loan' ? 'bg-green-100 dark:bg-green-900/30' :
-                          liability.type === 'credit_card' ? 'bg-red-100 dark:bg-red-900/30' :
-                          liability.type === 'gold_loan' ? 'bg-yellow-100 dark:bg-yellow-900/30' :
-                          'bg-gray-100 dark:bg-gray-900/30'
-                        }`}>
-                          {liability.type === 'home_loan' && <Home className="w-5 h-5 text-blue-600 dark:text-blue-400" />}
-                          {liability.type === 'car_loan' && <Car className="w-5 h-5 text-green-600 dark:text-green-400" />}
-                          {liability.type === 'credit_card' && <CreditCard className="w-5 h-5 text-red-600 dark:text-red-400" />}
-                          {liability.type === 'gold_loan' && <DollarSign className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />}
-                          {!['home_loan', 'car_loan', 'credit_card', 'gold_loan'].includes(liability.type) && <User className="w-5 h-5 text-gray-600 dark:text-gray-400" />}
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-foreground">{liability.institution}</h4>
-                          <p className="text-sm text-muted-foreground capitalize">{liability.type.replace('_', ' ')}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-foreground">{formatCurrency(liability.outstanding_balance)}</p>
-                        <p className="text-sm text-muted-foreground">{formatPercentage(liability.interest_rate)}</p>
-                      </div>
-                    </div>
-                    
-                    {/* Visual Progress */}
-                    <div className="space-y-2 mb-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Progress</span>
-                        <span className="font-medium text-foreground">
-                          {liability.emi_amount > 0 ? 
-                            `${Math.round((liability.principal - liability.outstanding_balance) / liability.principal * 100)}%` : 
-                            'No EMI'
-                          }
-                        </span>
-                      </div>
-                      {liability.emi_amount > 0 && (
-                        <div className="w-full bg-muted rounded-full h-2">
-                          <div 
-                            className="bg-primary h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${Math.round((liability.principal - liability.outstanding_balance) / liability.principal * 100)}%` }}
-                          ></div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Key Metrics */}
-                    <div className="grid grid-cols-2 gap-4 text-sm mb-3">
-                      <div>
-                        <p className="text-muted-foreground">Monthly EMI</p>
-                        <p className="font-semibold text-foreground">
-                          {liability.emi_amount > 0 ? formatCurrency(liability.emi_amount) : 'No EMI'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Risk Level</p>
-                        <p className={`font-semibold ${
-                          liability.risk_score > 7 ? 'text-red-600 dark:text-red-400' :
-                          liability.risk_score > 4 ? 'text-orange-600 dark:text-orange-400' :
-                          'text-green-600 dark:text-green-400'
-                        }`}>
-                          {liability.risk_score > 7 ? 'High' : liability.risk_score > 4 ? 'Medium' : 'Low'}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-primary border-primary hover:bg-primary/10"
-                      >
-                        <Calculator className="w-4 h-4 mr-1" />
-                        Analyze
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteSmartLiability(liability.id)}
-                        className="text-destructive border-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="w-4 h-4 mr-1" />
-                        Remove
-                      </Button>
-                    </div>
-                  </div>
+                  <LiabilityCard
+                    key={liability.id}
+                    liability={liability}
+                    onDelete={handleDeleteSmartLiability}
+                  />
                 ))}
               </div>
             </CardContent>
