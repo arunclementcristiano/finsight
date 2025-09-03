@@ -18,7 +18,7 @@ resource "aws_lambda_function" "repayments_api" {
   }
 
   depends_on = [
-    aws_iam_role_policy_attachment.repayments_lambda_policy,
+    aws_iam_role_policy.repayments_lambda_policy,
     aws_cloudwatch_log_group.repayments_lambda_logs,
   ]
 }
@@ -81,11 +81,7 @@ resource "aws_iam_role_policy" "repayments_lambda_policy" {
   })
 }
 
-# Attach the policy to the role
-resource "aws_iam_role_policy_attachment" "repayments_lambda_policy" {
-  role       = aws_iam_role.repayments_lambda_role.name
-  policy_arn = aws_iam_role_policy.repayments_lambda_policy.arn
-}
+# Policy is attached inline to the role, no separate attachment needed
 
 # CloudWatch Log Group for Repayments Lambda
 resource "aws_cloudwatch_log_group" "repayments_lambda_logs" {
