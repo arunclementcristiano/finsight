@@ -93,36 +93,17 @@ export default function RepaymentsPage() {
       const enhancedLoans: EnhancedLoanStatus[] = [];
       
       for (const repayment of repaymentSummary.repayments) {
-        try {
-          const input = {
-            type: repayment.type as any,
-            institution: repayment.institution || 'Unknown',
-            original_amount: repayment.principal,
-            interest_rate: repayment.interest_rate || 12, // Default to 12% if missing
-            tenure_months: repayment.tenure_months,
-            start_date: repayment.start_date
-          };
-          
-          const result = engine.calculateEverything(input);
-          enhancedLoans.push(result);
-        } catch (error) {
-          console.error('Error calculating loan:', error);
-          // Create a fallback loan status
-          enhancedLoans.push({
-            loanType: 'generic' as any,
-            loanCategory: repayment.type as any,
-            originalAmount: repayment.principal,
-            outstandingBalance: repayment.outstanding_balance || repayment.principal,
-            interest_rate: repayment.interest_rate || 12,
-            emi: repayment.emi_amount || 0,
-            monthsElapsed: 0,
-            remainingMonths: repayment.tenure_months,
-            monthlyInterestAccrual: 0,
-            totalInterestAccrued: 0,
-            calculationBreakdown: {},
-            explanation: 'Calculation error - please check loan details'
-          });
-        }
+        const input = {
+          type: repayment.type as any,
+          institution: repayment.institution || 'Unknown',
+          original_amount: repayment.principal,
+          interest_rate: repayment.interest_rate || 12, // Default to 12% if missing
+          tenure_months: repayment.tenure_months,
+          start_date: repayment.start_date
+        };
+        
+        const result = engine.calculateEverything(input);
+        enhancedLoans.push(result);
       }
       
       setLiabilities(enhancedLoans);
