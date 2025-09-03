@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../../components/Card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/Card';
 import { Button } from '../../../components/Button';
 import { Input } from '../../../components/Input';
 import { Label } from '../../../components/Label';
@@ -22,7 +22,20 @@ import {
   Zap,
   CheckCircle,
   AlertCircle,
-  Info
+  Info,
+  BarChart3,
+  PieChart,
+  Lightbulb,
+  ArrowRight,
+  Star,
+  Shield,
+  Rocket,
+  Coins,
+  Banknote,
+  TrendingDown,
+  Eye,
+  Settings,
+  RefreshCw
 } from 'lucide-react';
 import { LoanEngine, UltraSimpleLiabilityInput, EnhancedLoanStatus, LoanCategory } from '../../domain/Repaymentadvisor/repaymentEngine';
 import { fetchRepayments, createRepayment, Repayment, RepaymentFormData } from '../../../../lib/repayments';
@@ -251,25 +264,26 @@ export default function RepaymentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-6">
         
-        {/* Header Section */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
+        {/* Header Section - Consistent with Plan page */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
+              <h1 className="text-2xl font-bold text-foreground mb-1">
                 Smart Repayment Hub
               </h1>
-              <p className="text-slate-600 dark:text-slate-300">
+              <p className="text-muted-foreground text-sm">
                 Optimize your debt repayment strategy with AI-powered insights
               </p>
             </div>
             <Button 
               onClick={() => setShowAddForm(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+              variant="primary"
+              size="md"
+              leftIcon={<Plus className="w-4 h-4" />}
             >
-              <Plus className="w-5 h-5 mr-2" />
               Add Liability
             </Button>
           </div>
