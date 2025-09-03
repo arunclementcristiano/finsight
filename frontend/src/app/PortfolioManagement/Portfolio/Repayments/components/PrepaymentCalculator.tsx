@@ -1,10 +1,10 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/Card";
-import { Button } from "../../../components/Button";
-import { Input } from "../../../components/Input";
-import { Label } from "../../../components/Label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/Select";
+import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/Card";
+import { Button } from "../../../../components/Button";
+import { Input } from "../../../../components/Input";
+import { Label } from "../../../../components/Label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../components/Select";
 import { Calculator, TrendingUp, Calendar, DollarSign, Clock } from "lucide-react";
 
 interface PrepaymentCalculatorProps {

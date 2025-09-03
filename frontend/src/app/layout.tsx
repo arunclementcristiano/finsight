@@ -30,7 +30,6 @@ export default function RootLayout({
 		{ name: "Dashboard", href: "/PortfolioManagement/Dashboard" },
 		{ name: "Plan", href: "/PortfolioManagement/Plan" },
 		{ name: "Portfolio", href: "/PortfolioManagement/Portfolio/Holdings" },
-		{ name: "Repayments", href: "/PortfolioManagement/Repayments" },
 		{ name: "Expenses", href: "/ExpenseTracker" },
 		{ name: "Reports", href: "/PortfolioManagement/Insights" },
 		{ name: "Settings", href: "/PortfolioManagement/Settings" },

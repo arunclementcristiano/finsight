@@ -11,6 +11,7 @@ export default function PortfolioModuleLayout({ children }: { children: React.Re
 	const router = useRouter();
 	const tabs = [
 		{ name: "Holdings", href: "/PortfolioManagement/Portfolio/Holdings" },
+		{ name: "Repayments", href: "/PortfolioManagement/Portfolio/Repayments" },
 		{ name: "Insights", href: "/PortfolioManagement/Portfolio/Insights" },
 	];
 

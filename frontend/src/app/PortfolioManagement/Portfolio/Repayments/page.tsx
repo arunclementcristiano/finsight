@@ -1,9 +1,9 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/Card";
-import { Button } from "../../components/Button";
+import { Card, CardContent, CardHeader, CardTitle } from "../../../components/Card";
+import { Button } from "../../../components/Button";
 import { Plus, TrendingDown, Calendar, DollarSign, AlertTriangle, CreditCard, Home, Car, User, Smartphone, Calculator } from "lucide-react";
-import { Modal } from "../../components/Modal";
+import { Modal } from "../../../components/Modal";
 import AddRepaymentForm from "./components/AddRepaymentForm";
 import PrepaymentCalculator from "./components/PrepaymentCalculator";
 import { 
@@ -17,7 +17,7 @@ import {
   type Repayment,
   type RepaymentSummary,
   type RepaymentFormData
-} from "../../../../lib/repayments";
+} from "../../../../../lib/repayments";
 
 // Types are now imported from lib/repayments.ts
 
