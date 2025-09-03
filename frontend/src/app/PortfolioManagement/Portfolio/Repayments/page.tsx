@@ -6,6 +6,8 @@ import { Plus, TrendingDown, Calendar, DollarSign, AlertTriangle, CreditCard, Ho
 import { Modal } from "../../../components/Modal";
 import AddRepaymentForm from "./components/AddRepaymentForm";
 import PrepaymentCalculator from "./components/PrepaymentCalculator";
+import SmartDashboard from "./components/SmartDashboard";
+import SmartLiabilityForm from "./components/SmartLiabilityForm";
 import { 
   fetchRepayments, 
   createRepayment, 
@@ -19,6 +21,7 @@ import {
   type RepaymentSummary,
   type RepaymentFormData
 } from "@/lib/repayments";
+import { SmartLiability } from "@/lib/smartRepayments";
 
 // Repayment type configurations with icons and colors
 const REPAYMENT_TYPE_CONFIGS = [
@@ -64,8 +67,11 @@ export default function RepaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCalculatorModal, setShowCalculatorModal] = useState(false);
+  const [showSmartModal, setShowSmartModal] = useState(false);
   const [selectedRepayment, setSelectedRepayment] = useState<Repayment | null>(null);
   const [selectedType, setSelectedType] = useState<string>('');
+  const [smartLiabilities, setSmartLiabilities] = useState<SmartLiability[]>([]);
+  const [viewMode, setViewMode] = useState<'classic' | 'smart'>('smart');
 
   // Load repayments data
   useEffect(() => {
@@ -124,6 +130,20 @@ export default function RepaymentsPage() {
     }
   };
 
+  const handleSaveSmartLiability = (liability: SmartLiability) => {
+    setSmartLiabilities(prev => [...prev, liability]);
+    setShowSmartModal(false);
+  };
+
+  const handleEditSmartLiability = (id: string) => {
+    // TODO: Implement edit functionality
+    console.log('Edit liability:', id);
+  };
+
+  const handleDeleteSmartLiability = (id: string) => {
+    setSmartLiabilities(prev => prev.filter(l => l.id !== id));
+  };
+
   if (loading) {
     return (
       <div className="p-6">
@@ -145,20 +165,44 @@ export default function RepaymentsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">
-            Repayments
+            Smart Repayments
           </h1>
           <p className="text-muted-foreground">
-            Track and manage your loans and credit obligations
+            AI-powered debt management with intelligent insights and optimization strategies
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowAddModal(true)}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Repayment
-        </Button>
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 bg-muted p-1 rounded-lg">
+            <button
+              onClick={() => setViewMode('smart')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'smart'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Smart View
+            </button>
+            <button
+              onClick={() => setViewMode('classic')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'classic'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Classic View
+            </button>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowSmartModal(true)}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Liability
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -234,7 +278,17 @@ export default function RepaymentsPage() {
         </div>
       )}
 
-      {/* Repayments List */}
+      {/* Smart Dashboard or Classic View */}
+      {viewMode === 'smart' ? (
+        <SmartDashboard
+          liabilities={smartLiabilities}
+          onAddLiability={() => setShowSmartModal(true)}
+          onEditLiability={handleEditSmartLiability}
+          onDeleteLiability={handleDeleteSmartLiability}
+        />
+      ) : (
+        <>
+          {/* Repayments List */}
       {summary && summary.repayments.length > 0 ? (
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-foreground">Your Repayments</h2>
@@ -376,6 +430,20 @@ export default function RepaymentsPage() {
           </CardContent>
         </Card>
       )}
+        </>
+      )}
+
+      {/* Smart Liability Modal */}
+      <Modal
+        open={showSmartModal}
+        onClose={() => setShowSmartModal(false)}
+        title="Add Smart Liability"
+      >
+        <SmartLiabilityForm
+          onSave={handleSaveSmartLiability}
+          onCancel={() => setShowSmartModal(false)}
+        />
+      </Modal>
 
       {/* Add Repayment Modal */}
       <Modal
