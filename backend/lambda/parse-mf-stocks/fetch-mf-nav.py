@@ -11,7 +11,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 dynamodb = boto3.resource("dynamodb")
-table = dynamodb.Table("MutualFundSchemes")
+table = dynamodb.Table(os.environ.get("MUTUAL_FUND_SCHEMES_TABLE", "MutualFundSchemes"))
 
 NAV_URL = "https://www.amfiindia.com/spages/NAVAll.txt"
 
@@ -56,40 +56,45 @@ def map_to_allocation(scheme_type: str, scheme_subtype: str, fund_name: str) -> 
     debt_kw   = ["gilt", "g-sec", "gsec", "sdl", "corporate bond", "psu", "sovereign",
                  "treasury", "aaa", "credit risk", "banking and psu", "floater",
                  "long duration", "short duration", "medium duration", "low duration",
-                 "dynamic bond"]
+                 "dynamic bond", "financial services"]
+
+    # ✅ Global REIT/InvIT detection
+    if "reit" in n or "invits" in n or "invit" in n:
+        return "Real Estate"
 
     # 1) Solution Oriented
     if "solution oriented" in st:
-        return "Equity"
+        return "Equity MF"
 
     # 2) Equity / Debt straight
     if "equity" in st:
-        return "Equity"
+        return "Equity MF"
     if "debt" in st:
-        return "Liquid Fund" if has_any(ss, liquid_kw) else "Debt Fund"
+        return "Liquid Fund" if has_any(ss, liquid_kw) or has_any(n, liquid_kw) else "Debt Fund"
 
     # 3) Hybrid
     if "hybrid" in st:
         if "conservative" in ss: return "Debt Fund"
         if "arbitrage" in ss:    return "Liquid Fund"
-        return "Equity"
+        return "Equity MF"
 
-    # 4) Other (Index Funds, ETFs, FoFs, Gold)
+    # 4) Other (Index Funds, ETFs, FoFs, Gold, REITs handled globally above)
     if "other" in st:
         if "gold etf" in ss or "gold" in n or "silver" in n:
             return "Gold"
-        if has_any(n, ["liquid", "1d rate"]):
+        if has_any(n, liquid_kw):
             return "Liquid Fund"
         if has_any(n, debt_kw):
             return "Debt Fund"
         if "fof overseas" in ss:
-            return "Debt Fund" if has_any(n, ["treasury", "bond"]) else "Equity"
+            if has_any(n, debt_kw): return "Debt Fund"
+            return "Equity MF"
         if "fof domestic" in ss:
             if "gold" in n: return "Gold"
             if has_any(n, debt_kw): return "Debt Fund"
             if "arbitrage" in n: return "Liquid Fund"
-            return "Equity"
-        return "Equity"
+            return "Equity MF"
+        return "Equity MF"
 
     # 5) Legacy labels
     if st in ["income", "money market", "gilt", "growth"]:
@@ -97,7 +102,7 @@ def map_to_allocation(scheme_type: str, scheme_subtype: str, fund_name: str) -> 
         if has_any(ss + " " + n, debt_kw):   return "Debt Fund"
         return "Debt Fund"
 
-    return "Equity"
+    return "Equity MF"
 
 # --- Main Lambda ---
 def lambda_handler(event, context):
@@ -183,10 +188,6 @@ def lambda_handler(event, context):
             # Asset Class & Portfolio Role
             asset_class = map_to_allocation(curr_category[0], curr_category[1], fund_name)
 
-            # ✅ Override equity to store as "Equity MF"
-            if asset_class == "Equity":
-                asset_class = "Equity MF"
-
             if asset_class == "Equity MF":
                 portfolio_role = "Equity"
             elif asset_class in ["Debt Fund", "Liquid Fund"]:
@@ -194,7 +195,7 @@ def lambda_handler(event, context):
             elif asset_class in ["Gold", "Real Estate"]:
                 portfolio_role = "Satellite"
             else:
-                portfolio_role = "Equity"  # default
+                portfolio_role = "Equity"  # default fallback
 
             item = {
                 "scheme_code": scheme_code,
@@ -245,3 +246,4 @@ def lambda_handler(event, context):
                 "message": "Failed to process NAV data"
             }
         }
+# --- End of file ---

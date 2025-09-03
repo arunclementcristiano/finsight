@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { UserPlus } from "lucide-react";
+import { Button } from "../../components/Button";
 import "./floating-label.css";
 
 interface SignupFormProps {
@@ -96,12 +98,15 @@ export default function SignupForm({ name, email, password, onNameChange, onEmai
       </div>
       {error && <div className="text-rose-500 text-sm mb-2">{error}</div>}
       {success && <div className="text-emerald-600 text-sm mb-2">{success}</div>}
-      <button
+      <Button
         type="submit"
-        className="mt-2 h-12 rounded-xl text-white font-semibold text-lg bg-gradient-to-r from-emerald-500 to-indigo-600 shadow-md hover:from-emerald-600 hover:to-indigo-700 transition-all focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:ring-offset-2"
+        variant="outline"
+        size="sm"
+        leftIcon={<UserPlus className="h-4 w-4" />}
+        className="mt-2"
       >
         Sign Up
-      </button>
+      </Button>
     </form>
   );
 }

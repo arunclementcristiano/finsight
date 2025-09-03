@@ -42,9 +42,15 @@ resource "aws_iam_role_policy" "portfolio_lambda_ddb_access" {
         aws_dynamodb_table.mutual_fund_schemes.arn,
         aws_dynamodb_table.holdings.arn,
         aws_dynamodb_table.asset_class_mapping.arn,
+        aws_dynamodb_table.stock_companies.arn,
+        aws_dynamodb_table.repayments.arn,
+        aws_dynamodb_table.repayment_history.arn,
         "${aws_dynamodb_table.invest.arn}/index/*",
         "${aws_dynamodb_table.mutual_fund_schemes.arn}/index/*",
-        "${aws_dynamodb_table.holdings.arn}/index/*"
+        "${aws_dynamodb_table.holdings.arn}/index/*",
+        "${aws_dynamodb_table.stock_companies.arn}/index/*",
+        "${aws_dynamodb_table.repayments.arn}/index/*",
+        "${aws_dynamodb_table.repayment_history.arn}/index/*"
       ]
     }]
   })
@@ -67,6 +73,7 @@ resource "aws_lambda_function" "portfolio" {
       MUTUAL_FUND_SCHEMES_TABLE = aws_dynamodb_table.mutual_fund_schemes.name
       HOLDINGS_TABLE           = aws_dynamodb_table.holdings.name
       ASSET_CLASS_MAPPING_TABLE = aws_dynamodb_table.asset_class_mapping.name
+      STOCK_COMPANIES_TABLE    = aws_dynamodb_table.stock_companies.name
     }
   }
 }
@@ -103,7 +110,9 @@ resource "aws_apigatewayv2_integration" "portfolio_lambda" {
 resource "aws_apigatewayv2_route" "portfolio_routes_public" {
   for_each = toset([
     "GET /mutual-funds",
-    "GET /mutual-funds/search"
+    "GET /mutual-funds/search",
+    "GET /stocks",
+    "GET /stocks/search"
   ])
   api_id    = aws_apigatewayv2_api.portfolio_http.id
   route_key = each.value
@@ -120,7 +129,14 @@ resource "aws_apigatewayv2_route" "portfolio_routes_protected" {
     "GET /holdings",
     "DELETE /holdings/{id}",
     "POST /transactions",
-    "GET /transactions"
+    "GET /transactions",
+    "GET /repayments",
+    "POST /repayments",
+    "GET /repayments/{id}",
+    "PUT /repayments/{id}",
+    "DELETE /repayments/{id}",
+    "POST /repayments/{id}/prepayment",
+    "GET /repayments/{id}/history"
   ])
   api_id             = aws_apigatewayv2_api.portfolio_http.id
   route_key          = each.value

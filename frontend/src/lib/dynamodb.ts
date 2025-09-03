@@ -72,6 +72,13 @@ const API_BASE = PORTFOLIO_API_BASE || process.env.NEXT_PUBLIC_API_BASE || "";
 // Cache for mutual fund data with daily refresh at 6 AM
 let mfCache: { data: TransformedFund[]; timestamp: number } | null = null;
 
+// Cache for stock data with daily refresh at 6 AM
+let stockCache: { data: StockCompany[]; timestamp: number } | null = null;
+
+// Loading state to prevent multiple simultaneous cache loads
+let mfCacheLoading = false;
+let stockCacheLoading = false;
+
 function getNextRefreshTime(): number {
   const now = new Date();
   const tomorrow = new Date(now);
@@ -90,6 +97,16 @@ function shouldRefreshCache(): boolean {
   return now >= nextRefresh || (now - mfCache.timestamp) >= 24 * 60 * 60 * 1000;
 }
 
+function shouldRefreshStockCache(): boolean {
+  if (!stockCache) return true;
+  
+  const now = Date.now();
+  const nextRefresh = getNextRefreshTime();
+  
+  // Refresh if it's past 6 AM or cache is older than 24 hours
+  return now >= nextRefresh || (now - stockCache.timestamp) >= 24 * 60 * 60 * 1000;
+}
+
 
 
 export async function fetchMutualFundSchemes(): Promise<TransformedFund[]> {
@@ -98,13 +115,29 @@ export async function fetchMutualFundSchemes(): Promise<TransformedFund[]> {
     return mfCache.data;
   }
 
+  // If already loading, wait for it to complete
+  if (mfCacheLoading) {
+    // Wait for loading to complete
+    while (mfCacheLoading) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    // Return cached data after loading completes
+    if (mfCache) {
+      return mfCache.data;
+    }
+  }
+
+  // Start loading
+  mfCacheLoading = true;
+
   // Fetch from API
   if (!API_BASE) {
+    mfCacheLoading = false;
     throw new Error('API_BASE not configured');
   }
 
   try {
-    console.log('🔄 Cache loading in progress...');
+    console.log('🔄 MF Cache loading in progress...');
     const res = await fetch(`${API_BASE}/mutual-funds`, { method: 'GET' });
     
     if (!res.ok) {
@@ -116,10 +149,12 @@ export async function fetchMutualFundSchemes(): Promise<TransformedFund[]> {
     
     // Update cache
     mfCache = { data: funds, timestamp: Date.now() };
-    console.log('✅ Cache load completed');
+    console.log('✅ MF Cache load completed');
     return funds;
   } catch (error) {
     throw error;
+  } finally {
+    mfCacheLoading = false;
   }
 }
 
@@ -132,9 +167,25 @@ export async function preloadMutualFundData(): Promise<void> {
   }
 }
 
+// Preload function for stock data to be called on server start
+export async function preloadStockData(): Promise<void> {
+  try {
+    await fetchStockCompanies();
+  } catch (error) {
+    // Silent fail on preload
+  }
+}
+
 // Function to clear cache (for testing)
 export function clearMFCache(): void {
   mfCache = null;
+  mfCacheLoading = false;
+}
+
+// Function to clear stock cache (for testing)
+export function clearStockCache(): void {
+  stockCache = null;
+  stockCacheLoading = false;
 }
 
 // Function to fetch funds by ETF status (deprecated - use role-based filtering instead)
@@ -497,4 +548,91 @@ export async function deleteBudget(category: string): Promise<boolean> {
   } catch (error) {
     throw error;
   }
+}
+
+// Stock Companies API functions
+export interface StockCompany {
+  symbol: string;
+  companyName: string;
+  listingDate?: string;
+  isinNumber: string;
+  exchange: string;
+}
+
+// Fetch all stock companies with caching
+export async function fetchStockCompanies(): Promise<StockCompany[]> {
+  // Check if cache is valid
+  if (stockCache && !shouldRefreshStockCache()) {
+    return stockCache.data;
+  }
+
+  // If already loading, wait for it to complete
+  if (stockCacheLoading) {
+    // Wait for loading to complete
+    while (stockCacheLoading) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    // Return cached data after loading completes
+    if (stockCache) {
+      return stockCache.data;
+    }
+  }
+
+  // Start loading
+  stockCacheLoading = true;
+
+  // Fetch from API
+  if (!PORTFOLIO_API_BASE) {
+    stockCacheLoading = false;
+    throw new Error('PORTFOLIO_API_BASE not configured');
+  }
+
+  try {
+    console.log('🔄 Stock cache loading in progress...');
+    const res = await fetch(`${PORTFOLIO_API_BASE}/stocks`);
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`API returned ${res.status}: ${errorText}`);
+    }
+    
+    const data = await res.json();
+    const stocks = (data.items || []) as StockCompany[];
+    
+    // Update cache
+    stockCache = { data: stocks, timestamp: Date.now() };
+    console.log('✅ Stock cache load completed');
+    return stocks;
+  } catch (error) {
+    throw error;
+  } finally {
+    stockCacheLoading = false;
+  }
+}
+
+// Search stock companies using cached data
+export async function searchStockCompanies(query: string, exchange?: string): Promise<StockCompany[]> {
+  // Use cached data for search to avoid API calls
+  const allStocks = await fetchStockCompanies();
+  
+  let filteredStocks = allStocks;
+  
+  // Filter by search term
+  if (query.trim()) {
+    const term = query.toLowerCase();
+    filteredStocks = filteredStocks.filter(stock => 
+      stock.symbol.toLowerCase().includes(term) || 
+      stock.companyName.toLowerCase().includes(term)
+    );
+  }
+  
+  // Filter by exchange if specified
+  if (exchange) {
+    filteredStocks = filteredStocks.filter(stock => 
+      stock.exchange.toLowerCase() === exchange.toLowerCase()
+    );
+  }
+  
+  // Return limited results
+  return filteredStocks.slice(0, 10);
 }

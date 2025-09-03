@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useApp } from "../../store";
 import { Button } from "../../components/Button";
 import { Card, CardContent } from "../../components/Card";
-import { Target, Plus, ExternalLink } from "lucide-react";
+import { Target, Plus, ExternalLink, ArrowLeft, ArrowRight, Check } from "lucide-react";
 
 export default function Questionnaire() {
 	const router = useRouter();
@@ -219,8 +219,22 @@ export default function Questionnaire() {
 				)}
 				
 				<div className="flex justify-between w-full mt-8 gap-3">
-					<Button variant="secondary" onClick={prevStep} disabled={step === 0}>Back</Button>
-					<Button onClick={nextStep} disabled={!isCurrentQuestionValid()}>
+					<Button 
+						variant="outline" 
+						size="sm" 
+						leftIcon={<ArrowLeft className="h-4 w-4" />}
+						onClick={prevStep} 
+						disabled={step === 0}
+					>
+						Back
+					</Button>
+					<Button 
+						variant="outline"
+						size="sm" 
+						leftIcon={step === questions.length - 1 ? <Check className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
+						onClick={nextStep} 
+						disabled={!isCurrentQuestionValid()}
+					>
 						{step === questions.length - 1 ? "Submit" : "Next"}
 					</Button>
 				</div>

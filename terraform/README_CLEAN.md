@@ -2,26 +2,37 @@
 
 This directory contains Terraform configuration for the Finsight application infrastructure.
 
-## Quick Deployment for fetch-mf-nav Lambda
+## Quick Deployment
 
-For the mutual fund NAV parser Lambda:
+For all Lambda functions and infrastructure:
 
 ```bash
-cd terraform
-./deploy-lambda.sh
+./deploy-lambda.py
 ```
 
 This script will:
-1. Build a clean Lambda deployment package with dependencies
-2. Deploy the Lambda function with Terraform
-3. Set up daily scheduling via EventBridge
+1. Build clean Lambda deployment packages with dependencies
+2. Deploy all Lambda functions with Terraform
+3. Set up all DynamoDB tables and API Gateway routes
 
 ## Architecture
 
-- **Lambda Function**: `fetch-mf-nav` - Parses AMFI NAVAll.txt daily
-- **DynamoDB**: `MutualFundSchemes` - Stores parsed mutual fund data  
-- **EventBridge**: Daily trigger at 6 PM UTC
-- **CloudWatch**: Logs and monitoring
+### Lambda Functions
+- **`parse-mf-stocks`** - Parses AMFI NAV data and NSE/BSE stock data
+- **`portfolio-api`** - Portfolio management API (holdings, transactions)
+- **`expenses-api`** - Expenses tracking API
+
+### DynamoDB Tables
+- **`MutualFundSchemes`** - Stores parsed mutual fund data
+- **`StockCompanies`** - Stores NSE and BSE stock company data
+- **`Holdings`** - User portfolio holdings
+- **`Expenses`** - User expense transactions
+- **`CategoryRules`** - Expense categorization rules
+- **`UserBudgets`** - User budget configurations
+
+### API Gateway
+- **Portfolio API Routes** - `/portfolio/*` endpoints
+- **Expenses API Routes** - `/expenses/*` endpoints
 
 ## Files
 
@@ -31,22 +42,20 @@ This script will:
 - `versions.tf` - Terraform version constraints
 
 ### Lambda Functions
-- `lambda_fetch_mf_nav.tf` - MF NAV parser Lambda
-- `lambda_api.tf` - Expenses API Lambda  
-- `iam_fetch_mf_nav.tf` - IAM for MF NAV Lambda
+- `lambda_stocks.tf` - Parse MF/Stocks Lambda
+- `lambda_portfolio.tf` - Portfolio API Lambda
+- `lambda_api.tf` - Expenses API Lambda
 - `iam.tf` - General IAM roles
 
 ### Other
 - `aws_identity.tf` - AWS identity configuration
-- `deploy-lambda.sh` - Automated deployment script
-- `terraform.tfvars.example` - Configuration template
 
 ## Prerequisites
 
 - AWS CLI configured
 - Terraform installed  
-- Python 3.9+
+- Python 3.12+
 
 ## Cost
 
-Estimated monthly cost: ~$2-6 for the MF NAV Lambda and associated resources.
+Estimated monthly cost: ~$5-15 for all Lambda functions and associated resources.

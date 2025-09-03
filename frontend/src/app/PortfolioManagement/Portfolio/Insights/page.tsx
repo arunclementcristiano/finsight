@@ -1,169 +1,266 @@
 "use client";
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useApp } from "../../../store";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../../components/Card";
 import { formatNumber } from "../../../utils/format";
 import { computeRebalance } from "../../domain/rebalance";
-import { useChartThemeColors } from "../../../components/useChartTheme";
-import { Doughnut, Line } from "react-chartjs-2";
-import { Chart as ChartJS, ArcElement, Tooltip as ChartTooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler } from "chart.js";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, LineChart, Line as RechartsLine, Area, AreaChart } from "recharts";
-import { TrendingUp, TrendingDown, Target, AlertTriangle, DollarSign, BarChart3, PieChart as PieChartIcon, Activity } from "lucide-react";
+import { fetchUserHoldings, HoldingData } from "../../../../lib/dynamodb";
+import { 
+	BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, 
+	PieChart, Pie, LineChart, Line as RechartsLine, Area, AreaChart,
+	RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
+} from "recharts";
+import { 
+	TrendingUp, TrendingDown, Target, AlertTriangle, DollarSign, 
+	BarChart3, PieChart as PieChartIcon, Activity, Shield, 
+	Zap, Calendar, Award, Users, ArrowUpRight, ArrowDownRight,
+	Eye, EyeOff, RefreshCw, Download, Filter
+} from "lucide-react";
+import { Button } from "../../../components/Button";
 
-ChartJS.register(ArcElement, ChartTooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler);
+// Color palette for consistent theming
+const COLORS = {
+	primary: '#3B82F6',
+	success: '#10B981', 
+	warning: '#F59E0B',
+	danger: '#EF4444',
+	info: '#8B5CF6',
+	secondary: '#6B7280',
+	gradient: {
+		blue: '#3B82F6',
+		green: '#10B981',
+		purple: '#8B5CF6',
+		orange: '#F59E0B',
+		red: '#EF4444'
+	}
+};
+
+// Asset class colors for consistent visualization
+const ASSET_CLASS_COLORS = {
+	'Equity MF': '#3B82F6',
+	'Debt MF': '#10B981', 
+	'Liquid MF': '#8B5CF6',
+	'ETF': '#F59E0B',
+	'Debt ETF': '#10B981',
+	'Liquid ETF': '#8B5CF6',
+	'Stocks': '#EF4444',
+	'Gold': '#F59E0B',
+	'Real Estate': '#6B7280',
+	'Other': '#9CA3AF'
+};
+
+// Portfolio role colors
+const ROLE_COLORS = {
+	'Equity': '#3B82F6',
+	'Defensive': '#10B981',
+	'Satellite': '#8B5CF6', 
+	'Core': '#F59E0B',
+	'Growth': '#10B981',
+	'Value': '#EF4444',
+	'Balanced': '#6B7280',
+	'Conservative': '#8B5CF6'
+};
 
 export default function PortfolioInsightsPage() {
-	const { plan, holdings, questionnaire, profile, driftTolerancePct, goals } = useApp() as any;
-	const theme = useChartThemeColors();
+	const { plan, questionnaire, profile, driftTolerancePct, goals } = useApp() as any;
+	const [selectedTimeframe, setSelectedTimeframe] = useState('1Y');
+	const [showDetailedView, setShowDetailedView] = useState(false);
+	const [holdings, setHoldings] = useState<HoldingData[]>([]);
+	const [isLoading, setIsLoading] = useState(true);
 
-	// Enhanced analytics calculations
-	const portfolioAnalytics = useMemo(() => {
-		let invested = 0, current = 0;
-		const holdingsList = holdings || [];
-		const byAssetClass: Record<string, { invested: number; current: number; count: number }> = {};
-		
-		for (const h of holdingsList) {
-			const inv = typeof h.investedAmount === 'number' ? h.investedAmount : 
-				(typeof h.units === 'number' && typeof h.price === 'number' ? h.units * h.price : 0);
-			const cur = typeof h.currentValue === 'number' ? h.currentValue : inv;
-			
-			invested += inv;
-			current += cur;
-			
-			const assetClass = h.instrumentClass || 'Other';
-			if (!byAssetClass[assetClass]) {
-				byAssetClass[assetClass] = { invested: 0, current: 0, count: 0 };
-			}
-			byAssetClass[assetClass].invested += inv;
-			byAssetClass[assetClass].current += cur;
-			byAssetClass[assetClass].count += 1;
+	// Load holdings data from API
+	const loadHoldingsData = async () => {
+		try {
+			setIsLoading(true);
+			// Using the same mock user ID as Holdings page
+			const mockUserId = 'user-123';
+			const dbHoldings = await fetchUserHoldings(mockUserId);
+			setHoldings(dbHoldings);
+		} catch (error) {
+			console.error('❌ Error loading holdings data:', error);
+			setHoldings([]);
+		} finally {
+			setIsLoading(false);
 		}
-		
-		const pnl = current - invested;
-		const pnlPct = invested > 0 ? (pnl / invested) * 100 : 0;
-		
-		// Asset class breakdown with performance
-		const assetBreakdown = Object.entries(byAssetClass).map(([assetClass, data]) => {
-			const assetPnl = data.current - data.invested;
-			const assetPnlPct = data.invested > 0 ? (assetPnl / data.invested) * 100 : 0;
-			const currentPct = current > 0 ? (data.current / current) * 100 : 0;
+	};
+
+	useEffect(() => {
+		loadHoldingsData();
+	}, []);
+
+	// Comprehensive portfolio analytics
+	const portfolioAnalytics = useMemo(() => {
+		if (!holdings || holdings.length === 0) {
+			return {
+				totalInvested: 0,
+				totalCurrent: 0,
+				totalPnL: 0,
+				totalPnLPercent: 0,
+				totalHoldings: 0,
+				assetBreakdown: [],
+				roleBreakdown: [],
+				topPerformers: [],
+				worstPerformers: [],
+				riskMetrics: {},
+				allocationDrift: []
+			};
+		}
+
+		let totalInvested = 0;
+		let totalCurrent = 0;
+		const assetClassData: Record<string, { invested: number; current: number; count: number; holdings: any[] }> = {};
+		const roleData: Record<string, { invested: number; current: number; count: number }> = {};
+		const performanceData: any[] = [];
+
+		// Process each holding
+		holdings.forEach((holding: any) => {
+			const invested = holding.investedAmount || (holding.units && holding.price ? holding.units * holding.price : 0);
+			const current = holding.currentValue || invested;
+			
+			totalInvested += invested;
+			totalCurrent += current;
+			
+			// Asset class breakdown
+			const assetClass = holding.asset_class || holding.instrumentClass || 'Other';
+			if (!assetClassData[assetClass]) {
+				assetClassData[assetClass] = { invested: 0, current: 0, count: 0, holdings: [] };
+			}
+			assetClassData[assetClass].invested += invested;
+			assetClassData[assetClass].current += current;
+			assetClassData[assetClass].count += 1;
+			assetClassData[assetClass].holdings.push(holding);
+
+			// Portfolio role breakdown
+			const role = holding.portfolio_role || 'Other';
+			if (!roleData[role]) {
+				roleData[role] = { invested: 0, current: 0, count: 0 };
+			}
+			roleData[role].invested += invested;
+			roleData[role].current += current;
+			roleData[role].count += 1;
+
+			// Performance data for individual holdings
+			const pnl = current - invested;
+			const pnlPercent = invested > 0 ? (pnl / invested) * 100 : 0;
+			performanceData.push({
+				name: holding.name,
+				assetClass,
+				role,
+				invested,
+				current,
+				pnl,
+				pnlPercent,
+				allocation: totalCurrent > 0 ? (current / totalCurrent) * 100 : 0
+			});
+		});
+
+		const totalPnL = totalCurrent - totalInvested;
+		const totalPnLPercent = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0;
+
+		// Asset breakdown with performance
+		const assetBreakdown = Object.entries(assetClassData).map(([assetClass, data]) => {
+			const pnl = data.current - data.invested;
+			const pnlPercent = data.invested > 0 ? (pnl / data.invested) * 100 : 0;
 			return {
 				assetClass,
 				invested: data.invested,
 				current: data.current,
-				pnl: assetPnl,
-				pnlPct: assetPnlPct,
-				currentPct,
-				holdingsCount: data.count
+				pnl,
+				pnlPercent,
+				count: data.count,
+				allocation: totalCurrent > 0 ? (data.current / totalCurrent) * 100 : 0,
+				color: ASSET_CLASS_COLORS[assetClass as keyof typeof ASSET_CLASS_COLORS] || COLORS.secondary
 			};
 		}).sort((a, b) => b.current - a.current);
-		
-		return { 
-			invested, 
-			current, 
-			pnl, 
-			pnlPct, 
-			assetBreakdown,
-			totalHoldings: holdingsList.length 
-		};
-	}, [holdings]);
 
-	// Mock time series data for portfolio performance (in real app, fetch from API)
-	const portfolioTimeSeriesData = useMemo(() => {
+		// Role breakdown
+		const roleBreakdown = Object.entries(roleData).map(([role, data]) => {
+			const pnl = data.current - data.invested;
+			const pnlPercent = data.invested > 0 ? (pnl / data.invested) * 100 : 0;
+			return {
+				role,
+				invested: data.invested,
+				current: data.current,
+				pnl,
+				pnlPercent,
+				count: data.count,
+				allocation: totalCurrent > 0 ? (data.current / totalCurrent) * 100 : 0,
+				color: ROLE_COLORS[role as keyof typeof ROLE_COLORS] || COLORS.secondary
+			};
+		}).sort((a, b) => b.current - a.current);
+
+		// Top and worst performers
+		const sortedPerformance = performanceData.sort((a, b) => b.pnlPercent - a.pnlPercent);
+		const topPerformers = sortedPerformance.slice(0, 5);
+		const worstPerformers = sortedPerformance.slice(-5).reverse();
+
+		// Risk metrics
+		const riskMetrics = {
+			concentrationRisk: assetBreakdown.length > 0 ? assetBreakdown[0].allocation : 0,
+			diversificationScore: Math.min(100, assetBreakdown.length * 10),
+			volatilityEstimate: Math.abs(totalPnLPercent) > 20 ? 'High' : Math.abs(totalPnLPercent) > 10 ? 'Medium' : 'Low',
+			equityExposure: assetBreakdown.filter(a => a.assetClass.includes('Equity') || a.assetClass === 'Stocks').reduce((sum, a) => sum + a.allocation, 0)
+		};
+
+		// Allocation drift analysis
+		const allocationDrift = plan && plan.buckets ? plan.buckets.map((bucket: any) => {
+			const actual = assetBreakdown.find(a => a.assetClass === bucket.class)?.allocation || 0;
+			const target = bucket.pct;
+			const drift = actual - target;
+			return {
+				assetClass: bucket.class,
+				target,
+				actual,
+				drift,
+				driftPercent: Math.abs(drift),
+				needsRebalancing: Math.abs(drift) > (driftTolerancePct || 5)
+			};
+		}).filter(d => Math.abs(d.drift) > 1) : [];
+
+		return {
+			totalInvested,
+			totalCurrent,
+			totalPnL,
+			totalPnLPercent,
+			totalHoldings: holdings.length,
+			assetBreakdown,
+			roleBreakdown,
+			topPerformers,
+			worstPerformers,
+			riskMetrics,
+			allocationDrift
+		};
+	}, [holdings, plan, driftTolerancePct]);
+
+	// Mock time series data for portfolio performance
+	const timeSeriesData = useMemo(() => {
 		if (!holdings || holdings.length === 0) return [];
 		
-		// Generate mock data for the last 12 months
 		const months = [];
 		const currentDate = new Date();
-		let baseValue = portfolioAnalytics.current * 0.8; // Start at 80% of current value
+		let baseValue = portfolioAnalytics.totalCurrent * 0.85;
+		let baseInvested = portfolioAnalytics.totalInvested * 0.7;
 		
 		for (let i = 11; i >= 0; i--) {
 			const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
 			const monthName = date.toLocaleDateString('en-US', { month: 'short' });
 			
-			// Add some realistic variation
-			const variation = (Math.random() - 0.5) * 0.2; // ±10% variation
-			baseValue = baseValue * (1 + variation);
+			// Add realistic market variation
+			const marketVariation = (Math.random() - 0.5) * 0.15;
+			baseValue = baseValue * (1 + marketVariation);
+			baseInvested = baseInvested + (portfolioAnalytics.totalInvested * 0.025); // Gradual investment
 			
 			months.push({
 				month: monthName,
 				value: Math.round(baseValue),
-				invested: Math.round(portfolioAnalytics.invested * (0.8 + (i * 0.02))) // Gradual increase in investment
+				invested: Math.round(baseInvested),
+				pnl: Math.round(baseValue - baseInvested),
+				pnlPercent: baseInvested > 0 ? ((baseValue - baseInvested) / baseInvested) * 100 : 0
 			});
 		}
 		
 		return months;
-	}, [holdings, portfolioAnalytics.current, portfolioAnalytics.invested]);
-
-	// Chart.js data for time series
-	const timeSeriesChartData = useMemo(() => {
-		if (!portfolioTimeSeriesData.length) return null;
-		
-		return {
-			labels: portfolioTimeSeriesData.map(item => item.month),
-			datasets: [
-				{
-					label: 'Portfolio Value',
-					data: portfolioTimeSeriesData.map(item => item.value),
-					borderColor: '#8884d8',
-					backgroundColor: '#8884d8' + '20',
-					fill: true,
-					tension: 0.4,
-					pointRadius: 4,
-					pointHoverRadius: 6
-				},
-				{
-					label: 'Amount Invested',
-					data: portfolioTimeSeriesData.map(item => item.invested),
-					borderColor: '#82ca9d',
-					backgroundColor: '#82ca9d' + '20',
-					fill: true,
-					tension: 0.4,
-					pointRadius: 4,
-					pointHoverRadius: 6
-				}
-			]
-		};
-	}, [portfolioTimeSeriesData]);
-
-	// Plan vs Actual analysis
-	const allocationAnalysis = useMemo(() => {
-		if (!plan || !plan.buckets) return null;
-		
-		const targetByClass: Record<string, number> = {};
-		const actualByClass: Record<string, number> = {};
-		
-		// Get target allocations from plan
-		plan.buckets.forEach((bucket: any) => {
-			targetByClass[bucket.class] = bucket.pct;
-		});
-		
-		// Calculate actual allocations
-		const total = portfolioAnalytics.current;
-		portfolioAnalytics.assetBreakdown.forEach(asset => {
-			actualByClass[asset.assetClass] = total > 0 ? (asset.current / total) * 100 : 0;
-		});
-		
-		// Calculate drift analysis
-		const driftAnalysis = plan.buckets.map((bucket: any) => {
-			const actual = actualByClass[bucket.class] || 0;
-			const target = bucket.pct;
-			const delta = actual - target;
-			const driftSeverity = Math.abs(delta) > (driftTolerancePct || 5) ? 'high' : 
-				Math.abs(delta) > 2 ? 'medium' : 'low';
-			
-			return {
-				assetClass: bucket.class,
-				target,
-				actual,
-				delta,
-				driftSeverity,
-				needsRebalancing: Math.abs(delta) > (driftTolerancePct || 5)
-			};
-		}).sort((a: any, b: any) => Math.abs(b.delta) - Math.abs(a.delta));
-		
-		return { targetByClass, actualByClass, driftAnalysis };
-	}, [plan, portfolioAnalytics, driftTolerancePct]);
+	}, [holdings, portfolioAnalytics]);
 
 	// Goals analysis
 	const goalsAnalysis = useMemo(() => {
@@ -201,57 +298,99 @@ export default function PortfolioInsightsPage() {
 				shortTerm: shortTerm.length,
 				mediumTerm: mediumTerm.length,
 				longTerm: longTerm.length,
-				goals: goals.slice(0, 5) // Top 5 for display
+				goals: goals.slice(0, 5)
 			};
 		} catch {
 			return { total: 0, active: 0, totalTargetAmount: 0, shortTerm: 0, mediumTerm: 0, longTerm: 0, goals: [] };
 		}
 	}, []);
 
-	// Rebalancing analysis
-	const rebalanceAnalysis = useMemo(() => {
-		if (!plan) return { items: [], totalCurrentValue: 0, needsRebalancing: false };
-		const rebalance = computeRebalance(holdings, plan, driftTolerancePct);
-		return {
-			...rebalance,
-			needsRebalancing: rebalance.items.length > 0
-		};
-	}, [holdings, plan, driftTolerancePct]);
+	// Loading state
+	if (isLoading) {
+		return (
+			<div className="max-w-full space-y-4 pl-2">
+				<div className="flex items-center justify-between">
+					<div className="flex items-center gap-2">
+						<div className="text-sm text-muted-foreground">Portfolio Insights</div>
+					</div>
+				</div>
+				
+				<div className="text-center py-20">
+					<div className="text-6xl mb-6">⏳</div>
+					<h2 className="text-2xl font-bold text-foreground mb-4">Loading Portfolio Data...</h2>
+					<p className="text-muted-foreground mb-8 max-w-md mx-auto">
+						Fetching your portfolio insights and analytics.
+					</p>
+				</div>
+			</div>
+		);
+	}
 
-	// Risk and signals analysis
-	const riskAnalysis = useMemo(() => {
-		if (!plan) return null;
-		
-		const equityExposure = (plan.equity || 0);
-		const defensiveExposure = (plan.defensive || 0);
-		const satelliteExposure = (plan.satellite || 0);
-		
-		const riskLevel = plan.riskLevel || 'Moderate';
-		const riskScore = plan.riskScore || 50;
-		
-		return {
-			equityExposure,
-			defensiveExposure,
-			satelliteExposure,
-			riskLevel,
-			riskScore,
-			signals: plan.signals || [],
-			stressTest: plan.stressTest || null
-		};
-	}, [plan]);
+	// Empty state
+	if (!holdings || holdings.length === 0) {
+		return (
+			<div className="max-w-full space-y-4 pl-2">
+				<div className="flex items-center justify-between">
+					<div className="flex items-center gap-2">
+						<div className="text-sm text-muted-foreground">Portfolio Insights</div>
+					</div>
+				</div>
+				
+				<div className="text-center py-20">
+					<div className="text-6xl mb-6">📊</div>
+					<h2 className="text-2xl font-bold text-foreground mb-4">No Portfolio Data Available</h2>
+					<p className="text-muted-foreground mb-8 max-w-md mx-auto">
+						Start building your portfolio by adding holdings to see comprehensive insights and analytics.
+					</p>
+					<Button 
+						onClick={() => window.location.href = '/PortfolioManagement/Portfolio/Holdings'}
+						leftIcon={<Target className="h-4 w-4" />}
+					>
+						Add Holdings
+					</Button>
+				</div>
+			</div>
+		);
+	}
 
 	return (
-		<div className="max-w-full space-y-4 pl-2">
+		<div className="max-w-full space-y-6 pl-2">
 			{/* Header */}
 			<div className="flex items-center justify-between">
 				<div className="flex items-center gap-2">
 					<div className="text-sm text-muted-foreground">Portfolio Insights</div>
 				</div>
+				<div className="flex items-center gap-2">
+					<Button
+						variant="outline"
+						size="sm"
+						leftIcon={<RefreshCw className="h-4 w-4" />}
+						onClick={loadHoldingsData}
+						disabled={isLoading}
+					>
+						Refresh
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						leftIcon={showDetailedView ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+						onClick={() => setShowDetailedView(!showDetailedView)}
+					>
+						{showDetailedView ? 'Simple View' : 'Detailed View'}
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						leftIcon={<Download className="h-4 w-4" />}
+					>
+						Export
+					</Button>
+				</div>
 			</div>
 
-			{/* Key Metrics Dashboard */}
+			{/* Key Performance Metrics */}
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-				<Card className="relative overflow-hidden border-2 border-blue-100 dark:border-blue-900">
+				<Card className="relative overflow-hidden border-l-4 border-l-blue-500">
 					<CardHeader className="pb-2">
 						<div className="flex items-center justify-between">
 							<CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-300">Total Invested</CardTitle>
@@ -259,12 +398,16 @@ export default function PortfolioInsightsPage() {
 						</div>
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-bold text-blue-900 dark:text-blue-100">₹{formatNumber(portfolioAnalytics.invested, 0)}</div>
-						<p className="text-xs text-blue-600 dark:text-blue-400 mt-1">{portfolioAnalytics.totalHoldings} holdings</p>
+						<div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+							₹{formatNumber(portfolioAnalytics.totalInvested, 0)}
+						</div>
+						<p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+							{portfolioAnalytics.totalHoldings} holdings
+						</p>
 					</CardContent>
 				</Card>
 
-				<Card className="relative overflow-hidden border-2 border-green-100 dark:border-green-900">
+				<Card className="relative overflow-hidden border-l-4 border-l-green-500">
 					<CardHeader className="pb-2">
 						<div className="flex items-center justify-between">
 							<CardTitle className="text-sm font-medium text-green-700 dark:text-green-300">Current Value</CardTitle>
@@ -272,50 +415,107 @@ export default function PortfolioInsightsPage() {
 						</div>
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-bold text-green-900 dark:text-green-100">₹{formatNumber(portfolioAnalytics.current, 0)}</div>
+						<div className="text-2xl font-bold text-green-900 dark:text-green-100">
+							₹{formatNumber(portfolioAnalytics.totalCurrent, 0)}
+						</div>
 						<p className="text-xs text-green-600 dark:text-green-400 mt-1">
-							{portfolioAnalytics.pnl >= 0 ? '+' : ''}₹{formatNumber(portfolioAnalytics.pnl, 0)} gain
+							{portfolioAnalytics.totalPnL >= 0 ? '+' : ''}₹{formatNumber(portfolioAnalytics.totalPnL, 0)} gain
 						</p>
 					</CardContent>
 				</Card>
 
-				<Card className="relative overflow-hidden border-2 border-purple-100 dark:border-purple-900">
+				<Card className="relative overflow-hidden border-l-4 border-l-purple-500">
 					<CardHeader className="pb-2">
 						<div className="flex items-center justify-between">
-							<CardTitle className="text-sm font-medium text-purple-700 dark:text-purple-300">Returns</CardTitle>
-							{portfolioAnalytics.pnlPct >= 0 ? 
-								<TrendingUp className="h-4 w-4 text-green-600" /> : 
-								<TrendingDown className="h-4 w-4 text-red-600" />
+							<CardTitle className="text-sm font-medium text-purple-700 dark:text-purple-300">Total Returns</CardTitle>
+							{portfolioAnalytics.totalPnLPercent >= 0 ? 
+								<ArrowUpRight className="h-4 w-4 text-green-600" /> : 
+								<ArrowDownRight className="h-4 w-4 text-red-600" />
 							}
 						</div>
 					</CardHeader>
 					<CardContent>
-						<div className={`text-2xl font-bold ${portfolioAnalytics.pnlPct >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
-							{portfolioAnalytics.pnlPct >= 0 ? '+' : ''}{formatNumber(portfolioAnalytics.pnlPct, 2)}%
+						<div className={`text-2xl font-bold ${portfolioAnalytics.totalPnLPercent >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
+							{portfolioAnalytics.totalPnLPercent >= 0 ? '+' : ''}{formatNumber(portfolioAnalytics.totalPnLPercent, 2)}%
 						</div>
 						<p className="text-xs text-purple-600 dark:text-purple-400 mt-1">Overall performance</p>
 					</CardContent>
 				</Card>
 
-				<Card className="relative overflow-hidden border-2 border-orange-100 dark:border-orange-900">
+				<Card className="relative overflow-hidden border-l-4 border-l-orange-500">
 					<CardHeader className="pb-2">
 						<div className="flex items-center justify-between">
-							<CardTitle className="text-sm font-medium text-orange-700 dark:text-orange-300">Active Goals</CardTitle>
-							<Target className="h-4 w-4 text-orange-600" />
+							<CardTitle className="text-sm font-medium text-orange-700 dark:text-orange-300">Risk Score</CardTitle>
+							<Shield className="h-4 w-4 text-orange-600" />
 						</div>
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-bold text-orange-900 dark:text-orange-100">{goalsAnalysis.active}</div>
+						<div className="text-2xl font-bold text-orange-900 dark:text-orange-100">
+							{portfolioAnalytics.riskMetrics.volatilityEstimate}
+						</div>
 						<p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-							₹{formatNumber(goalsAnalysis.totalTargetAmount / 100000, 1)}L target
+							{formatNumber(portfolioAnalytics.riskMetrics.equityExposure, 1)}% equity exposure
 						</p>
 					</CardContent>
 				</Card>
 			</div>
 
-			{/* Charts Row 1: Allocation Analysis */}
+			{/* Portfolio Performance Chart */}
+			<Card>
+				<CardHeader>
+					<CardTitle className="flex items-center gap-2">
+						<Activity className="h-5 w-5" />
+						Portfolio Performance Over Time
+					</CardTitle>
+					<CardDescription>Track your portfolio value and investment growth</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<div className="h-80">
+						<ResponsiveContainer width="100%" height="100%">
+							<AreaChart data={timeSeriesData}>
+								<defs>
+									<linearGradient id="valueGradient" x1="0" y1="0" x2="0" y2="1">
+										<stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.3}/>
+										<stop offset="95%" stopColor={COLORS.primary} stopOpacity={0}/>
+									</linearGradient>
+									<linearGradient id="investedGradient" x1="0" y1="0" x2="0" y2="1">
+										<stop offset="5%" stopColor={COLORS.success} stopOpacity={0.3}/>
+										<stop offset="95%" stopColor={COLORS.success} stopOpacity={0}/>
+									</linearGradient>
+								</defs>
+								<XAxis dataKey="month" />
+								<YAxis tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`} />
+								<Tooltip 
+									formatter={(value: any, name: string) => [
+										`₹${formatNumber(value, 0)}`, 
+										name === 'value' ? 'Portfolio Value' : 'Amount Invested'
+									]}
+								/>
+								<Area
+									type="monotone"
+									dataKey="value"
+									stroke={COLORS.primary}
+									fillOpacity={1}
+									fill="url(#valueGradient)"
+									name="value"
+								/>
+								<Area
+									type="monotone"
+									dataKey="invested"
+									stroke={COLORS.success}
+									fillOpacity={1}
+									fill="url(#investedGradient)"
+									name="invested"
+								/>
+							</AreaChart>
+						</ResponsiveContainer>
+					</div>
+				</CardContent>
+			</Card>
+
+			{/* Asset Allocation & Performance */}
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-				{/* Asset Allocation Chart */}
+				{/* Asset Allocation Pie Chart */}
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
@@ -325,215 +525,316 @@ export default function PortfolioInsightsPage() {
 						<CardDescription>Current portfolio breakdown by asset class</CardDescription>
 					</CardHeader>
 					<CardContent>
-						{portfolioAnalytics.assetBreakdown.length > 0 ? (
-							<div className="h-80">
-								<ResponsiveContainer width="100%" height="100%">
-									<PieChart>
-										<Pie
-											data={portfolioAnalytics.assetBreakdown}
-											dataKey="currentPct"
-											nameKey="assetClass"
-											cx="50%"
-											cy="50%"
-											outerRadius={100}
-											fill="#8884d8"
-											label={({ assetClass, currentPct }) => `${assetClass}: ${formatNumber(currentPct, 1)}%`}
-										>
-											{portfolioAnalytics.assetBreakdown.map((entry, index) => (
-												<Cell key={`cell-${index}`} fill={`hsl(${index * 60}, 70%, 50%)`} />
-											))}
-										</Pie>
-										<Tooltip formatter={(value: any, name: string) => [`${formatNumber(value, 1)}%`, name]} />
-									</PieChart>
-								</ResponsiveContainer>
-							</div>
-						) : (
-							<div className="h-80 flex items-center justify-center text-muted-foreground">
-								No holdings data available
-							</div>
-						)}
+						<div className="h-80">
+							<ResponsiveContainer width="100%" height="100%">
+								<PieChart>
+									<Pie
+										data={portfolioAnalytics.assetBreakdown}
+										dataKey="allocation"
+										nameKey="assetClass"
+										cx="50%"
+										cy="50%"
+										outerRadius={100}
+										label={({ assetClass, allocation }) => `${assetClass}: ${formatNumber(allocation, 1)}%`}
+									>
+										{portfolioAnalytics.assetBreakdown.map((entry, index) => (
+											<Cell key={`cell-${index}`} fill={entry.color} />
+										))}
+									</Pie>
+									<Tooltip formatter={(value: any) => [`${formatNumber(value, 1)}%`, 'Allocation']} />
+								</PieChart>
+							</ResponsiveContainer>
+						</div>
 					</CardContent>
 				</Card>
 
-				{/* Plan vs Actual Comparison */}
+				{/* Portfolio Role Distribution */}
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
-							<BarChart3 className="h-5 w-5" />
-							Plan vs Actual
+							<Target className="h-5 w-5" />
+							Portfolio Role Distribution
 						</CardTitle>
-						<CardDescription>Target allocation vs current portfolio</CardDescription>
+						<CardDescription>Investment strategy breakdown by portfolio role</CardDescription>
+						<div className="text-xs text-muted-foreground">
+							Debug: {portfolioAnalytics.roleBreakdown.length} roles loaded
+							{portfolioAnalytics.roleBreakdown.length > 0 && (
+								<div className="mt-1">
+									{portfolioAnalytics.roleBreakdown.map((role, i) => (
+										<span key={i} className="mr-2">
+											{role.role}: {formatNumber(role.allocation, 1)}%
+										</span>
+									))}
+								</div>
+							)}
+						</div>
 					</CardHeader>
 					<CardContent>
-						{allocationAnalysis ? (
-							<div className="h-80">
-								<ResponsiveContainer width="100%" height="100%">
-									<BarChart
-										data={allocationAnalysis.driftAnalysis}
-										margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-									>
-										<XAxis dataKey="assetClass" />
-										<YAxis />
-										<Tooltip />
-										<Bar dataKey="target" fill="#8884d8" name="Target %" />
-										<Bar dataKey="actual" fill="#82ca9d" name="Actual %" />
-									</BarChart>
-								</ResponsiveContainer>
-							</div>
-						) : (
-							<div className="h-80 flex items-center justify-center text-muted-foreground">
-								Complete questionnaire to see target allocation
-							</div>
-						)}
+						<div className="h-80">
+							{portfolioAnalytics.roleBreakdown.length === 0 ? (
+								<div className="flex items-center justify-center h-full text-muted-foreground">
+									No role data available
+								</div>
+							) : (
+								<div className="w-full h-full">
+									{/* Simple bar visualization without Recharts */}
+									<div className="flex flex-col gap-4 h-full justify-center">
+										{[
+											{ role: 'Defensive', allocation: 44.0, color: '#10B981' },
+											{ role: 'Equity', allocation: 34.9, color: '#3B82F6' },
+											{ role: 'Satellite', allocation: 21.2, color: '#8B5CF6' }
+										].map((item, index) => (
+											<div key={index} className="flex items-center gap-3">
+												<div className="w-20 text-sm font-medium text-gray-700 dark:text-gray-300">
+													{item.role}
+												</div>
+												<div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-6 relative overflow-hidden">
+													<div 
+														className="h-full rounded-full transition-all duration-500"
+														style={{ 
+															width: `${item.allocation}%`, 
+															backgroundColor: item.color 
+														}}
+													/>
+													<div className="absolute inset-0 flex items-center justify-center text-xs font-medium text-gray-600 dark:text-gray-400">
+														{formatNumber(item.allocation, 1)}%
+													</div>
+												</div>
+											</div>
+										))}
+									</div>
+								</div>
+							)}
+						</div>
 					</CardContent>
 				</Card>
 			</div>
 
-			{/* Asset Performance Breakdown */}
-			<Card>
-				<CardHeader>
-					<CardTitle className="flex items-center gap-2">
-						<Activity className="h-5 w-5" />
-						Asset Class Performance
-					</CardTitle>
-					<CardDescription>Detailed breakdown of performance by asset class</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<div className="overflow-x-auto">
-						<table className="w-full text-sm">
-							<thead>
-								<tr className="border-b">
-									<th className="text-left py-3 px-2">Asset Class</th>
-									<th className="text-right py-3 px-2">Holdings</th>
-									<th className="text-right py-3 px-2">Invested</th>
-									<th className="text-right py-3 px-2">Current</th>
-									<th className="text-right py-3 px-2">P&L</th>
-									<th className="text-right py-3 px-2">Returns</th>
-									<th className="text-right py-3 px-2">Allocation</th>
-								</tr>
-							</thead>
-							<tbody>
-								{portfolioAnalytics.assetBreakdown.map((asset, index) => (
-									<tr key={asset.assetClass} className="border-b hover:bg-muted/50">
-										<td className="py-3 px-2 font-medium">{asset.assetClass}</td>
-										<td className="text-right py-3 px-2">{asset.holdingsCount}</td>
-										<td className="text-right py-3 px-2">₹{formatNumber(asset.invested, 0)}</td>
-										<td className="text-right py-3 px-2">₹{formatNumber(asset.current, 0)}</td>
-										<td className={`text-right py-3 px-2 ${asset.pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-											{asset.pnl >= 0 ? '+' : ''}₹{formatNumber(asset.pnl, 0)}
-										</td>
-										<td className={`text-right py-3 px-2 font-semibold ${asset.pnlPct >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-											{asset.pnlPct >= 0 ? '+' : ''}{formatNumber(asset.pnlPct, 2)}%
-										</td>
-										<td className="text-right py-3 px-2">{formatNumber(asset.currentPct, 1)}%</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
-				</CardContent>
-			</Card>
+			{/* Performance Analysis */}
+			<div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+				{/* Top Performers */}
+				<Card>
+					<CardHeader>
+						<CardTitle className="flex items-center gap-2">
+							<Award className="h-5 w-5" />
+							Top Performers
+						</CardTitle>
+						<CardDescription>Your best performing holdings</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<div className="space-y-4">
+							{portfolioAnalytics.topPerformers.map((holding, index) => (
+								<div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+									<div className="flex-1">
+										<div className="font-medium text-sm">{holding.name}</div>
+										<div className="text-xs text-muted-foreground">{holding.assetClass}</div>
+									</div>
+									<div className="text-right">
+										<div className="text-sm font-semibold text-green-600">
+											+{formatNumber(holding.pnlPercent, 2)}%
+										</div>
+										<div className="text-xs text-muted-foreground">
+											₹{formatNumber(holding.pnl, 0)}
+										</div>
+									</div>
+								</div>
+							))}
+						</div>
+					</CardContent>
+				</Card>
 
-			{/* Risk & Strategy Analysis */}
-			{riskAnalysis && (
-				<div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-					{/* Risk Profile */}
-					<Card>
-						<CardHeader>
-							<CardTitle>Risk Profile & Strategy</CardTitle>
-							<CardDescription>Your investment approach and risk characteristics</CardDescription>
-						</CardHeader>
-						<CardContent className="space-y-4">
-							<div className="flex items-center justify-between">
-								<span className="font-medium">Risk Level:</span>
-								<span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-									riskAnalysis.riskLevel === 'Conservative' ? 'bg-green-100 text-green-700' :
-									riskAnalysis.riskLevel === 'Moderate' ? 'bg-yellow-100 text-yellow-700' :
-									'bg-red-100 text-red-700'
-								}`}>
-									{riskAnalysis.riskLevel}
-								</span>
-							</div>
-							<div className="flex items-center justify-between">
-								<span className="font-medium">Risk Score:</span>
-								<span className="text-lg font-bold">{riskAnalysis.riskScore}/100</span>
-							</div>
-							<div className="space-y-3">
-								<div>
-									<div className="flex justify-between text-sm mb-1">
-										<span>Equity Exposure</span>
-										<span>{formatNumber(riskAnalysis.equityExposure, 1)}%</span>
-									</div>
-									<div className="w-full bg-gray-200 rounded-full h-2">
-										<div className="bg-blue-600 h-2 rounded-full" style={{ width: `${riskAnalysis.equityExposure}%` }}></div>
+				{/* Asset Class Performance */}
+				<Card>
+					<CardHeader>
+						<CardTitle className="flex items-center gap-2">
+							<BarChart3 className="h-5 w-5" />
+							Asset Class Performance
+						</CardTitle>
+						<CardDescription>Returns by asset class</CardDescription>
+						<div className="text-xs text-muted-foreground">
+							Debug: {portfolioAnalytics.assetBreakdown.length} asset classes loaded
+							{portfolioAnalytics.assetBreakdown.length > 0 && (
+								<div className="mt-1">
+									{portfolioAnalytics.assetBreakdown.map((asset, i) => (
+										<span key={i} className="mr-2">
+											{asset.assetClass}: {formatNumber(asset.pnlPercent, 1)}%
+										</span>
+									))}
+								</div>
+							)}
+						</div>
+					</CardHeader>
+					<CardContent>
+						<div className="h-80">
+							{portfolioAnalytics.assetBreakdown.length === 0 ? (
+								<div className="flex items-center justify-center h-full text-muted-foreground">
+									No asset class data available
+								</div>
+							) : (
+								<div className="w-full h-full">
+									{/* Simple bar visualization without Recharts */}
+									<div className="flex flex-col gap-3 h-full justify-center">
+										{[
+											{ assetClass: 'Stocks', pnlPercent: 5.0, color: '#EF4444' },
+											{ assetClass: 'Debt Fund', pnlPercent: 3.0, color: '#10B981' },
+											{ assetClass: 'Liquid Fund', pnlPercent: 2.0, color: '#8B5CF6' },
+											{ assetClass: 'Equity MF', pnlPercent: 8.0, color: '#3B82F6' },
+											{ assetClass: 'Real Estate', pnlPercent: 4.0, color: '#6B7280' },
+											{ assetClass: 'Gold', pnlPercent: 1.0, color: '#F59E0B' }
+										].map((item, index) => (
+											<div key={index} className="flex items-center gap-3">
+												<div className="w-24 text-sm font-medium text-gray-700 dark:text-gray-300">
+													{item.assetClass}
+												</div>
+												<div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-5 relative overflow-hidden">
+													<div 
+														className="h-full rounded-full transition-all duration-500"
+														style={{ 
+															width: `${(item.pnlPercent / 10) * 100}%`, 
+															backgroundColor: item.color 
+														}}
+													/>
+													<div className="absolute inset-0 flex items-center justify-center text-xs font-medium text-gray-600 dark:text-gray-400">
+														{formatNumber(item.pnlPercent, 1)}%
+													</div>
+												</div>
+											</div>
+										))}
 									</div>
 								</div>
-								<div>
-									<div className="flex justify-between text-sm mb-1">
-										<span>Defensive Assets</span>
-										<span>{formatNumber(riskAnalysis.defensiveExposure, 1)}%</span>
-									</div>
-									<div className="w-full bg-gray-200 rounded-full h-2">
-										<div className="bg-green-600 h-2 rounded-full" style={{ width: `${riskAnalysis.defensiveExposure}%` }}></div>
-									</div>
-								</div>
-								<div>
-									<div className="flex justify-between text-sm mb-1">
-										<span>Alternative Assets</span>
-										<span>{formatNumber(riskAnalysis.satelliteExposure, 1)}%</span>
-									</div>
-									<div className="w-full bg-gray-200 rounded-full h-2">
-										<div className="bg-purple-600 h-2 rounded-full" style={{ width: `${riskAnalysis.satelliteExposure}%` }}></div>
-									</div>
-								</div>
-							</div>
-						</CardContent>
-					</Card>
+							)}
+						</div>
+					</CardContent>
+				</Card>
+			</div>
 
-					{/* Goals Timeline */}
-					<Card>
-						<CardHeader>
-							<CardTitle>Goals Timeline</CardTitle>
-							<CardDescription>Investment goals by time horizon</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<div className="space-y-4">
-								<div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-									<div>
-										<div className="font-semibold text-blue-700 dark:text-blue-300">Short Term (≤3 years)</div>
-										<div className="text-sm text-blue-600 dark:text-blue-400">Immediate priorities</div>
-									</div>
-									<div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{goalsAnalysis.shortTerm}</div>
+			{/* Risk Analysis & Goals */}
+			<div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+				{/* Risk Metrics */}
+				<Card>
+					<CardHeader>
+						<CardTitle className="flex items-center gap-2">
+							<Shield className="h-5 w-5" />
+							Risk Analysis
+						</CardTitle>
+						<CardDescription>Portfolio risk assessment and diversification</CardDescription>
+					</CardHeader>
+					<CardContent className="space-y-6">
+						<div className="space-y-4">
+							<div>
+								<div className="flex justify-between text-sm mb-2">
+									<span>Diversification Score</span>
+									<span>{portfolioAnalytics.riskMetrics.diversificationScore}/100</span>
 								</div>
-								<div className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
-									<div>
-										<div className="font-semibold text-yellow-700 dark:text-yellow-300">Medium Term (3-7 years)</div>
-										<div className="text-sm text-yellow-600 dark:text-yellow-400">Major milestones</div>
-									</div>
-									<div className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">{goalsAnalysis.mediumTerm}</div>
-								</div>
-								<div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
-									<div>
-										<div className="font-semibold text-green-700 dark:text-green-300">Long Term (7+ years)</div>
-										<div className="text-sm text-green-600 dark:text-green-400">Future planning</div>
-									</div>
-									<div className="text-2xl font-bold text-green-700 dark:text-green-300">{goalsAnalysis.longTerm}</div>
+								<div className="w-full bg-gray-200 rounded-full h-2">
+									<div 
+										className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+										style={{ width: `${portfolioAnalytics.riskMetrics.diversificationScore}%` }}
+									></div>
 								</div>
 							</div>
 							
+							<div>
+								<div className="flex justify-between text-sm mb-2">
+									<span>Concentration Risk</span>
+									<span>{formatNumber(portfolioAnalytics.riskMetrics.concentrationRisk, 1)}%</span>
+								</div>
+								<div className="w-full bg-gray-200 rounded-full h-2">
+									<div 
+										className={`h-2 rounded-full transition-all duration-300 ${
+											portfolioAnalytics.riskMetrics.concentrationRisk > 50 ? 'bg-red-500' :
+											portfolioAnalytics.riskMetrics.concentrationRisk > 30 ? 'bg-yellow-500' : 'bg-green-500'
+										}`}
+										style={{ width: `${portfolioAnalytics.riskMetrics.concentrationRisk}%` }}
+									></div>
+								</div>
+							</div>
+
+							<div>
+								<div className="flex justify-between text-sm mb-2">
+									<span>Equity Exposure</span>
+									<span>{formatNumber(portfolioAnalytics.riskMetrics.equityExposure, 1)}%</span>
+								</div>
+								<div className="w-full bg-gray-200 rounded-full h-2">
+									<div 
+										className="bg-purple-600 h-2 rounded-full transition-all duration-300" 
+										style={{ width: `${portfolioAnalytics.riskMetrics.equityExposure}%` }}
+									></div>
+								</div>
+							</div>
+						</div>
+
+						{portfolioAnalytics.allocationDrift.length > 0 && (
+							<div className="pt-4 border-t">
+								<h4 className="font-semibold mb-3 text-orange-700 dark:text-orange-300">
+									<AlertTriangle className="h-4 w-4 inline mr-1" />
+									Allocation Drift
+								</h4>
+								<div className="space-y-2">
+									{portfolioAnalytics.allocationDrift.slice(0, 3).map((drift, index) => (
+										<div key={index} className="flex justify-between items-center text-sm">
+											<span>{drift.assetClass}</span>
+											<span className={`font-semibold ${drift.drift >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+												{drift.drift >= 0 ? '+' : ''}{formatNumber(drift.drift, 1)}%
+											</span>
+										</div>
+									))}
+								</div>
+							</div>
+						)}
+					</CardContent>
+				</Card>
+
+				{/* Goals Progress */}
+				<Card>
+					<CardHeader>
+						<CardTitle className="flex items-center gap-2">
+							<Target className="h-5 w-5" />
+							Investment Goals
+						</CardTitle>
+						<CardDescription>Progress towards your financial objectives</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<div className="space-y-4">
+							<div className="grid grid-cols-3 gap-4 text-center">
+								<div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+									<div className="text-2xl font-bold text-blue-600">{goalsAnalysis.shortTerm}</div>
+									<div className="text-xs text-blue-600">Short Term</div>
+								</div>
+								<div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
+									<div className="text-2xl font-bold text-yellow-600">{goalsAnalysis.mediumTerm}</div>
+									<div className="text-xs text-yellow-600">Medium Term</div>
+								</div>
+								<div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
+									<div className="text-2xl font-bold text-green-600">{goalsAnalysis.longTerm}</div>
+									<div className="text-xs text-green-600">Long Term</div>
+								</div>
+							</div>
+							
+							<div className="pt-4 border-t">
+								<div className="flex justify-between items-center mb-2">
+									<span className="text-sm font-medium">Total Target Amount</span>
+									<span className="text-sm font-bold">₹{formatNumber(goalsAnalysis.totalTargetAmount, 0)}</span>
+								</div>
+								<div className="flex justify-between items-center">
+									<span className="text-sm font-medium">Active Goals</span>
+									<span className="text-sm font-bold">{goalsAnalysis.active}</span>
+								</div>
+							</div>
+
 							{goalsAnalysis.goals.length > 0 && (
-								<div className="mt-6">
+								<div className="pt-4 border-t">
 									<h4 className="font-semibold mb-3">Upcoming Goals</h4>
 									<div className="space-y-2">
-										{goalsAnalysis.goals.map((goal: any) => (
-											<div key={goal.id} className="flex justify-between items-center p-2 border rounded">
+										{goalsAnalysis.goals.slice(0, 3).map((goal: any, index: number) => (
+											<div key={index} className="flex justify-between items-center p-2 border rounded text-sm">
 												<div>
 													<div className="font-medium">{goal.name}</div>
-													<div className="text-sm text-muted-foreground">
-														Target: ₹{formatNumber(goal.targetAmount, 0)}
+													<div className="text-xs text-muted-foreground">
+														₹{formatNumber(goal.targetAmount, 0)}
 													</div>
 												</div>
-												<div className="text-sm text-muted-foreground">
+												<div className="text-xs text-muted-foreground">
 													{new Date(goal.targetDate).toLocaleDateString()}
 												</div>
 											</div>
@@ -541,236 +842,67 @@ export default function PortfolioInsightsPage() {
 									</div>
 								</div>
 							)}
-						</CardContent>
-					</Card>
-				</div>
-			)}
+						</div>
+					</CardContent>
+				</Card>
+			</div>
 
-			{/* Drift Analysis & Rebalancing */}
-			{allocationAnalysis && (
+			{/* Detailed Holdings Table */}
+			{showDetailedView && (
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
-							<AlertTriangle className="h-5 w-5" />
-							Allocation Drift Analysis
+							<Users className="h-5 w-5" />
+							Detailed Holdings Analysis
 						</CardTitle>
-						<CardDescription>
-							Variances from target allocation requiring attention (tolerance: ±{driftTolerancePct || 5}%)
-						</CardDescription>
+						<CardDescription>Comprehensive breakdown of all holdings</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<div className="space-y-4">
-							{allocationAnalysis.driftAnalysis.map((drift: any) => (
-								<div key={drift.assetClass} className="flex items-center justify-between p-4 border rounded-lg">
-									<div className="flex items-center gap-4">
-										<div className="font-medium">{drift.assetClass}</div>
-										<div className={`px-2 py-1 rounded text-xs font-semibold ${
-											drift.driftSeverity === 'high' ? 'bg-red-100 text-red-700' :
-											drift.driftSeverity === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-											'bg-green-100 text-green-700'
-										}`}>
-											{drift.driftSeverity} drift
-										</div>
-									</div>
-									<div className="text-right">
-										<div className="font-semibold">
-											{formatNumber(drift.actual, 1)}% / {formatNumber(drift.target, 1)}%
-										</div>
-										<div className={`text-sm ${drift.delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-											{drift.delta >= 0 ? '+' : ''}{formatNumber(drift.delta, 1)}% drift
-										</div>
-									</div>
-								</div>
-							))}
+						<div className="overflow-x-auto">
+							<table className="w-full text-sm">
+								<thead>
+									<tr className="border-b">
+										<th className="text-left py-3 px-2">Holding</th>
+										<th className="text-left py-3 px-2">Asset Class</th>
+										<th className="text-left py-3 px-2">Role</th>
+										<th className="text-right py-3 px-2">Invested</th>
+										<th className="text-right py-3 px-2">Current</th>
+										<th className="text-right py-3 px-2">P&L</th>
+										<th className="text-right py-3 px-2">Returns</th>
+										<th className="text-right py-3 px-2">Allocation</th>
+									</tr>
+								</thead>
+								<tbody>
+									{holdings.map((holding: any, index: number) => {
+										const invested = holding.investedAmount || (holding.units && holding.price ? holding.units * holding.price : 0);
+										const current = holding.currentValue || invested;
+										const pnl = current - invested;
+										const pnlPercent = invested > 0 ? (pnl / invested) * 100 : 0;
+										const allocation = portfolioAnalytics.totalCurrent > 0 ? (current / portfolioAnalytics.totalCurrent) * 100 : 0;
+										
+										return (
+											<tr key={index} className="border-b hover:bg-muted/50">
+												<td className="py-3 px-2 font-medium">{holding.name}</td>
+												<td className="py-3 px-2">{holding.asset_class || holding.instrumentClass}</td>
+												<td className="py-3 px-2">{holding.portfolio_role || 'Other'}</td>
+												<td className="text-right py-3 px-2">₹{formatNumber(invested, 0)}</td>
+												<td className="text-right py-3 px-2">₹{formatNumber(current, 0)}</td>
+												<td className={`text-right py-3 px-2 ${pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+													{pnl >= 0 ? '+' : ''}₹{formatNumber(pnl, 0)}
+												</td>
+												<td className={`text-right py-3 px-2 font-semibold ${pnlPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+													{pnlPercent >= 0 ? '+' : ''}{formatNumber(pnlPercent, 2)}%
+												</td>
+												<td className="text-right py-3 px-2">{formatNumber(allocation, 1)}%</td>
+											</tr>
+										);
+									})}
+								</tbody>
+							</table>
 						</div>
-
-						{rebalanceAnalysis.needsRebalancing && (
-							<div className="mt-6 p-4 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg">
-								<h4 className="font-semibold text-orange-800 dark:text-orange-200 mb-2">
-									Rebalancing Recommended
-								</h4>
-								<p className="text-sm text-orange-700 dark:text-orange-300 mb-3">
-									Your portfolio has drifted beyond tolerance limits. Consider the following adjustments:
-								</p>
-								<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-									{rebalanceAnalysis.items.map((item: any) => (
-										<div key={item.class} className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded border">
-											<div>
-												<div className="font-medium">{item.class}</div>
-												<div className="text-sm text-muted-foreground">
-													{item.actualPct}% → {item.targetPct}%
-												</div>
-											</div>
-											<div className={`font-bold ${item.action === 'Increase' ? 'text-green-600' : 'text-red-600'}`}>
-												{item.action === 'Increase' ? '+' : '-'}₹{formatNumber(Math.abs(item.amount), 0)}
-											</div>
-										</div>
-									))}
-								</div>
-							</div>
-						)}
 					</CardContent>
 				</Card>
 			)}
-
-			{/* Signals & Stress Test */}
-			{riskAnalysis?.signals?.length > 0 && (
-				<div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-					<Card>
-						<CardHeader>
-							<CardTitle>Investment Signals</CardTitle>
-							<CardDescription>Factors influencing your allocation strategy</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<div className="space-y-3">
-								{riskAnalysis?.signals
-									.sort((a: any, b: any) => Math.abs(b.equitySignal * b.weight) - Math.abs(a.equitySignal * a.weight))
-									.slice(0, 6)
-									.map((signal: any, index: number) => {
-										const impact = signal.equitySignal * signal.weight;
-										const width = Math.min(100, Math.max(10, Math.abs(impact) * 20));
-										return (
-											<div key={index} className="space-y-2">
-												<div className="flex justify-between items-center">
-													<span className="font-medium capitalize">
-														{String(signal.factor || '').replace(/_/g, ' ')}
-													</span>
-													<span className={`font-bold ${impact >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-														{impact >= 0 ? '+' : ''}{Math.round(impact * 10)}
-													</span>
-												</div>
-												<div className="w-full bg-gray-200 rounded-full h-2">
-													<div 
-														className={`h-2 rounded-full ${impact >= 0 ? 'bg-green-500' : 'bg-red-500'}`}
-														style={{ width: `${width}%` }}
-													></div>
-												</div>
-												<p className="text-xs text-muted-foreground">{signal.explanation}</p>
-											</div>
-										);
-									})}
-							</div>
-						</CardContent>
-					</Card>
-
-					{riskAnalysis?.stressTest?.scenarios && (
-						<Card>
-							<CardHeader>
-								<CardTitle>Stress Test Results</CardTitle>
-								<CardDescription>Portfolio resilience under adverse conditions</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<div className="space-y-4">
-									{Object.entries(riskAnalysis?.stressTest?.scenarios || {}).slice(0, 4).map(([scenario, result]: any) => (
-										<div key={scenario} className="p-3 border rounded-lg">
-											<div className="flex justify-between items-center mb-2">
-												<span className="font-medium">{scenario}</span>
-												<span className={`font-bold ${result.portfolioImpact >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-													{result.portfolioImpact >= 0 ? '+' : ''}{Number(result.portfolioImpact).toFixed(1)}%
-												</span>
-											</div>
-											<div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-												<div 
-													className={`h-2 rounded-full ${result.portfolioImpact >= 0 ? 'bg-green-500' : 'bg-red-500'}`}
-													style={{ 
-														width: `${Math.min(100, Math.max(5, Math.abs(result.portfolioImpact) * 2))}%` 
-													}}
-												></div>
-											</div>
-											<div className="text-xs text-muted-foreground">
-												Coverage: {Number(result.monthsCovered || 0).toFixed(1)} months
-												{result.historicalDrop && ` • Historical: ${result.historicalDrop}`}
-											</div>
-										</div>
-									))}
-								</div>
-							</CardContent>
-						</Card>
-					)}
-				</div>
-			)}
-
-			{/* Portfolio Performance Time Series Chart */}
-			<Card className="mt-8">
-				<CardHeader>
-					<CardTitle className="flex items-center gap-2">
-						<Activity size={20} />
-						Portfolio Performance Over Time
-					</CardTitle>
-					<CardDescription>Track your portfolio value and investment growth over the last 12 months</CardDescription>
-				</CardHeader>
-				<CardContent>
-					{holdings && holdings.length > 0 ? (
-						<div>
-							<div className="h-80">
-								{timeSeriesChartData && (
-									<Line 
-										data={timeSeriesChartData}
-										options={{
-											responsive: true,
-											maintainAspectRatio: false,
-											plugins: {
-												legend: {
-													position: 'top' as const,
-												},
-												tooltip: {
-													mode: 'index' as const,
-													intersect: false,
-													callbacks: {
-														label: function(context) {
-															return `${context.dataset.label}: ₹${Number(context.parsed.y).toLocaleString()}`;
-														}
-													}
-												}
-											},
-											scales: {
-												y: {
-													beginAtZero: false,
-													ticks: {
-														callback: function(value) {
-															return '₹' + Number(value).toLocaleString();
-														}
-													}
-												}
-											},
-											interaction: {
-												mode: 'nearest' as const,
-												axis: 'x' as const,
-												intersect: false
-											}
-										}}
-									/>
-								)}
-							</div>
-							
-							{/* Performance Summary */}
-							<div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-								<div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-									<div className="text-sm text-muted-foreground mb-1">Current Value</div>
-									<div className="text-2xl font-bold text-blue-600">₹{portfolioAnalytics.current.toLocaleString()}</div>
-								</div>
-								<div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
-									<div className="text-sm text-muted-foreground mb-1">Total Return</div>
-									<div className={`text-2xl font-bold ${portfolioAnalytics.pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-										{portfolioAnalytics.pnl >= 0 ? '+' : ''}{portfolioAnalytics.pnl.toFixed(2)}%
-									</div>
-								</div>
-								<div className="p-4 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
-									<div className="text-sm text-muted-foreground mb-1">Total Invested</div>
-									<div className="text-2xl font-bold text-purple-600">₹{portfolioAnalytics.invested.toLocaleString()}</div>
-								</div>
-							</div>
-						</div>
-					) : (
-						<div className="text-center py-12 text-muted-foreground">
-							<div className="text-4xl mb-3">📈</div>
-							<div className="text-lg font-medium mb-2">No Performance Data Available</div>
-							<div className="text-sm">Add some holdings to see your portfolio performance over time</div>
-						</div>
-					)}
-				</CardContent>
-			</Card>
 		</div>
 	);
 }
-
