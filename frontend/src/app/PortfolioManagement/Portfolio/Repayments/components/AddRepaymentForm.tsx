@@ -5,7 +5,7 @@ import { Input } from "../../../../components/Input";
 import { Label } from "../../../../components/Label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../components/Select";
 import { Calendar, ArrowLeft, ArrowRight, Save } from "lucide-react";
-import { INSTITUTIONS, calculateEMI as calculateEMIUtil, type RepaymentFormData } from "../../../../../lib/repayments";
+import { INSTITUTIONS, calculateEMI as calculateEMIUtil, type RepaymentFormData } from "@/lib/repayments";
 
 // RepaymentFormData is now imported from lib/repayments.ts
 

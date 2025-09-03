@@ -17,7 +17,7 @@ import {
   type Repayment,
   type RepaymentSummary,
   type RepaymentFormData
-} from "../../../../../lib/repayments";
+} from "@/lib/repayments";
 
 // Types are now imported from lib/repayments.ts
 
