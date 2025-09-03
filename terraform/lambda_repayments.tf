@@ -121,13 +121,15 @@ resource "aws_dynamodb_table" "repayments" {
   }
 
   global_secondary_index {
-    name     = "TypeIndex"
-    hash_key = "type"
+    name            = "TypeIndex"
+    hash_key        = "type"
+    projection_type = "ALL"
   }
 
   global_secondary_index {
-    name     = "StatusIndex"
-    hash_key = "status"
+    name            = "StatusIndex"
+    hash_key        = "status"
+    projection_type = "ALL"
   }
 
   tags = {
@@ -159,9 +161,10 @@ resource "aws_dynamodb_table" "repayment_history" {
   }
 
   global_secondary_index {
-    name     = "RepaymentHistoryIndex"
-    hash_key = "repayment_id"
-    range_key = "history_id"
+    name            = "RepaymentHistoryIndex"
+    hash_key        = "repayment_id"
+    range_key       = "history_id"
+    projection_type = "ALL"
   }
 
   tags = {
