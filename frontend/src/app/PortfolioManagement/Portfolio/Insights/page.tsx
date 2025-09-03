@@ -585,9 +585,21 @@ export default function PortfolioInsightsPage() {
 											{ role: 'Satellite', allocation: 21.2 }
 										]} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
 											<XAxis dataKey="role" tick={{ fontSize: 12 }} />
-											<YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
+											<YAxis domain={[0, 50]} tick={{ fontSize: 12 }} />
 											<Tooltip formatter={(value: any) => [`${formatNumber(value, 1)}%`, 'Allocation']} />
-											<Bar dataKey="allocation" fill="#3B82F6" stroke="#1E40AF" strokeWidth={2} />
+											<Bar dataKey="allocation" fill="#3B82F6">
+												{[
+													{ role: 'Defensive', allocation: 44.0 },
+													{ role: 'Equity', allocation: 34.9 },
+													{ role: 'Satellite', allocation: 21.2 }
+												].map((entry, index) => (
+													<Cell key={`cell-${index}`} fill={
+														index === 0 ? '#10B981' : // Defensive - Green
+														index === 1 ? '#3B82F6' : // Equity - Blue
+														'#8B5CF6' // Satellite - Purple
+													} />
+												))}
+											</Bar>
 										</BarChart>
 									</ResponsiveContainer>
 								</div>
@@ -672,7 +684,7 @@ export default function PortfolioInsightsPage() {
 											<XAxis dataKey="assetClass" angle={-45} textAnchor="end" height={80} />
 											<YAxis domain={[0, 10]} tick={{ fontSize: 12 }} />
 											<Tooltip formatter={(value: any) => [`${formatNumber(value, 2)}%`, 'Returns']} />
-											<Bar dataKey="pnlPercent" fill="#10B981" stroke="#059669" strokeWidth={2}>
+											<Bar dataKey="pnlPercent" fill="#10B981">
 												{[
 													{ assetClass: 'Stocks', pnlPercent: 5.0 },
 													{ assetClass: 'Debt Fund', pnlPercent: 3.0 },
