@@ -60,6 +60,11 @@ def build_lambda_packages():
             "name": "expenses-api",
             "src": "backend/lambda/expenses-api-py",
             "zip": "terraform/expenses_api.zip"
+        },
+        {
+            "name": "repayments-api",
+            "src": "backend/lambda/repayments-api-py",
+            "zip": "terraform/repayments_api.zip"
         }
     ]
     
