@@ -24,9 +24,9 @@ import {
   GraduationCap,
   Briefcase
 } from 'lucide-react';
-import { LoanEngine, EnhancedLoanStatus } from '../domain/Repaymentadvisor/repaymentEngine';
-import { fetchRepayments, createRepayment } from '@/lib/repayments';
-import { Repayment } from '@/lib/repayments';
+import { LoanEngine, EnhancedLoanStatus } from '../../domain/Repaymentadvisor/repaymentEngine';
+import { fetchRepayments, createRepayment } from '../../../../lib/repayments';
+import { Repayment } from '../../../../lib/repayments';
 
 // Loan type configurations
 const loanIcons: Record<string, React.ReactNode> = {
@@ -86,22 +86,21 @@ export default function RepaymentsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const repayments = await fetchRepayments();
-      setDbRepayments(repayments);
+      const repaymentSummary = await fetchRepayments();
+      setDbRepayments(repaymentSummary.repayments);
       
       // Convert DB repayments to engine format and calculate
       const enhancedLoans: EnhancedLoanStatus[] = [];
       
-      for (const repayment of repayments) {
+      for (const repayment of repaymentSummary.repayments) {
         try {
           const input = {
-            type: repayment.type,
+            type: repayment.type as any,
+            institution: repayment.institution || 'Unknown',
             original_amount: repayment.principal,
             interest_rate: repayment.interest_rate || 12, // Default to 12% if missing
             tenure_months: repayment.tenure_months,
-            start_date: repayment.start_date,
-            current_outstanding: repayment.current_outstanding,
-            months_elapsed: repayment.months_elapsed || 0
+            start_date: repayment.start_date
           };
           
           const result = engine.calculateEverything(input);
@@ -110,14 +109,17 @@ export default function RepaymentsPage() {
           console.error('Error calculating loan:', error);
           // Create a fallback loan status
           enhancedLoans.push({
-            loanType: repayment.type,
-            loanCategory: repayment.type,
+            loanType: 'generic' as any,
+            loanCategory: repayment.type as any,
             originalAmount: repayment.principal,
-            outstandingBalance: repayment.current_outstanding || repayment.principal,
+            outstandingBalance: repayment.outstanding_balance || repayment.principal,
             interest_rate: repayment.interest_rate || 12,
-            emi: 0,
-            remainingMonths: repayment.tenure_months - (repayment.months_elapsed || 0),
+            emi: repayment.emi_amount || 0,
+            monthsElapsed: 0,
+            remainingMonths: repayment.tenure_months,
+            monthlyInterestAccrual: 0,
             totalInterestAccrued: 0,
+            calculationBreakdown: {},
             explanation: 'Calculation error - please check loan details'
           });
         }
@@ -139,13 +141,16 @@ export default function RepaymentsPage() {
 
     try {
       const repaymentData = {
-        type: formData.type,
-        principal: formData.original_amount,
-        interest_rate: formData.interest_rate,
-        tenure_months: formData.tenure_months,
-        start_date: formData.start_date,
-        current_outstanding: formData.current_outstanding || formData.original_amount,
-        months_elapsed: formData.months_elapsed || 0
+        type: formData.type || 'personal_loan',
+        institution: 'User Added',
+        principal: formData.original_amount || 0,
+        interest_rate: formData.interest_rate || 12,
+        emi_amount: 0, // Will be calculated
+        tenure_months: formData.tenure_months || 60,
+        outstanding_balance: formData.current_outstanding || formData.original_amount || 0,
+        start_date: formData.start_date || new Date().toISOString().split('T')[0],
+        due_date: new Date().toISOString().split('T')[0],
+        status: 'active'
       };
 
       await createRepayment(repaymentData);
