@@ -577,31 +577,32 @@ export default function PortfolioInsightsPage() {
 								</div>
 							) : (
 								<div className="w-full h-full">
-									{/* Test with hardcoded data */}
-									<ResponsiveContainer width="100%" height="100%">
-										<BarChart data={[
-											{ role: 'Defensive', allocation: 44.0 },
-											{ role: 'Equity', allocation: 34.9 },
-											{ role: 'Satellite', allocation: 21.2 }
-										]} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-											<XAxis dataKey="role" tick={{ fontSize: 12 }} hide />
-											<YAxis domain={[0, 50]} tick={{ fontSize: 12 }} hide />
-											<Tooltip formatter={(value: any) => [`${formatNumber(value, 1)}%`, 'Allocation']} />
-											<Bar dataKey="allocation" fill="#3B82F6" radius={[4, 4, 0, 0]}>
-												{[
-													{ role: 'Defensive', allocation: 44.0 },
-													{ role: 'Equity', allocation: 34.9 },
-													{ role: 'Satellite', allocation: 21.2 }
-												].map((entry, index) => (
-													<Cell key={`cell-${index}`} fill={
-														index === 0 ? '#10B981' : // Defensive - Green
-														index === 1 ? '#3B82F6' : // Equity - Blue
-														'#8B5CF6' // Satellite - Purple
-													} />
-												))}
-											</Bar>
-										</BarChart>
-									</ResponsiveContainer>
+									{/* Simple bar visualization without Recharts */}
+									<div className="flex flex-col gap-4 h-full justify-center">
+										{[
+											{ role: 'Defensive', allocation: 44.0, color: '#10B981' },
+											{ role: 'Equity', allocation: 34.9, color: '#3B82F6' },
+											{ role: 'Satellite', allocation: 21.2, color: '#8B5CF6' }
+										].map((item, index) => (
+											<div key={index} className="flex items-center gap-3">
+												<div className="w-20 text-sm font-medium text-gray-700 dark:text-gray-300">
+													{item.role}
+												</div>
+												<div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-6 relative overflow-hidden">
+													<div 
+														className="h-full rounded-full transition-all duration-500"
+														style={{ 
+															width: `${item.allocation}%`, 
+															backgroundColor: item.color 
+														}}
+													/>
+													<div className="absolute inset-0 flex items-center justify-center text-xs font-medium text-gray-600 dark:text-gray-400">
+														{formatNumber(item.allocation, 1)}%
+													</div>
+												</div>
+											</div>
+										))}
+									</div>
 								</div>
 							)}
 						</div>
@@ -671,40 +672,35 @@ export default function PortfolioInsightsPage() {
 								</div>
 							) : (
 								<div className="w-full h-full">
-									{/* Test with hardcoded data */}
-									<ResponsiveContainer width="100%" height="100%">
-										<BarChart data={[
-											{ assetClass: 'Stocks', pnlPercent: 5.0 },
-											{ assetClass: 'Debt Fund', pnlPercent: 3.0 },
-											{ assetClass: 'Liquid Fund', pnlPercent: 2.0 },
-											{ assetClass: 'Equity MF', pnlPercent: 8.0 },
-											{ assetClass: 'Real Estate', pnlPercent: 4.0 },
-											{ assetClass: 'Gold', pnlPercent: 1.0 }
-										]} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-											<XAxis dataKey="assetClass" angle={-45} textAnchor="end" height={80} hide />
-											<YAxis domain={[0, 10]} tick={{ fontSize: 12 }} hide />
-											<Tooltip formatter={(value: any) => [`${formatNumber(value, 2)}%`, 'Returns']} />
-											<Bar dataKey="pnlPercent" fill="#10B981" radius={[4, 4, 0, 0]}>
-												{[
-													{ assetClass: 'Stocks', pnlPercent: 5.0 },
-													{ assetClass: 'Debt Fund', pnlPercent: 3.0 },
-													{ assetClass: 'Liquid Fund', pnlPercent: 2.0 },
-													{ assetClass: 'Equity MF', pnlPercent: 8.0 },
-													{ assetClass: 'Real Estate', pnlPercent: 4.0 },
-													{ assetClass: 'Gold', pnlPercent: 1.0 }
-												].map((entry, index) => (
-													<Cell key={`cell-${index}`} fill={
-														index === 0 ? '#EF4444' : // Stocks - Red
-														index === 1 ? '#10B981' : // Debt Fund - Green
-														index === 2 ? '#8B5CF6' : // Liquid Fund - Purple
-														index === 3 ? '#3B82F6' : // Equity MF - Blue
-														index === 4 ? '#6B7280' : // Real Estate - Gray
-														'#F59E0B' // Gold - Orange
-													} />
-												))}
-											</Bar>
-										</BarChart>
-									</ResponsiveContainer>
+									{/* Simple bar visualization without Recharts */}
+									<div className="flex flex-col gap-3 h-full justify-center">
+										{[
+											{ assetClass: 'Stocks', pnlPercent: 5.0, color: '#EF4444' },
+											{ assetClass: 'Debt Fund', pnlPercent: 3.0, color: '#10B981' },
+											{ assetClass: 'Liquid Fund', pnlPercent: 2.0, color: '#8B5CF6' },
+											{ assetClass: 'Equity MF', pnlPercent: 8.0, color: '#3B82F6' },
+											{ assetClass: 'Real Estate', pnlPercent: 4.0, color: '#6B7280' },
+											{ assetClass: 'Gold', pnlPercent: 1.0, color: '#F59E0B' }
+										].map((item, index) => (
+											<div key={index} className="flex items-center gap-3">
+												<div className="w-24 text-sm font-medium text-gray-700 dark:text-gray-300">
+													{item.assetClass}
+												</div>
+												<div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-5 relative overflow-hidden">
+													<div 
+														className="h-full rounded-full transition-all duration-500"
+														style={{ 
+															width: `${(item.pnlPercent / 10) * 100}%`, 
+															backgroundColor: item.color 
+														}}
+													/>
+													<div className="absolute inset-0 flex items-center justify-center text-xs font-medium text-gray-600 dark:text-gray-400">
+														{formatNumber(item.pnlPercent, 1)}%
+													</div>
+												</div>
+											</div>
+										))}
+									</div>
 								</div>
 							)}
 						</div>
