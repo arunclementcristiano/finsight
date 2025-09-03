@@ -209,16 +209,16 @@ export default function SmartLiabilityForm({ onSave, onCancel, initialData }: Sm
         </div>
       </div>
 
-      {/* Liability Type Selection */}
+      {/* Simple Liability Type Selection */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Shield className="w-5 h-5" />
-            <span>Liability Type & Category</span>
+            <span>What type of debt is this?</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {LIABILITY_TYPES.map((type) => (
               <button
                 key={type.value}
@@ -227,18 +227,15 @@ export default function SmartLiabilityForm({ onSave, onCancel, initialData }: Sm
                   handleInputChange('category', type.category);
                   calculateRiskScore();
                 }}
-                className={`p-4 border rounded-lg text-left transition-colors ${
+                className={`p-3 border rounded-lg text-center transition-colors ${
                   formData.type === type.value
                     ? 'border-primary bg-primary/10 text-primary'
                     : 'border-border hover:border-primary/50'
                 }`}
               >
-                <div className="flex items-center space-x-3">
-                  <span className="text-2xl">{type.icon}</span>
-                  <div>
-                    <h4 className="font-semibold">{type.label}</h4>
-                    <p className="text-sm text-muted-foreground capitalize">{type.category}</p>
-                  </div>
+                <div className="space-y-2">
+                  <span className="text-2xl block">{type.icon}</span>
+                  <p className="text-sm font-medium">{type.label}</p>
                 </div>
               </button>
             ))}
