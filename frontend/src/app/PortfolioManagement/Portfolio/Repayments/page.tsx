@@ -190,6 +190,54 @@ export default function RepaymentsPage() {
   const avalancheLoans = calculateAvalancheStrategy();
   const snowballLoans = calculateSnowballStrategy();
 
+  // Calculate Smart Hybrid Strategy (combines avalanche + snowball)
+  const calculateHybridStrategy = () => {
+    const emiLoans = liabilities.filter(loan => loan.emi && loan.emi > 0);
+    if (emiLoans.length === 0) return [];
+    
+    // Sort by interest rate first, then by balance for ties
+    return emiLoans.sort((a, b) => {
+      const interestDiff = (b.interest_rate || 0) - (a.interest_rate || 0);
+      if (Math.abs(interestDiff) < 2) { // If interest rates are close (within 2%)
+        return a.outstandingBalance - b.outstandingBalance; // Prefer smaller balance
+      }
+      return interestDiff; // Otherwise prefer higher interest
+    }).map(loan => ({
+      ...loan,
+      priority: 'Smart Hybrid',
+      monthlyExtra: 0,
+      totalSavings: 0
+    }));
+  };
+
+  // Calculate Risk First Strategy (prioritize high-risk loans)
+  const calculateRiskFirstStrategy = () => {
+    return liabilities
+      .filter(loan => loan.emi && loan.emi > 0)
+      .sort((a, b) => {
+        // Risk score based on interest rate + balance size + remaining tenure
+        const riskScoreA = (a.interest_rate || 0) + (a.outstandingBalance / 100000) + (a.remainingMonths / 12);
+        const riskScoreB = (b.interest_rate || 0) + (b.outstandingBalance / 100000) + (b.remainingMonths / 12);
+        return riskScoreB - riskScoreA;
+      })
+      .map(loan => ({
+        ...loan,
+        priority: 'Risk First',
+        monthlyExtra: 0,
+        totalSavings: 0
+      }));
+  };
+
+  const hybridLoans = calculateHybridStrategy();
+  const riskFirstLoans = calculateRiskFirstStrategy();
+
+  // User input for scenarios
+  const [scenarioInputs, setScenarioInputs] = useState({
+    extraMonthlyAmount: 5000,
+    lumpSumAmount: 50000,
+    selectedStrategy: 'avalanche' // avalanche, snowball, hybrid, risk
+  });
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
@@ -518,6 +566,103 @@ export default function RepaymentsPage() {
                       ) : (
                         <p className="text-sm text-slate-600 dark:text-slate-400">
                           No EMI-based loans found for snowball strategy
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Smart Hybrid Strategy */}
+                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="font-semibold text-slate-900 dark:text-white">Smart Hybrid</h4>
+                        <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400">
+                          Best of Both Worlds
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                        Combines avalanche and snowball - prioritizes high interest, but chooses smaller balance when rates are close
+                      </p>
+                      
+                      {hybridLoans.length > 0 ? (
+                        <div className="space-y-2">
+                          {hybridLoans.map((loan, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                              <div className="flex items-center space-x-3">
+                                <div className={`p-2 rounded-lg ${loanColors[loan.loanCategory]} text-white`}>
+                                  {loanIcons[loan.loanCategory]}
+                                </div>
+                                <div>
+                                  <p className="font-medium text-slate-900 dark:text-white">
+                                    {loan.loanCategory.replace('_', ' ').toUpperCase()}
+                                  </p>
+                                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                                    {loan.interest_rate}% • ₹{loan.outstandingBalance.toLocaleString()}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-medium text-slate-900 dark:text-white">
+                                  Priority #{index + 1}
+                                </p>
+                                <p className="text-xs text-slate-600 dark:text-slate-400">
+                                  {loan.emi ? `EMI: ₹${loan.emi.toLocaleString()}` : 'No EMI'}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          No EMI-based loans found for hybrid strategy
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Risk First Strategy */}
+                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="font-semibold text-slate-900 dark:text-white">Risk First</h4>
+                        <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400">
+                          High Risk Priority
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                        Prioritizes loans with highest risk score (interest rate + balance size + remaining tenure)
+                      </p>
+                      
+                      {riskFirstLoans.length > 0 ? (
+                        <div className="space-y-2">
+                          {riskFirstLoans.map((loan, index) => {
+                            const riskScore = (loan.interest_rate || 0) + (loan.outstandingBalance / 100000) + (loan.remainingMonths / 12);
+                            return (
+                              <div key={index} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                                <div className="flex items-center space-x-3">
+                                  <div className={`p-2 rounded-lg ${loanColors[loan.loanCategory]} text-white`}>
+                                    {loanIcons[loan.loanCategory]}
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-slate-900 dark:text-white">
+                                      {loan.loanCategory.replace('_', ' ').toUpperCase()}
+                                    </p>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                                      {loan.interest_rate}% • ₹{loan.outstandingBalance.toLocaleString()}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm font-medium text-slate-900 dark:text-white">
+                                    Priority #{index + 1}
+                                  </p>
+                                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                                    Risk: {riskScore.toFixed(1)} • {loan.emi ? `EMI: ₹${loan.emi.toLocaleString()}` : 'No EMI'}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          No EMI-based loans found for risk strategy
                         </p>
                       )}
                     </div>
