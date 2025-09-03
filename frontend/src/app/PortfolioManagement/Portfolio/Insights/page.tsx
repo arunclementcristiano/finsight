@@ -583,9 +583,9 @@ export default function PortfolioInsightsPage() {
 											{ role: 'Defensive', allocation: 44.0 },
 											{ role: 'Equity', allocation: 34.9 },
 											{ role: 'Satellite', allocation: 21.2 }
-										]} layout="horizontal" margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-											<XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12 }} />
-											<YAxis dataKey="role" type="category" width={100} />
+										]} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+											<XAxis dataKey="role" tick={{ fontSize: 12 }} />
+											<YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
 											<Tooltip formatter={(value: any) => [`${formatNumber(value, 1)}%`, 'Allocation']} />
 											<Bar dataKey="allocation" fill="#3B82F6" stroke="#1E40AF" strokeWidth={2} />
 										</BarChart>
@@ -672,7 +672,25 @@ export default function PortfolioInsightsPage() {
 											<XAxis dataKey="assetClass" angle={-45} textAnchor="end" height={80} />
 											<YAxis domain={[0, 10]} tick={{ fontSize: 12 }} />
 											<Tooltip formatter={(value: any) => [`${formatNumber(value, 2)}%`, 'Returns']} />
-											<Bar dataKey="pnlPercent" fill="#10B981" stroke="#059669" strokeWidth={2} />
+											<Bar dataKey="pnlPercent" fill="#10B981" stroke="#059669" strokeWidth={2}>
+												{[
+													{ assetClass: 'Stocks', pnlPercent: 5.0 },
+													{ assetClass: 'Debt Fund', pnlPercent: 3.0 },
+													{ assetClass: 'Liquid Fund', pnlPercent: 2.0 },
+													{ assetClass: 'Equity MF', pnlPercent: 8.0 },
+													{ assetClass: 'Real Estate', pnlPercent: 4.0 },
+													{ assetClass: 'Gold', pnlPercent: 1.0 }
+												].map((entry, index) => (
+													<Cell key={`cell-${index}`} fill={
+														index === 0 ? '#EF4444' : // Stocks - Red
+														index === 1 ? '#10B981' : // Debt Fund - Green
+														index === 2 ? '#8B5CF6' : // Liquid Fund - Purple
+														index === 3 ? '#3B82F6' : // Equity MF - Blue
+														index === 4 ? '#6B7280' : // Real Estate - Gray
+														'#F59E0B' // Gold - Orange
+													} />
+												))}
+											</Bar>
 										</BarChart>
 									</ResponsiveContainer>
 								</div>
