@@ -435,11 +435,40 @@ export default function RepaymentsPage() {
                         {loan.explanation}
                       </p>
                       <div className="flex space-x-2">
-                        <Button size="sm" variant="outline" className="text-xs">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="text-xs"
+                          onClick={() => {
+                            setActiveTab('optimize');
+                            // Scroll to the specific strategy for this loan
+                            setTimeout(() => {
+                              const element = document.getElementById(`strategy-${loan.loanCategory}`);
+                              if (element) element.scrollIntoView({ behavior: 'smooth' });
+                            }, 100);
+                          }}
+                        >
                           <Zap className="w-4 h-4 mr-1" />
                           Optimize
                         </Button>
-                        <Button size="sm" variant="outline" className="text-xs">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="text-xs"
+                          onClick={() => {
+                            setActiveTab('scenarios');
+                            // Pre-fill scenario inputs for this loan
+                            setScenarioInputs({
+                              ...scenarioInputs,
+                              extraMonthlyAmount: Math.min(5000, (loan.emi || 0) * 0.5), // 50% of EMI or 5000, whichever is smaller
+                              lumpSumAmount: Math.min(50000, loan.outstandingBalance * 0.1) // 10% of balance or 50000, whichever is smaller
+                            });
+                            setTimeout(() => {
+                              const element = document.getElementById('scenario-inputs');
+                              if (element) element.scrollIntoView({ behavior: 'smooth' });
+                            }, 100);
+                          }}
+                        >
                           <Calculator className="w-4 h-4 mr-1" />
                           Prepay
                         </Button>
@@ -477,7 +506,7 @@ export default function RepaymentsPage() {
                 ) : (
                   <div className="grid gap-6">
                     {/* Avalanche Strategy */}
-                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                    <div id="strategy-avalanche" className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="font-semibold text-slate-900 dark:text-white">Avalanche Method</h4>
                         <Badge className="bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
@@ -524,7 +553,7 @@ export default function RepaymentsPage() {
                     </div>
                     
                     {/* Snowball Strategy */}
-                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                    <div id="strategy-snowball" className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="font-semibold text-slate-900 dark:text-white">Snowball Method</h4>
                         <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
@@ -571,7 +600,7 @@ export default function RepaymentsPage() {
                     </div>
 
                     {/* Smart Hybrid Strategy */}
-                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                    <div id="strategy-hybrid" className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="font-semibold text-slate-900 dark:text-white">Smart Hybrid</h4>
                         <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400">
@@ -618,7 +647,7 @@ export default function RepaymentsPage() {
                     </div>
 
                     {/* Risk First Strategy */}
-                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                    <div id="strategy-risk" className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="font-semibold text-slate-900 dark:text-white">Risk First</h4>
                         <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400">
@@ -696,22 +725,74 @@ export default function RepaymentsPage() {
                   </div>
                 ) : (
                   <div className="grid gap-6">
+                    {/* User Input Controls */}
+                    <div id="scenario-inputs" className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-700">
+                      <h4 className="font-semibold text-slate-900 dark:text-white mb-4">
+                        Scenario Inputs
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            Extra Monthly Amount (₹)
+                          </Label>
+                          <Input
+                            type="number"
+                            value={scenarioInputs.extraMonthlyAmount}
+                            onChange={(e) => setScenarioInputs({...scenarioInputs, extraMonthlyAmount: Number(e.target.value)})}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            Lump Sum Amount (₹)
+                          </Label>
+                          <Input
+                            type="number"
+                            value={scenarioInputs.lumpSumAmount}
+                            onChange={(e) => setScenarioInputs({...scenarioInputs, lumpSumAmount: Number(e.target.value)})}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            Strategy
+                          </Label>
+                          <select
+                            value={scenarioInputs.selectedStrategy}
+                            onChange={(e) => setScenarioInputs({...scenarioInputs, selectedStrategy: e.target.value})}
+                            className="w-full mt-1 p-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                          >
+                            <option value="avalanche">Avalanche (High Interest First)</option>
+                            <option value="snowball">Snowball (Small Balance First)</option>
+                            <option value="hybrid">Smart Hybrid</option>
+                            <option value="risk">Risk First</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Extra Monthly Payment Scenario */}
                     <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                       <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
-                        Extra ₹5,000 Monthly Payment
+                        Extra ₹{scenarioInputs.extraMonthlyAmount.toLocaleString()} Monthly Payment
                       </h4>
                       <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                        Apply extra payment to highest interest loan (Avalanche method)
+                        Apply extra payment using {scenarioInputs.selectedStrategy} strategy
                       </p>
                       
-                      {avalancheLoans.length > 0 ? (
-                        <div className="space-y-3">
-                          {avalancheLoans.slice(0, 3).map((loan, index) => {
-                            const extraPayment = index === 0 ? 5000 : 0;
-                            const newEMI = (loan.emi || 0) + extraPayment;
-                            const monthsSaved = extraPayment > 0 ? Math.floor(loan.outstandingBalance / newEMI) : 0;
-                            const interestSaved = extraPayment > 0 ? (loan.outstandingBalance * (loan.interest_rate || 0) / 100) * (monthsSaved / 12) : 0;
+                      {(() => {
+                        const selectedLoans = scenarioInputs.selectedStrategy === 'avalanche' ? avalancheLoans :
+                                            scenarioInputs.selectedStrategy === 'snowball' ? snowballLoans :
+                                            scenarioInputs.selectedStrategy === 'hybrid' ? hybridLoans :
+                                            riskFirstLoans;
+                        
+                        return selectedLoans.length > 0 ? (
+                          <div className="space-y-3">
+                            {selectedLoans.slice(0, 3).map((loan, index) => {
+                              const extraPayment = index === 0 ? scenarioInputs.extraMonthlyAmount : 0;
+                              const newEMI = (loan.emi || 0) + extraPayment;
+                              const monthsSaved = extraPayment > 0 ? Math.floor(loan.outstandingBalance / newEMI) : 0;
+                              const interestSaved = extraPayment > 0 ? (loan.outstandingBalance * (loan.interest_rate || 0) / 100) * (monthsSaved / 12) : 0;
                             
                             return (
                               <div key={index} className="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
@@ -748,30 +829,37 @@ export default function RepaymentsPage() {
                                 </div>
                               </div>
                             );
-                          })}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          No EMI-based loans found for scenario calculation
-                        </p>
-                      )}
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-slate-600 dark:text-slate-400">
+                            No EMI-based loans found for scenario calculation
+                          </p>
+                        );
+                      })()}
                     </div>
                     
                     {/* Lump Sum Prepayment Scenario */}
                     <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                       <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
-                        ₹50,000 Lump Sum Prepayment
+                        ₹{scenarioInputs.lumpSumAmount.toLocaleString()} Lump Sum Prepayment
                       </h4>
                       <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                        Apply lump sum to highest interest loan
+                        Apply lump sum using {scenarioInputs.selectedStrategy} strategy
                       </p>
                       
-                      {avalancheLoans.length > 0 ? (
-                        <div className="space-y-3">
-                          {avalancheLoans.slice(0, 2).map((loan, index) => {
-                            const lumpSum = index === 0 ? 50000 : 0;
-                            const newBalance = Math.max(0, loan.outstandingBalance - lumpSum);
-                            const interestSaved = lumpSum > 0 ? (lumpSum * (loan.interest_rate || 0) / 100) * (loan.remainingMonths / 12) : 0;
+                      {(() => {
+                        const selectedLoans = scenarioInputs.selectedStrategy === 'avalanche' ? avalancheLoans :
+                                            scenarioInputs.selectedStrategy === 'snowball' ? snowballLoans :
+                                            scenarioInputs.selectedStrategy === 'hybrid' ? hybridLoans :
+                                            riskFirstLoans;
+                        
+                        return selectedLoans.length > 0 ? (
+                          <div className="space-y-3">
+                            {selectedLoans.slice(0, 2).map((loan, index) => {
+                              const lumpSum = index === 0 ? scenarioInputs.lumpSumAmount : 0;
+                              const newBalance = Math.max(0, loan.outstandingBalance - lumpSum);
+                              const interestSaved = lumpSum > 0 ? (lumpSum * (loan.interest_rate || 0) / 100) * (loan.remainingMonths / 12) : 0;
                             
                             return (
                               <div key={index} className="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
@@ -808,13 +896,14 @@ export default function RepaymentsPage() {
                                 </div>
                               </div>
                             );
-                          })}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          No EMI-based loans found for scenario calculation
-                        </p>
-                      )}
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-slate-600 dark:text-slate-400">
+                            No EMI-based loans found for scenario calculation
+                          </p>
+                        );
+                      })()}
                     </div>
                   </div>
                 )}
