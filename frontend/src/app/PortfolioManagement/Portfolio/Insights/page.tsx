@@ -576,18 +576,21 @@ export default function PortfolioInsightsPage() {
 									No role data available
 								</div>
 							) : (
-								<ResponsiveContainer width="100%" height="100%">
-									<BarChart data={portfolioAnalytics.roleBreakdown} layout="horizontal" margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-										<XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12 }} />
-										<YAxis dataKey="role" type="category" width={100} />
-										<Tooltip formatter={(value: any) => [`${formatNumber(value, 1)}%`, 'Allocation']} />
-										<Bar dataKey="allocation" radius={[0, 4, 4, 0]} fill="#3B82F6">
-											{portfolioAnalytics.roleBreakdown.map((entry, index) => (
-												<Cell key={`cell-${index}`} fill={entry.color || '#3B82F6'} stroke="#1E40AF" strokeWidth={1} />
-											))}
-										</Bar>
-									</BarChart>
-								</ResponsiveContainer>
+								<div className="w-full h-full">
+									{/* Test with hardcoded data */}
+									<ResponsiveContainer width="100%" height="100%">
+										<BarChart data={[
+											{ role: 'Defensive', allocation: 44.0 },
+											{ role: 'Equity', allocation: 34.9 },
+											{ role: 'Satellite', allocation: 21.2 }
+										]} layout="horizontal" margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+											<XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12 }} />
+											<YAxis dataKey="role" type="category" width={100} />
+											<Tooltip formatter={(value: any) => [`${formatNumber(value, 1)}%`, 'Allocation']} />
+											<Bar dataKey="allocation" fill="#3B82F6" stroke="#1E40AF" strokeWidth={2} />
+										</BarChart>
+									</ResponsiveContainer>
+								</div>
 							)}
 						</div>
 					</CardContent>
@@ -655,18 +658,24 @@ export default function PortfolioInsightsPage() {
 									No asset class data available
 								</div>
 							) : (
-								<ResponsiveContainer width="100%" height="100%">
-									<BarChart data={portfolioAnalytics.assetBreakdown} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-										<XAxis dataKey="assetClass" angle={-45} textAnchor="end" height={80} />
-										<YAxis domain={[-10, 10]} tick={{ fontSize: 12 }} />
-										<Tooltip formatter={(value: any) => [`${formatNumber(value, 2)}%`, 'Returns']} />
-										<Bar dataKey="pnlPercent" radius={[4, 4, 0, 0]} fill="#10B981">
-											{portfolioAnalytics.assetBreakdown.map((entry, index) => (
-												<Cell key={`cell-${index}`} fill={entry.pnlPercent >= 0 ? '#10B981' : '#EF4444'} stroke="#059669" strokeWidth={1} />
-											))}
-										</Bar>
-									</BarChart>
-								</ResponsiveContainer>
+								<div className="w-full h-full">
+									{/* Test with hardcoded data */}
+									<ResponsiveContainer width="100%" height="100%">
+										<BarChart data={[
+											{ assetClass: 'Stocks', pnlPercent: 5.0 },
+											{ assetClass: 'Debt Fund', pnlPercent: 3.0 },
+											{ assetClass: 'Liquid Fund', pnlPercent: 2.0 },
+											{ assetClass: 'Equity MF', pnlPercent: 8.0 },
+											{ assetClass: 'Real Estate', pnlPercent: 4.0 },
+											{ assetClass: 'Gold', pnlPercent: 1.0 }
+										]} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+											<XAxis dataKey="assetClass" angle={-45} textAnchor="end" height={80} />
+											<YAxis domain={[0, 10]} tick={{ fontSize: 12 }} />
+											<Tooltip formatter={(value: any) => [`${formatNumber(value, 2)}%`, 'Returns']} />
+											<Bar dataKey="pnlPercent" fill="#10B981" stroke="#059669" strokeWidth={2} />
+										</BarChart>
+									</ResponsiveContainer>
+								</div>
 							)}
 						</div>
 					</CardContent>
