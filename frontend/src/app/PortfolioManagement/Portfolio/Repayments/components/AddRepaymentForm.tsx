@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Button } from "../../../../components/Button";
 import { Input } from "../../../../components/Input";
 import { Label } from "../../../../components/Label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../components/Select";
+
 import { Calendar, ArrowLeft, ArrowRight, Save } from "lucide-react";
 import { REPAYMENT_TYPES, INSTITUTIONS, calculateEMI as calculateEMIUtil, type RepaymentFormData } from "@/lib/repayments";
 
@@ -126,24 +126,24 @@ export default function AddRepaymentForm({ selectedType, onBack, onSave, onCance
         {/* Institution */}
         <div>
           <Label htmlFor="institution">Institution *</Label>
-          <Select 
-            value={formData.institution} 
-            onValueChange={(value) => {
-              console.log('Institution selected:', value);
-              handleInputChange('institution', value);
+          <select
+            id="institution"
+            value={formData.institution}
+            onChange={(e) => {
+              console.log('Institution selected:', e.target.value);
+              handleInputChange('institution', e.target.value);
             }}
+            className={`flex h-10 w-full items-center justify-between rounded-md border px-3 py-2 text-sm bg-background ${
+              errors.institution ? 'border-red-500' : 'border-input'
+            } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
           >
-            <SelectTrigger className={errors.institution ? 'border-red-500' : ''}>
-              <SelectValue placeholder="Select institution" />
-            </SelectTrigger>
-            <SelectContent>
-              {INSTITUTIONS.map((institution) => (
-                <SelectItem key={institution} value={institution}>
-                  {institution}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <option value="">Select institution</option>
+            {INSTITUTIONS.map((institution) => (
+              <option key={institution} value={institution}>
+                {institution}
+              </option>
+            ))}
+          </select>
           {errors.institution && (
             <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errors.institution}</p>
           )}
