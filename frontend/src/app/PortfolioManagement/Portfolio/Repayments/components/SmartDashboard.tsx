@@ -19,7 +19,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Brain,
-  Sparkles
+  Sparkles,
+  Plus
 } from "lucide-react";
 import { 
   SmartLiability, 
