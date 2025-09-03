@@ -568,11 +568,11 @@ export default function PortfolioInsightsPage() {
 								</div>
 							) : (
 								<ResponsiveContainer width="100%" height="100%">
-									<BarChart data={portfolioAnalytics.roleBreakdown} layout="horizontal">
-										<XAxis type="number" />
-										<YAxis dataKey="role" type="category" width={80} />
+									<BarChart data={portfolioAnalytics.roleBreakdown} layout="horizontal" margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+										<XAxis type="number" domain={[0, 100]} />
+										<YAxis dataKey="role" type="category" width={100} />
 										<Tooltip formatter={(value: any) => [`${formatNumber(value, 1)}%`, 'Allocation']} />
-										<Bar dataKey="allocation">
+										<Bar dataKey="allocation" radius={[0, 4, 4, 0]}>
 											{portfolioAnalytics.roleBreakdown.map((entry, index) => (
 												<Cell key={`cell-${index}`} fill={entry.color} />
 											))}
@@ -638,11 +638,11 @@ export default function PortfolioInsightsPage() {
 								</div>
 							) : (
 								<ResponsiveContainer width="100%" height="100%">
-									<BarChart data={portfolioAnalytics.assetBreakdown}>
+									<BarChart data={portfolioAnalytics.assetBreakdown} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
 										<XAxis dataKey="assetClass" angle={-45} textAnchor="end" height={80} />
-										<YAxis />
+										<YAxis domain={[-10, 10]} />
 										<Tooltip formatter={(value: any) => [`${formatNumber(value, 2)}%`, 'Returns']} />
-										<Bar dataKey="pnlPercent">
+										<Bar dataKey="pnlPercent" radius={[4, 4, 0, 0]}>
 											{portfolioAnalytics.assetBreakdown.map((entry, index) => (
 												<Cell key={`cell-${index}`} fill={entry.pnlPercent >= 0 ? COLORS.success : COLORS.danger} />
 											))}
