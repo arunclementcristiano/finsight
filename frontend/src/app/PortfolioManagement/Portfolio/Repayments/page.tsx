@@ -187,50 +187,70 @@ export default function RepaymentsPage() {
 
       {/* Summary Cards */}
       {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="border-l-4 border-l-destructive">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Total Outstanding</p>
-                  <p className="text-xl font-semibold text-foreground">
+                  <p className="text-2xl font-bold text-foreground">
                     {formatCurrency(summary.total_outstanding)}
                   </p>
+                  <p className="text-xs text-muted-foreground mt-1">Debt to repay</p>
                 </div>
-                <div className="p-2 bg-destructive/10 rounded-full">
-                  <TrendingDown className="w-5 h-5 text-destructive" />
+                <div className="p-3 bg-destructive/10 rounded-full">
+                  <TrendingDown className="w-6 h-6 text-destructive" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-l-4 border-l-primary">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Monthly EMIs</p>
-                  <p className="text-xl font-semibold text-foreground">
+                  <p className="text-2xl font-bold text-foreground">
                     {formatCurrency(summary.total_emi)}
                   </p>
+                  <p className="text-xs text-muted-foreground mt-1">Due every month</p>
                 </div>
-                <div className="p-2 bg-primary/10 rounded-full">
-                  <Calendar className="w-5 h-5 text-primary" />
+                <div className="p-3 bg-primary/10 rounded-full">
+                  <Calendar className="w-6 h-6 text-primary" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-l-4 border-l-orange-500">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Active Repayments</p>
-                  <p className="text-xl font-semibold text-foreground">
+                  <p className="text-sm font-medium text-muted-foreground">Active Loans</p>
+                  <p className="text-2xl font-bold text-foreground">
                     {summary.total_repayments}
                   </p>
+                  <p className="text-xs text-muted-foreground mt-1">Currently paying</p>
                 </div>
-                <div className="p-2 bg-green-500/10 rounded-full">
-                  <DollarSign className="w-5 h-5 text-green-600" />
+                <div className="p-3 bg-orange-500/10 rounded-full">
+                  <DollarSign className="w-6 h-6 text-orange-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-green-500">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Debt-to-Income</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {((summary.total_emi / 50000) * 100).toFixed(0)}%
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">EMI ratio</p>
+                </div>
+                <div className="p-3 bg-green-500/10 rounded-full">
+                  <AlertTriangle className="w-6 h-6 text-green-600" />
                 </div>
               </div>
             </CardContent>
@@ -250,16 +270,17 @@ export default function RepaymentsPage() {
               const IconComponent = typeConfig.icon;
 
               return (
-                <Card key={repayment.repayment_id} className="hover:shadow-sm transition-shadow">
-                  <CardContent className="p-4">
+                <Card key={repayment.repayment_id} className="hover:shadow-md transition-all duration-200 border-l-4 border-l-primary/20">
+                  <CardContent className="p-5">
                     <div className="space-y-4">
+                      {/* Header */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
-                          <div className={`p-2 rounded-full ${typeConfig.color}`}>
-                            <IconComponent className="w-5 h-5" />
+                          <div className={`p-3 rounded-full ${typeConfig.color}`}>
+                            <IconComponent className="w-6 h-6" />
                           </div>
                           <div>
-                            <h3 className="text-base font-semibold text-foreground">
+                            <h3 className="text-lg font-semibold text-foreground">
                               {typeConfig.label}
                             </h3>
                             <p className="text-sm text-muted-foreground">
@@ -269,73 +290,80 @@ export default function RepaymentsPage() {
                         </div>
                         
                         <div className="text-right">
-                          <p className="text-lg font-semibold text-foreground">
+                          <p className="text-xl font-bold text-foreground">
                             {formatCurrency(repayment.outstanding_balance)}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            EMI: {formatCurrency(repayment.emi_amount)}
+                            Outstanding
                           </p>
+                        </div>
+                      </div>
+
+                      {/* Key Metrics */}
+                      <div className="grid grid-cols-2 gap-4 py-3 bg-muted/30 rounded-lg px-4">
+                        <div className="text-center">
+                          <p className="text-lg font-semibold text-foreground">
+                            {formatCurrency(repayment.emi_amount)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">Monthly EMI</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-lg font-semibold text-foreground">
+                            {formatPercentage(repayment.interest_rate)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">Interest Rate</p>
                         </div>
                       </div>
 
                       {/* Progress Bar */}
                       <div>
-                        <div className="flex justify-between text-sm text-muted-foreground mb-1">
-                          <span>Progress</span>
-                          <span>{progress.toFixed(1)}%</span>
+                        <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                          <span>Repayment Progress</span>
+                          <span className="font-medium">{progress.toFixed(1)}%</span>
                         </div>
-                        <div className="w-full bg-muted rounded-full h-2">
+                        <div className="w-full bg-muted rounded-full h-3">
                           <div 
-                            className="bg-primary h-2 rounded-full transition-all duration-300"
+                            className="bg-gradient-to-r from-primary to-primary/80 h-3 rounded-full transition-all duration-500"
                             style={{ width: `${progress}%` }}
                           ></div>
                         </div>
-                      </div>
-
-                      {/* Details Row */}
-                      <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div>
-                          <p className="text-muted-foreground">Interest Rate</p>
-                          <p className="font-medium text-foreground">
-                            {formatPercentage(repayment.interest_rate)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Tenure Left</p>
-                          <p className="font-medium text-foreground">
-                            {Math.ceil(repayment.outstanding_balance / repayment.emi_amount)} months
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Next Due</p>
-                          <p className="font-medium text-foreground">
-                            {new Date(repayment.due_date).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Days Until Due</p>
-                          <p className={`font-medium flex items-center ${daysUntilDue <= 7 ? 'text-destructive' : 'text-foreground'}`}>
-                            {daysUntilDue} days
-                            {daysUntilDue <= 7 && <AlertTriangle className="w-3 h-3 ml-1" />}
-                          </p>
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                          <span>₹{formatCurrency(repayment.principal - repayment.outstanding_balance)} paid</span>
+                          <span>₹{formatCurrency(repayment.outstanding_balance)} remaining</span>
                         </div>
                       </div>
 
-                      {/* Action Buttons */}
-                      <div className="flex justify-end">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedRepayment(repayment);
-                            setShowCalculatorModal(true);
-                          }}
-                          className="text-primary border-primary hover:bg-primary/10"
-                        >
-                          <Calculator className="w-4 h-4 mr-1" />
-                          Prepayment Calculator
-                        </Button>
+                      {/* Timeline & Actions */}
+                      <div className="flex items-center justify-between pt-2 border-t border-border">
+                        <div className="flex items-center space-x-4 text-sm">
+                          <div className="flex items-center space-x-1">
+                            <Calendar className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">
+                              Due {new Date(repayment.due_date).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className={`flex items-center space-x-1 ${daysUntilDue <= 7 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                            <AlertTriangle className="w-4 h-4" />
+                            <span>{daysUntilDue} days left</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedRepayment(repayment);
+                              setShowCalculatorModal(true);
+                            }}
+                            className="text-primary border-primary hover:bg-primary/10"
+                          >
+                            <Calculator className="w-4 h-4 mr-1" />
+                            Prepay
+                          </Button>
+                        </div>
                       </div>
+
                     </div>
                   </CardContent>
                 </Card>
