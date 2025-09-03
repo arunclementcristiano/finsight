@@ -339,67 +339,322 @@ export default function RepaymentsPage() {
       <Modal 
         open={showOptimizeModal} 
         onClose={() => setShowOptimizeModal(false)}
-        title="Optimization Strategies"
+        title="Repayment Optimization Analysis"
         footer={
           <Button variant="outline" onClick={() => setShowOptimizeModal(false)}>
             Close
           </Button>
         }
       >
-        <div className="space-y-4">
-          {[
-            {
-              id: 'avalanche',
-              name: 'Avalanche Method',
-              description: 'Pay highest interest rate loans first',
-              icon: <TrendingDown className="w-5 h-5" />,
-              color: 'border-l-red-500 bg-red-50 dark:bg-red-900/10',
-              iconColor: 'text-red-600'
-            },
-            {
-              id: 'snowball',
-              name: 'Snowball Method',
-              description: 'Pay smallest balance loans first',
-              icon: <Coins className="w-5 h-5" />,
-              color: 'border-l-blue-500 bg-blue-50 dark:bg-blue-900/10',
-              iconColor: 'text-blue-600'
-            },
-            {
-              id: 'hybrid',
-              name: 'Smart Hybrid',
-              description: 'Balanced approach considering both factors',
-              icon: <Star className="w-5 h-5" />,
-              color: 'border-l-purple-500 bg-purple-50 dark:bg-purple-900/10',
-              iconColor: 'text-purple-600'
-            },
-            {
-              id: 'risk',
-              name: 'Risk First',
-              description: 'Prioritize high-risk loans first',
-              icon: <Shield className="w-5 h-5" />,
-              color: 'border-l-orange-500 bg-orange-50 dark:bg-orange-900/10',
-              iconColor: 'text-orange-600'
-            }
-          ].map((strategy) => (
-            <div
-              key={strategy.id}
-              className={`p-4 border-l-4 ${strategy.color} rounded-lg cursor-pointer hover:shadow-md transition-all duration-200`}
-              onClick={() => {
-                console.log('Selected strategy:', strategy.id);
-                setShowOptimizeModal(false);
-              }}
-            >
-              <div className="flex items-center space-x-3">
-                <div className={`p-2 rounded-lg ${strategy.iconColor}`}>
-                  {strategy.icon}
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground">{strategy.name}</h3>
-                  <p className="text-sm text-muted-foreground">{strategy.description}</p>
-                </div>
-              </div>
+        <div className="space-y-6">
+          {liabilities.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">Add some liabilities to see optimization strategies</p>
             </div>
-          ))}
+          ) : (
+            <>
+              {/* Current Situation Summary */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Current Situation</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Total Outstanding</p>
+                      <p className="font-semibold text-foreground">₹{totalOutstanding.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Monthly EMI</p>
+                      <p className="font-semibold text-foreground">₹{totalMonthlyEMI.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Interest Accrued</p>
+                      <p className="font-semibold text-foreground">₹{totalInterestAccrued.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Avg Interest Rate</p>
+                      <p className="font-semibold text-foreground">{avgInterestRate.toFixed(1)}%</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Strategy Analysis */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-foreground">Optimization Strategies</h3>
+                
+                {/* Avalanche Strategy */}
+                <Card className="border-l-4 border-l-red-500">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
+                          <TrendingDown className="w-4 h-4 text-red-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-foreground">Avalanche Method</h4>
+                          <p className="text-xs text-muted-foreground">Pay highest interest rate loans first</p>
+                        </div>
+                      </div>
+                      <Badge className="bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400 text-xs">
+                        Saves Most Money
+                      </Badge>
+                    </div>
+                    
+                    {(() => {
+                      const highInterestLoans = liabilities
+                        .filter(loan => loan.interest_rate >= avgInterestRate)
+                        .sort((a, b) => b.interest_rate - a.interest_rate);
+                      
+                      return highInterestLoans.length > 0 ? (
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground mb-2">Priority Order:</p>
+                          {highInterestLoans.slice(0, 3).map((loan, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-lg text-xs">
+                              <div className="flex items-center space-x-2">
+                                <div className={`p-1 rounded ${loanColors[loan.loanCategory]} text-white`}>
+                                  {loanIcons[loan.loanCategory]}
+                                </div>
+                                <span className="font-medium">{loan.loanCategory.replace('_', ' ')}</span>
+                              </div>
+                              <div className="text-right">
+                                <div className="font-semibold">₹{loan.outstandingBalance.toLocaleString()}</div>
+                                <div className="text-muted-foreground">{loan.interest_rate}% APR</div>
+                              </div>
+                            </div>
+                          ))}
+                          <p className="text-xs text-green-600 mt-2">
+                            💡 Focus extra payments on highest interest loans to minimize total interest paid
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">No high-interest loans found</p>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+
+                {/* Snowball Strategy */}
+                <Card className="border-l-4 border-l-blue-500">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                          <Coins className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-foreground">Snowball Method</h4>
+                          <p className="text-xs text-muted-foreground">Pay smallest balance loans first</p>
+                        </div>
+                      </div>
+                      <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 text-xs">
+                        Builds Momentum
+                      </Badge>
+                    </div>
+                    
+                    {(() => {
+                      const smallBalanceLoans = liabilities
+                        .sort((a, b) => a.outstandingBalance - b.outstandingBalance);
+                      
+                      return smallBalanceLoans.length > 0 ? (
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground mb-2">Priority Order:</p>
+                          {smallBalanceLoans.slice(0, 3).map((loan, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-lg text-xs">
+                              <div className="flex items-center space-x-2">
+                                <div className={`p-1 rounded ${loanColors[loan.loanCategory]} text-white`}>
+                                  {loanIcons[loan.loanCategory]}
+                                </div>
+                                <span className="font-medium">{loan.loanCategory.replace('_', ' ')}</span>
+                              </div>
+                              <div className="text-right">
+                                <div className="font-semibold">₹{loan.outstandingBalance.toLocaleString()}</div>
+                                <div className="text-muted-foreground">{loan.remainingMonths} months left</div>
+                              </div>
+                            </div>
+                          ))}
+                          <p className="text-xs text-blue-600 mt-2">
+                            💡 Pay off smallest loans first for psychological wins and freed-up cash flow
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">No loans found</p>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+
+                {/* Smart Hybrid Strategy */}
+                <Card className="border-l-4 border-l-purple-500">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+                          <Star className="w-4 h-4 text-purple-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-foreground">Smart Hybrid</h4>
+                          <p className="text-xs text-muted-foreground">Balanced approach considering both factors</p>
+                        </div>
+                      </div>
+                      <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400 text-xs">
+                        AI Optimized
+                      </Badge>
+                    </div>
+                    
+                    {(() => {
+                      // Calculate hybrid score: interest rate * 0.7 + (1/balance) * 0.3
+                      const hybridLoans = liabilities
+                        .map(loan => ({
+                          ...loan,
+                          hybridScore: (loan.interest_rate * 0.7) + ((1 / (loan.outstandingBalance / 100000)) * 0.3)
+                        }))
+                        .sort((a, b) => b.hybridScore - a.hybridScore);
+                      
+                      return hybridLoans.length > 0 ? (
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground mb-2">Optimized Priority Order:</p>
+                          {hybridLoans.slice(0, 3).map((loan, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-lg text-xs">
+                              <div className="flex items-center space-x-2">
+                                <div className={`p-1 rounded ${loanColors[loan.loanCategory]} text-white`}>
+                                  {loanIcons[loan.loanCategory]}
+                                </div>
+                                <span className="font-medium">{loan.loanCategory.replace('_', ' ')}</span>
+                              </div>
+                              <div className="text-right">
+                                <div className="font-semibold">₹{loan.outstandingBalance.toLocaleString()}</div>
+                                <div className="text-muted-foreground">{loan.interest_rate}% APR</div>
+                              </div>
+                            </div>
+                          ))}
+                          <p className="text-xs text-purple-600 mt-2">
+                            💡 Balanced approach considering both interest rate and loan size for optimal results
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">No loans found</p>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+
+                {/* Risk Assessment */}
+                <Card className="border-l-4 border-l-orange-500">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
+                          <Shield className="w-4 h-4 text-orange-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-foreground">Risk Assessment</h4>
+                          <p className="text-xs text-muted-foreground">Prioritize high-risk loans first</p>
+                        </div>
+                      </div>
+                      <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400 text-xs">
+                        Risk Management
+                      </Badge>
+                    </div>
+                    
+                    {(() => {
+                      const riskLoans = liabilities
+                        .filter(loan => loan.interest_rate > 15 || loan.loanCategory === 'credit_card')
+                        .sort((a, b) => b.interest_rate - a.interest_rate);
+                      
+                      return riskLoans.length > 0 ? (
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground mb-2">High-Risk Loans:</p>
+                          {riskLoans.map((loan, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-lg text-xs">
+                              <div className="flex items-center space-x-2">
+                                <div className={`p-1 rounded ${loanColors[loan.loanCategory]} text-white`}>
+                                  {loanIcons[loan.loanCategory]}
+                                </div>
+                                <span className="font-medium">{loan.loanCategory.replace('_', ' ')}</span>
+                              </div>
+                              <div className="text-right">
+                                <div className="font-semibold">₹{loan.outstandingBalance.toLocaleString()}</div>
+                                <div className="text-muted-foreground">{loan.interest_rate}% APR</div>
+                              </div>
+                            </div>
+                          ))}
+                          <p className="text-xs text-orange-600 mt-2">
+                            ⚠️ High-interest loans can quickly spiral - prioritize these for financial stability
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <p className="text-xs text-green-600">✅ No high-risk loans detected</p>
+                          <p className="text-xs text-muted-foreground">Your current loans have reasonable interest rates</p>
+                        </div>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Recommendations */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">💡 Key Recommendations</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3 text-sm">
+                    {(() => {
+                      const recommendations = [];
+                      
+                      // High interest rate recommendation
+                      const highInterestLoans = liabilities.filter(loan => loan.interest_rate > 15);
+                      if (highInterestLoans.length > 0) {
+                        recommendations.push(
+                          <div key="high-interest" className="flex items-start space-x-2">
+                            <div className="w-2 h-2 bg-red-500 rounded-full mt-2"></div>
+                            <div>
+                              <p className="font-medium text-foreground">Focus on High-Interest Debt</p>
+                              <p className="text-muted-foreground">You have {highInterestLoans.length} loan(s) with interest rates above 15%. These should be your top priority.</p>
+                            </div>
+                          </div>
+                        );
+                      }
+                      
+                      // Credit card recommendation
+                      const creditCards = liabilities.filter(loan => loan.loanCategory === 'credit_card');
+                      if (creditCards.length > 0) {
+                        recommendations.push(
+                          <div key="credit-card" className="flex items-start space-x-2">
+                            <div className="w-2 h-2 bg-orange-500 rounded-full mt-2"></div>
+                            <div>
+                              <p className="font-medium text-foreground">Credit Card Debt Priority</p>
+                              <p className="text-muted-foreground">Credit cards typically have the highest interest rates. Pay these off first if possible.</p>
+                            </div>
+                          </div>
+                        );
+                      }
+                      
+                      // Extra payment recommendation
+                      if (totalMonthlyEMI > 0) {
+                        recommendations.push(
+                          <div key="extra-payment" className="flex items-start space-x-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                            <div>
+                              <p className="font-medium text-foreground">Consider Extra Payments</p>
+                              <p className="text-muted-foreground">Even small extra payments can significantly reduce your total interest and payoff time.</p>
+                            </div>
+                          </div>
+                        );
+                      }
+                      
+                      return recommendations.length > 0 ? recommendations : (
+                        <p className="text-muted-foreground">Add more liabilities to get personalized recommendations</p>
+                      );
+                    })()}
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
       </Modal>
 
