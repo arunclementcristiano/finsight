@@ -558,6 +558,15 @@ export default function PortfolioInsightsPage() {
 						<CardDescription>Investment strategy breakdown by portfolio role</CardDescription>
 						<div className="text-xs text-muted-foreground">
 							Debug: {portfolioAnalytics.roleBreakdown.length} roles loaded
+							{portfolioAnalytics.roleBreakdown.length > 0 && (
+								<div className="mt-1">
+									{portfolioAnalytics.roleBreakdown.map((role, i) => (
+										<span key={i} className="mr-2">
+											{role.role}: {formatNumber(role.allocation, 1)}%
+										</span>
+									))}
+								</div>
+							)}
 						</div>
 					</CardHeader>
 					<CardContent>
@@ -569,12 +578,12 @@ export default function PortfolioInsightsPage() {
 							) : (
 								<ResponsiveContainer width="100%" height="100%">
 									<BarChart data={portfolioAnalytics.roleBreakdown} layout="horizontal" margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-										<XAxis type="number" domain={[0, 100]} />
+										<XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12 }} />
 										<YAxis dataKey="role" type="category" width={100} />
 										<Tooltip formatter={(value: any) => [`${formatNumber(value, 1)}%`, 'Allocation']} />
-										<Bar dataKey="allocation" radius={[0, 4, 4, 0]}>
+										<Bar dataKey="allocation" radius={[0, 4, 4, 0]} fill="#3B82F6">
 											{portfolioAnalytics.roleBreakdown.map((entry, index) => (
-												<Cell key={`cell-${index}`} fill={entry.color} />
+												<Cell key={`cell-${index}`} fill={entry.color || '#3B82F6'} stroke="#1E40AF" strokeWidth={1} />
 											))}
 										</Bar>
 									</BarChart>
@@ -628,6 +637,15 @@ export default function PortfolioInsightsPage() {
 						<CardDescription>Returns by asset class</CardDescription>
 						<div className="text-xs text-muted-foreground">
 							Debug: {portfolioAnalytics.assetBreakdown.length} asset classes loaded
+							{portfolioAnalytics.assetBreakdown.length > 0 && (
+								<div className="mt-1">
+									{portfolioAnalytics.assetBreakdown.map((asset, i) => (
+										<span key={i} className="mr-2">
+											{asset.assetClass}: {formatNumber(asset.pnlPercent, 1)}%
+										</span>
+									))}
+								</div>
+							)}
 						</div>
 					</CardHeader>
 					<CardContent>
@@ -640,11 +658,11 @@ export default function PortfolioInsightsPage() {
 								<ResponsiveContainer width="100%" height="100%">
 									<BarChart data={portfolioAnalytics.assetBreakdown} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
 										<XAxis dataKey="assetClass" angle={-45} textAnchor="end" height={80} />
-										<YAxis domain={[-10, 10]} />
+										<YAxis domain={[-10, 10]} tick={{ fontSize: 12 }} />
 										<Tooltip formatter={(value: any) => [`${formatNumber(value, 2)}%`, 'Returns']} />
-										<Bar dataKey="pnlPercent" radius={[4, 4, 0, 0]}>
+										<Bar dataKey="pnlPercent" radius={[4, 4, 0, 0]} fill="#10B981">
 											{portfolioAnalytics.assetBreakdown.map((entry, index) => (
-												<Cell key={`cell-${index}`} fill={entry.pnlPercent >= 0 ? COLORS.success : COLORS.danger} />
+												<Cell key={`cell-${index}`} fill={entry.pnlPercent >= 0 ? '#10B981' : '#EF4444'} stroke="#059669" strokeWidth={1} />
 											))}
 										</Bar>
 									</BarChart>
