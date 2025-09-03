@@ -167,35 +167,50 @@ export default function RepaymentsPage() {
     ? liabilities.reduce((sum, loan) => sum + (loan.emi ? 12 : 0), 0) / liabilities.length 
     : 0;
 
-  // Calculate repayment strategies
-  const calculateAvalancheStrategy = () => {
-    return liabilities
-      .filter(loan => loan.emi && loan.emi > 0)
-      .sort((a, b) => (b.interest_rate || 0) - (a.interest_rate || 0))
-      .map(loan => ({
-        ...loan,
-        priority: 'High Interest First',
-        monthlyExtra: 0,
-        totalSavings: 0
-      }));
+  // Global What-If Scenario State
+  const [whatIfModal, setWhatIfModal] = useState(false);
+  const [whatIfInputs, setWhatIfInputs] = useState({
+    extraAmount: 5000,
+    frequency: 'monthly', // monthly, quarterly, yearly, lump_sum
+    strategy: 'avalanche' // avalanche, snowball, hybrid, risk, all
+  });
+
+  // Calculate repayment strategies using engine logic
+  const calculateRepaymentStrategies = () => {
+    const emiLoans = liabilities.filter(loan => loan.emi && loan.emi > 0);
+    
+    return {
+      avalanche: emiLoans
+        .sort((a, b) => (b.interest_rate || 0) - (a.interest_rate || 0))
+        .map((loan, index) => ({ ...loan, priority: index + 1, strategy: 'Avalanche' })),
+      
+      snowball: emiLoans
+        .sort((a, b) => a.outstandingBalance - b.outstandingBalance)
+        .map((loan, index) => ({ ...loan, priority: index + 1, strategy: 'Snowball' })),
+      
+      hybrid: emiLoans
+        .sort((a, b) => {
+          const interestDiff = (b.interest_rate || 0) - (a.interest_rate || 0);
+          if (Math.abs(interestDiff) < 2) {
+            return a.outstandingBalance - b.outstandingBalance;
+          }
+          return interestDiff;
+        })
+        .map((loan, index) => ({ ...loan, priority: index + 1, strategy: 'Hybrid' })),
+      
+      risk: emiLoans
+        .sort((a, b) => {
+          const riskScoreA = (a.interest_rate || 0) + (a.outstandingBalance / 100000) + (a.remainingMonths / 12);
+          const riskScoreB = (b.interest_rate || 0) + (b.outstandingBalance / 100000) + (b.remainingMonths / 12);
+          return riskScoreB - riskScoreA;
+        })
+        .map((loan, index) => ({ ...loan, priority: index + 1, strategy: 'Risk First' }))
+    };
   };
 
-  const calculateSnowballStrategy = () => {
-    return liabilities
-      .filter(loan => loan.emi && loan.emi > 0)
-      .sort((a, b) => a.outstandingBalance - b.outstandingBalance)
-      .map(loan => ({
-        ...loan,
-        priority: 'Smallest Balance First',
-        monthlyExtra: 0,
-        totalSavings: 0
-      }));
-  };
+  const strategies = calculateRepaymentStrategies();
 
-  const avalancheLoans = calculateAvalancheStrategy();
-  const snowballLoans = calculateSnowballStrategy();
-
-  // Calculate prepayment impact
+  // Calculate prepayment impact using engine logic
   const calculatePrepaymentImpact = (loan: EnhancedLoanStatus, amount: number, frequency: string) => {
     if (!amount || amount <= 0) {
       return {
@@ -203,7 +218,8 @@ export default function RepaymentsPage() {
         monthsSaved: 0,
         newEMI: loan.emi || 0,
         newBalance: loan.outstandingBalance,
-        newPayoffDate: new Date()
+        newPayoffDate: new Date(),
+        totalSavings: 0
       };
     }
 
@@ -211,20 +227,20 @@ export default function RepaymentsPage() {
     const monthlyRate = (loan.interest_rate || 0) / 100 / 12;
     
     if (isLumpSum) {
-      // Lump sum prepayment
+      // Lump sum prepayment - reduces principal
       const newBalance = Math.max(0, loan.outstandingBalance - amount);
-      const remainingMonths = loan.remainingMonths;
-      const interestSaved = amount * monthlyRate * remainingMonths;
+      const interestSaved = amount * monthlyRate * loan.remainingMonths;
       
       return {
         interestSaved,
-        monthsSaved: 0, // Lump sum doesn't change EMI
+        monthsSaved: 0,
         newEMI: loan.emi || 0,
         newBalance,
-        newPayoffDate: new Date(Date.now() + remainingMonths * 30 * 24 * 60 * 60 * 1000)
+        newPayoffDate: new Date(Date.now() + loan.remainingMonths * 30 * 24 * 60 * 60 * 1000),
+        totalSavings: interestSaved
       };
     } else {
-      // Regular extra payment
+      // Regular extra payment - increases EMI
       const extraMonthly = frequency === 'monthly' ? amount : 
                           frequency === 'quarterly' ? amount / 3 : 
                           frequency === 'yearly' ? amount / 12 : amount;
@@ -238,59 +254,56 @@ export default function RepaymentsPage() {
         monthsSaved,
         newEMI,
         newBalance: loan.outstandingBalance,
-        newPayoffDate: new Date(Date.now() + (loan.remainingMonths - monthsSaved) * 30 * 24 * 60 * 60 * 1000)
+        newPayoffDate: new Date(Date.now() + (loan.remainingMonths - monthsSaved) * 30 * 24 * 60 * 60 * 1000),
+        totalSavings: interestSaved
       };
     }
   };
 
-  // Calculate Smart Hybrid Strategy (combines avalanche + snowball)
-  const calculateHybridStrategy = () => {
-    const emiLoans = liabilities.filter(loan => loan.emi && loan.emi > 0);
-    if (emiLoans.length === 0) return [];
+  // Calculate portfolio-level what-if scenarios
+  const calculatePortfolioScenario = (extraAmount: number, frequency: string, strategy: string) => {
+    const isLumpSum = frequency === 'lump_sum';
+    const monthlyExtra = isLumpSum ? 0 : 
+                        frequency === 'monthly' ? extraAmount : 
+                        frequency === 'quarterly' ? extraAmount / 3 : 
+                        frequency === 'yearly' ? extraAmount / 12 : extraAmount;
     
-    // Sort by interest rate first, then by balance for ties
-    return emiLoans.sort((a, b) => {
-      const interestDiff = (b.interest_rate || 0) - (a.interest_rate || 0);
-      if (Math.abs(interestDiff) < 2) { // If interest rates are close (within 2%)
-        return a.outstandingBalance - b.outstandingBalance; // Prefer smaller balance
-      }
-      return interestDiff; // Otherwise prefer higher interest
-    }).map(loan => ({
-      ...loan,
-      priority: 'Smart Hybrid',
-      monthlyExtra: 0,
-      totalSavings: 0
-    }));
+    const lumpSumAmount = isLumpSum ? extraAmount : 0;
+    
+    const selectedStrategy = strategy === 'all' ? 'avalanche' : strategy;
+    const strategyLoans = strategies[selectedStrategy as keyof typeof strategies] || [];
+    
+    let totalInterestSaved = 0;
+    let totalMonthsSaved = 0;
+    let totalSavings = 0;
+    
+    if (isLumpSum && strategyLoans.length > 0) {
+      // Apply lump sum to highest priority loan
+      const topLoan = strategyLoans[0];
+      const impact = calculatePrepaymentImpact(topLoan, lumpSumAmount, frequency);
+      totalInterestSaved = impact.interestSaved;
+      totalSavings = impact.totalSavings;
+    } else if (!isLumpSum) {
+      // Apply monthly extra to all loans based on strategy
+      strategyLoans.forEach((loan, index) => {
+        const extraPayment = index === 0 ? monthlyExtra : 0; // Focus on top priority
+        const impact = calculatePrepaymentImpact(loan, extraPayment, 'monthly');
+        totalInterestSaved += impact.interestSaved;
+        totalMonthsSaved += impact.monthsSaved;
+        totalSavings += impact.totalSavings;
+      });
+    }
+    
+    return {
+      totalInterestSaved,
+      totalMonthsSaved,
+      totalSavings,
+      strategyUsed: selectedStrategy,
+      loansAffected: strategyLoans.length
+    };
   };
 
-  // Calculate Risk First Strategy (prioritize high-risk loans)
-  const calculateRiskFirstStrategy = () => {
-    return liabilities
-      .filter(loan => loan.emi && loan.emi > 0)
-      .sort((a, b) => {
-        // Risk score based on interest rate + balance size + remaining tenure
-        const riskScoreA = (a.interest_rate || 0) + (a.outstandingBalance / 100000) + (a.remainingMonths / 12);
-        const riskScoreB = (b.interest_rate || 0) + (b.outstandingBalance / 100000) + (b.remainingMonths / 12);
-        return riskScoreB - riskScoreA;
-      })
-      .map(loan => ({
-        ...loan,
-        priority: 'Risk First',
-        monthlyExtra: 0,
-        totalSavings: 0
-      }));
-  };
 
-  const hybridLoans = calculateHybridStrategy();
-  const riskFirstLoans = calculateRiskFirstStrategy();
-
-  // User input for scenarios
-  const [scenarioInputs, setScenarioInputs] = useState({
-    extraMonthlyAmount: 5000,
-    lumpSumAmount: 50000,
-    frequency: 'monthly', // monthly, quarterly, yearly, lump_sum
-    selectedStrategy: 'avalanche' // avalanche, snowball, hybrid, risk
-  });
 
   if (loading) {
     return (
@@ -331,6 +344,13 @@ export default function RepaymentsPage() {
             >
               <Zap className="w-5 h-5 mr-2" />
               Optimize All
+            </Button>
+            <Button 
+              onClick={() => setWhatIfModal(true)}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              <Calculator className="w-5 h-5 mr-2" />
+              What-If Scenarios
             </Button>
           </div>
 
@@ -555,9 +575,9 @@ export default function RepaymentsPage() {
                           Pay highest interest first - saves more money
                         </p>
                         
-                        {avalancheLoans.length > 0 ? (
+                        {strategies.avalanche.length > 0 ? (
                           <div className="space-y-2">
-                            {avalancheLoans.slice(0, 3).map((loan, index) => (
+                            {strategies.avalanche.slice(0, 3).map((loan, index) => (
                               <div key={index} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded text-xs">
                                 <div className="flex items-center space-x-2">
                                   <div className={`p-1 rounded ${loanColors[loan.loanCategory]} text-white`}>
@@ -602,9 +622,9 @@ export default function RepaymentsPage() {
                           Pay smallest balances first - psychological wins
                         </p>
                         
-                        {snowballLoans.length > 0 ? (
+                        {strategies.snowball.length > 0 ? (
                           <div className="space-y-2">
-                            {snowballLoans.slice(0, 3).map((loan, index) => (
+                            {strategies.snowball.slice(0, 3).map((loan, index) => (
                               <div key={index} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded text-xs">
                                 <div className="flex items-center space-x-2">
                                   <div className={`p-1 rounded ${loanColors[loan.loanCategory]} text-white`}>
@@ -653,9 +673,9 @@ export default function RepaymentsPage() {
                           High interest first, small balance when rates close
                         </p>
                         
-                        {hybridLoans.length > 0 ? (
+                        {strategies.hybrid.length > 0 ? (
                           <div className="space-y-2">
-                            {hybridLoans.slice(0, 3).map((loan, index) => (
+                            {strategies.hybrid.slice(0, 3).map((loan, index) => (
                               <div key={index} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded text-xs">
                                 <div className="flex items-center space-x-2">
                                   <div className={`p-1 rounded ${loanColors[loan.loanCategory]} text-white`}>
@@ -700,9 +720,9 @@ export default function RepaymentsPage() {
                           Prioritizes highest risk loans (rate + balance + tenure)
                         </p>
                         
-                        {riskFirstLoans.length > 0 ? (
+                        {strategies.risk.length > 0 ? (
                           <div className="space-y-2">
-                            {riskFirstLoans.slice(0, 3).map((loan, index) => {
+                            {strategies.risk.slice(0, 3).map((loan, index) => {
                               const riskScore = (loan.interest_rate || 0) + (loan.outstandingBalance / 100000) + (loan.remainingMonths / 12);
                               return (
                                 <div key={index} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded text-xs">
@@ -854,16 +874,16 @@ export default function RepaymentsPage() {
                       {(() => {
                         const strategies = scenarioInputs.selectedStrategy === 'all' 
                           ? [
-                              { name: 'Avalanche', loans: avalancheLoans, color: 'red' },
-                              { name: 'Snowball', loans: snowballLoans, color: 'blue' },
-                              { name: 'Smart Hybrid', loans: hybridLoans, color: 'purple' },
-                              { name: 'Risk First', loans: riskFirstLoans, color: 'orange' }
+                              { name: 'Avalanche', loans: strategies.avalanche, color: 'red' },
+                              { name: 'Snowball', loans: strategies.snowball, color: 'blue' },
+                              { name: 'Smart Hybrid', loans: strategies.hybrid, color: 'purple' },
+                              { name: 'Risk First', loans: strategies.risk, color: 'orange' }
                             ]
                           : [{
                               name: scenarioInputs.selectedStrategy.charAt(0).toUpperCase() + scenarioInputs.selectedStrategy.slice(1),
-                              loans: scenarioInputs.selectedStrategy === 'avalanche' ? avalancheLoans :
-                                     scenarioInputs.selectedStrategy === 'snowball' ? snowballLoans :
-                                     scenarioInputs.selectedStrategy === 'hybrid' ? hybridLoans : riskFirstLoans,
+                              loans: scenarioInputs.selectedStrategy === 'avalanche' ? strategies.avalanche :
+                                     scenarioInputs.selectedStrategy === 'snowball' ? strategies.snowball :
+                                     scenarioInputs.selectedStrategy === 'hybrid' ? strategies.hybrid : strategies.risk,
                               color: scenarioInputs.selectedStrategy === 'avalanche' ? 'red' :
                                      scenarioInputs.selectedStrategy === 'snowball' ? 'blue' :
                                      scenarioInputs.selectedStrategy === 'hybrid' ? 'purple' : 'orange'
@@ -1058,9 +1078,9 @@ export default function RepaymentsPage() {
                           Pay highest interest first - saves more money
                         </p>
                         
-                        {avalancheLoans.length > 0 ? (
+                        {strategies.avalanche.length > 0 ? (
                           <div className="space-y-2">
-                            {avalancheLoans.slice(0, 3).map((loan, index) => (
+                            {strategies.avalanche.slice(0, 3).map((loan, index) => (
                               <div key={index} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded text-xs">
                                 <div className="flex items-center space-x-2">
                                   <div className={`p-1 rounded ${loanColors[loan.loanCategory]} text-white`}>
@@ -1105,9 +1125,9 @@ export default function RepaymentsPage() {
                           Pay smallest balances first - psychological wins
                         </p>
                         
-                        {snowballLoans.length > 0 ? (
+                        {strategies.snowball.length > 0 ? (
                           <div className="space-y-2">
-                            {snowballLoans.slice(0, 3).map((loan, index) => (
+                            {strategies.snowball.slice(0, 3).map((loan, index) => (
                               <div key={index} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded text-xs">
                                 <div className="flex items-center space-x-2">
                                   <div className={`p-1 rounded ${loanColors[loan.loanCategory]} text-white`}>
@@ -1155,9 +1175,9 @@ export default function RepaymentsPage() {
                           High interest first, small balance when rates close
                         </p>
                         
-                        {hybridLoans.length > 0 ? (
+                        {strategies.hybrid.length > 0 ? (
                           <div className="space-y-2">
-                            {hybridLoans.slice(0, 3).map((loan, index) => (
+                            {strategies.hybrid.slice(0, 3).map((loan, index) => (
                               <div key={index} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded text-xs">
                                 <div className="flex items-center space-x-2">
                                   <div className={`p-1 rounded ${loanColors[loan.loanCategory]} text-white`}>
@@ -1202,9 +1222,9 @@ export default function RepaymentsPage() {
                           Prioritizes highest risk loans (rate + balance + tenure)
                         </p>
                         
-                        {riskFirstLoans.length > 0 ? (
+                        {strategies.risk.length > 0 ? (
                           <div className="space-y-2">
-                            {riskFirstLoans.slice(0, 3).map((loan, index) => {
+                            {strategies.risk.slice(0, 3).map((loan, index) => {
                               const riskScore = (loan.interest_rate || 0) + (loan.outstandingBalance / 100000) + (loan.remainingMonths / 12);
                               return (
                                 <div key={index} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded text-xs">
@@ -1429,6 +1449,210 @@ export default function RepaymentsPage() {
                     Apply Prepayment
                   </Button>
                 </div>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {/* What-If Scenarios Modal */}
+        {whatIfModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <Card className="p-6 border-0 shadow-2xl bg-white dark:bg-slate-800">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+                      <Calculator className="w-6 h-6 text-purple-600" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
+                      What-If Scenarios
+                    </h3>
+                  </div>
+                  <Button
+                    onClick={() => setWhatIfModal(false)}
+                    variant="outline"
+                    size="sm"
+                  >
+                    ✕
+                  </Button>
+                </div>
+                
+                <p className="text-slate-600 dark:text-slate-400 mb-6">
+                  Test different repayment strategies and see the impact on your entire portfolio
+                </p>
+                
+                {liabilities.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-slate-600 dark:text-slate-400">
+                      Add some liabilities to see scenario calculations
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-6">
+                    {/* Input Controls */}
+                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-700">
+                      <h4 className="font-semibold text-slate-900 dark:text-white mb-4">
+                        Scenario Inputs
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            Amount (₹)
+                          </Label>
+                          <Input
+                            type="number"
+                            value={whatIfInputs.extraAmount}
+                            onChange={(e) => setWhatIfInputs({...whatIfInputs, extraAmount: Number(e.target.value)})}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            Frequency
+                          </Label>
+                          <select
+                            value={whatIfInputs.frequency}
+                            onChange={(e) => setWhatIfInputs({...whatIfInputs, frequency: e.target.value})}
+                            className="w-full mt-1 p-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                          >
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly</option>
+                            <option value="yearly">Yearly</option>
+                            <option value="lump_sum">Lump Sum</option>
+                          </select>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            Strategy
+                          </Label>
+                          <select
+                            value={whatIfInputs.strategy}
+                            onChange={(e) => setWhatIfInputs({...whatIfInputs, strategy: e.target.value})}
+                            className="w-full mt-1 p-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                          >
+                            <option value="avalanche">Avalanche (High Interest First)</option>
+                            <option value="snowball">Snowball (Small Balance First)</option>
+                            <option value="hybrid">Smart Hybrid</option>
+                            <option value="risk">Risk First</option>
+                            <option value="all">Compare All Strategies</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Results */}
+                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                      <h4 className="font-semibold text-slate-900 dark:text-white mb-4">
+                        Portfolio Impact Analysis
+                      </h4>
+                      {(() => {
+                        if (whatIfInputs.strategy === 'all') {
+                          // Show comparison of all strategies
+                          return (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                              {Object.entries(strategies).map(([strategyKey, strategyLoans]) => {
+                                const scenario = calculatePortfolioScenario(whatIfInputs.extraAmount, whatIfInputs.frequency, strategyKey);
+                                const strategyNames = {
+                                  avalanche: 'Avalanche',
+                                  snowball: 'Snowball', 
+                                  hybrid: 'Smart Hybrid',
+                                  risk: 'Risk First'
+                                };
+                                
+                                return (
+                                  <div key={strategyKey} className="p-4 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                                    <h5 className="font-semibold text-slate-900 dark:text-white mb-3">
+                                      {strategyNames[strategyKey as keyof typeof strategyNames]}
+                                    </h5>
+                                    <div className="space-y-2 text-sm">
+                                      <div className="flex justify-between">
+                                        <span className="text-slate-600 dark:text-slate-400">Interest Saved:</span>
+                                        <span className="font-semibold text-green-600">
+                                          ₹{scenario.totalInterestSaved.toLocaleString()}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-slate-600 dark:text-slate-400">Months Saved:</span>
+                                        <span className="font-semibold text-blue-600">
+                                          {scenario.totalMonthsSaved} months
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-slate-600 dark:text-slate-400">Loans Affected:</span>
+                                        <span className="font-semibold text-slate-900 dark:text-white">
+                                          {scenario.loansAffected}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        } else {
+                          // Show single strategy results
+                          const scenario = calculatePortfolioScenario(whatIfInputs.extraAmount, whatIfInputs.frequency, whatIfInputs.strategy);
+                          return (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div className="p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-lg">
+                                <h5 className="font-semibold text-green-800 dark:text-green-400 mb-3">
+                                  Total Savings
+                                </h5>
+                                <div className="space-y-2 text-sm">
+                                  <div className="flex justify-between">
+                                    <span className="text-green-700 dark:text-green-300">Interest Saved:</span>
+                                    <span className="font-semibold text-green-800 dark:text-green-400">
+                                      ₹{scenario.totalInterestSaved.toLocaleString()}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-green-700 dark:text-green-300">Months Saved:</span>
+                                    <span className="font-semibold text-green-800 dark:text-green-400">
+                                      {scenario.totalMonthsSaved} months
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-green-700 dark:text-green-300">Total Savings:</span>
+                                    <span className="font-semibold text-green-800 dark:text-green-400">
+                                      ₹{scenario.totalSavings.toLocaleString()}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg">
+                                <h5 className="font-semibold text-blue-800 dark:text-blue-400 mb-3">
+                                  Strategy Details
+                                </h5>
+                                <div className="space-y-2 text-sm">
+                                  <div className="flex justify-between">
+                                    <span className="text-blue-700 dark:text-blue-300">Strategy Used:</span>
+                                    <span className="font-semibold text-blue-800 dark:text-blue-400">
+                                      {scenario.strategyUsed.charAt(0).toUpperCase() + scenario.strategyUsed.slice(1)}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-blue-700 dark:text-blue-300">Loans Affected:</span>
+                                    <span className="font-semibold text-blue-800 dark:text-blue-400">
+                                      {scenario.loansAffected}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-blue-700 dark:text-blue-300">Payment Type:</span>
+                                    <span className="font-semibold text-blue-800 dark:text-blue-400">
+                                      {whatIfInputs.frequency === 'lump_sum' ? 'Lump Sum' : 
+                                       whatIfInputs.frequency.charAt(0).toUpperCase() + whatIfInputs.frequency.slice(1)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+                      })()}
+                    </div>
+                  </div>
+                )}
               </Card>
             </div>
           </div>
