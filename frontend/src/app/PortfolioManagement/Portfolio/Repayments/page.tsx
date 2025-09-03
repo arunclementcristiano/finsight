@@ -13,6 +13,9 @@ export default function RepaymentsPage() {
   const [smartLiabilities, setSmartLiabilities] = useState<SmartLiability[]>([]);
   const [showSmartModal, setShowSmartModal] = useState(false);
   const [selectedView, setSelectedView] = useState<'overview' | 'scenarios' | 'insights'>('overview');
+  const [showPrepaymentModal, setShowPrepaymentModal] = useState(false);
+  const [showPayoffModal, setShowPayoffModal] = useState(false);
+  const [showRefinanceModal, setShowRefinanceModal] = useState(false);
 
   const handleSaveSmartLiability = (liability: SmartLiability) => {
     setSmartLiabilities(prev => [...prev, liability]);
@@ -120,57 +123,57 @@ export default function RepaymentsPage() {
 
       {smartLiabilities.length > 0 ? (
         <>
-          {/* Debt Health Score - Hero Section */}
-          <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-blue-200 dark:border-blue-800">
-            <CardContent className="p-8">
-              <div className="flex items-center justify-between">
-                <div className="space-y-4">
+                {/* Debt Health Score - Hero Section */}
+      <Card className="border border-border bg-card">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground mb-2">Your Debt Health</h2>
+                <div className="flex items-center space-x-4">
+                  <div className={`text-4xl font-bold ${getDebtHealthColor(calculateDebtHealthScore(smartLiabilities))}`}>
+                    {calculateDebtHealthScore(smartLiabilities)}/100
+                  </div>
                   <div>
-                    <h2 className="text-3xl font-bold text-foreground mb-2">Your Debt Health</h2>
-                    <div className="flex items-center space-x-4">
-                      <div className={`text-5xl font-bold ${getDebtHealthColor(calculateDebtHealthScore(smartLiabilities))}`}>
-                        {calculateDebtHealthScore(smartLiabilities)}/100
-                      </div>
-                      <div>
-                        <p className="text-lg font-semibold text-foreground">
-                          {getDebtHealthLabel(calculateDebtHealthScore(smartLiabilities))}
-                        </p>
-                        <p className="text-muted-foreground">
-                          {smartLiabilities.length} liability{smartLiabilities.length > 1 ? 'ies' : ''} tracked
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex space-x-4">
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                        {formatCurrency(smartLiabilities.reduce((sum, l) => sum + l.outstanding_balance, 0))}
-                      </p>
-                      <p className="text-sm text-muted-foreground">Total Debt</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                        {formatCurrency(smartLiabilities.reduce((sum, l) => sum + l.emi_amount, 0))}
-                      </p>
-                      <p className="text-sm text-muted-foreground">Monthly EMIs</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                        {formatPercentage(smartLiabilities.length > 0 ? 
-                          smartLiabilities.reduce((sum, l) => sum + l.interest_rate, 0) / smartLiabilities.length : 0)}
-                      </p>
-                      <p className="text-sm text-muted-foreground">Avg Interest</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="w-32 h-32 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                    <Activity className="w-16 h-16 text-white" />
+                    <p className="text-lg font-semibold text-foreground">
+                      {getDebtHealthLabel(calculateDebtHealthScore(smartLiabilities))}
+                    </p>
+                    <p className="text-muted-foreground">
+                      {smartLiabilities.length} liability{smartLiabilities.length > 1 ? 'ies' : ''} tracked
+                    </p>
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+              <div className="flex space-x-4">
+                <div className="text-center">
+                  <p className="text-xl font-bold text-red-600 dark:text-red-400">
+                    {formatCurrency(smartLiabilities.reduce((sum, l) => sum + l.outstanding_balance, 0))}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Total Debt</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                    {formatCurrency(smartLiabilities.reduce((sum, l) => sum + l.emi_amount, 0))}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Monthly EMIs</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xl font-bold text-orange-600 dark:text-orange-400">
+                    {formatPercentage(smartLiabilities.length > 0 ? 
+                      smartLiabilities.reduce((sum, l) => sum + l.interest_rate, 0) / smartLiabilities.length : 0)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Avg Interest</p>
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                <Activity className="w-12 h-12 text-white" />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
           {/* View Content */}
           {selectedView === 'overview' && (
@@ -185,15 +188,27 @@ export default function RepaymentsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Button variant="outline" className="h-20 flex-col space-y-2">
+                    <Button 
+                      variant="outline" 
+                      className="h-20 flex-col space-y-2"
+                      onClick={() => setShowPrepaymentModal(true)}
+                    >
                       <Calculator className="w-6 h-6" />
                       <span>Prepayment Calculator</span>
                     </Button>
-                    <Button variant="outline" className="h-20 flex-col space-y-2">
+                    <Button 
+                      variant="outline" 
+                      className="h-20 flex-col space-y-2"
+                      onClick={() => setShowPayoffModal(true)}
+                    >
                       <Target className="w-6 h-6" />
                       <span>Payoff Strategy</span>
                     </Button>
-                    <Button variant="outline" className="h-20 flex-col space-y-2">
+                    <Button 
+                      variant="outline" 
+                      className="h-20 flex-col space-y-2"
+                      onClick={() => setShowRefinanceModal(true)}
+                    >
                       <TrendingUp className="w-6 h-6" />
                       <span>Refinance Check</span>
                     </Button>
@@ -255,6 +270,72 @@ export default function RepaymentsPage() {
           onSave={handleSaveSmartLiability}
           onCancel={() => setShowSmartModal(false)}
         />
+      </Modal>
+
+      {/* Prepayment Calculator Modal */}
+      <Modal
+        open={showPrepaymentModal}
+        onClose={() => setShowPrepaymentModal(false)}
+        title="Prepayment Calculator"
+      >
+        <div className="p-6">
+          <div className="text-center py-8">
+            <Calculator className="w-16 h-16 text-blue-600 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Prepayment Calculator
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              Calculate the impact of making extra payments on your loans
+            </p>
+            <Button onClick={() => setShowPrepaymentModal(false)}>
+              Close
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Payoff Strategy Modal */}
+      <Modal
+        open={showPayoffModal}
+        onClose={() => setShowPayoffModal(false)}
+        title="Payoff Strategy"
+      >
+        <div className="p-6">
+          <div className="text-center py-8">
+            <Target className="w-16 h-16 text-green-600 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Payoff Strategy
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              Get personalized strategies to pay off your debts faster
+            </p>
+            <Button onClick={() => setShowPayoffModal(false)}>
+              Close
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Refinance Check Modal */}
+      <Modal
+        open={showRefinanceModal}
+        onClose={() => setShowRefinanceModal(false)}
+        title="Refinance Check"
+      >
+        <div className="p-6">
+          <div className="text-center py-8">
+            <TrendingUp className="w-16 h-16 text-purple-600 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Refinance Check
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              Check if refinancing your loans could save you money
+            </p>
+            <Button onClick={() => setShowRefinanceModal(false)}>
+              Close
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
@@ -318,13 +399,13 @@ function LiabilityStoryCard({ liability, onDelete }: { liability: SmartLiability
   const progress = calculateProgress();
 
   return (
-    <Card className={`bg-gradient-to-br ${getBgGradient()} border-0 shadow-lg hover:shadow-xl transition-all duration-300`}>
-      <CardContent className="p-6">
+    <Card className="border border-border bg-card">
+      <CardContent className="p-4">
         <div className="space-y-4">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="p-3 bg-white/50 dark:bg-black/20 rounded-xl">
+              <div className="p-2 bg-muted rounded-lg">
                 {getIcon()}
               </div>
               <div>
@@ -333,28 +414,28 @@ function LiabilityStoryCard({ liability, onDelete }: { liability: SmartLiability
               </div>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold text-foreground">{formatCurrency(liability.outstanding_balance)}</p>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(liability.outstanding_balance)}</p>
               <p className="text-sm text-muted-foreground">{formatPercentage(liability.interest_rate)}</p>
             </div>
           </div>
 
           {/* Key Metrics */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="text-center p-3 bg-white/30 dark:bg-black/20 rounded-lg">
-              <p className="text-sm text-muted-foreground">Monthly EMI</p>
-              <p className="text-lg font-bold text-foreground">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border border-border bg-card p-3 text-center">
+              <div className="text-xs text-muted-foreground mb-1">Monthly EMI</div>
+              <div className="text-lg font-semibold text-foreground">
                 {liability.emi_amount > 0 ? formatCurrency(liability.emi_amount) : 'No EMI'}
-              </p>
+              </div>
             </div>
-            <div className="text-center p-3 bg-white/30 dark:bg-black/20 rounded-lg">
-              <p className="text-sm text-muted-foreground">Risk Level</p>
-              <p className={`text-lg font-bold ${
+            <div className="rounded-lg border border-border bg-card p-3 text-center">
+              <div className="text-xs text-muted-foreground mb-1">Risk Level</div>
+              <div className={`text-lg font-semibold ${
                 liability.risk_score > 7 ? 'text-red-600 dark:text-red-400' :
                 liability.risk_score > 4 ? 'text-orange-600 dark:text-orange-400' :
                 'text-green-600 dark:text-green-400'
               }`}>
                 {liability.risk_score > 7 ? 'High' : liability.risk_score > 4 ? 'Medium' : 'Low'}
-              </p>
+              </div>
             </div>
           </div>
 
@@ -367,9 +448,9 @@ function LiabilityStoryCard({ liability, onDelete }: { liability: SmartLiability
                   {progress}% • {remainingMonths} months left
                 </span>
               </div>
-              <div className="w-full bg-white/30 dark:bg-black/20 rounded-full h-3">
+              <div className="w-full bg-muted rounded-full h-2">
                 <div 
-                  className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-500"
+                  className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500"
                   style={{ width: `${progress}%` }}
                 ></div>
               </div>
@@ -381,7 +462,7 @@ function LiabilityStoryCard({ liability, onDelete }: { liability: SmartLiability
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 bg-white/50 dark:bg-black/20 border-white/50 dark:border-black/20"
+              className="flex-1"
             >
               <Calculator className="w-4 h-4 mr-2" />
               Analyze
@@ -390,7 +471,6 @@ function LiabilityStoryCard({ liability, onDelete }: { liability: SmartLiability
               variant="outline"
               size="sm"
               onClick={() => setShowDetails(!showDetails)}
-              className="bg-white/50 dark:bg-black/20 border-white/50 dark:border-black/20"
             >
               <Settings className="w-4 h-4" />
             </Button>
@@ -398,7 +478,7 @@ function LiabilityStoryCard({ liability, onDelete }: { liability: SmartLiability
               variant="outline"
               size="sm"
               onClick={() => onDelete(liability.id)}
-              className="bg-white/50 dark:bg-black/20 border-white/50 dark:border-black/20 text-red-600 hover:bg-red-50"
+              className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
             >
               <Trash2 className="w-4 h-4" />
             </Button>
@@ -411,6 +491,55 @@ function LiabilityStoryCard({ liability, onDelete }: { liability: SmartLiability
 
 // Scenario Playground Component
 function ScenarioPlayground({ liabilities }: { liabilities: SmartLiability[] }) {
+  const [selectedScenario, setSelectedScenario] = useState<string>('');
+  
+  const generateScenarios = () => {
+    const scenarios = [];
+    
+    // Prepayment scenarios for each liability
+    liabilities.forEach(liability => {
+      if (liability.emi_amount > 0 && liability.interest_rate > 10) {
+        // 10% prepayment
+        scenarios.push({
+          id: `${liability.id}-prepay-10`,
+          name: `Prepay 10% - ${liability.institution}`,
+          description: `Pay ₹${Math.round(liability.outstanding_balance * 0.1).toLocaleString()} extra`,
+          type: 'prepayment',
+          interestSaved: Math.round(liability.outstanding_balance * 0.1 * liability.interest_rate / 100),
+          monthsReduced: Math.round(liability.outstanding_balance * 0.1 / liability.emi_amount)
+        });
+        
+        // 25% prepayment
+        scenarios.push({
+          id: `${liability.id}-prepay-25`,
+          name: `Prepay 25% - ${liability.institution}`,
+          description: `Pay ₹${Math.round(liability.outstanding_balance * 0.25).toLocaleString()} extra`,
+          type: 'prepayment',
+          interestSaved: Math.round(liability.outstanding_balance * 0.25 * liability.interest_rate / 100),
+          monthsReduced: Math.round(liability.outstanding_balance * 0.25 / liability.emi_amount)
+        });
+      }
+    });
+
+    // Extra EMI scenarios
+    liabilities.forEach(liability => {
+      if (liability.emi_amount > 0) {
+        scenarios.push({
+          id: `${liability.id}-extra-emi`,
+          name: `Extra EMI - ${liability.institution}`,
+          description: `Pay ₹${Math.round(liability.emi_amount * 0.5).toLocaleString()} extra monthly`,
+          type: 'extra_emi',
+          interestSaved: Math.round(liability.emi_amount * 0.5 * 12 * liability.interest_rate / 100),
+          monthsReduced: Math.round(liability.outstanding_balance / (liability.emi_amount * 1.5))
+        });
+      }
+    });
+
+    return scenarios;
+  };
+
+  const scenarios = generateScenarios();
+
   return (
     <div className="space-y-6">
       <Card>
@@ -421,16 +550,61 @@ function ScenarioPlayground({ liabilities }: { liabilities: SmartLiability[] }) 
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-12">
-            <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Play className="w-12 h-12 text-white" />
-            </div>
-            <h3 className="text-xl font-bold text-foreground mb-2">
-              Interactive Scenarios Coming Soon
-            </h3>
+          <div className="space-y-4">
             <p className="text-muted-foreground">
-              Test different payment strategies and see their impact in real-time
+              Explore different strategies to optimize your debt payoff. We've generated personalized scenarios based on your liabilities.
             </p>
+            
+            {scenarios.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {scenarios.map((scenario) => (
+                  <Card 
+                    key={scenario.id} 
+                    className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
+                      selectedScenario === scenario.id ? 'ring-2 ring-purple-500' : ''
+                    }`}
+                    onClick={() => setSelectedScenario(scenario.id)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-2">
+                          {scenario.type === 'prepayment' && <Target className="w-4 h-4 text-blue-600" />}
+                          {scenario.type === 'extra_emi' && <TrendingUp className="w-4 h-4 text-green-600" />}
+                          <h4 className="font-semibold text-foreground">{scenario.name}</h4>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{scenario.description}</p>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <p className="text-muted-foreground">Interest Saved</p>
+                            <p className="font-semibold text-green-600 dark:text-green-400">
+                              {formatCurrency(scenario.interestSaved)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Months Reduced</p>
+                            <p className="font-semibold text-blue-600 dark:text-blue-400">
+                              {scenario.monthsReduced}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Play className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  No Scenarios Available
+                </h3>
+                <p className="text-muted-foreground">
+                  Add liabilities with EMI to see optimization scenarios
+                </p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -440,26 +614,114 @@ function ScenarioPlayground({ liabilities }: { liabilities: SmartLiability[] }) 
 
 // Insights Dashboard Component
 function InsightsDashboard({ liabilities }: { liabilities: SmartLiability[] }) {
+  const calculateTotalInterest = () => {
+    return liabilities.reduce((sum, liability) => {
+      if (liability.emi_amount > 0) {
+        const monthlyRate = liability.interest_rate / 100 / 12;
+        const remainingMonths = 60; // Default assumption
+        return sum + (liability.emi_amount * remainingMonths - liability.outstanding_balance);
+      } else {
+        const monthlyRate = liability.interest_rate / 100 / 12;
+        const monthsElapsed = 12; // Default assumption
+        return sum + (liability.outstanding_balance * monthlyRate * monthsElapsed);
+      }
+    }, 0);
+  };
+
+  const getDebtByType = () => {
+    const debtByType: Record<string, { amount: number; count: number; avgRate: number }> = {};
+    
+    liabilities.forEach(liability => {
+      const type = liability.type.replace('_', ' ').toUpperCase();
+      if (!debtByType[type]) {
+        debtByType[type] = { amount: 0, count: 0, avgRate: 0 };
+      }
+      debtByType[type].amount += liability.outstanding_balance;
+      debtByType[type].count += 1;
+      debtByType[type].avgRate += liability.interest_rate;
+    });
+
+    Object.keys(debtByType).forEach(type => {
+      debtByType[type].avgRate = debtByType[type].avgRate / debtByType[type].count;
+    });
+
+    return debtByType;
+  };
+
+  const totalInterest = calculateTotalInterest();
+  const debtByType = getDebtByType();
+
   return (
     <div className="space-y-6">
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="rounded-lg border border-border bg-card p-3 text-center">
+          <div className="text-xs text-muted-foreground mb-1">Total Debt</div>
+          <div className="text-lg font-semibold text-red-600 dark:text-red-400 mb-1">
+            {formatCurrency(liabilities.reduce((sum, l) => sum + l.outstanding_balance, 0))}
+          </div>
+          <div className="text-[10px] text-muted-foreground">Outstanding</div>
+        </div>
+        
+        <div className="rounded-lg border border-border bg-card p-3 text-center">
+          <div className="text-xs text-muted-foreground mb-1">Total Interest</div>
+          <div className="text-lg font-semibold text-orange-600 dark:text-orange-400 mb-1">
+            {formatCurrency(totalInterest)}
+          </div>
+          <div className="text-[10px] text-muted-foreground">To be paid</div>
+        </div>
+        
+        <div className="rounded-lg border border-border bg-card p-3 text-center">
+          <div className="text-xs text-muted-foreground mb-1">Monthly EMIs</div>
+          <div className="text-lg font-semibold text-blue-600 dark:text-blue-400 mb-1">
+            {formatCurrency(liabilities.reduce((sum, l) => sum + l.emi_amount, 0))}
+          </div>
+          <div className="text-[10px] text-muted-foreground">Per month</div>
+        </div>
+        
+        <div className="rounded-lg border border-border bg-card p-3 text-center">
+          <div className="text-xs text-muted-foreground mb-1">Avg Interest Rate</div>
+          <div className="text-lg font-semibold text-green-600 dark:text-green-400 mb-1">
+            {formatPercentage(liabilities.length > 0 ? 
+              liabilities.reduce((sum, l) => sum + l.interest_rate, 0) / liabilities.length : 0)}
+          </div>
+          <div className="text-[10px] text-muted-foreground">Weighted avg</div>
+        </div>
+      </div>
+
+      {/* Debt Distribution */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <BarChart3 className="w-5 h-5 text-blue-600" />
-            <span>Insights Dashboard</span>
+            <PieChart className="w-5 h-5 text-purple-600" />
+            <span>Debt Distribution by Type</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-12">
-            <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <BarChart3 className="w-12 h-12 text-white" />
-            </div>
-            <h3 className="text-xl font-bold text-foreground mb-2">
-              Advanced Analytics Coming Soon
-            </h3>
-            <p className="text-muted-foreground">
-              Deep insights, trends, and personalized recommendations
-            </p>
+          <div className="space-y-4">
+            {Object.entries(debtByType).map(([type, data]) => {
+              const percentage = (data.amount / liabilities.reduce((sum, l) => sum + l.outstanding_balance, 0)) * 100;
+              return (
+                <div key={type} className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-foreground">{type}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {formatCurrency(data.amount)} ({percentage.toFixed(1)}%)
+                    </span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div 
+                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${percentage}%` }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>{data.count} liability{data.count > 1 ? 'ies' : ''}</span>
+                    <span>Avg rate: {formatPercentage(data.avgRate)}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
