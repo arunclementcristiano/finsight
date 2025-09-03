@@ -414,3 +414,91 @@ output "asset_class_mapping_table_name" {
 output "stock_companies_table_name" {
   value = aws_dynamodb_table.stock_companies.name
 }
+
+# Repayments table
+resource "aws_dynamodb_table" "repayments" {
+  name           = "Repayments"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "user_id"
+  range_key      = "repayment_id"
+
+  attribute {
+    name = "user_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "repayment_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "type"
+    type = "S"
+  }
+
+  attribute {
+    name = "status"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "TypeIndex"
+    hash_key        = "type"
+    projection_type = "ALL"
+  }
+
+  global_secondary_index {
+    name            = "StatusIndex"
+    hash_key        = "status"
+    projection_type = "ALL"
+  }
+
+  tags = {
+    Name        = "Repayments"
+    Environment = "production"
+  }
+}
+
+# Repayment History table
+resource "aws_dynamodb_table" "repayment_history" {
+  name           = "RepaymentHistory"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "user_id"
+  range_key      = "repayment_id"
+
+  attribute {
+    name = "user_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "repayment_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "history_id"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "RepaymentHistoryIndex"
+    hash_key        = "repayment_id"
+    range_key       = "history_id"
+    projection_type = "ALL"
+  }
+
+  tags = {
+    Name        = "RepaymentHistory"
+    Environment = "production"
+  }
+}
+
+output "repayments_table_name" {
+  value = aws_dynamodb_table.repayments.name
+}
+
+output "repayment_history_table_name" {
+  value = aws_dynamodb_table.repayment_history.name
+}
