@@ -164,17 +164,17 @@ export default function PrepaymentCalculator({ repayment, onClose }: PrepaymentC
     }
 
     try {
-      // TODO: Implement actual prepayment processing via API
-      console.log('Processing prepayment:', {
-        repayment_id: repayment.repayment_id,
+      // Import the addPrepayment function
+      const { addPrepayment } = await import('@/lib/repayments');
+      
+      await addPrepayment(repayment.repayment_id, {
         amount: parseFloat(prepaymentAmount),
+        payment_date: new Date().toISOString(),
         type: prepaymentType,
-        extra_months: prepaymentType === 'extra_emi' ? parseInt(extraEMIMonths) : undefined,
-        result: result
+        extra_months: prepaymentType === 'extra_emi' ? parseInt(extraEMIMonths) : undefined
       });
       
-      // For now, just show success message
-      alert('Prepayment processed successfully! (This is a demo - actual API integration pending)');
+      alert('Prepayment processed successfully!');
       onClose(); // Close the modal after successful processing
     } catch (error) {
       console.error('Error processing prepayment:', error);

@@ -78,53 +78,12 @@ export default function RepaymentsPage() {
       setSummary(data);
     } catch (error) {
       console.error('Error loading repayments:', error);
-      // Temporary mock data until API is deployed
-      console.log('Using temporary mock data - API deployment pending');
+      // Show empty state when API fails
       setSummary({
-        total_outstanding: 2500000,
-        total_emi: 45000,
-        total_repayments: 3,
-        repayments: [
-          {
-            repayment_id: '1',
-            type: 'home_loan',
-            institution: 'HDFC Bank',
-            principal: 2000000,
-            interest_rate: 8.5,
-            emi_amount: 25000,
-            tenure_months: 120,
-            outstanding_balance: 1800000,
-            start_date: '2023-01-01',
-            due_date: '2024-01-15',
-            status: 'active'
-          },
-          {
-            repayment_id: '2',
-            type: 'car_loan',
-            institution: 'ICICI Bank',
-            principal: 800000,
-            interest_rate: 9.2,
-            emi_amount: 15000,
-            tenure_months: 60,
-            outstanding_balance: 600000,
-            start_date: '2023-06-01',
-            due_date: '2024-01-10',
-            status: 'active'
-          },
-          {
-            repayment_id: '3',
-            type: 'credit_card',
-            institution: 'SBI Card',
-            principal: 100000,
-            interest_rate: 24.0,
-            emi_amount: 5000,
-            tenure_months: 24,
-            outstanding_balance: 100000,
-            start_date: '2023-12-01',
-            due_date: '2024-01-05',
-            status: 'active'
-          }
-        ]
+        total_outstanding: 0,
+        total_emi: 0,
+        total_repayments: 0,
+        repayments: []
       });
     } finally {
       setLoading(false);
@@ -143,12 +102,7 @@ export default function RepaymentsPage() {
       loadRepayments(); // Refresh the list
     } catch (error) {
       console.error('Error saving repayment:', error);
-      // Temporary mock success until API is deployed
-      console.log('Mock: Repayment added successfully');
-      alert('Repayment added successfully! (Demo mode - API deployment pending)');
-      setShowAddModal(false);
-      setSelectedType('');
-      loadRepayments(); // Refresh the list
+      alert('Error saving repayment. Please try again.');
     }
   };
 
@@ -174,21 +128,6 @@ export default function RepaymentsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Demo Mode Banner */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-        <div className="flex items-center space-x-2">
-          <AlertTriangle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-          <div>
-            <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-              Demo Mode
-            </p>
-            <p className="text-xs text-blue-600 dark:text-blue-400">
-              Repayments API is not deployed yet. Showing sample data. Deploy Terraform to enable full functionality.
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
