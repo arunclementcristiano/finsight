@@ -28,10 +28,11 @@ export default function RootLayout({
 	// Global nav (max 6)
 	const navItems = [
 		{ name: "Dashboard", href: "/PortfolioManagement/Dashboard" },
-		{ name: "Portfolio", href: "/PortfolioManagement/Portfolio/Plan" },
+		{ name: "Plan", href: "/PortfolioManagement/Plan" },
+		{ name: "Portfolio", href: "/PortfolioManagement/Portfolio/Holdings" },
 		{ name: "Expenses", href: "/ExpenseTracker" },
-		{ name: "Reports & Insights", href: "/PortfolioManagement/Insights" },
-		{ name: "Settings / Profile", href: "/PortfolioManagement/Settings" },
+		{ name: "Reports", href: "/PortfolioManagement/Insights" },
+		{ name: "Settings", href: "/PortfolioManagement/Settings" },
 	];
 	return (
 		<html lang="en" suppressHydrationWarning>

@@ -123,7 +123,7 @@ export default function Questionnaire() {
 					if (pid) (useApp.getState() as any).setActivePortfolio(pid);
 				}
 				
-				router.push("/PortfolioManagement/Portfolio/Plan");
+				router.push("/PortfolioManagement/Plan");
 			} catch (error) {
 				console.error("Error building plan:", error);
 				alert("Error generating allocation plan. Please try again.");
