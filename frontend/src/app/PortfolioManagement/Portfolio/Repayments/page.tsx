@@ -1,281 +1,186 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/Card';
-import { Button } from '../../../components/Button';
-import { Input } from '../../../components/Input';
-import { Label } from '../../../components/Label';
-import { Badge } from '../../../components/Badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Modal } from '@/components/ui/modal';
 import { 
-  Plus, 
-  Calculator, 
+  DollarSign, 
+  Clock, 
   TrendingUp, 
   Target, 
-  Clock, 
-  DollarSign,
+  Plus, 
+  Zap, 
+  TrendingDown,
+  Coins,
+  Star,
+  Shield,
   CreditCard,
   Home,
   Car,
   GraduationCap,
-  Gem,
-  FileText,
-  Zap,
-  CheckCircle,
-  AlertCircle,
-  Info,
-  BarChart3,
-  PieChart,
-  Lightbulb,
-  ArrowRight,
-  Star,
-  Shield,
-  Rocket,
-  Coins,
-  Banknote,
-  TrendingDown,
-  Eye,
-  Settings,
-  RefreshCw
+  Briefcase
 } from 'lucide-react';
-import { LoanEngine, UltraSimpleLiabilityInput, EnhancedLoanStatus, LoanCategory } from '../../domain/Repaymentadvisor/repaymentEngine';
-import { fetchRepayments, createRepayment, Repayment, RepaymentFormData } from '../../../../lib/repayments';
+import { LoanEngine, EnhancedLoanStatus } from '../domain/Repaymentadvisor/repaymentEngine';
+import { fetchRepayments, createRepayment } from '@/lib/repayments';
+import { Repayment } from '@/lib/repayments';
 
-// Modern Loan Type Icons
-const loanIcons: Record<LoanCategory, React.ReactNode> = {
-  home_loan: <Home className="w-5 h-5" />,
-  car_loan: <Car className="w-5 h-5" />,
-  personal_loan: <FileText className="w-5 h-5" />,
-  credit_card: <CreditCard className="w-5 h-5" />,
-  gold_loan: <Gem className="w-5 h-5" />,
-  education_loan: <GraduationCap className="w-5 h-5" />,
-  other: <FileText className="w-5 h-5" />
+// Loan type configurations
+const loanIcons: Record<string, React.ReactNode> = {
+  personal_loan: <Briefcase className="w-4 h-4" />,
+  home_loan: <Home className="w-4 h-4" />,
+  car_loan: <Car className="w-4 h-4" />,
+  education_loan: <GraduationCap className="w-4 h-4" />,
+  credit_card: <CreditCard className="w-4 h-4" />,
+  gold_loan: <DollarSign className="w-4 h-4" />,
+  generic_loan: <DollarSign className="w-4 h-4" />
 };
 
-const loanColors: Record<LoanCategory, string> = {
-  home_loan: 'bg-blue-500',
-  car_loan: 'bg-green-500',
-  personal_loan: 'bg-purple-500',
+const loanColors: Record<string, string> = {
+  personal_loan: 'bg-blue-500',
+  home_loan: 'bg-green-500',
+  car_loan: 'bg-purple-500',
+  education_loan: 'bg-orange-500',
   credit_card: 'bg-red-500',
   gold_loan: 'bg-yellow-500',
-  education_loan: 'bg-indigo-500',
-  other: 'bg-gray-500'
+  generic_loan: 'bg-gray-500'
 };
+
+interface UltraSimpleLiabilityInput {
+  type: string;
+  original_amount: number;
+  interest_rate: number;
+  tenure_months: number;
+  start_date: string;
+  current_outstanding?: number;
+  months_elapsed?: number;
+}
 
 export default function RepaymentsPage() {
   const [liabilities, setLiabilities] = useState<EnhancedLoanStatus[]>([]);
   const [dbRepayments, setDbRepayments] = useState<Repayment[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [loading, setLoading] = useState(true);
   const [showOptimizeModal, setShowOptimizeModal] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [engine] = useState(new LoanEngine());
 
   // Quick Add Form State
   const [formData, setFormData] = useState<Partial<UltraSimpleLiabilityInput>>({
     type: 'personal_loan',
     interest_rate: 12,
-    institution: '',
+    tenure_months: 60,
     start_date: new Date().toISOString().split('T')[0],
     original_amount: 0,
-    tenure_months: undefined
+    current_outstanding: 0,
+    months_elapsed: 0
   });
 
-  // Load repayments from database on component mount
+  // Load data on component mount
   useEffect(() => {
-    const loadRepayments = async () => {
-      try {
-        setLoading(true);
-        const summary = await fetchRepayments();
-        setDbRepayments(summary.repayments);
-        
-        // Convert DB repayments to engine format and calculate
-        const calculatedLiabilities = summary.repayments.map(repayment => {
-          try {
-            const input: UltraSimpleLiabilityInput = {
-              type: repayment.type as LoanCategory,
-              interest_rate: repayment.interest_rate || 12, // Default to 12% if missing
-              institution: repayment.institution || 'Unknown',
-              start_date: repayment.start_date || new Date().toISOString().split('T')[0],
-              original_amount: repayment.principal || 0,
-              tenure_months: repayment.tenure_months || undefined
-            };
-            return engine.calculateEverything(input);
-          } catch (error) {
-            console.error('Error calculating liability for repayment:', repayment, error);
-            // Return a fallback liability with basic info
-            return {
-              loanType: 'generic' as const,
-              loanCategory: repayment.type as LoanCategory,
-              originalAmount: repayment.principal || 0,
-              interest_rate: repayment.interest_rate || 12,
-              emi: repayment.emi_amount || 0,
-              outstandingBalance: repayment.outstanding_balance || repayment.principal || 0,
-              monthsElapsed: 0,
-              remainingMonths: repayment.tenure_months || 0,
-              monthlyInterestAccrual: 0,
-              explanation: `Error calculating loan details for ${repayment.type}. Please check the data.`
-            };
-          }
-        });
-        
-        setLiabilities(calculatedLiabilities);
-      } catch (error) {
-        console.error('Error loading repayments:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    loadData();
+  }, []);
 
-    loadRepayments();
-  }, [engine]);
-
-  const addLiability = async () => {
-    if (!formData.type || !formData.institution || !formData.original_amount) return;
-    
+  const loadData = async () => {
     try {
-      // Calculate EMI using the engine first
-      const input: UltraSimpleLiabilityInput = {
-        type: formData.type as LoanCategory,
-        interest_rate: formData.interest_rate || 12,
-        institution: formData.institution,
-        start_date: formData.start_date || new Date().toISOString().split('T')[0],
-        original_amount: formData.original_amount,
-        tenure_months: formData.tenure_months
-      };
-
-      const result = engine.calculateEverything(input);
+      setLoading(true);
+      const repayments = await fetchRepayments();
+      setDbRepayments(repayments);
       
-      // Save to database
-      const repaymentData: RepaymentFormData = {
-        type: formData.type as string,
-        institution: formData.institution,
-        principal: formData.original_amount,
-        interest_rate: formData.interest_rate || 12,
-        emi_amount: result.emi || 0,
-        tenure_months: formData.tenure_months || 0, // 0 means no fixed tenure (like credit cards)
-        start_date: formData.start_date || new Date().toISOString().split('T')[0],
-        due_date: new Date().toISOString().split('T')[0]
-      };
-
-      await createRepayment(repaymentData);
+      // Convert DB repayments to engine format and calculate
+      const enhancedLoans: EnhancedLoanStatus[] = [];
       
-      // Update local state
-      setLiabilities([...liabilities, result]);
-      setShowAddForm(false);
-      resetForm();
+      for (const repayment of repayments) {
+        try {
+          const input = {
+            type: repayment.type,
+            original_amount: repayment.principal,
+            interest_rate: repayment.interest_rate || 12, // Default to 12% if missing
+            tenure_months: repayment.tenure_months,
+            start_date: repayment.start_date,
+            current_outstanding: repayment.current_outstanding,
+            months_elapsed: repayment.months_elapsed || 0
+          };
+          
+          const result = engine.calculateEverything(input);
+          enhancedLoans.push(result);
+        } catch (error) {
+          console.error('Error calculating loan:', error);
+          // Create a fallback loan status
+          enhancedLoans.push({
+            loanType: repayment.type,
+            loanCategory: repayment.type,
+            originalAmount: repayment.principal,
+            outstandingBalance: repayment.current_outstanding || repayment.principal,
+            interest_rate: repayment.interest_rate || 12,
+            emi: 0,
+            remainingMonths: repayment.tenure_months - (repayment.months_elapsed || 0),
+            totalInterestAccrued: 0,
+            explanation: 'Calculation error - please check loan details'
+          });
+        }
+      }
       
-      // Reload from database to get the latest data
-      const summary = await fetchRepayments();
-      setDbRepayments(summary.repayments);
-      
+      setLiabilities(enhancedLoans);
     } catch (error) {
-      console.error('Error adding liability:', error);
-      alert('Failed to add liability. Please try again.');
+      console.error('Error loading repayments:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      type: 'personal_loan',
-      interest_rate: 12,
-      institution: '',
-      start_date: new Date().toISOString().split('T')[0],
-      original_amount: 0,
-      tenure_months: undefined
-    });
+  const addLiability = async () => {
+    if (!formData.type || !formData.original_amount || !formData.interest_rate || !formData.tenure_months || !formData.start_date) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      const repaymentData = {
+        type: formData.type,
+        principal: formData.original_amount,
+        interest_rate: formData.interest_rate,
+        tenure_months: formData.tenure_months,
+        start_date: formData.start_date,
+        current_outstanding: formData.current_outstanding || formData.original_amount,
+        months_elapsed: formData.months_elapsed || 0
+      };
+
+      await createRepayment(repaymentData);
+      await loadData(); // Reload data
+      setShowAddForm(false);
+      
+      // Reset form
+      setFormData({
+        type: 'personal_loan',
+        interest_rate: 12,
+        tenure_months: 60,
+        start_date: new Date().toISOString().split('T')[0],
+        original_amount: 0,
+        current_outstanding: 0,
+        months_elapsed: 0
+      });
+    } catch (error) {
+      console.error('Error adding liability:', error);
+      alert('Error adding liability. Please try again.');
+    }
   };
 
-  // Calculate Summary Stats
+  // Calculate totals
   const totalOutstanding = liabilities.reduce((sum, loan) => sum + loan.outstandingBalance, 0);
   const totalMonthlyEMI = liabilities.reduce((sum, loan) => sum + (loan.emi || 0), 0);
   const totalInterestAccrued = liabilities.reduce((sum, loan) => sum + (loan.totalInterestAccrued || 0), 0);
   const avgInterestRate = liabilities.length > 0 
-    ? liabilities.reduce((sum, loan) => sum + (loan.emi ? 12 : 0), 0) / liabilities.length 
+    ? liabilities.reduce((sum, loan) => sum + loan.interest_rate, 0) / liabilities.length 
     : 0;
-
-  // Calculate repayment strategies
-  const calculateAvalancheStrategy = () => {
-    return liabilities
-      .filter(loan => loan.emi && loan.emi > 0)
-      .sort((a, b) => (b.interest_rate || 0) - (a.interest_rate || 0))
-      .map(loan => ({
-        ...loan,
-        priority: 'High Interest First',
-        monthlyExtra: 0,
-        totalSavings: 0
-      }));
-  };
-
-  const calculateSnowballStrategy = () => {
-    return liabilities
-      .filter(loan => loan.emi && loan.emi > 0)
-      .sort((a, b) => a.outstandingBalance - b.outstandingBalance)
-      .map(loan => ({
-        ...loan,
-        priority: 'Smallest Balance First',
-        monthlyExtra: 0,
-        totalSavings: 0
-      }));
-  };
-
-  const avalancheLoans = calculateAvalancheStrategy();
-  const snowballLoans = calculateSnowballStrategy();
-
-  // Calculate Smart Hybrid Strategy (combines avalanche + snowball)
-  const calculateHybridStrategy = () => {
-    const emiLoans = liabilities.filter(loan => loan.emi && loan.emi > 0);
-    if (emiLoans.length === 0) return [];
-    
-    // Sort by interest rate first, then by balance for ties
-    return emiLoans.sort((a, b) => {
-      const interestDiff = (b.interest_rate || 0) - (a.interest_rate || 0);
-      if (Math.abs(interestDiff) < 2) { // If interest rates are close (within 2%)
-        return a.outstandingBalance - b.outstandingBalance; // Prefer smaller balance
-      }
-      return interestDiff; // Otherwise prefer higher interest
-    }).map(loan => ({
-      ...loan,
-      priority: 'Smart Hybrid',
-      monthlyExtra: 0,
-      totalSavings: 0
-    }));
-  };
-
-  // Calculate Risk First Strategy (prioritize high-risk loans)
-  const calculateRiskFirstStrategy = () => {
-    return liabilities
-      .filter(loan => loan.emi && loan.emi > 0)
-      .sort((a, b) => {
-        // Risk score based on interest rate + balance size + remaining tenure
-        const riskScoreA = (a.interest_rate || 0) + (a.outstandingBalance / 100000) + (a.remainingMonths / 12);
-        const riskScoreB = (b.interest_rate || 0) + (b.outstandingBalance / 100000) + (b.remainingMonths / 12);
-        return riskScoreB - riskScoreA;
-      })
-      .map(loan => ({
-        ...loan,
-        priority: 'Risk First',
-        monthlyExtra: 0,
-        totalSavings: 0
-      }));
-  };
-
-  const hybridLoans = calculateHybridStrategy();
-  const riskFirstLoans = calculateRiskFirstStrategy();
-
-  // User input for scenarios
-  const [scenarioInputs, setScenarioInputs] = useState({
-    extraMonthlyAmount: 5000,
-    lumpSumAmount: 50000,
-    frequency: 'monthly', // monthly, quarterly, yearly, lump_sum
-    selectedStrategy: 'avalanche' // avalanche, snowball, hybrid, risk
-  });
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-slate-600 dark:text-slate-400">Loading your repayments...</p>
+      <div className="max-w-full space-y-4 pl-2">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-muted-foreground">Loading...</div>
         </div>
       </div>
     );
@@ -444,697 +349,177 @@ export default function RepaymentsPage() {
         </Card>
       )}
 
-          {/* Optimize Tab */}
-          {activeTab === 'optimize' && (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-xl">
-                      <Zap className="w-5 h-5 text-green-600" />
-                    </div>
-                    <div>
-                      <CardTitle>Repayment Optimization</CardTitle>
-                      <CardDescription>
-                        AI-powered strategies to minimize interest and pay off debt faster
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                
-                {liabilities.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">
-                      Add some liabilities to see optimization strategies
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid gap-4">
-                    {/* Strategy Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Avalanche Strategy */}
-                      <Card id="strategy-avalanche" className="border-l-4 border-l-red-500">
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
-                                <TrendingDown className="w-4 h-4 text-red-600" />
-                              </div>
-                              <h4 className="font-semibold text-foreground text-sm">Avalanche</h4>
-                            </div>
-                            <Badge className="bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400 text-xs">
-                              High Interest First
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground mb-3">
-                            Pay highest interest first - saves more money
-                          </p>
-                        
-                          {avalancheLoans.length > 0 ? (
-                            <div className="space-y-2">
-                              {avalancheLoans.slice(0, 3).map((loan, index) => (
-                                <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-lg text-xs">
-                                  <div className="flex items-center space-x-2">
-                                    <div className={`p-1 rounded ${loanColors[loan.loanCategory]} text-white`}>
-                                      {loanIcons[loan.loanCategory]}
-                                    </div>
-                                    <div>
-                                      <p className="font-medium text-foreground">
-                                        {loan.loanCategory.replace('_', ' ').toUpperCase()}
-                                      </p>
-                                      <p className="text-muted-foreground">
-                                        {loan.interest_rate}% • ₹{loan.outstandingBalance.toLocaleString()}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="font-medium text-foreground">
-                                      #{index + 1}
-                                    </p>
-                                    <p className="text-muted-foreground">
-                                      {loan.emi ? `₹${loan.emi.toLocaleString()}` : 'No EMI'}
-                                    </p>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-xs text-muted-foreground">
-                              No EMI-based loans found
-                            </p>
-                          )}
-                        </CardContent>
-                      </Card>
-                    
-                      {/* Snowball Strategy */}
-                      <Card id="strategy-snowball" className="border-l-4 border-l-blue-500">
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-                                <Coins className="w-4 h-4 text-blue-600" />
-                              </div>
-                              <h4 className="font-semibold text-foreground text-sm">Snowball</h4>
-                            </div>
-                            <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 text-xs">
-                              Small Balance First
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground mb-3">
-                            Pay smallest balances first - psychological wins
-                          </p>
-                        
-                          {snowballLoans.length > 0 ? (
-                            <div className="space-y-2">
-                              {snowballLoans.slice(0, 3).map((loan, index) => (
-                                <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-lg text-xs">
-                                  <div className="flex items-center space-x-2">
-                                    <div className={`p-1 rounded ${loanColors[loan.loanCategory]} text-white`}>
-                                      {loanIcons[loan.loanCategory]}
-                                    </div>
-                                    <div>
-                                      <p className="font-medium text-foreground">
-                                        {loan.loanCategory.replace('_', ' ').toUpperCase()}
-                                      </p>
-                                      <p className="text-muted-foreground">
-                                        {loan.interest_rate}% • ₹{loan.outstandingBalance.toLocaleString()}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="font-medium text-foreground">
-                                      #{index + 1}
-                                    </p>
-                                    <p className="text-muted-foreground">
-                                      {loan.emi ? `₹${loan.emi.toLocaleString()}` : 'No EMI'}
-                                    </p>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-xs text-muted-foreground">
-                              No EMI-based loans found
-                            </p>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* Second Row */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                      {/* Smart Hybrid Strategy */}
-                      <Card id="strategy-hybrid" className="border-l-4 border-l-purple-500">
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
-                                <Star className="w-4 h-4 text-purple-600" />
-                              </div>
-                              <h4 className="font-semibold text-foreground text-sm">Smart Hybrid</h4>
-                            </div>
-                            <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400 text-xs">
-                              Best of Both
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground mb-3">
-                            High interest first, small balance when rates close
-                          </p>
-                        
-                          {hybridLoans.length > 0 ? (
-                            <div className="space-y-2">
-                              {hybridLoans.slice(0, 3).map((loan, index) => (
-                                <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-lg text-xs">
-                                  <div className="flex items-center space-x-2">
-                                    <div className={`p-1 rounded ${loanColors[loan.loanCategory]} text-white`}>
-                                      {loanIcons[loan.loanCategory]}
-                                    </div>
-                                    <div>
-                                      <p className="font-medium text-foreground">
-                                        {loan.loanCategory.replace('_', ' ').toUpperCase()}
-                                      </p>
-                                      <p className="text-muted-foreground">
-                                        {loan.interest_rate}% • ₹{loan.outstandingBalance.toLocaleString()}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="font-medium text-foreground">
-                                      #{index + 1}
-                                    </p>
-                                    <p className="text-muted-foreground">
-                                      {loan.emi ? `₹${loan.emi.toLocaleString()}` : 'No EMI'}
-                                    </p>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-xs text-muted-foreground">
-                              No EMI-based loans found
-                            </p>
-                          )}
-                        </CardContent>
-                      </Card>
-
-                      {/* Risk First Strategy */}
-                      <Card id="strategy-risk" className="border-l-4 border-l-orange-500">
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
-                                <Shield className="w-4 h-4 text-orange-600" />
-                              </div>
-                              <h4 className="font-semibold text-foreground text-sm">Risk First</h4>
-                            </div>
-                            <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400 text-xs">
-                              High Risk
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground mb-3">
-                            Prioritizes highest risk loans (rate + balance + tenure)
-                          </p>
-                        
-                          {riskFirstLoans.length > 0 ? (
-                            <div className="space-y-2">
-                              {riskFirstLoans.slice(0, 3).map((loan, index) => {
-                                const riskScore = (loan.interest_rate || 0) + (loan.outstandingBalance / 100000) + (loan.remainingMonths / 12);
-                                return (
-                                  <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-lg text-xs">
-                                    <div className="flex items-center space-x-2">
-                                      <div className={`p-1 rounded ${loanColors[loan.loanCategory]} text-white`}>
-                                        {loanIcons[loan.loanCategory]}
-                                      </div>
-                                      <div>
-                                        <p className="font-medium text-foreground">
-                                          {loan.loanCategory.replace('_', ' ').toUpperCase()}
-                                        </p>
-                                        <p className="text-muted-foreground">
-                                          {loan.interest_rate}% • ₹{loan.outstandingBalance.toLocaleString()}
-                                        </p>
-                                      </div>
-                                    </div>
-                                    <div className="text-right">
-                                      <p className="font-medium text-foreground">
-                                        #{index + 1}
-                                      </p>
-                                      <p className="text-muted-foreground">
-                                        Risk: {riskScore.toFixed(1)} • {loan.emi ? `₹${loan.emi.toLocaleString()}` : 'No EMI'}
-                                      </p>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <p className="text-xs text-muted-foreground">
-                              No EMI-based loans found
-                            </p>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </div>
-                )}
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Scenarios Tab */}
-          {activeTab === 'scenarios' && (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-xl">
-                      <Calculator className="w-5 h-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <CardTitle>What-If Scenarios</CardTitle>
-                      <CardDescription>
-                        Test different repayment strategies and see the impact
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                
-                {liabilities.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">
-                      Add some liabilities to see scenario calculations
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid gap-6">
-                    {/* Goals-Based Prepayment Inputs */}
-                    <Card id="scenario-inputs" className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-2 mb-4">
-                          <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
-                            <Target className="w-4 h-4 text-purple-600" />
-                          </div>
-                          <h4 className="font-semibold text-foreground">
-                            Goals-Based Prepayment Calculator
-                          </h4>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Optimize your prepayments based on your financial goals and priorities
-                        </p>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <Label className="text-sm font-medium text-foreground">
-                            Available Amount (₹)
-                          </Label>
-                          <Input
-                            type="number"
-                            value={scenarioInputs.frequency === 'lump_sum' ? scenarioInputs.lumpSumAmount : scenarioInputs.extraMonthlyAmount}
-                            onChange={(e) => {
-                              const value = Number(e.target.value);
-                              if (scenarioInputs.frequency === 'lump_sum') {
-                                setScenarioInputs({...scenarioInputs, lumpSumAmount: value});
-                              } else {
-                                setScenarioInputs({...scenarioInputs, extraMonthlyAmount: value});
-                              }
-                            }}
-                            className="mt-1"
-                            placeholder="10000"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm font-medium text-foreground">
-                            Payment Goal
-                          </Label>
-                          <select
-                            value={scenarioInputs.frequency}
-                            onChange={(e) => setScenarioInputs({...scenarioInputs, frequency: e.target.value})}
-                            className="w-full mt-1 p-3 border border-border rounded-lg bg-background text-foreground"
-                          >
-                            <option value="monthly">Reduce Monthly EMI</option>
-                            <option value="quarterly">Quarterly Prepayment</option>
-                            <option value="yearly">Yearly Bonus Payment</option>
-                            <option value="lump_sum">Debt Freedom Goal</option>
-                          </select>
-                        </div>
-                        <div>
-                          <Label className="text-sm font-medium text-foreground">
-                            Priority Strategy
-                          </Label>
-                          <select
-                            value={scenarioInputs.selectedStrategy}
-                            onChange={(e) => setScenarioInputs({...scenarioInputs, selectedStrategy: e.target.value})}
-                            className="w-full mt-1 p-3 border border-border rounded-lg bg-background text-foreground"
-                          >
-                            <option value="avalanche">💰 Maximum Savings (High Interest First)</option>
-                            <option value="snowball">🎯 Quick Wins (Small Debts First)</option>
-                            <option value="hybrid">⚡ Smart Balance (Best of Both)</option>
-                            <option value="risk">🛡️ Risk Reduction (High Risk First)</option>
-                            <option value="all">📊 Compare All Strategies</option>
-                          </select>
-                        </div>
-                      </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* Goals-Based Results */}
-                    <Card className="border-l-4 border-l-green-500">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
-                            <Rocket className="w-4 h-4 text-green-600" />
-                          </div>
-                          <h4 className="font-semibold text-foreground">
-                            {scenarioInputs.frequency === 'lump_sum' 
-                              ? `🎯 Debt Freedom with ₹${scenarioInputs.lumpSumAmount.toLocaleString()}`
-                              : `💪 ${scenarioInputs.frequency === 'monthly' ? 'EMI Reduction' : 'Strategic Prepayment'} Plan`
-                            }
-                          </h4>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          {scenarioInputs.selectedStrategy === 'all' 
-                            ? 'Smart comparison across all goal-oriented strategies for optimal results'
-                            : `Optimized for ${
-                                scenarioInputs.selectedStrategy === 'avalanche' ? 'maximum interest savings' :
-                                scenarioInputs.selectedStrategy === 'snowball' ? 'psychological wins and momentum' :
-                                scenarioInputs.selectedStrategy === 'hybrid' ? 'balanced approach with quick wins' :
-                                'risk reduction and financial security'
-                              }`
-                          }
-                        </p>
-                      
-                      {(() => {
-                        const strategies = scenarioInputs.selectedStrategy === 'all' 
-                          ? [
-                              { name: 'Avalanche', loans: avalancheLoans, color: 'red' },
-                              { name: 'Snowball', loans: snowballLoans, color: 'blue' },
-                              { name: 'Smart Hybrid', loans: hybridLoans, color: 'purple' },
-                              { name: 'Risk First', loans: riskFirstLoans, color: 'orange' }
-                            ]
-                          : [{
-                              name: scenarioInputs.selectedStrategy.charAt(0).toUpperCase() + scenarioInputs.selectedStrategy.slice(1),
-                              loans: scenarioInputs.selectedStrategy === 'avalanche' ? avalancheLoans :
-                                     scenarioInputs.selectedStrategy === 'snowball' ? snowballLoans :
-                                     scenarioInputs.selectedStrategy === 'hybrid' ? hybridLoans : riskFirstLoans,
-                              color: scenarioInputs.selectedStrategy === 'avalanche' ? 'red' :
-                                     scenarioInputs.selectedStrategy === 'snowball' ? 'blue' :
-                                     scenarioInputs.selectedStrategy === 'hybrid' ? 'purple' : 'orange'
-                            }];
-
-                        return strategies.map((strategy, strategyIndex) => {
-                          const loans = strategy.loans;
-                          if (loans.length === 0) return null;
-
-                          return (
-                            <div key={strategyIndex} className="mb-6">
-                              <div className="flex items-center space-x-2 mb-3">
-                                <div className={`w-3 h-3 rounded-full bg-${strategy.color}-500`}></div>
-                                <h5 className="font-semibold text-slate-900 dark:text-white text-sm">
-                                  {strategy.name} Strategy
-                                </h5>
-                              </div>
-                              
-                              <div className="space-y-2">
-                                {loans.slice(0, 3).map((loan, index) => {
-                                  const isLumpSum = scenarioInputs.frequency === 'lump_sum';
-                                  const paymentAmount = isLumpSum ? scenarioInputs.lumpSumAmount : scenarioInputs.extraMonthlyAmount;
-                                  const extraPayment = index === 0 ? paymentAmount : 0;
-                                  
-                                  let newEMI, monthsSaved, interestSaved, newBalance;
-                                  
-                                  if (isLumpSum) {
-                                    newBalance = Math.max(0, loan.outstandingBalance - extraPayment);
-                                    interestSaved = extraPayment > 0 ? (extraPayment * (loan.interest_rate || 0) / 100) * (loan.remainingMonths / 12) : 0;
-                                    newEMI = loan.emi || 0;
-                                    monthsSaved = 0; // Lump sum doesn't change EMI, just reduces balance
-                                  } else {
-                                    newEMI = (loan.emi || 0) + extraPayment;
-                                    monthsSaved = extraPayment > 0 ? Math.floor(loan.outstandingBalance / newEMI) : 0;
-                                    interestSaved = extraPayment > 0 ? (loan.outstandingBalance * (loan.interest_rate || 0) / 100) * (monthsSaved / 12) : 0;
-                                    newBalance = loan.outstandingBalance;
-                                  }
-                            
-                                  return (
-                                    <div key={index} className="p-2 bg-slate-50 dark:bg-slate-700 rounded text-xs">
-                                      <div className="flex items-center justify-between">
-                                        <div className="flex items-center space-x-2">
-                                          <div className={`p-1 rounded ${loanColors[loan.loanCategory]} text-white`}>
-                                            {loanIcons[loan.loanCategory]}
-                                          </div>
-                                          <div>
-                                            <p className="font-medium text-slate-900 dark:text-white">
-                                              {loan.loanCategory.replace('_', ' ').toUpperCase()}
-                                            </p>
-                                            <p className="text-slate-600 dark:text-slate-400">
-                                              {loan.interest_rate}% • ₹{loan.outstandingBalance.toLocaleString()}
-                                            </p>
-                                          </div>
-                                        </div>
-                                        <div className="text-right">
-                                          {extraPayment > 0 ? (
-                                            <>
-                                              {isLumpSum ? (
-                                                <>
-                                                  <p className="font-medium text-green-600">
-                                                    New Balance: ₹{newBalance.toLocaleString()}
-                                                  </p>
-                                                  <p className="text-slate-600 dark:text-slate-400">
-                                                    Interest Saved: ₹{interestSaved.toLocaleString()}
-                                                  </p>
-                                                </>
-                                              ) : (
-                                                <>
-                                                  <p className="font-medium text-green-600">
-                                                    New EMI: ₹{newEMI.toLocaleString()}
-                                                  </p>
-                                                  <p className="text-slate-600 dark:text-slate-400">
-                                                    Save {monthsSaved} months • ₹{interestSaved.toLocaleString()} interest
-                                                  </p>
-                                                </>
-                                              )}
-                                            </>
-                                          ) : (
-                                            <p className="text-slate-600 dark:text-slate-400">
-                                              {isLumpSum ? 'No prepayment' : `Standard EMI: ₹${(loan.emi || 0).toLocaleString()}`}
-                                            </p>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        }).filter(Boolean);
-                      })()}
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Insights Tab */}
-          {activeTab === 'insights' && (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/20 rounded-xl">
-                      <Lightbulb className="w-5 h-5 text-indigo-600" />
-                    </div>
-                    <div>
-                      <CardTitle>Smart Insights</CardTitle>
-                      <CardDescription>
-                        AI-generated recommendations based on your debt profile
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-              
-                <div className="space-y-4">
-                  <div className="flex items-start space-x-3 p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-lg">
-                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
-                    <div>
-                      <h4 className="font-semibold text-green-800 dark:text-green-400">
-                        Refinancing Opportunity
-                      </h4>
-                      <p className="text-sm text-green-700 dark:text-green-300">
-                        Your home loan rate is 2% higher than current market rates
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start space-x-3 p-4 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                    <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
-                    <div>
-                      <h4 className="font-semibold text-yellow-800 dark:text-yellow-400">
-                        High Interest Alert
-                      </h4>
-                      <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                        Credit card balance is accruing ₹2,500 monthly in interest
-                      </p>
-                    </div>
-                  </div>
+      {/* Optimize Modal */}
+      <Modal 
+        open={showOptimizeModal} 
+        onClose={() => setShowOptimizeModal(false)}
+        title="Optimization Strategies"
+        footer={
+          <Button variant="outline" onClick={() => setShowOptimizeModal(false)}>
+            Close
+          </Button>
+        }
+      >
+        <div className="space-y-4">
+          {[
+            {
+              id: 'avalanche',
+              name: 'Avalanche Method',
+              description: 'Pay highest interest rate loans first',
+              icon: <TrendingDown className="w-5 h-5" />,
+              color: 'border-l-red-500 bg-red-50 dark:bg-red-900/10',
+              iconColor: 'text-red-600'
+            },
+            {
+              id: 'snowball',
+              name: 'Snowball Method',
+              description: 'Pay smallest balance loans first',
+              icon: <Coins className="w-5 h-5" />,
+              color: 'border-l-blue-500 bg-blue-50 dark:bg-blue-900/10',
+              iconColor: 'text-blue-600'
+            },
+            {
+              id: 'hybrid',
+              name: 'Smart Hybrid',
+              description: 'Balanced approach considering both factors',
+              icon: <Star className="w-5 h-5" />,
+              color: 'border-l-purple-500 bg-purple-50 dark:bg-purple-900/10',
+              iconColor: 'text-purple-600'
+            },
+            {
+              id: 'risk',
+              name: 'Risk First',
+              description: 'Prioritize high-risk loans first',
+              icon: <Shield className="w-5 h-5" />,
+              color: 'border-l-orange-500 bg-orange-50 dark:bg-orange-900/10',
+              iconColor: 'text-orange-600'
+            }
+          ].map((strategy) => (
+            <div
+              key={strategy.id}
+              className={`p-4 border-l-4 ${strategy.color} rounded-lg cursor-pointer hover:shadow-md transition-all duration-200`}
+              onClick={() => {
+                console.log('Selected strategy:', strategy.id);
+                setShowOptimizeModal(false);
+              }}
+            >
+              <div className="flex items-center space-x-3">
+                <div className={`p-2 rounded-lg ${strategy.iconColor}`}>
+                  {strategy.icon}
                 </div>
-                </CardContent>
-              </Card>
+                <div>
+                  <h3 className="font-semibold text-foreground">{strategy.name}</h3>
+                  <p className="text-sm text-muted-foreground">{strategy.description}</p>
+                </div>
+              </div>
             </div>
-          )}
+          ))}
         </div>
+      </Modal>
 
-        {/* Add Liability Modal */}
-        {showAddForm && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <Card className="w-full max-w-md border-0 shadow-2xl">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-                    <Plus className="w-4 h-4 text-blue-600" />
-                  </div>
-                  Add New Liability
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-              
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-sm font-medium text-foreground">
-                    Loan Type
-                  </Label>
-                  <select
-                    value={formData.type}
-                    onChange={(e) => setFormData({...formData, type: e.target.value as LoanCategory})}
-                    className="w-full mt-1 p-3 border border-border rounded-lg bg-background text-foreground"
-                  >
-                    <option value="home_loan">Home Loan</option>
-                    <option value="car_loan">Car Loan</option>
-                    <option value="personal_loan">Personal Loan</option>
-                    <option value="credit_card">Credit Card</option>
-                    <option value="gold_loan">Gold Loan</option>
-                    <option value="education_loan">Education Loan</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
+      {/* Add Liability Modal */}
+      {showAddForm && (
+        <Modal
+          open={showAddForm}
+          onClose={() => setShowAddForm(false)}
+          title="Add New Liability"
+          footer={
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowAddForm(false)}>
+                Cancel
+              </Button>
+              <Button onClick={addLiability} leftIcon={<Plus className="w-4 h-4" />}>
+                Add Liability
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium text-foreground">Loan Type</Label>
+              <select
+                value={formData.type}
+                onChange={(e) => setFormData({...formData, type: e.target.value})}
+                className="w-full mt-1 p-2 border border-border rounded-md bg-background text-foreground"
+              >
+                <option value="personal_loan">Personal Loan</option>
+                <option value="home_loan">Home Loan</option>
+                <option value="car_loan">Car Loan</option>
+                <option value="education_loan">Education Loan</option>
+                <option value="credit_card">Credit Card</option>
+                <option value="gold_loan">Gold Loan</option>
+                <option value="generic_loan">Generic Loan</option>
+              </select>
+            </div>
 
-                <div>
-                  <Label className="text-sm font-medium text-foreground">
-                    Institution
-                  </Label>
-                  <Input
-                    value={formData.institution}
-                    onChange={(e) => setFormData({...formData, institution: e.target.value})}
-                    placeholder="e.g., HDFC Bank"
-                    className="mt-1"
-                  />
-                </div>
+            <div>
+              <Label className="text-sm font-medium text-foreground">Original Amount (₹)</Label>
+              <Input
+                type="number"
+                value={formData.original_amount}
+                onChange={(e) => setFormData({...formData, original_amount: Number(e.target.value)})}
+                placeholder="500000"
+                className="mt-1"
+              />
+            </div>
 
-                <div>
-                  <Label className="text-sm font-medium text-foreground">
-                    Original Amount (₹)
-                  </Label>
-                  <Input
-                    type="number"
-                    value={formData.original_amount}
-                    onChange={(e) => setFormData({...formData, original_amount: Number(e.target.value)})}
-                    placeholder="500000"
-                    className="mt-1"
-                  />
-                </div>
+            <div>
+              <Label className="text-sm font-medium text-foreground">Interest Rate (%)</Label>
+              <Input
+                type="number"
+                step="0.1"
+                value={formData.interest_rate}
+                onChange={(e) => setFormData({...formData, interest_rate: Number(e.target.value)})}
+                placeholder="12.5"
+                className="mt-1"
+              />
+            </div>
 
-                <div>
-                  <Label className="text-sm font-medium text-foreground">
-                    Interest Rate (%)
-                  </Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={formData.interest_rate}
-                    onChange={(e) => setFormData({...formData, interest_rate: Number(e.target.value)})}
-                    placeholder="12.5"
-                    className="mt-1"
-                  />
-                </div>
+            <div>
+              <Label className="text-sm font-medium text-foreground">Tenure (Months)</Label>
+              <Input
+                type="number"
+                value={formData.tenure_months}
+                onChange={(e) => setFormData({...formData, tenure_months: Number(e.target.value)})}
+                placeholder="60"
+                className="mt-1"
+              />
+            </div>
 
-                <div>
-                  <Label className="text-sm font-medium text-foreground">
-                    Start Date
-                  </Label>
-                  <Input
-                    type="date"
-                    value={formData.start_date}
-                    onChange={(e) => setFormData({...formData, start_date: e.target.value})}
-                    className="mt-1"
-                  />
-                </div>
+            <div>
+              <Label className="text-sm font-medium text-foreground">Start Date</Label>
+              <Input
+                type="date"
+                value={formData.start_date}
+                onChange={(e) => setFormData({...formData, start_date: e.target.value})}
+                className="mt-1"
+              />
+            </div>
 
-                {/* Only show tenure for EMI-based loans */}
-                {formData.type && !['credit_card'].includes(formData.type) && (
-                  <div>
-                    <Label className="text-sm font-medium text-foreground">
-                      Tenure (months) - Optional
-                    </Label>
-                    <Input
-                      type="number"
-                      value={formData.tenure_months || ''}
-                      onChange={(e) => setFormData({...formData, tenure_months: e.target.value ? Number(e.target.value) : undefined})}
-                      placeholder="Leave empty for default tenure"
-                      className="mt-1"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Leave empty to use default tenure based on loan type
-                    </p>
-                  </div>
-                )}
-                
-                {/* Show info for non-EMI loans */}
-                {formData.type && ['credit_card'].includes(formData.type) && (
-                  <div className="p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg">
-                    <p className="text-sm text-blue-800 dark:text-blue-400">
-                      <Info className="w-4 h-4 inline mr-1" />
-                      Credit cards don't have fixed tenure - they're revolving credit
-                    </p>
-                  </div>
-                )}
-              </div>
+            <div>
+              <Label className="text-sm font-medium text-foreground">Current Outstanding (₹)</Label>
+              <Input
+                type="number"
+                value={formData.current_outstanding}
+                onChange={(e) => setFormData({...formData, current_outstanding: Number(e.target.value)})}
+                placeholder="Leave empty to use original amount"
+                className="mt-1"
+              />
+            </div>
 
-              <div className="flex gap-3 mt-6">
-                <Button
-                  onClick={() => setShowAddForm(false)}
-                  variant="outline"
-                  className="flex-1"
-                  leftIcon={<X className="w-3 h-3" />}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={resetForm}
-                  variant="outline"
-                  className="flex-1"
-                  leftIcon={<RefreshCw className="w-3 h-3" />}
-                >
-                  Reset
-                </Button>
-                <Button
-                  onClick={addLiability}
-                  variant="primary"
-                  className="flex-1"
-                  leftIcon={<Plus className="w-3 h-3" />}
-                >
-                  Add Liability
-                </Button>
-              </div>
-              </CardContent>
-            </Card>
+            <div>
+              <Label className="text-sm font-medium text-foreground">Months Elapsed</Label>
+              <Input
+                type="number"
+                value={formData.months_elapsed}
+                onChange={(e) => setFormData({...formData, months_elapsed: Number(e.target.value)})}
+                placeholder="0"
+                className="mt-1"
+              />
+            </div>
           </div>
-        )}
-      </div>
+        </Modal>
+      )}
     </div>
   );
 }
