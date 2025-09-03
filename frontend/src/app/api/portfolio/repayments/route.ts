@@ -57,9 +57,12 @@ export async function POST(req: NextRequest) {
     } = body;
 
     // Validate required fields
-    if (!type || !institution || !principal || !interest_rate || !emi_amount) {
+    if (!type || !institution || !principal || !interest_rate) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
+
+    // For non-EMI loans (like credit cards), emi_amount can be 0
+    const finalEmiAmount = emi_amount || 0;
 
     const repayment_id = crypto.randomUUID();
     const now = new Date().toISOString();
@@ -74,7 +77,7 @@ export async function POST(req: NextRequest) {
       institution,
       principal: parseFloat(principal),
       interest_rate: parseFloat(interest_rate),
-      emi_amount: parseFloat(emi_amount),
+      emi_amount: finalEmiAmount,
       tenure_months: tenure_months ? parseInt(tenure_months) : 0, // 0 means no fixed tenure (like credit cards)
       outstanding_balance,
       start_date: start_date || now,
