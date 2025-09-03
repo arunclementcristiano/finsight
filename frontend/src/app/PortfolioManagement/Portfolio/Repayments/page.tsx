@@ -305,84 +305,93 @@ export default function RepaymentsPage() {
             </Button>
           </div>
 
-          {/* Quick Stats */}
+          {/* Quick Stats - Modernized like Plan page */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Card className="p-6 shadow-lg bg-white dark:bg-slate-800">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Total Outstanding</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                    ₹{totalOutstanding.toLocaleString()}
-                  </p>
+            <Card>
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Outstanding</p>
+                    <p className="text-2xl font-bold text-foreground">
+                      ₹{totalOutstanding.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-red-100 dark:bg-red-900/20 rounded-xl">
+                    <DollarSign className="w-5 h-5 text-red-600" />
+                  </div>
                 </div>
-                <div className="p-3 bg-red-100 dark:bg-red-900/20 rounded-full">
-                  <DollarSign className="w-6 h-6 text-red-600" />
-                </div>
-              </div>
+              </CardContent>
             </Card>
 
-            <Card className="p-6 shadow-lg bg-white dark:bg-slate-800">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Monthly EMI</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                    ₹{totalMonthlyEMI.toLocaleString()}
-                  </p>
+            <Card>
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Monthly EMI</p>
+                    <p className="text-2xl font-bold text-foreground">
+                      ₹{totalMonthlyEMI.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-xl">
+                    <Clock className="w-5 h-5 text-blue-600" />
+                  </div>
                 </div>
-                <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-full">
-                  <Clock className="w-6 h-6 text-blue-600" />
-                </div>
-              </div>
+              </CardContent>
             </Card>
 
-            <Card className="p-6 shadow-lg bg-white dark:bg-slate-800">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Interest Accrued</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                    ₹{totalInterestAccrued.toLocaleString()}
-                  </p>
+            <Card>
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Interest Accrued</p>
+                    <p className="text-2xl font-bold text-foreground">
+                      ₹{totalInterestAccrued.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-yellow-100 dark:bg-yellow-900/20 rounded-xl">
+                    <TrendingUp className="w-5 h-5 text-yellow-600" />
+                  </div>
                 </div>
-                <div className="p-3 bg-yellow-100 dark:bg-yellow-900/20 rounded-full">
-                  <TrendingUp className="w-6 h-6 text-yellow-600" />
-                </div>
-              </div>
+              </CardContent>
             </Card>
 
-            <Card className="p-6 shadow-lg bg-white dark:bg-slate-800">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Avg Interest Rate</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                    {avgInterestRate.toFixed(1)}%
-                  </p>
+            <Card>
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Avg Interest Rate</p>
+                    <p className="text-2xl font-bold text-foreground">
+                      {avgInterestRate.toFixed(1)}%
+                    </p>
+                  </div>
+                  <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-xl">
+                    <Target className="w-5 h-5 text-green-600" />
+                  </div>
                 </div>
-                <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-full">
-                  <Target className="w-6 h-6 text-green-600" />
-                </div>
-              </div>
+              </CardContent>
             </Card>
           </div>
         </div>
 
-        {/* Main Content Tabs */}
+        {/* Main Content Tabs - Modernized */}
         <div className="space-y-6">
-          <div className="flex space-x-1 bg-white dark:bg-slate-800 p-1 rounded-lg shadow-lg">
+          <div className="flex space-x-1 bg-muted p-1 rounded-xl">
             {[
-              { id: 'overview', label: 'Overview' },
-              { id: 'optimize', label: 'Optimize' },
-              { id: 'scenarios', label: 'Scenarios' },
-              { id: 'insights', label: 'Insights' }
+              { id: 'overview', label: 'Overview', icon: <BarChart3 className="w-4 h-4" /> },
+              { id: 'optimize', label: 'Optimize', icon: <Zap className="w-4 h-4" /> },
+              { id: 'scenarios', label: 'Scenarios', icon: <Calculator className="w-4 h-4" /> },
+              { id: 'insights', label: 'Insights', icon: <Lightbulb className="w-4 h-4" /> }
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
                   activeTab === tab.id
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
                 }`}
               >
+                {tab.icon}
                 {tab.label}
               </button>
             ))}
@@ -392,120 +401,121 @@ export default function RepaymentsPage() {
           {activeTab === 'overview' && (
             <div className="space-y-6">
             {liabilities.length === 0 ? (
-              <Card className="p-12 text-center shadow-lg bg-white dark:bg-slate-800">
+              <Card className="p-12 text-center">
                 <div className="max-w-md mx-auto">
-                  <div className="p-4 bg-blue-100 dark:bg-blue-900/20 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                  <div className="p-4 bg-blue-100 dark:bg-blue-900/20 rounded-xl w-16 h-16 mx-auto mb-4 flex items-center justify-center">
                     <Calculator className="w-8 h-8 text-blue-600" />
                   </div>
-                  <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
+                  <h3 className="text-xl font-semibold text-foreground mb-2">
                     No Liabilities Added Yet
                   </h3>
-                  <p className="text-slate-600 dark:text-slate-400 mb-6">
+                  <p className="text-muted-foreground mb-6">
                     Add your first liability to start optimizing your repayment strategy
                   </p>
                   <Button 
                     onClick={() => setShowAddForm(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl"
+                    variant="primary"
+                    size="lg"
+                    leftIcon={<Plus className="w-4 h-4" />}
                   >
-                    <Plus className="w-5 h-5 mr-2" />
                     Add Your First Liability
                   </Button>
                 </div>
               </Card>
             ) : (
-              <div className="grid gap-6">
+              <div className="grid gap-4">
                 {liabilities.map((loan, index) => (
-                  <Card key={index} className="p-6 shadow-lg bg-white dark:bg-slate-800 hover:shadow-xl transition-shadow">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div className={`p-3 rounded-xl ${loanColors[loan.loanCategory]} text-white`}>
-                          {loanIcons[loan.loanCategory]}
+                  <Card key={index} className="hover:shadow-md transition-all duration-200">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <div className={`p-3 rounded-xl ${loanColors[loan.loanCategory]} text-white shadow-sm`}>
+                            {loanIcons[loan.loanCategory]}
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-foreground">
+                              {loan.loanCategory.replace('_', ' ').toUpperCase()}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              ₹{loan.originalAmount.toLocaleString()} • {loan.interest_rate}% APR
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                            {loan.loanCategory.replace('_', ' ').toUpperCase()}
-                          </h3>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">
-                            {loan.originalAmount.toLocaleString()} • {loan.interest_rate}% APR
+                        <Badge variant="outline" className="text-xs">
+                          {loan.loanType.toUpperCase()}
+                        </Badge>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                        <div className="text-center p-3 bg-muted rounded-lg">
+                          <p className="text-sm text-muted-foreground">Outstanding</p>
+                          <p className="text-lg font-semibold text-foreground">
+                            ₹{loan.outstandingBalance.toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="text-center p-3 bg-muted rounded-lg">
+                          <p className="text-sm text-muted-foreground">EMI</p>
+                          <p className="text-lg font-semibold text-foreground">
+                            ₹{loan.emi?.toLocaleString() || 'N/A'}
+                          </p>
+                        </div>
+                        <div className="text-center p-3 bg-muted rounded-lg">
+                          <p className="text-sm text-muted-foreground">Remaining</p>
+                          <p className="text-lg font-semibold text-foreground">
+                            {loan.remainingMonths} months
+                          </p>
+                        </div>
+                        <div className="text-center p-3 bg-muted rounded-lg">
+                          <p className="text-sm text-muted-foreground">Interest</p>
+                          <p className="text-lg font-semibold text-foreground">
+                            ₹{loan.totalInterestAccrued?.toLocaleString() || '0'}
                           </p>
                         </div>
                       </div>
-                      <Badge variant="outline" className="text-xs">
-                        {loan.loanType.toUpperCase()}
-                      </Badge>
-                    </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                      <div className="text-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Outstanding</p>
-                        <p className="text-lg font-semibold text-slate-900 dark:text-white">
-                          ₹{loan.outstandingBalance.toLocaleString()}
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-muted-foreground italic">
+                          {loan.explanation}
                         </p>
+                        <div className="flex gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-xs"
+                            leftIcon={<Zap className="w-3 h-3 text-yellow-600" />}
+                            onClick={() => {
+                              setActiveTab('optimize');
+                              setTimeout(() => {
+                                const element = document.getElementById(`strategy-${loan.loanCategory}`);
+                                if (element) element.scrollIntoView({ behavior: 'smooth' });
+                              }, 100);
+                            }}
+                          >
+                            Optimize
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-xs"
+                            leftIcon={<Calculator className="w-3 h-3 text-blue-600" />}
+                            onClick={() => {
+                              setActiveTab('scenarios');
+                              setScenarioInputs({
+                                ...scenarioInputs,
+                                extraMonthlyAmount: Math.min(5000, (loan.emi || 0) * 0.5),
+                                lumpSumAmount: Math.min(50000, loan.outstandingBalance * 0.1)
+                              });
+                              setTimeout(() => {
+                                const element = document.getElementById('scenario-inputs');
+                                if (element) element.scrollIntoView({ behavior: 'smooth' });
+                              }, 100);
+                            }}
+                          >
+                            Prepay
+                          </Button>
+                        </div>
                       </div>
-                      <div className="text-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                        <p className="text-sm text-slate-600 dark:text-slate-400">EMI</p>
-                        <p className="text-lg font-semibold text-slate-900 dark:text-white">
-                          ₹{loan.emi?.toLocaleString() || 'N/A'}
-                        </p>
-                      </div>
-                      <div className="text-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Remaining</p>
-                        <p className="text-lg font-semibold text-slate-900 dark:text-white">
-                          {loan.remainingMonths} months
-                        </p>
-                      </div>
-                      <div className="text-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                        <p className="text-sm text-slate-600 dark:text-slate-400">Interest</p>
-                        <p className="text-lg font-semibold text-slate-900 dark:text-white">
-                          ₹{loan.totalInterestAccrued?.toLocaleString() || '0'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-slate-600 dark:text-slate-400 italic">
-                        {loan.explanation}
-                      </p>
-                      <div className="flex space-x-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="text-xs"
-                          onClick={() => {
-                            setActiveTab('optimize');
-                            // Scroll to the specific strategy for this loan
-                            setTimeout(() => {
-                              const element = document.getElementById(`strategy-${loan.loanCategory}`);
-                              if (element) element.scrollIntoView({ behavior: 'smooth' });
-                            }, 100);
-                          }}
-                        >
-                          <Zap className="w-4 h-4 mr-1" />
-                          Optimize
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="text-xs"
-                          onClick={() => {
-                            setActiveTab('scenarios');
-                            // Pre-fill scenario inputs for this loan
-                            setScenarioInputs({
-                              ...scenarioInputs,
-                              extraMonthlyAmount: Math.min(5000, (loan.emi || 0) * 0.5), // 50% of EMI or 5000, whichever is smaller
-                              lumpSumAmount: Math.min(50000, loan.outstandingBalance * 0.1) // 10% of balance or 50000, whichever is smaller
-                            });
-                            setTimeout(() => {
-                              const element = document.getElementById('scenario-inputs');
-                              if (element) element.scrollIntoView({ behavior: 'smooth' });
-                            }, 100);
-                          }}
-                        >
-                          <Calculator className="w-4 h-4 mr-1" />
-                          Prepay
-                        </Button>
-                      </div>
-                    </div>
+                    </CardContent>
                   </Card>
                 ))}
               </div>
@@ -516,226 +526,258 @@ export default function RepaymentsPage() {
           {/* Optimize Tab */}
           {activeTab === 'optimize' && (
             <div className="space-y-6">
-              <Card className="p-6 shadow-lg bg-white dark:bg-slate-800">
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
-                    <Zap className="w-6 h-6 text-green-600" />
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-xl">
+                      <Zap className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <CardTitle>Repayment Optimization</CardTitle>
+                      <CardDescription>
+                        AI-powered strategies to minimize interest and pay off debt faster
+                      </CardDescription>
+                    </div>
                   </div>
-                  <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
-                    Repayment Optimization
-                  </h3>
-                </div>
-                <p className="text-slate-600 dark:text-slate-400 mb-6">
-                  AI-powered strategies to minimize interest and pay off debt faster
-                </p>
+                </CardHeader>
+                <CardContent>
                 
                 {liabilities.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-slate-600 dark:text-slate-400">
+                    <p className="text-muted-foreground">
                       Add some liabilities to see optimization strategies
                     </p>
                   </div>
                 ) : (
                   <div className="grid gap-4">
-                    {/* Compact Strategy Grid */}
+                    {/* Strategy Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* Avalanche Strategy */}
-                      <div id="strategy-avalanche" className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className="font-semibold text-slate-900 dark:text-white text-sm">Avalanche</h4>
-                          <Badge className="bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400 text-xs">
-                            High Interest First
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">
-                          Pay highest interest first - saves more money
-                        </p>
-                        
-                        {avalancheLoans.length > 0 ? (
-                          <div className="space-y-2">
-                            {avalancheLoans.slice(0, 3).map((loan, index) => (
-                              <div key={index} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded text-xs">
-                                <div className="flex items-center space-x-2">
-                                  <div className={`p-1 rounded ${loanColors[loan.loanCategory]} text-white`}>
-                                    {loanIcons[loan.loanCategory]}
-                                  </div>
-                                  <div>
-                                    <p className="font-medium text-slate-900 dark:text-white">
-                                      {loan.loanCategory.replace('_', ' ').toUpperCase()}
-                                    </p>
-                                    <p className="text-slate-600 dark:text-slate-400">
-                                      {loan.interest_rate}% • ₹{loan.outstandingBalance.toLocaleString()}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <p className="font-medium text-slate-900 dark:text-white">
-                                    #{index + 1}
-                                  </p>
-                                  <p className="text-slate-600 dark:text-slate-400">
-                                    {loan.emi ? `₹${loan.emi.toLocaleString()}` : 'No EMI'}
-                                  </p>
-                                </div>
+                      <Card id="strategy-avalanche" className="border-l-4 border-l-red-500">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
+                                <TrendingDown className="w-4 h-4 text-red-600" />
                               </div>
-                            ))}
+                              <h4 className="font-semibold text-foreground text-sm">Avalanche</h4>
+                            </div>
+                            <Badge className="bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400 text-xs">
+                              High Interest First
+                            </Badge>
                           </div>
-                        ) : (
-                          <p className="text-xs text-slate-600 dark:text-slate-400">
-                            No EMI-based loans found
+                          <p className="text-xs text-muted-foreground mb-3">
+                            Pay highest interest first - saves more money
                           </p>
-                        )}
-                      </div>
+                        
+                          {avalancheLoans.length > 0 ? (
+                            <div className="space-y-2">
+                              {avalancheLoans.slice(0, 3).map((loan, index) => (
+                                <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-lg text-xs">
+                                  <div className="flex items-center space-x-2">
+                                    <div className={`p-1 rounded ${loanColors[loan.loanCategory]} text-white`}>
+                                      {loanIcons[loan.loanCategory]}
+                                    </div>
+                                    <div>
+                                      <p className="font-medium text-foreground">
+                                        {loan.loanCategory.replace('_', ' ').toUpperCase()}
+                                      </p>
+                                      <p className="text-muted-foreground">
+                                        {loan.interest_rate}% • ₹{loan.outstandingBalance.toLocaleString()}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="font-medium text-foreground">
+                                      #{index + 1}
+                                    </p>
+                                    <p className="text-muted-foreground">
+                                      {loan.emi ? `₹${loan.emi.toLocaleString()}` : 'No EMI'}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              No EMI-based loans found
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
                     
                       {/* Snowball Strategy */}
-                      <div id="strategy-snowball" className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className="font-semibold text-slate-900 dark:text-white text-sm">Snowball</h4>
-                          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 text-xs">
-                            Small Balance First
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">
-                          Pay smallest balances first - psychological wins
-                        </p>
-                        
-                        {snowballLoans.length > 0 ? (
-                          <div className="space-y-2">
-                            {snowballLoans.slice(0, 3).map((loan, index) => (
-                              <div key={index} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded text-xs">
-                                <div className="flex items-center space-x-2">
-                                  <div className={`p-1 rounded ${loanColors[loan.loanCategory]} text-white`}>
-                                    {loanIcons[loan.loanCategory]}
-                                  </div>
-                                  <div>
-                                    <p className="font-medium text-slate-900 dark:text-white">
-                                      {loan.loanCategory.replace('_', ' ').toUpperCase()}
-                                    </p>
-                                    <p className="text-slate-600 dark:text-slate-400">
-                                      {loan.interest_rate}% • ₹{loan.outstandingBalance.toLocaleString()}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <p className="font-medium text-slate-900 dark:text-white">
-                                    #{index + 1}
-                                  </p>
-                                  <p className="text-slate-600 dark:text-slate-400">
-                                    {loan.emi ? `₹${loan.emi.toLocaleString()}` : 'No EMI'}
-                                  </p>
-                                </div>
+                      <Card id="strategy-snowball" className="border-l-4 border-l-blue-500">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                                <Coins className="w-4 h-4 text-blue-600" />
                               </div>
-                            ))}
+                              <h4 className="font-semibold text-foreground text-sm">Snowball</h4>
+                            </div>
+                            <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 text-xs">
+                              Small Balance First
+                            </Badge>
                           </div>
-                        ) : (
-                          <p className="text-xs text-slate-600 dark:text-slate-400">
-                            No EMI-based loans found
+                          <p className="text-xs text-muted-foreground mb-3">
+                            Pay smallest balances first - psychological wins
                           </p>
-                        )}
-                      </div>
+                        
+                          {snowballLoans.length > 0 ? (
+                            <div className="space-y-2">
+                              {snowballLoans.slice(0, 3).map((loan, index) => (
+                                <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-lg text-xs">
+                                  <div className="flex items-center space-x-2">
+                                    <div className={`p-1 rounded ${loanColors[loan.loanCategory]} text-white`}>
+                                      {loanIcons[loan.loanCategory]}
+                                    </div>
+                                    <div>
+                                      <p className="font-medium text-foreground">
+                                        {loan.loanCategory.replace('_', ' ').toUpperCase()}
+                                      </p>
+                                      <p className="text-muted-foreground">
+                                        {loan.interest_rate}% • ₹{loan.outstandingBalance.toLocaleString()}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="font-medium text-foreground">
+                                      #{index + 1}
+                                    </p>
+                                    <p className="text-muted-foreground">
+                                      {loan.emi ? `₹${loan.emi.toLocaleString()}` : 'No EMI'}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              No EMI-based loans found
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
                     </div>
 
                     {/* Second Row */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                       {/* Smart Hybrid Strategy */}
-                      <div id="strategy-hybrid" className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className="font-semibold text-slate-900 dark:text-white text-sm">Smart Hybrid</h4>
-                          <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400 text-xs">
-                            Best of Both
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">
-                          High interest first, small balance when rates close
-                        </p>
-                        
-                        {hybridLoans.length > 0 ? (
-                          <div className="space-y-2">
-                            {hybridLoans.slice(0, 3).map((loan, index) => (
-                              <div key={index} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded text-xs">
-                                <div className="flex items-center space-x-2">
-                                  <div className={`p-1 rounded ${loanColors[loan.loanCategory]} text-white`}>
-                                    {loanIcons[loan.loanCategory]}
-                                  </div>
-                                  <div>
-                                    <p className="font-medium text-slate-900 dark:text-white">
-                                      {loan.loanCategory.replace('_', ' ').toUpperCase()}
-                                    </p>
-                                    <p className="text-slate-600 dark:text-slate-400">
-                                      {loan.interest_rate}% • ₹{loan.outstandingBalance.toLocaleString()}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <p className="font-medium text-slate-900 dark:text-white">
-                                    #{index + 1}
-                                  </p>
-                                  <p className="text-slate-600 dark:text-slate-400">
-                                    {loan.emi ? `₹${loan.emi.toLocaleString()}` : 'No EMI'}
-                                  </p>
-                                </div>
+                      <Card id="strategy-hybrid" className="border-l-4 border-l-purple-500">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+                                <Star className="w-4 h-4 text-purple-600" />
                               </div>
-                            ))}
+                              <h4 className="font-semibold text-foreground text-sm">Smart Hybrid</h4>
+                            </div>
+                            <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400 text-xs">
+                              Best of Both
+                            </Badge>
                           </div>
-                        ) : (
-                          <p className="text-xs text-slate-600 dark:text-slate-400">
-                            No EMI-based loans found
+                          <p className="text-xs text-muted-foreground mb-3">
+                            High interest first, small balance when rates close
                           </p>
-                        )}
-                      </div>
-
-                      {/* Risk First Strategy */}
-                      <div id="strategy-risk" className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className="font-semibold text-slate-900 dark:text-white text-sm">Risk First</h4>
-                          <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400 text-xs">
-                            High Risk
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">
-                          Prioritizes highest risk loans (rate + balance + tenure)
-                        </p>
                         
-                        {riskFirstLoans.length > 0 ? (
-                          <div className="space-y-2">
-                            {riskFirstLoans.slice(0, 3).map((loan, index) => {
-                              const riskScore = (loan.interest_rate || 0) + (loan.outstandingBalance / 100000) + (loan.remainingMonths / 12);
-                              return (
-                                <div key={index} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700 rounded text-xs">
+                          {hybridLoans.length > 0 ? (
+                            <div className="space-y-2">
+                              {hybridLoans.slice(0, 3).map((loan, index) => (
+                                <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-lg text-xs">
                                   <div className="flex items-center space-x-2">
                                     <div className={`p-1 rounded ${loanColors[loan.loanCategory]} text-white`}>
                                       {loanIcons[loan.loanCategory]}
                                     </div>
                                     <div>
-                                      <p className="font-medium text-slate-900 dark:text-white">
+                                      <p className="font-medium text-foreground">
                                         {loan.loanCategory.replace('_', ' ').toUpperCase()}
                                       </p>
-                                      <p className="text-slate-600 dark:text-slate-400">
+                                      <p className="text-muted-foreground">
                                         {loan.interest_rate}% • ₹{loan.outstandingBalance.toLocaleString()}
                                       </p>
                                     </div>
                                   </div>
                                   <div className="text-right">
-                                    <p className="font-medium text-slate-900 dark:text-white">
+                                    <p className="font-medium text-foreground">
                                       #{index + 1}
                                     </p>
-                                    <p className="text-slate-600 dark:text-slate-400">
-                                      Risk: {riskScore.toFixed(1)} • {loan.emi ? `₹${loan.emi.toLocaleString()}` : 'No EMI'}
+                                    <p className="text-muted-foreground">
+                                      {loan.emi ? `₹${loan.emi.toLocaleString()}` : 'No EMI'}
                                     </p>
                                   </div>
                                 </div>
-                              );
-                            })}
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              No EMI-based loans found
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      {/* Risk First Strategy */}
+                      <Card id="strategy-risk" className="border-l-4 border-l-orange-500">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
+                                <Shield className="w-4 h-4 text-orange-600" />
+                              </div>
+                              <h4 className="font-semibold text-foreground text-sm">Risk First</h4>
+                            </div>
+                            <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400 text-xs">
+                              High Risk
+                            </Badge>
                           </div>
-                        ) : (
-                          <p className="text-xs text-slate-600 dark:text-slate-400">
-                            No EMI-based loans found
+                          <p className="text-xs text-muted-foreground mb-3">
+                            Prioritizes highest risk loans (rate + balance + tenure)
                           </p>
-                        )}
-                      </div>
+                        
+                          {riskFirstLoans.length > 0 ? (
+                            <div className="space-y-2">
+                              {riskFirstLoans.slice(0, 3).map((loan, index) => {
+                                const riskScore = (loan.interest_rate || 0) + (loan.outstandingBalance / 100000) + (loan.remainingMonths / 12);
+                                return (
+                                  <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-lg text-xs">
+                                    <div className="flex items-center space-x-2">
+                                      <div className={`p-1 rounded ${loanColors[loan.loanCategory]} text-white`}>
+                                        {loanIcons[loan.loanCategory]}
+                                      </div>
+                                      <div>
+                                        <p className="font-medium text-foreground">
+                                          {loan.loanCategory.replace('_', ' ').toUpperCase()}
+                                        </p>
+                                        <p className="text-muted-foreground">
+                                          {loan.interest_rate}% • ₹{loan.outstandingBalance.toLocaleString()}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="font-medium text-foreground">
+                                        #{index + 1}
+                                      </p>
+                                      <p className="text-muted-foreground">
+                                        Risk: {riskScore.toFixed(1)} • {loan.emi ? `₹${loan.emi.toLocaleString()}` : 'No EMI'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              No EMI-based loans found
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
                     </div>
                   </div>
                 )}
+                </CardContent>
               </Card>
             </div>
           )}
@@ -743,36 +785,48 @@ export default function RepaymentsPage() {
           {/* Scenarios Tab */}
           {activeTab === 'scenarios' && (
             <div className="space-y-6">
-              <Card className="p-6 shadow-lg bg-white dark:bg-slate-800">
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
-                    <Calculator className="w-6 h-6 text-purple-600" />
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-xl">
+                      <Calculator className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <CardTitle>What-If Scenarios</CardTitle>
+                      <CardDescription>
+                        Test different repayment strategies and see the impact
+                      </CardDescription>
+                    </div>
                   </div>
-                  <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
-                    What-If Scenarios
-                  </h3>
-                </div>
-                <p className="text-slate-600 dark:text-slate-400 mb-6">
-                  Test different repayment strategies and see the impact
-                </p>
+                </CardHeader>
+                <CardContent>
                 
                 {liabilities.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-slate-600 dark:text-slate-400">
+                    <p className="text-muted-foreground">
                       Add some liabilities to see scenario calculations
                     </p>
                   </div>
                 ) : (
                   <div className="grid gap-6">
-                    {/* User Input Controls */}
-                    <div id="scenario-inputs" className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-700">
-                      <h4 className="font-semibold text-slate-900 dark:text-white mb-4">
-                        Scenario Inputs
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {/* Goals-Based Prepayment Inputs */}
+                    <Card id="scenario-inputs" className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+                            <Target className="w-4 h-4 text-purple-600" />
+                          </div>
+                          <h4 className="font-semibold text-foreground">
+                            Goals-Based Prepayment Calculator
+                          </h4>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Optimize your prepayments based on your financial goals and priorities
+                        </p>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                          <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                            Amount (₹)
+                          <Label className="text-sm font-medium text-foreground">
+                            Available Amount (₹)
                           </Label>
                           <Input
                             type="number"
@@ -786,66 +840,69 @@ export default function RepaymentsPage() {
                               }
                             }}
                             className="mt-1"
+                            placeholder="10000"
                           />
                         </div>
                         <div>
-                          <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                            Frequency
+                          <Label className="text-sm font-medium text-foreground">
+                            Payment Goal
                           </Label>
                           <select
                             value={scenarioInputs.frequency}
                             onChange={(e) => setScenarioInputs({...scenarioInputs, frequency: e.target.value})}
-                            className="w-full mt-1 p-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                            className="w-full mt-1 p-3 border border-border rounded-lg bg-background text-foreground"
                           >
-                            <option value="monthly">Monthly</option>
-                            <option value="quarterly">Quarterly</option>
-                            <option value="yearly">Yearly</option>
-                            <option value="lump_sum">Lump Sum</option>
+                            <option value="monthly">Reduce Monthly EMI</option>
+                            <option value="quarterly">Quarterly Prepayment</option>
+                            <option value="yearly">Yearly Bonus Payment</option>
+                            <option value="lump_sum">Debt Freedom Goal</option>
                           </select>
                         </div>
                         <div>
-                          <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                            Strategy
+                          <Label className="text-sm font-medium text-foreground">
+                            Priority Strategy
                           </Label>
                           <select
                             value={scenarioInputs.selectedStrategy}
                             onChange={(e) => setScenarioInputs({...scenarioInputs, selectedStrategy: e.target.value})}
-                            className="w-full mt-1 p-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                            className="w-full mt-1 p-3 border border-border rounded-lg bg-background text-foreground"
                           >
-                            <option value="avalanche">Avalanche (High Interest First)</option>
-                            <option value="snowball">Snowball (Small Balance First)</option>
-                            <option value="hybrid">Smart Hybrid</option>
-                            <option value="risk">Risk First</option>
+                            <option value="avalanche">💰 Maximum Savings (High Interest First)</option>
+                            <option value="snowball">🎯 Quick Wins (Small Debts First)</option>
+                            <option value="hybrid">⚡ Smart Balance (Best of Both)</option>
+                            <option value="risk">🛡️ Risk Reduction (High Risk First)</option>
+                            <option value="all">📊 Compare All Strategies</option>
                           </select>
                         </div>
-                        <div>
-                          <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                            Show All Strategies
-                          </Label>
-                          <Button
-                            onClick={() => setScenarioInputs({...scenarioInputs, selectedStrategy: 'all'})}
-                            className="w-full mt-1 bg-blue-600 hover:bg-blue-700 text-white text-sm"
-                          >
-                            Compare All 4
-                          </Button>
-                        </div>
                       </div>
-                    </div>
+                      </CardContent>
+                    </Card>
 
-                    {/* Scenario Results */}
-                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                      <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
-                        {scenarioInputs.frequency === 'lump_sum' 
-                          ? `₹${scenarioInputs.lumpSumAmount.toLocaleString()} Lump Sum Prepayment`
-                          : `₹${scenarioInputs.extraMonthlyAmount.toLocaleString()} ${scenarioInputs.frequency.charAt(0).toUpperCase() + scenarioInputs.frequency.slice(1)} Payment`
-                        }
-                      </h4>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                        {scenarioInputs.selectedStrategy === 'all' 
-                          ? 'Comparison across all 4 strategies'
-                          : `Apply payment using ${scenarioInputs.selectedStrategy} strategy`
-                        }
-                      </p>
+                    {/* Goals-Based Results */}
+                    <Card className="border-l-4 border-l-green-500">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                            <Rocket className="w-4 h-4 text-green-600" />
+                          </div>
+                          <h4 className="font-semibold text-foreground">
+                            {scenarioInputs.frequency === 'lump_sum' 
+                              ? `🎯 Debt Freedom with ₹${scenarioInputs.lumpSumAmount.toLocaleString()}`
+                              : `💪 ${scenarioInputs.frequency === 'monthly' ? 'EMI Reduction' : 'Strategic Prepayment'} Plan`
+                            }
+                          </h4>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          {scenarioInputs.selectedStrategy === 'all' 
+                            ? 'Smart comparison across all goal-oriented strategies for optimal results'
+                            : `Optimized for ${
+                                scenarioInputs.selectedStrategy === 'avalanche' ? 'maximum interest savings' :
+                                scenarioInputs.selectedStrategy === 'snowball' ? 'psychological wins and momentum' :
+                                scenarioInputs.selectedStrategy === 'hybrid' ? 'balanced approach with quick wins' :
+                                'risk reduction and financial security'
+                              }`
+                          }
+                        </p>
                       
                       {(() => {
                         const strategies = scenarioInputs.selectedStrategy === 'all' 
@@ -952,9 +1009,11 @@ export default function RepaymentsPage() {
                           );
                         }).filter(Boolean);
                       })()}
-                    </div>
+                      </CardContent>
+                    </Card>
                   </div>
                 )}
+                </CardContent>
               </Card>
             </div>
           )}
@@ -962,66 +1021,76 @@ export default function RepaymentsPage() {
           {/* Insights Tab */}
           {activeTab === 'insights' && (
             <div className="space-y-6">
-            <Card className="p-6 shadow-lg bg-white dark:bg-slate-800">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="p-2 bg-indigo-100 dark:bg-indigo-900/20 rounded-lg">
-                  <TrendingUp className="w-6 h-6 text-indigo-600" />
-                </div>
-                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
-                  Smart Insights
-                </h3>
-              </div>
-              <p className="text-slate-600 dark:text-slate-400 mb-6">
-                AI-generated recommendations based on your debt profile
-              </p>
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/20 rounded-xl">
+                      <Lightbulb className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <div>
+                      <CardTitle>Smart Insights</CardTitle>
+                      <CardDescription>
+                        AI-generated recommendations based on your debt profile
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
               
-              <div className="space-y-4">
-                <div className="flex items-start space-x-3 p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-lg">
-                  <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
-                  <div>
-                    <h4 className="font-semibold text-green-800 dark:text-green-400">
-                      Refinancing Opportunity
-                    </h4>
-                    <p className="text-sm text-green-700 dark:text-green-300">
-                      Your home loan rate is 2% higher than current market rates
-                    </p>
+                <div className="space-y-4">
+                  <div className="flex items-start space-x-3 p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-lg">
+                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-green-800 dark:text-green-400">
+                        Refinancing Opportunity
+                      </h4>
+                      <p className="text-sm text-green-700 dark:text-green-300">
+                        Your home loan rate is 2% higher than current market rates
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start space-x-3 p-4 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                    <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-yellow-800 dark:text-yellow-400">
+                        High Interest Alert
+                      </h4>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                        Credit card balance is accruing ₹2,500 monthly in interest
+                      </p>
+                    </div>
                   </div>
                 </div>
-                
-                <div className="flex items-start space-x-3 p-4 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
-                  <div>
-                    <h4 className="font-semibold text-yellow-800 dark:text-yellow-400">
-                      High Interest Alert
-                    </h4>
-                    <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                      Credit card balance is accruing ₹2,500 monthly in interest
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </Card>
+                </CardContent>
+              </Card>
             </div>
           )}
         </div>
 
         {/* Add Liability Modal */}
         {showAddForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <Card className="w-full max-w-md p-6 border-0 shadow-2xl bg-white dark:bg-slate-800">
-              <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-4">
-                Add New Liability
-              </h3>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-md border-0 shadow-2xl">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                    <Plus className="w-4 h-4 text-blue-600" />
+                  </div>
+                  Add New Liability
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
               
               <div className="space-y-4">
                 <div>
-                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  <Label className="text-sm font-medium text-foreground">
                     Loan Type
                   </Label>
                   <select
                     value={formData.type}
                     onChange={(e) => setFormData({...formData, type: e.target.value as LoanCategory})}
-                    className="w-full mt-1 p-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                    className="w-full mt-1 p-3 border border-border rounded-lg bg-background text-foreground"
                   >
                     <option value="home_loan">Home Loan</option>
                     <option value="car_loan">Car Loan</option>
@@ -1034,7 +1103,7 @@ export default function RepaymentsPage() {
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  <Label className="text-sm font-medium text-foreground">
                     Institution
                   </Label>
                   <Input
@@ -1046,7 +1115,7 @@ export default function RepaymentsPage() {
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  <Label className="text-sm font-medium text-foreground">
                     Original Amount (₹)
                   </Label>
                   <Input
@@ -1059,7 +1128,7 @@ export default function RepaymentsPage() {
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  <Label className="text-sm font-medium text-foreground">
                     Interest Rate (%)
                   </Label>
                   <Input
@@ -1073,7 +1142,7 @@ export default function RepaymentsPage() {
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  <Label className="text-sm font-medium text-foreground">
                     Start Date
                   </Label>
                   <Input
@@ -1087,7 +1156,7 @@ export default function RepaymentsPage() {
                 {/* Only show tenure for EMI-based loans */}
                 {formData.type && !['credit_card'].includes(formData.type) && (
                   <div>
-                    <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    <Label className="text-sm font-medium text-foreground">
                       Tenure (months) - Optional
                     </Label>
                     <Input
@@ -1097,7 +1166,7 @@ export default function RepaymentsPage() {
                       placeholder="Leave empty for default tenure"
                       className="mt-1"
                     />
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       Leave empty to use default tenure based on loan type
                     </p>
                   </div>
@@ -1114,11 +1183,12 @@ export default function RepaymentsPage() {
                 )}
               </div>
 
-              <div className="flex space-x-3 mt-6">
+              <div className="flex gap-3 mt-6">
                 <Button
                   onClick={() => setShowAddForm(false)}
                   variant="outline"
                   className="flex-1"
+                  leftIcon={<X className="w-3 h-3" />}
                 >
                   Cancel
                 </Button>
@@ -1126,16 +1196,20 @@ export default function RepaymentsPage() {
                   onClick={resetForm}
                   variant="outline"
                   className="flex-1"
+                  leftIcon={<RefreshCw className="w-3 h-3" />}
                 >
                   Reset
                 </Button>
                 <Button
                   onClick={addLiability}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  variant="primary"
+                  className="flex-1"
+                  leftIcon={<Plus className="w-3 h-3" />}
                 >
                   Add Liability
                 </Button>
               </div>
+              </CardContent>
             </Card>
           </div>
         )}
