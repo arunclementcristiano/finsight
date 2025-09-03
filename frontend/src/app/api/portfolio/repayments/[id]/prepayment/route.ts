@@ -7,11 +7,12 @@ const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env
 const REPAYMENTS_TABLE = process.env.REPAYMENTS_TABLE || "Repayments";
 const REPAYMENT_HISTORY_TABLE = process.env.REPAYMENT_HISTORY_TABLE || "RepaymentHistory";
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const sub = await getUserSubFromJwt(req);
     if (!sub) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const { id } = await params;
     const body = await req.json();
     const { amount, payment_date, type, extra_months } = body;
 
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       TableName: REPAYMENTS_TABLE,
       Key: {
         user_id: sub,
-        repayment_id: params.id
+        repayment_id: id
       }
     }));
 
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const history_id = crypto.randomUUID();
     const historyEntry = {
       user_id: sub,
-      repayment_id: params.id,
+      repayment_id: id,
       history_id,
       amount: prepaymentAmount,
       payment_date,
@@ -61,7 +62,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       TableName: REPAYMENTS_TABLE,
       Key: {
         user_id: sub,
-        repayment_id: params.id
+        repayment_id: id
       },
       UpdateExpression: "SET outstanding_balance = :balance, updated_at = :updated_at",
       ExpressionAttributeValues: {

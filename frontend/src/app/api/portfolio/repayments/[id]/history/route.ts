@@ -6,18 +6,19 @@ import { getUserSubFromJwt } from "../../../../_utils/auth";
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.AWS_REGION || "us-east-1" }));
 const REPAYMENT_HISTORY_TABLE = process.env.REPAYMENT_HISTORY_TABLE || "RepaymentHistory";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const sub = await getUserSubFromJwt(req);
     if (!sub) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const { id } = await params;
     // Query repayment history using GSI
     const result = await ddb.send(new QueryCommand({
       TableName: REPAYMENT_HISTORY_TABLE,
       IndexName: "RepaymentHistoryIndex",
       KeyConditionExpression: "repayment_id = :repaymentId",
       ExpressionAttributeValues: {
-        ":repaymentId": params.id
+        ":repaymentId": id
       }
     }));
 

@@ -6,16 +6,17 @@ import { getUserSubFromJwt } from "../../../_utils/auth";
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.AWS_REGION || "us-east-1" }));
 const REPAYMENTS_TABLE = process.env.REPAYMENTS_TABLE || "Repayments";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const sub = await getUserSubFromJwt(req);
     if (!sub) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const { id } = await params;
     const result = await ddb.send(new GetCommand({
       TableName: REPAYMENTS_TABLE,
       Key: {
         user_id: sub,
-        repayment_id: params.id
+        repayment_id: id
       }
     }));
 
@@ -30,11 +31,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const sub = await getUserSubFromJwt(req);
     if (!sub) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const { id } = await params;
     const body = await req.json();
     const {
       type,
@@ -53,7 +55,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
     const repayment = {
       user_id: sub,
-      repayment_id: params.id,
+      repayment_id: id,
       type: type || undefined,
       institution: institution || undefined,
       principal: principal ? parseFloat(principal) : undefined,
@@ -86,16 +88,17 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const sub = await getUserSubFromJwt(req);
     if (!sub) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const { id } = await params;
     await ddb.send(new DeleteCommand({
       TableName: REPAYMENTS_TABLE,
       Key: {
         user_id: sub,
-        repayment_id: params.id
+        repayment_id: id
       }
     }));
 
