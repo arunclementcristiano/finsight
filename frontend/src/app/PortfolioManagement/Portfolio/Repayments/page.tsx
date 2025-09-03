@@ -67,6 +67,7 @@ export default function RepaymentsPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
+  const [showOptimizeModal, setShowOptimizeModal] = useState(false);
   const [engine] = useState(new LoanEngine());
 
   // Quick Add Form State
@@ -281,247 +282,167 @@ export default function RepaymentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-6">
-        
-        {/* Header Section - Consistent with Plan page */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground mb-1">
-                Smart Repayment Hub
-              </h1>
-              <p className="text-muted-foreground text-sm">
-                Optimize your debt repayment strategy with AI-powered insights
-              </p>
+    <div className="max-w-full space-y-4 pl-2">
+      {/* Header - Exact same structure as Plan page */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="text-sm text-muted-foreground">Repayment Management</div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            leftIcon={<Plus className="h-4 w-4" />} 
+            onClick={() => setShowAddForm(true)}
+          >
+            Add Liability
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            leftIcon={<Zap className="h-4 w-4" />} 
+            onClick={() => setShowOptimizeModal(true)}
+          >
+            Optimize Strategy
+          </Button>
+        </div>
+      </div>
+
+      {/* Quick Stats - Same structure as Plan page */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Outstanding</p>
+                <p className="text-2xl font-bold text-foreground">
+                  ₹{totalOutstanding.toLocaleString()}
+                </p>
+              </div>
+              <div className="p-3 bg-red-100 dark:bg-red-900/20 rounded-xl">
+                <DollarSign className="w-5 h-5 text-red-600" />
+              </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Monthly EMI</p>
+                <p className="text-2xl font-bold text-foreground">
+                  ₹{totalMonthlyEMI.toLocaleString()}
+                </p>
+              </div>
+              <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-xl">
+                <Clock className="w-5 h-5 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Interest Accrued</p>
+                <p className="text-2xl font-bold text-foreground">
+                  ₹{totalInterestAccrued.toLocaleString()}
+                </p>
+              </div>
+              <div className="p-3 bg-yellow-100 dark:bg-yellow-900/20 rounded-xl">
+                <TrendingUp className="w-5 h-5 text-yellow-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Avg Interest Rate</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {avgInterestRate.toFixed(1)}%
+                </p>
+              </div>
+              <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-xl">
+                <Target className="w-5 h-5 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Liabilities Overview - Clean and Simple */}
+      {liabilities.length === 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>No Liabilities Added Yet</CardTitle>
+            <CardDescription>Add your first liability to start optimizing your repayment strategy</CardDescription>
+          </CardHeader>
+          <CardContent>
             <Button 
               onClick={() => setShowAddForm(true)}
-              variant="primary"
-              size="md"
               leftIcon={<Plus className="w-4 h-4" />}
             >
-              Add Liability
+              Add Your First Liability
             </Button>
-          </div>
-
-          {/* Quick Stats - Modernized like Plan page */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Outstanding</p>
-                    <p className="text-2xl font-bold text-foreground">
-                      ₹{totalOutstanding.toLocaleString()}
-                    </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Liabilities</CardTitle>
+            <CardDescription>Manage and optimize your debt repayment strategy</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {liabilities.map((loan, index) => (
+                <div key={index} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className={`p-3 rounded-xl ${loanColors[loan.loanCategory]} text-white`}>
+                      {loanIcons[loan.loanCategory]}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground">
+                        {loan.loanCategory.replace('_', ' ').toUpperCase()}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        ₹{loan.originalAmount.toLocaleString()} • {loan.interest_rate}% APR
+                      </p>
+                    </div>
                   </div>
-                  <div className="p-3 bg-red-100 dark:bg-red-900/20 rounded-xl">
-                    <DollarSign className="w-5 h-5 text-red-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Monthly EMI</p>
-                    <p className="text-2xl font-bold text-foreground">
-                      ₹{totalMonthlyEMI.toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-xl">
-                    <Clock className="w-5 h-5 text-blue-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Interest Accrued</p>
-                    <p className="text-2xl font-bold text-foreground">
-                      ₹{totalInterestAccrued.toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="p-3 bg-yellow-100 dark:bg-yellow-900/20 rounded-xl">
-                    <TrendingUp className="w-5 h-5 text-yellow-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Avg Interest Rate</p>
-                    <p className="text-2xl font-bold text-foreground">
-                      {avgInterestRate.toFixed(1)}%
-                    </p>
-                  </div>
-                  <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-xl">
-                    <Target className="w-5 h-5 text-green-600" />
+                  <div className="flex items-center space-x-6">
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground">Outstanding</p>
+                      <p className="font-semibold text-foreground">
+                        ₹{loan.outstandingBalance.toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground">EMI</p>
+                      <p className="font-semibold text-foreground">
+                        ₹{loan.emi?.toLocaleString() || 'N/A'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground">Remaining</p>
+                      <p className="font-semibold text-foreground">
+                        {loan.remainingMonths} months
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {loan.loanType.toUpperCase()}
+                    </Badge>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Main Content Tabs - Modernized */}
-        <div className="space-y-6">
-          <div className="flex space-x-1 bg-muted p-1 rounded-xl">
-            {[
-              { id: 'overview', label: 'Overview', icon: <BarChart3 className="w-4 h-4" /> },
-              { id: 'optimize', label: 'Optimize', icon: <Zap className="w-4 h-4" /> },
-              { id: 'scenarios', label: 'Scenarios', icon: <Calculator className="w-4 h-4" /> },
-              { id: 'insights', label: 'Insights', icon: <Lightbulb className="w-4 h-4" /> }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
-                  activeTab === tab.id
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
-                }`}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Overview Tab */}
-          {activeTab === 'overview' && (
-            <div className="space-y-6">
-            {liabilities.length === 0 ? (
-              <Card className="p-12 text-center">
-                <div className="max-w-md mx-auto">
-                  <div className="p-4 bg-blue-100 dark:bg-blue-900/20 rounded-xl w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                    <Calculator className="w-8 h-8 text-blue-600" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-foreground mb-2">
-                    No Liabilities Added Yet
-                  </h3>
-                  <p className="text-muted-foreground mb-6">
-                    Add your first liability to start optimizing your repayment strategy
-                  </p>
-                  <Button 
-                    onClick={() => setShowAddForm(true)}
-                    variant="primary"
-                    size="lg"
-                    leftIcon={<Plus className="w-4 h-4" />}
-                  >
-                    Add Your First Liability
-                  </Button>
-                </div>
-              </Card>
-            ) : (
-              <div className="grid gap-4">
-                {liabilities.map((loan, index) => (
-                  <Card key={index} className="hover:shadow-md transition-all duration-200">
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          <div className={`p-3 rounded-xl ${loanColors[loan.loanCategory]} text-white shadow-sm`}>
-                            {loanIcons[loan.loanCategory]}
-                          </div>
-                          <div>
-                            <h3 className="text-lg font-semibold text-foreground">
-                              {loan.loanCategory.replace('_', ' ').toUpperCase()}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                              ₹{loan.originalAmount.toLocaleString()} • {loan.interest_rate}% APR
-                            </p>
-                          </div>
-                        </div>
-                        <Badge variant="outline" className="text-xs">
-                          {loan.loanType.toUpperCase()}
-                        </Badge>
-                      </div>
-
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                        <div className="text-center p-3 bg-muted rounded-lg">
-                          <p className="text-sm text-muted-foreground">Outstanding</p>
-                          <p className="text-lg font-semibold text-foreground">
-                            ₹{loan.outstandingBalance.toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="text-center p-3 bg-muted rounded-lg">
-                          <p className="text-sm text-muted-foreground">EMI</p>
-                          <p className="text-lg font-semibold text-foreground">
-                            ₹{loan.emi?.toLocaleString() || 'N/A'}
-                          </p>
-                        </div>
-                        <div className="text-center p-3 bg-muted rounded-lg">
-                          <p className="text-sm text-muted-foreground">Remaining</p>
-                          <p className="text-lg font-semibold text-foreground">
-                            {loan.remainingMonths} months
-                          </p>
-                        </div>
-                        <div className="text-center p-3 bg-muted rounded-lg">
-                          <p className="text-sm text-muted-foreground">Interest</p>
-                          <p className="text-lg font-semibold text-foreground">
-                            ₹{loan.totalInterestAccrued?.toLocaleString() || '0'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-muted-foreground italic">
-                          {loan.explanation}
-                        </p>
-                        <div className="flex gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="text-xs"
-                            leftIcon={<Zap className="w-3 h-3 text-yellow-600" />}
-                            onClick={() => {
-                              setActiveTab('optimize');
-                              setTimeout(() => {
-                                const element = document.getElementById(`strategy-${loan.loanCategory}`);
-                                if (element) element.scrollIntoView({ behavior: 'smooth' });
-                              }, 100);
-                            }}
-                          >
-                            Optimize
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="text-xs"
-                            leftIcon={<Calculator className="w-3 h-3 text-blue-600" />}
-                            onClick={() => {
-                              setActiveTab('scenarios');
-                              setScenarioInputs({
-                                ...scenarioInputs,
-                                extraMonthlyAmount: Math.min(5000, (loan.emi || 0) * 0.5),
-                                lumpSumAmount: Math.min(50000, loan.outstandingBalance * 0.1)
-                              });
-                              setTimeout(() => {
-                                const element = document.getElementById('scenario-inputs');
-                                if (element) element.scrollIntoView({ behavior: 'smooth' });
-                              }, 100);
-                            }}
-                          >
-                            Prepay
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+              ))}
             </div>
-          )}
+          </CardContent>
+        </Card>
+      )}
 
           {/* Optimize Tab */}
           {activeTab === 'optimize' && (
