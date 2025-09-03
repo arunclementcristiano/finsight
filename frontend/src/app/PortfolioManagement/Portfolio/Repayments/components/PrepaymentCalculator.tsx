@@ -49,89 +49,97 @@ export default function PrepaymentCalculator({ repayment, onClose }: PrepaymentC
 
   const calculatePrepaymentImpact = () => {
     if (!prepaymentAmount || parseFloat(prepaymentAmount) <= 0) {
+      alert('Please enter a valid prepayment amount');
       return;
     }
 
     setIsCalculating(true);
 
-    const principal = repayment.outstanding_balance;
-    const rate = repayment.interest_rate / 100 / 12; // Monthly rate
-    const emi = repayment.emi_amount;
-    const prepayment = parseFloat(prepaymentAmount);
+    try {
+      const principal = repayment.outstanding_balance;
+      const rate = repayment.interest_rate / 100 / 12; // Monthly rate
+      const emi = repayment.emi_amount;
+      const prepayment = parseFloat(prepaymentAmount);
 
-    // Calculate original remaining tenure
-    const originalTenure = Math.ceil(principal / emi);
+      // Calculate original remaining tenure
+      const originalTenure = Math.ceil(principal / emi);
 
-    let newPrincipal = principal;
-    let newTenure = originalTenure;
-    let interestSaved = 0;
+      let newPrincipal = principal;
+      let newTenure = originalTenure;
+      let interestSaved = 0;
 
-    if (prepaymentType === 'lump_sum') {
-      // Lump sum prepayment
-      newPrincipal = Math.max(0, principal - prepayment);
-      
-      if (newPrincipal > 0) {
-        // Calculate new tenure with same EMI
-        if (rate === 0) {
-          newTenure = Math.ceil(newPrincipal / emi);
+      if (prepaymentType === 'lump_sum') {
+        // Lump sum prepayment
+        newPrincipal = Math.max(0, principal - prepayment);
+        
+        if (newPrincipal > 0) {
+          // Calculate new tenure with same EMI
+          if (rate === 0) {
+            newTenure = Math.ceil(newPrincipal / emi);
+          } else {
+            // Using approximation for tenure calculation
+            const months = Math.log(1 + (newPrincipal * rate) / emi) / Math.log(1 + rate);
+            newTenure = Math.ceil(months);
+          }
         } else {
-          // Using approximation for tenure calculation
-          const months = Math.log(1 + (newPrincipal * rate) / emi) / Math.log(1 + rate);
-          newTenure = Math.ceil(months);
+          newTenure = 0;
         }
+
+        // Calculate interest saved
+        const originalTotalInterest = (emi * originalTenure) - principal;
+        const newTotalInterest = newPrincipal > 0 ? (emi * newTenure) - newPrincipal : 0;
+        interestSaved = originalTotalInterest - newTotalInterest;
+
       } else {
-        newTenure = 0;
-      }
+        // Extra EMI payments
+        const extraMonths = parseInt(extraEMIMonths) || 0;
+        if (extraMonths <= 0) {
+          alert('Please enter a valid number of extra EMI months');
+          setIsCalculating(false);
+          return;
+        }
 
-      // Calculate interest saved
-      const originalTotalInterest = (emi * originalTenure) - principal;
-      const newTotalInterest = newPrincipal > 0 ? (emi * newTenure) - newPrincipal : 0;
-      interestSaved = originalTotalInterest - newTotalInterest;
-
-    } else {
-      // Extra EMI payments
-      const extraMonths = parseInt(extraEMIMonths) || 0;
-      if (extraMonths <= 0) {
-        setIsCalculating(false);
-        return;
-      }
-
-      const extraEMITotal = prepayment * extraMonths;
-      newPrincipal = Math.max(0, principal - extraEMITotal);
-      
-      if (newPrincipal > 0) {
-        if (rate === 0) {
-          newTenure = Math.ceil(newPrincipal / emi);
+        const extraEMITotal = prepayment * extraMonths;
+        newPrincipal = Math.max(0, principal - extraEMITotal);
+        
+        if (newPrincipal > 0) {
+          if (rate === 0) {
+            newTenure = Math.ceil(newPrincipal / emi);
+          } else {
+            const months = Math.log(1 + (newPrincipal * rate) / emi) / Math.log(1 + rate);
+            newTenure = Math.ceil(months);
+          }
         } else {
-          const months = Math.log(1 + (newPrincipal * rate) / emi) / Math.log(1 + rate);
-          newTenure = Math.ceil(months);
+          newTenure = 0;
         }
-      } else {
-        newTenure = 0;
+
+        // Calculate interest saved
+        const originalTotalInterest = (emi * originalTenure) - principal;
+        const newTotalInterest = newPrincipal > 0 ? (emi * newTenure) - newPrincipal : 0;
+        interestSaved = originalTotalInterest - newTotalInterest;
       }
 
-      // Calculate interest saved
-      const originalTotalInterest = (emi * originalTenure) - principal;
-      const newTotalInterest = newPrincipal > 0 ? (emi * newTenure) - newPrincipal : 0;
-      interestSaved = originalTotalInterest - newTotalInterest;
+      // Calculate new closure date
+      const currentDate = new Date();
+      const newClosureDate = new Date(currentDate);
+      newClosureDate.setMonth(newClosureDate.getMonth() + newTenure);
+
+      const calculationResult: CalculationResult = {
+        originalTenure,
+        newTenure,
+        interestSaved,
+        newClosureDate: newClosureDate.toLocaleDateString(),
+        newEMI: emi,
+        totalSavings: interestSaved
+      };
+
+      setResult(calculationResult);
+    } catch (error) {
+      console.error('Calculation error:', error);
+      alert('Error in calculation. Please check your inputs.');
+    } finally {
+      setIsCalculating(false);
     }
-
-    // Calculate new closure date
-    const currentDate = new Date();
-    const newClosureDate = new Date(currentDate);
-    newClosureDate.setMonth(newClosureDate.getMonth() + newTenure);
-
-    const calculationResult: CalculationResult = {
-      originalTenure,
-      newTenure,
-      interestSaved,
-      newClosureDate: newClosureDate.toLocaleDateString(),
-      newEMI: emi,
-      totalSavings: interestSaved
-    };
-
-    setResult(calculationResult);
-    setIsCalculating(false);
   };
 
   const handlePrepaymentChange = (value: string) => {
@@ -149,53 +157,55 @@ export default function PrepaymentCalculator({ repayment, onClose }: PrepaymentC
     setResult(null); // Clear previous results
   };
 
+  const handleProcessPrepayment = async () => {
+    if (!result) {
+      alert('Please calculate the impact first');
+      return;
+    }
+
+    try {
+      // TODO: Implement actual prepayment processing via API
+      console.log('Processing prepayment:', {
+        repayment_id: repayment.repayment_id,
+        amount: parseFloat(prepaymentAmount),
+        type: prepaymentType,
+        extra_months: prepaymentType === 'extra_emi' ? parseInt(extraEMIMonths) : undefined,
+        result: result
+      });
+      
+      // For now, just show success message
+      alert('Prepayment processed successfully! (This is a demo - actual API integration pending)');
+      onClose(); // Close the modal after successful processing
+    } catch (error) {
+      console.error('Error processing prepayment:', error);
+      alert('Error processing prepayment. Please try again.');
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Prepayment Calculator
-          </h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            {repayment.institution} - {repayment.type.replace('_', ' ').toUpperCase()}
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={onClose}>
-          Close
-        </Button>
-      </div>
-
-      {/* Current Loan Details */}
+      {/* Repayment Summary */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Current Loan Details</CardTitle>
+          <CardTitle className="text-base">Repayment Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-gray-600 dark:text-gray-400">Outstanding</p>
-              <p className="font-semibold text-gray-900 dark:text-white">
-                {formatCurrency(repayment.outstanding_balance)}
-              </p>
+              <p className="text-sm text-muted-foreground">Institution</p>
+              <p className="font-semibold text-foreground">{repayment.institution}</p>
             </div>
             <div>
-              <p className="text-gray-600 dark:text-gray-400">EMI</p>
-              <p className="font-semibold text-gray-900 dark:text-white">
-                {formatCurrency(repayment.emi_amount)}
-              </p>
+              <p className="text-sm text-muted-foreground">Outstanding Balance</p>
+              <p className="font-semibold text-foreground">{formatCurrency(repayment.outstanding_balance)}</p>
             </div>
             <div>
-              <p className="text-gray-600 dark:text-gray-400">Interest Rate</p>
-              <p className="font-semibold text-gray-900 dark:text-white">
-                {repayment.interest_rate}%
-              </p>
+              <p className="text-sm text-muted-foreground">Monthly EMI</p>
+              <p className="font-semibold text-foreground">{formatCurrency(repayment.emi_amount)}</p>
             </div>
             <div>
-              <p className="text-gray-600 dark:text-gray-400">Remaining Tenure</p>
-              <p className="font-semibold text-gray-900 dark:text-white">
-                {Math.ceil(repayment.outstanding_balance / repayment.emi_amount)} months
-              </p>
+              <p className="text-sm text-muted-foreground">Interest Rate</p>
+              <p className="font-semibold text-foreground">{repayment.interest_rate}%</p>
             </div>
           </div>
         </CardContent>
@@ -252,7 +262,7 @@ export default function PrepaymentCalculator({ repayment, onClose }: PrepaymentC
           <Button
             onClick={calculatePrepaymentImpact}
             disabled={isCalculating || !prepaymentAmount || parseFloat(prepaymentAmount) <= 0}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            className="w-full"
           >
             <Calculator className="w-4 h-4 mr-2" />
             {isCalculating ? 'Calculating...' : 'Calculate Impact'}
@@ -272,23 +282,23 @@ export default function PrepaymentCalculator({ repayment, onClose }: PrepaymentC
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Tenure Comparison */}
               <div className="space-y-3">
-                <h4 className="font-semibold text-gray-900 dark:text-white flex items-center">
+                <h4 className="font-semibold text-foreground flex items-center">
                   <Clock className="w-4 h-4 mr-2" />
                   Tenure Comparison
                 </h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Original Tenure:</span>
+                    <span className="text-muted-foreground">Original Tenure:</span>
                     <span className="font-medium">{result.originalTenure} months</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">New Tenure:</span>
+                    <span className="text-muted-foreground">New Tenure:</span>
                     <span className="font-medium text-green-600 dark:text-green-400">
                       {result.newTenure} months
                     </span>
                   </div>
                   <div className="flex justify-between border-t pt-2">
-                    <span className="text-gray-600 dark:text-gray-400">Months Saved:</span>
+                    <span className="text-muted-foreground">Months Saved:</span>
                     <span className="font-semibold text-green-600 dark:text-green-400">
                       {result.originalTenure - result.newTenure} months
                     </span>
@@ -298,23 +308,23 @@ export default function PrepaymentCalculator({ repayment, onClose }: PrepaymentC
 
               {/* Financial Impact */}
               <div className="space-y-3">
-                <h4 className="font-semibold text-gray-900 dark:text-white flex items-center">
+                <h4 className="font-semibold text-foreground flex items-center">
                   <TrendingUp className="w-4 h-4 mr-2" />
                   Financial Impact
                 </h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Interest Saved:</span>
+                    <span className="text-muted-foreground">Interest Saved:</span>
                     <span className="font-semibold text-green-600 dark:text-green-400">
                       {formatCurrency(result.interestSaved)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">New Closure Date:</span>
+                    <span className="text-muted-foreground">New Closure Date:</span>
                     <span className="font-medium">{result.newClosureDate}</span>
                   </div>
                   <div className="flex justify-between border-t pt-2">
-                    <span className="text-gray-600 dark:text-gray-400">Total Savings:</span>
+                    <span className="text-muted-foreground">Total Savings:</span>
                     <span className="font-bold text-green-600 dark:text-green-400 text-lg">
                       {formatCurrency(result.totalSavings)}
                     </span>
@@ -324,26 +334,10 @@ export default function PrepaymentCalculator({ repayment, onClose }: PrepaymentC
             </div>
 
             {/* Action Button */}
-            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="mt-6 pt-4 border-t">
               <Button
                 className="w-full bg-green-600 hover:bg-green-700 text-white"
-                onClick={async () => {
-                  try {
-                    // TODO: Implement actual prepayment processing via API
-                    console.log('Processing prepayment:', {
-                      repayment_id: repayment.repayment_id,
-                      amount: parseFloat(prepaymentAmount),
-                      type: prepaymentType,
-                      extra_months: prepaymentType === 'extra_emi' ? parseInt(extraEMIMonths) : undefined
-                    });
-                    
-                    // For now, just show success message
-                    alert('Prepayment processed successfully! (This is a demo - actual API integration pending)');
-                  } catch (error) {
-                    console.error('Error processing prepayment:', error);
-                    alert('Error processing prepayment. Please try again.');
-                  }
-                }}
+                onClick={handleProcessPrepayment}
               >
                 <DollarSign className="w-4 h-4 mr-2" />
                 Process Prepayment

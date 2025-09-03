@@ -61,13 +61,24 @@ async function apiCall(endpoint: string, options: RequestInit = {}) {
     const response = await fetch(url, { ...defaultOptions, ...options });
     
     if (!response.ok) {
-      throw new Error(`API call failed: ${response.status} ${response.statusText}`);
+      // Handle specific error cases
+      if (response.status === 404) {
+        throw new Error('API endpoint not found. Please ensure the repayments API is deployed.');
+      } else if (response.status === 500) {
+        throw new Error('Server error. Please try again later.');
+      } else {
+        throw new Error(`API call failed: ${response.status} ${response.statusText}`);
+      }
     }
     
     return response.json();
   } catch (error) {
     console.error('API call error:', error);
-    throw error;
+    // Re-throw with more user-friendly message
+    if (error instanceof Error) {
+      throw new Error(`Unable to connect to repayments service: ${error.message}`);
+    }
+    throw new Error('Network error. Please check your connection and try again.');
   }
 }
 
