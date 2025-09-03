@@ -56,6 +56,8 @@ export default function RepaymentsPage() {
   const [showOptimizeModal, setShowOptimizeModal] = useState(false);
   const [showPrepayModal, setShowPrepayModal] = useState(false);
   const [selectedLoanForPrepay, setSelectedLoanForPrepay] = useState<EnhancedLoanStatus | null>(null);
+  const [prepayAmount, setPrepayAmount] = useState<number>(0);
+  const [prepayFrequency, setPrepayFrequency] = useState<string>('lump_sum');
   const [loading, setLoading] = useState(true);
   const [engine] = useState(new LoanEngine());
 
@@ -193,6 +195,54 @@ export default function RepaymentsPage() {
   const avalancheLoans = calculateAvalancheStrategy();
   const snowballLoans = calculateSnowballStrategy();
 
+  // Calculate prepayment impact
+  const calculatePrepaymentImpact = (loan: EnhancedLoanStatus, amount: number, frequency: string) => {
+    if (!amount || amount <= 0) {
+      return {
+        interestSaved: 0,
+        monthsSaved: 0,
+        newEMI: loan.emi || 0,
+        newBalance: loan.outstandingBalance,
+        newPayoffDate: new Date()
+      };
+    }
+
+    const isLumpSum = frequency === 'lump_sum';
+    const monthlyRate = (loan.interest_rate || 0) / 100 / 12;
+    
+    if (isLumpSum) {
+      // Lump sum prepayment
+      const newBalance = Math.max(0, loan.outstandingBalance - amount);
+      const remainingMonths = loan.remainingMonths;
+      const interestSaved = amount * monthlyRate * remainingMonths;
+      
+      return {
+        interestSaved,
+        monthsSaved: 0, // Lump sum doesn't change EMI
+        newEMI: loan.emi || 0,
+        newBalance,
+        newPayoffDate: new Date(Date.now() + remainingMonths * 30 * 24 * 60 * 60 * 1000)
+      };
+    } else {
+      // Regular extra payment
+      const extraMonthly = frequency === 'monthly' ? amount : 
+                          frequency === 'quarterly' ? amount / 3 : 
+                          frequency === 'yearly' ? amount / 12 : amount;
+      
+      const newEMI = (loan.emi || 0) + extraMonthly;
+      const monthsSaved = Math.floor(loan.outstandingBalance / newEMI);
+      const interestSaved = loan.outstandingBalance * monthlyRate * monthsSaved;
+      
+      return {
+        interestSaved,
+        monthsSaved,
+        newEMI,
+        newBalance: loan.outstandingBalance,
+        newPayoffDate: new Date(Date.now() + (loan.remainingMonths - monthsSaved) * 30 * 24 * 60 * 60 * 1000)
+      };
+    }
+  };
+
   // Calculate Smart Hybrid Strategy (combines avalanche + snowball)
   const calculateHybridStrategy = () => {
     const emiLoans = liabilities.filter(loan => loan.emi && loan.emi > 0);
@@ -274,6 +324,13 @@ export default function RepaymentsPage() {
             >
               <Plus className="w-5 h-5 mr-2" />
               Add Liability
+            </Button>
+            <Button 
+              onClick={() => setShowOptimizeModal(true)}
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              <Zap className="w-5 h-5 mr-2" />
+              Optimize All
             </Button>
           </div>
 
@@ -441,17 +498,10 @@ export default function RepaymentsPage() {
                           size="sm" 
                           variant="outline" 
                           className="text-xs"
-                          onClick={() => setShowOptimizeModal(true)}
-                        >
-                          <Zap className="w-4 h-4 mr-1" />
-                          Optimize
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="text-xs"
                           onClick={() => {
                             setSelectedLoanForPrepay(loan);
+                            setPrepayAmount(0);
+                            setPrepayFrequency('lump_sum');
                             setShowPrepayModal(true);
                           }}
                         >
@@ -1275,6 +1325,8 @@ export default function RepaymentsPage() {
                       </Label>
                       <Input
                         type="number"
+                        value={prepayAmount || ''}
+                        onChange={(e) => setPrepayAmount(Number(e.target.value))}
                         placeholder="Enter prepayment amount"
                         className="mt-1"
                       />
@@ -1283,7 +1335,11 @@ export default function RepaymentsPage() {
                       <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                         Frequency
                       </Label>
-                      <select className="w-full mt-1 p-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                      <select 
+                        value={prepayFrequency}
+                        onChange={(e) => setPrepayFrequency(e.target.value)}
+                        className="w-full mt-1 p-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                      >
                         <option value="lump_sum">Lump Sum</option>
                         <option value="monthly">Monthly Extra</option>
                         <option value="quarterly">Quarterly Extra</option>
@@ -1298,47 +1354,64 @@ export default function RepaymentsPage() {
                   <h4 className="font-semibold text-slate-900 dark:text-white mb-4">
                     Impact Analysis
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-lg">
-                      <h5 className="font-semibold text-green-800 dark:text-green-400 mb-2">
-                        Savings
-                      </h5>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-green-700 dark:text-green-300">Interest Saved:</span>
-                          <span className="font-semibold text-green-800 dark:text-green-400">₹45,000</span>
+                  {(() => {
+                    const impact = calculatePrepaymentImpact(selectedLoanForPrepay, prepayAmount, prepayFrequency);
+                    return (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-lg">
+                          <h5 className="font-semibold text-green-800 dark:text-green-400 mb-2">
+                            Savings
+                          </h5>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-green-700 dark:text-green-300">Interest Saved:</span>
+                              <span className="font-semibold text-green-800 dark:text-green-400">
+                                ₹{impact.interestSaved.toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-green-700 dark:text-green-300">Months Saved:</span>
+                              <span className="font-semibold text-green-800 dark:text-green-400">
+                                {impact.monthsSaved} months
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-green-700 dark:text-green-300">New Payoff Date:</span>
+                              <span className="font-semibold text-green-800 dark:text-green-400">
+                                {impact.newPayoffDate.toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-green-700 dark:text-green-300">Months Saved:</span>
-                          <span className="font-semibold text-green-800 dark:text-green-400">12 months</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-green-700 dark:text-green-300">New Payoff Date:</span>
-                          <span className="font-semibold text-green-800 dark:text-green-400">Dec 2025</span>
+                        
+                        <div className="p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg">
+                          <h5 className="font-semibold text-blue-800 dark:text-blue-400 mb-2">
+                            New Terms
+                          </h5>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-blue-700 dark:text-blue-300">New EMI:</span>
+                              <span className="font-semibold text-blue-800 dark:text-blue-400">
+                                ₹{impact.newEMI.toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-blue-700 dark:text-blue-300">New Balance:</span>
+                              <span className="font-semibold text-blue-800 dark:text-blue-400">
+                                ₹{impact.newBalance.toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-blue-700 dark:text-blue-300">Remaining Months:</span>
+                              <span className="font-semibold text-blue-800 dark:text-blue-400">
+                                {selectedLoanForPrepay.remainingMonths - impact.monthsSaved} months
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    
-                    <div className="p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg">
-                      <h5 className="font-semibold text-blue-800 dark:text-blue-400 mb-2">
-                        New Terms
-                      </h5>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-blue-700 dark:text-blue-300">New EMI:</span>
-                          <span className="font-semibold text-blue-800 dark:text-blue-400">₹18,000</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-blue-700 dark:text-blue-300">New Balance:</span>
-                          <span className="font-semibold text-blue-800 dark:text-blue-400">₹2,50,000</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-blue-700 dark:text-blue-300">Remaining Months:</span>
-                          <span className="font-semibold text-blue-800 dark:text-blue-400">24 months</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Action Buttons */}
