@@ -141,7 +141,10 @@ export default function RepaymentsPage() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setShowAddModal(true)}
+          onClick={() => {
+            console.log('Add Repayment button clicked');
+            setShowAddModal(true);
+          }}
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Repayment
@@ -346,7 +349,10 @@ export default function RepaymentsPage() {
             <Button 
               variant="outline"
               size="sm"
-              onClick={() => setShowAddModal(true)}
+              onClick={() => {
+                console.log('Add Your First Repayment button clicked');
+                setShowAddModal(true);
+              }}
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Your First Repayment
@@ -356,9 +362,11 @@ export default function RepaymentsPage() {
       )}
 
       {/* Add Repayment Modal */}
+      {console.log('Modal state:', { showAddModal, selectedType })}
       <Modal
         isOpen={showAddModal}
         onClose={() => {
+          console.log('Modal closing');
           setShowAddModal(false);
           setSelectedType('');
         }}
@@ -400,7 +408,8 @@ export default function RepaymentsPage() {
             </div>
           ) : (
             <AddRepaymentForm
-              type={selectedType}
+              selectedType={selectedType}
+              onBack={() => setSelectedType('')}
               onSave={handleAddRepayment}
               onCancel={() => {
                 setShowAddModal(false);
