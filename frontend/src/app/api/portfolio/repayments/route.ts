@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     } = body;
 
     // Validate required fields
-    if (!type || !institution || !principal || !interest_rate || !emi_amount || !tenure_months) {
+    if (!type || !institution || !principal || !interest_rate || !emi_amount) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       principal: parseFloat(principal),
       interest_rate: parseFloat(interest_rate),
       emi_amount: parseFloat(emi_amount),
-      tenure_months: parseInt(tenure_months),
+      tenure_months: tenure_months ? parseInt(tenure_months) : 0, // 0 means no fixed tenure (like credit cards)
       outstanding_balance,
       start_date: start_date || now,
       due_date: due_date || now,

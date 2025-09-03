@@ -63,7 +63,7 @@ export default function RepaymentsPage() {
     institution: '',
     start_date: new Date().toISOString().split('T')[0],
     original_amount: 0,
-    tenure_months: 36
+    tenure_months: undefined
   });
 
   // Load repayments from database on component mount
@@ -121,7 +121,7 @@ export default function RepaymentsPage() {
         principal: formData.original_amount,
         interest_rate: formData.interest_rate || 12,
         emi_amount: result.emi || 0,
-        tenure_months: formData.tenure_months || 36,
+        tenure_months: formData.tenure_months || 0, // 0 means no fixed tenure (like credit cards)
         start_date: formData.start_date || new Date().toISOString().split('T')[0],
         due_date: new Date().toISOString().split('T')[0]
       };
@@ -150,7 +150,7 @@ export default function RepaymentsPage() {
       institution: '',
       start_date: new Date().toISOString().split('T')[0],
       original_amount: 0,
-      tenure_months: 36
+      tenure_months: undefined
     });
   };
 
@@ -953,11 +953,14 @@ export default function RepaymentsPage() {
                   </Label>
                   <Input
                     type="number"
-                    value={formData.tenure_months}
-                    onChange={(e) => setFormData({...formData, tenure_months: Number(e.target.value)})}
-                    placeholder="36"
+                    value={formData.tenure_months || ''}
+                    onChange={(e) => setFormData({...formData, tenure_months: e.target.value ? Number(e.target.value) : undefined})}
+                    placeholder="Leave empty for default tenure"
                     className="mt-1"
                   />
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Leave empty to use default tenure based on loan type
+                  </p>
                 </div>
               </div>
 
