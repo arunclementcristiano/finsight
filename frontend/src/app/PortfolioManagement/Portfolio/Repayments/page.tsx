@@ -147,19 +147,19 @@ export default function RepaymentsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Repayments</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">Track and manage your loans and credit</p>
+            <h1 className="text-2xl font-semibold text-foreground">Repayments</h1>
+            <p className="text-sm text-muted-foreground mt-1">Track and manage your loans and credit</p>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
             <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
-                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+              <CardContent className="p-4">
+                <div className="h-3 bg-muted rounded w-3/4 mb-2"></div>
+                <div className="h-6 bg-muted rounded w-1/2"></div>
               </CardContent>
             </Card>
           ))}
@@ -169,16 +169,16 @@ export default function RepaymentsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Repayments</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">Track and manage your loans and credit</p>
+          <h1 className="text-2xl font-semibold text-foreground">Repayments</h1>
+          <p className="text-sm text-muted-foreground mt-1">Track and manage your loans and credit</p>
         </div>
         <Button 
           onClick={() => setShowAddModal(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Repayment
@@ -187,50 +187,50 @@ export default function RepaymentsPage() {
 
       {/* Summary Cards */}
       {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Outstanding</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <p className="text-sm font-medium text-muted-foreground">Total Outstanding</p>
+                  <p className="text-xl font-semibold text-foreground">
                     {formatCurrency(summary.total_outstanding)}
                   </p>
                 </div>
-                <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full">
-                  <TrendingDown className="w-6 h-6 text-red-600 dark:text-red-400" />
+                <div className="p-2 bg-destructive/10 rounded-full">
+                  <TrendingDown className="w-5 h-5 text-destructive" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Monthly EMIs</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <p className="text-sm font-medium text-muted-foreground">Monthly EMIs</p>
+                  <p className="text-xl font-semibold text-foreground">
                     {formatCurrency(summary.total_emi)}
                   </p>
                 </div>
-                <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full">
-                  <Calendar className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                <div className="p-2 bg-primary/10 rounded-full">
+                  <Calendar className="w-5 h-5 text-primary" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Repayments</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <p className="text-sm font-medium text-muted-foreground">Active Repayments</p>
+                  <p className="text-xl font-semibold text-foreground">
                     {summary.total_repayments}
                   </p>
                 </div>
-                <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-full">
-                  <DollarSign className="w-6 h-6 text-green-600 dark:text-green-400" />
+                <div className="p-2 bg-green-500/10 rounded-full">
+                  <DollarSign className="w-5 h-5 text-green-600" />
                 </div>
               </div>
             </CardContent>
@@ -241,8 +241,8 @@ export default function RepaymentsPage() {
       {/* Repayments List */}
       {summary && summary.repayments.length > 0 ? (
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Your Repayments</h2>
-          <div className="grid grid-cols-1 gap-4">
+          <h2 className="text-lg font-semibold text-foreground">Your Repayments</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {summary.repayments.map((repayment) => {
               const typeConfig = getRepaymentTypeConfig(repayment.type);
               const progress = calculateProgressPercentage(repayment);
@@ -250,90 +250,92 @@ export default function RepaymentsPage() {
               const IconComponent = typeConfig.icon;
 
               return (
-                <Card key={repayment.repayment_id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div className={`p-3 rounded-full ${typeConfig.color}`}>
-                          <IconComponent className="w-6 h-6" />
+                <Card key={repayment.repayment_id} className="hover:shadow-sm transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className={`p-2 rounded-full ${typeConfig.color}`}>
+                            <IconComponent className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h3 className="text-base font-semibold text-foreground">
+                              {typeConfig.label}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {repayment.institution}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                            {typeConfig.label}
-                          </h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {repayment.institution}
+                        
+                        <div className="text-right">
+                          <p className="text-lg font-semibold text-foreground">
+                            {formatCurrency(repayment.outstanding_balance)}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            EMI: {formatCurrency(repayment.emi_amount)}
                           </p>
                         </div>
                       </div>
-                      
-                      <div className="text-right">
-                        <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                          {formatCurrency(repayment.outstanding_balance)}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          EMI: {formatCurrency(repayment.emi_amount)}
-                        </p>
-                      </div>
-                    </div>
 
-                    {/* Progress Bar */}
-                    <div className="mt-4">
-                      <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
-                        <span>Progress</span>
-                        <span>{progress.toFixed(1)}%</span>
+                      {/* Progress Bar */}
+                      <div>
+                        <div className="flex justify-between text-sm text-muted-foreground mb-1">
+                          <span>Progress</span>
+                          <span>{progress.toFixed(1)}%</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2">
+                          <div 
+                            className="bg-primary h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${progress}%` }}
+                          ></div>
+                        </div>
                       </div>
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                        <div 
-                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${progress}%` }}
-                        ></div>
-                      </div>
-                    </div>
 
-                    {/* Details Row */}
-                    <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <p className="text-gray-600 dark:text-gray-400">Interest Rate</p>
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          {formatPercentage(repayment.interest_rate)}
-                        </p>
+                      {/* Details Row */}
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <p className="text-muted-foreground">Interest Rate</p>
+                          <p className="font-medium text-foreground">
+                            {formatPercentage(repayment.interest_rate)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Tenure Left</p>
+                          <p className="font-medium text-foreground">
+                            {Math.ceil(repayment.outstanding_balance / repayment.emi_amount)} months
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Next Due</p>
+                          <p className="font-medium text-foreground">
+                            {new Date(repayment.due_date).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Days Until Due</p>
+                          <p className={`font-medium flex items-center ${daysUntilDue <= 7 ? 'text-destructive' : 'text-foreground'}`}>
+                            {daysUntilDue} days
+                            {daysUntilDue <= 7 && <AlertTriangle className="w-3 h-3 ml-1" />}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-gray-600 dark:text-gray-400">Tenure Left</p>
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          {Math.ceil(repayment.outstanding_balance / repayment.emi_amount)} months
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600 dark:text-gray-400">Next Due</p>
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          {new Date(repayment.due_date).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600 dark:text-gray-400">Days Until Due</p>
-                        <p className={`font-medium ${daysUntilDue <= 7 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
-                          {daysUntilDue} days
-                          {daysUntilDue <= 7 && <AlertTriangle className="w-4 h-4 inline ml-1" />}
-                        </p>
-                      </div>
-                    </div>
 
-                    {/* Action Buttons */}
-                    <div className="mt-4 flex justify-end space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedRepayment(repayment);
-                          setShowCalculatorModal(true);
-                        }}
-                        className="text-blue-600 border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                      >
-                        <Calculator className="w-4 h-4 mr-1" />
-                        Prepayment Calculator
-                      </Button>
+                      {/* Action Buttons */}
+                      <div className="flex justify-end">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedRepayment(repayment);
+                            setShowCalculatorModal(true);
+                          }}
+                          className="text-primary border-primary hover:bg-primary/10"
+                        >
+                          <Calculator className="w-4 h-4 mr-1" />
+                          Prepayment Calculator
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -343,19 +345,19 @@ export default function RepaymentsPage() {
         </div>
       ) : (
         <Card>
-          <CardContent className="p-12 text-center">
-            <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-full w-16 h-16 mx-auto mb-4">
-              <TrendingDown className="w-8 h-8 text-gray-400" />
+          <CardContent className="p-8 text-center">
+            <div className="p-3 bg-muted rounded-full w-12 h-12 mx-auto mb-4">
+              <TrendingDown className="w-6 h-6 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               No Repayments Yet
             </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
+            <p className="text-muted-foreground mb-6">
               Start tracking your loans and credit to get a complete view of your financial health.
             </p>
             <Button 
               onClick={() => setShowAddModal(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Your First Repayment
