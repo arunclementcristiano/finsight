@@ -84,8 +84,12 @@ export default function AddRepaymentForm({ selectedType, onBack, onSave, onCance
   };
 
   const handleSave = () => {
+    console.log('Form data before validation:', formData);
     if (validateForm()) {
+      console.log('Form is valid, saving:', formData);
       onSave(formData);
+    } else {
+      console.log('Form validation failed');
     }
   };
 
@@ -122,7 +126,13 @@ export default function AddRepaymentForm({ selectedType, onBack, onSave, onCance
         {/* Institution */}
         <div>
           <Label htmlFor="institution">Institution *</Label>
-          <Select value={formData.institution} onValueChange={(value) => handleInputChange('institution', value)}>
+          <Select 
+            value={formData.institution} 
+            onValueChange={(value) => {
+              console.log('Institution selected:', value);
+              handleInputChange('institution', value);
+            }}
+          >
             <SelectTrigger className={errors.institution ? 'border-red-500' : ''}>
               <SelectValue placeholder="Select institution" />
             </SelectTrigger>
@@ -137,6 +147,9 @@ export default function AddRepaymentForm({ selectedType, onBack, onSave, onCance
           {errors.institution && (
             <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errors.institution}</p>
           )}
+          <p className="text-xs text-muted-foreground mt-1">
+            Current value: {formData.institution || 'None selected'}
+          </p>
         </div>
 
         {/* Principal Amount */}
