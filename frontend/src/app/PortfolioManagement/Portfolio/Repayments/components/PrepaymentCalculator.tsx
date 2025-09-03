@@ -327,13 +327,22 @@ export default function PrepaymentCalculator({ repayment, onClose }: PrepaymentC
             <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
               <Button
                 className="w-full bg-green-600 hover:bg-green-700 text-white"
-                onClick={() => {
-                  // TODO: Implement actual prepayment processing
-                  console.log('Processing prepayment:', {
-                    repayment_id: repayment.repayment_id,
-                    amount: prepaymentAmount,
-                    type: prepaymentType
-                  });
+                onClick={async () => {
+                  try {
+                    // TODO: Implement actual prepayment processing via API
+                    console.log('Processing prepayment:', {
+                      repayment_id: repayment.repayment_id,
+                      amount: parseFloat(prepaymentAmount),
+                      type: prepaymentType,
+                      extra_months: prepaymentType === 'extra_emi' ? parseInt(extraEMIMonths) : undefined
+                    });
+                    
+                    // For now, just show success message
+                    alert('Prepayment processed successfully! (This is a demo - actual API integration pending)');
+                  } catch (error) {
+                    console.error('Error processing prepayment:', error);
+                    alert('Error processing prepayment. Please try again.');
+                  }
                 }}
               >
                 <DollarSign className="w-4 h-4 mr-2" />
