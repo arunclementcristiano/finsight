@@ -43,15 +43,11 @@ export interface PrepaymentData {
   payment_date?: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
+// Use the existing portfolio API endpoint
+const API_BASE = '/api/portfolio';
 
 // Helper function to make API calls
 async function apiCall(endpoint: string, options: RequestInit = {}) {
-  // If no API_BASE is configured, throw an error to use mock data
-  if (!API_BASE) {
-    throw new Error('API_BASE not configured - using mock data');
-  }
-
   try {
     const url = `${API_BASE}${endpoint}`;
     

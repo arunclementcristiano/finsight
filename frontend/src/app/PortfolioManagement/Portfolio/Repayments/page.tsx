@@ -177,8 +177,9 @@ export default function RepaymentsPage() {
           <p className="text-sm text-muted-foreground mt-1">Track and manage your loans and credit</p>
         </div>
         <Button 
+          variant="outline"
+          size="sm"
           onClick={() => setShowAddModal(true)}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Repayment
@@ -384,8 +385,9 @@ export default function RepaymentsPage() {
               Start tracking your loans and credit to get a complete view of your financial health.
             </p>
             <Button 
+              variant="outline"
+              size="sm"
               onClick={() => setShowAddModal(true)}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Your First Repayment

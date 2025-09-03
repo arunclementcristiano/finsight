@@ -13,6 +13,8 @@ MUTUAL_FUND_SCHEMES_TABLE = os.environ.get("MUTUAL_FUND_SCHEMES_TABLE", "MutualF
 HOLDINGS_TABLE = os.environ.get("HOLDINGS_TABLE", "holdings")
 ASSET_CLASS_MAPPING_TABLE = os.environ.get("ASSET_CLASS_MAPPING_TABLE", "AssetClassMapping")
 STOCK_COMPANIES_TABLE = os.environ.get("STOCK_COMPANIES_TABLE", "StockCompanies")
+REPAYMENTS_TABLE = os.environ.get("REPAYMENTS_TABLE", "Repayments")
+REPAYMENT_HISTORY_TABLE = os.environ.get("REPAYMENT_HISTORY_TABLE", "RepaymentHistory")
 
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
 invest_table = dynamodb.Table(INVEST_TABLE)
@@ -20,6 +22,8 @@ mutual_fund_schemes_table = dynamodb.Table(MUTUAL_FUND_SCHEMES_TABLE)
 holdings_table = dynamodb.Table(HOLDINGS_TABLE)
 asset_class_mapping_table = dynamodb.Table(ASSET_CLASS_MAPPING_TABLE)
 stock_companies_table = dynamodb.Table(STOCK_COMPANIES_TABLE)
+repayments_table = dynamodb.Table(REPAYMENTS_TABLE)
+repayment_history_table = dynamodb.Table(REPAYMENT_HISTORY_TABLE)
 
 
 def _cors_headers():
@@ -494,6 +498,205 @@ def handler(event, context):
                 return _response(200, {"items": filtered_stocks[:20]})
             except Exception as e:
                 return _response(500, {"error": f"Failed to search stocks: {str(e)}"})
+
+        # Repayments endpoints
+        # Get all repayments (GET /repayments)
+        if route_key == "GET /repayments":
+            try:
+                user_id = "user-123"  # TODO: Get from auth context
+                
+                response = repayments_table.query(
+                    KeyConditionExpression='user_id = :user_id',
+                    ExpressionAttributeValues={':user_id': user_id}
+                )
+                
+                repayments = response.get('Items', [])
+                
+                # Calculate summary metrics
+                total_outstanding = sum(float(r.get('outstanding_balance', 0)) for r in repayments)
+                total_emi = sum(float(r.get('emi_amount', 0)) for r in repayments)
+                total_repayments = len(repayments)
+                
+                summary = {
+                    'total_outstanding': total_outstanding,
+                    'total_emi': total_emi,
+                    'total_repayments': total_repayments,
+                    'repayments': repayments
+                }
+                
+                return _response(200, summary)
+            except Exception as e:
+                return _response(500, {"error": f"Failed to fetch repayments: {str(e)}"})
+
+        # Create repayment (POST /repayments)
+        if route_key == "POST /repayments":
+            try:
+                user_id = "user-123"  # TODO: Get from auth context
+                repayment_id = str(uuid.uuid4())
+                
+                # Calculate derived fields
+                principal = float(body.get('principal', 0))
+                interest_rate = float(body.get('interest_rate', 0))
+                tenure_months = int(body.get('tenure_months', 0))
+                emi_amount = float(body.get('emi_amount', 0))
+                
+                # Calculate outstanding balance (initially same as principal)
+                outstanding_balance = principal
+                
+                repayment = {
+                    'user_id': user_id,
+                    'repayment_id': repayment_id,
+                    'type': body.get('type', ''),
+                    'institution': body.get('institution', ''),
+                    'principal': Decimal(str(principal)),
+                    'interest_rate': Decimal(str(interest_rate)),
+                    'emi_amount': Decimal(str(emi_amount)),
+                    'tenure_months': tenure_months,
+                    'outstanding_balance': Decimal(str(outstanding_balance)),
+                    'start_date': body.get('start_date', ''),
+                    'due_date': body.get('due_date', ''),
+                    'status': 'active',
+                    'created_at': datetime.utcnow().isoformat(),
+                    'updated_at': datetime.utcnow().isoformat()
+                }
+                
+                repayments_table.put_item(Item=repayment)
+                
+                return _response(201, {'repayment_id': repayment_id, 'message': 'Repayment created successfully'})
+            except Exception as e:
+                return _response(500, {"error": f"Failed to create repayment: {str(e)}"})
+
+        # Get specific repayment (GET /repayments/{id})
+        if route_key.startswith("GET /repayments/") and not route_key.endswith("/history"):
+            try:
+                user_id = "user-123"  # TODO: Get from auth context
+                repayment_id = path.split('/')[-1]
+                
+                response = repayments_table.get_item(
+                    Key={'user_id': user_id, 'repayment_id': repayment_id}
+                )
+                
+                if 'Item' not in response:
+                    return _response(404, {'error': 'Repayment not found'})
+                
+                return _response(200, response['Item'])
+            except Exception as e:
+                return _response(500, {"error": f"Failed to fetch repayment: {str(e)}"})
+
+        # Update repayment (PUT /repayments/{id})
+        if route_key.startswith("PUT /repayments/"):
+            try:
+                user_id = "user-123"  # TODO: Get from auth context
+                repayment_id = path.split('/')[-1]
+                
+                # Get existing repayment
+                response = repayments_table.get_item(
+                    Key={'user_id': user_id, 'repayment_id': repayment_id}
+                )
+                
+                if 'Item' not in response:
+                    return _response(404, {'error': 'Repayment not found'})
+                
+                existing = response['Item']
+                
+                # Update fields
+                update_expression = "SET updated_at = :updated_at"
+                expression_values = {':updated_at': datetime.utcnow().isoformat()}
+                
+                for field in ['type', 'institution', 'principal', 'interest_rate', 'emi_amount', 'tenure_months', 'outstanding_balance', 'start_date', 'due_date', 'status']:
+                    if field in body:
+                        if field in ['principal', 'interest_rate', 'emi_amount', 'outstanding_balance']:
+                            expression_values[f':{field}'] = Decimal(str(body[field]))
+                        else:
+                            expression_values[f':{field}'] = body[field]
+                        update_expression += f", {field} = :{field}"
+                
+                repayments_table.update_item(
+                    Key={'user_id': user_id, 'repayment_id': repayment_id},
+                    UpdateExpression=update_expression,
+                    ExpressionAttributeValues=expression_values
+                )
+                
+                return _response(200, {'message': 'Repayment updated successfully'})
+            except Exception as e:
+                return _response(500, {"error": f"Failed to update repayment: {str(e)}"})
+
+        # Delete repayment (DELETE /repayments/{id})
+        if route_key.startswith("DELETE /repayments/"):
+            try:
+                user_id = "user-123"  # TODO: Get from auth context
+                repayment_id = path.split('/')[-1]
+                
+                repayments_table.delete_item(
+                    Key={'user_id': user_id, 'repayment_id': repayment_id}
+                )
+                
+                return _response(200, {'message': 'Repayment deleted successfully'})
+            except Exception as e:
+                return _response(500, {"error": f"Failed to delete repayment: {str(e)}"})
+
+        # Add prepayment (POST /repayments/{id}/prepayment)
+        if route_key.endswith("/prepayment"):
+            try:
+                user_id = "user-123"  # TODO: Get from auth context
+                repayment_id = path.split('/')[-2]
+                history_id = str(uuid.uuid4())
+                
+                prepayment = {
+                    'user_id': user_id,
+                    'repayment_id': repayment_id,
+                    'history_id': history_id,
+                    'amount': Decimal(str(body.get('amount', 0))),
+                    'payment_date': body.get('payment_date', datetime.utcnow().isoformat()),
+                    'type': 'prepayment',
+                    'principal_component': Decimal(str(body.get('principal_component', body.get('amount', 0)))),
+                    'interest_component': Decimal(str(body.get('interest_component', 0))),
+                    'created_at': datetime.utcnow().isoformat()
+                }
+                
+                repayment_history_table.put_item(Item=prepayment)
+                
+                # Update outstanding balance in main repayment
+                response = repayments_table.get_item(
+                    Key={'user_id': user_id, 'repayment_id': repayment_id}
+                )
+                
+                if 'Item' in response:
+                    existing = response['Item']
+                    new_outstanding = float(existing.get('outstanding_balance', 0)) - float(prepayment['principal_component'])
+                    
+                    repayments_table.update_item(
+                        Key={'user_id': user_id, 'repayment_id': repayment_id},
+                        UpdateExpression="SET outstanding_balance = :outstanding, updated_at = :updated_at",
+                        ExpressionAttributeValues={
+                            ':outstanding': Decimal(str(max(0, new_outstanding))),
+                            ':updated_at': datetime.utcnow().isoformat()
+                        }
+                    )
+                
+                return _response(201, {'message': 'Prepayment added successfully'})
+            except Exception as e:
+                return _response(500, {"error": f"Failed to add prepayment: {str(e)}"})
+
+        # Get repayment history (GET /repayments/{id}/history)
+        if route_key.endswith("/history"):
+            try:
+                user_id = "user-123"  # TODO: Get from auth context
+                repayment_id = path.split('/')[-2]
+                
+                response = repayment_history_table.query(
+                    KeyConditionExpression='user_id = :user_id AND begins_with(repayment_id, :repayment_id)',
+                    ExpressionAttributeValues={
+                        ':user_id': user_id,
+                        ':repayment_id': repayment_id
+                    }
+                )
+                
+                history = response.get('Items', [])
+                
+                return _response(200, history)
+            except Exception as e:
+                return _response(500, {"error": f"Failed to fetch repayment history: {str(e)}"})
 
         return _response(404, {"error": "Not found", "routeKey": route_key})
     except Exception as e:
