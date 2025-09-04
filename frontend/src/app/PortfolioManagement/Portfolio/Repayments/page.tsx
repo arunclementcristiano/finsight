@@ -15,6 +15,7 @@ import {
   Target, 
   Plus, 
   Zap, 
+  Calculator,
   TrendingDown,
   Coins,
   Star,
@@ -66,6 +67,10 @@ export default function RepaymentsPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showOptimizeModal, setShowOptimizeModal] = useState(false);
   const [showPrepayModal, setShowPrepayModal] = useState(false);
+  const [whatIfExtraMonthly, setWhatIfExtraMonthly] = useState<number>(0);
+  const [whatIfLumpSum, setWhatIfLumpSum] = useState<number>(0);
+  const [whatIfStrategy, setWhatIfStrategy] = useState<'avalanche'|'snowball'>('avalanche');
+  const [whatIfKPIs, setWhatIfKPIs] = useState<{payoffMonths?: number; monthsSaved?: number; interestSaved?: number}>({});
   const [loading, setLoading] = useState(true);
   const [engine] = useState(new LoanEngine());
 
@@ -164,6 +169,52 @@ export default function RepaymentsPage() {
     ? liabilities.reduce((sum, loan) => sum + loan.interest_rate, 0) / liabilities.length 
     : 0;
 
+  function computeAmortizedMonths(principal: number, annualRatePct: number, paymentPerMonth: number): number {
+    const r = annualRatePct > 0 ? (annualRatePct / 12) / 100 : 0;
+    if (principal <= 0) return 0;
+    if (r === 0) {
+      if (paymentPerMonth <= 0) return Infinity;
+      return Math.ceil(principal / paymentPerMonth);
+    }
+    if (paymentPerMonth <= principal * r) return Infinity; // payment not enough to cover interest
+    const n = -Math.log(1 - (r * principal) / paymentPerMonth) / Math.log(1 + r);
+    return Math.ceil(Math.max(0, n));
+  }
+
+  function recomputeWhatIf() {
+    try {
+      if (!liabilities || liabilities.length === 0) { setWhatIfKPIs({}); return; }
+      // Choose target EMI loan based on strategy
+      const emiLoans = liabilities.filter(l => l.loanType === 'emi');
+      if (emiLoans.length === 0) { setWhatIfKPIs({}); return; }
+      const ordered = whatIfStrategy === 'avalanche'
+        ? [...emiLoans].sort((a,b)=> b.interest_rate - a.interest_rate)
+        : [...emiLoans].sort((a,b)=> a.outstandingBalance - b.outstandingBalance);
+      const target = ordered[0];
+      const baselineMonths = Math.max(0, target.remainingMonths || 0);
+      const baselineEmi = Math.max(0, target.emi || 0);
+      const baselineOutstanding = Math.max(0, target.outstandingBalance || 0);
+
+      // Apply lump sum to principal first (capped by outstanding)
+      const appliedLump = Math.min(Math.max(0, whatIfLumpSum || 0), baselineOutstanding);
+      const newPrincipal = Math.max(0, baselineOutstanding - appliedLump);
+      const newPayment = baselineEmi + Math.max(0, whatIfExtraMonthly || 0);
+      const projectedMonths = computeAmortizedMonths(newPrincipal, target.interest_rate, newPayment);
+
+      // Rough interest saved estimate: (baselineEmi * baselineMonths - outstanding) - (newPayment * projectedMonths - newPrincipal)
+      const baselineTotalPaid = baselineEmi * baselineMonths;
+      const baselineInterestRemaining = Math.max(0, baselineTotalPaid - baselineOutstanding);
+      const projectedTotalPaid = newPayment * projectedMonths;
+      const projectedInterest = Math.max(0, projectedTotalPaid - newPrincipal);
+      const interestSaved = Math.max(0, baselineInterestRemaining - projectedInterest);
+      const monthsSaved = Math.max(0, baselineMonths - projectedMonths);
+
+      setWhatIfKPIs({ payoffMonths: projectedMonths, monthsSaved, interestSaved });
+    } catch {
+      setWhatIfKPIs({});
+    }
+  }
+
   if (loading) {
     return (
       <div className="max-w-full space-y-4 pl-2">
@@ -202,7 +253,7 @@ export default function RepaymentsPage() {
             variant="outline" 
             size="sm" 
             leftIcon={<Calculator className="h-4 w-4" />} 
-            onClick={() => setShowPrepayModal(true)}
+            onClick={() => { setShowPrepayModal(true); setTimeout(recomputeWhatIf, 0); }}
           >
             What‑if / Prepay
           </Button>
@@ -694,27 +745,55 @@ export default function RepaymentsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label className="text-sm font-medium text-foreground">Monthly Extra (₹)</Label>
-              <Input type="number" placeholder="5000" className="mt-1" />
+              <Input 
+                type="number" 
+                placeholder="5000" 
+                className="mt-1"
+                value={whatIfExtraMonthly}
+                onChange={(e)=> { setWhatIfExtraMonthly(Number(e.target.value||0)); recomputeWhatIf(); }}
+              />
             </div>
             <div>
               <Label className="text-sm font-medium text-foreground">One‑time Lump Sum (₹)</Label>
-              <Input type="number" placeholder="25000" className="mt-1" />
+              <Input 
+                type="number" 
+                placeholder="25000" 
+                className="mt-1"
+                value={whatIfLumpSum}
+                onChange={(e)=> { setWhatIfLumpSum(Number(e.target.value||0)); recomputeWhatIf(); }}
+              />
             </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-muted-foreground">Priority:</span>
+            <button
+              className={`px-2 py-1 rounded border text-xs ${whatIfStrategy==='avalanche' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-border'}`}
+              onClick={()=> { setWhatIfStrategy('avalanche'); setTimeout(recomputeWhatIf, 0); }}
+            >
+              Avalanche
+            </button>
+            <button
+              className={`px-2 py-1 rounded border text-xs ${whatIfStrategy==='snowball' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-border'}`}
+              onClick={()=> { setWhatIfStrategy('snowball'); setTimeout(recomputeWhatIf, 0); }}
+            >
+              Snowball
+            </button>
           </div>
 
           <div className="rounded-lg border border-border bg-card/60 p-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Projected Payoff</p>
-                <p className="font-semibold text-foreground">—</p>
+                <p className="font-semibold text-foreground">{whatIfKPIs.payoffMonths !== undefined ? `${whatIfKPIs.payoffMonths} months` : '—'}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Interest Saved</p>
-                <p className="font-semibold text-foreground">—</p>
+                <p className="font-semibold text-foreground">{whatIfKPIs.interestSaved !== undefined ? `₹${Math.round(whatIfKPIs.interestSaved).toLocaleString()}` : '—'}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Months Saved</p>
-                <p className="font-semibold text-foreground">—</p>
+                <p className="font-semibold text-foreground">{whatIfKPIs.monthsSaved !== undefined ? `${whatIfKPIs.monthsSaved} months` : '—'}</p>
               </div>
             </div>
           </div>
