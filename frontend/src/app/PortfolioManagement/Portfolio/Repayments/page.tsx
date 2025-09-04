@@ -66,7 +66,6 @@ export default function RepaymentsPage() {
   const [dbRepayments, setDbRepayments] = useState<Repayment[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showOptimizeModal, setShowOptimizeModal] = useState(false);
-  const [showPrepayModal, setShowPrepayModal] = useState(false);
   const [showContributionModal, setShowContributionModal] = useState(false);
   const [contributionTab, setContributionTab] = useState<'monthly'|'lump'>('monthly');
   const [advisorAutoPick, setAdvisorAutoPick] = useState<boolean>(true);
@@ -76,7 +75,17 @@ export default function RepaymentsPage() {
   const [whatIfLumpSum, setWhatIfLumpSum] = useState<number>(0);
   const [whatIfStrategy, setWhatIfStrategy] = useState<'avalanche'|'snowball'|'hybrid'|'risk'>('avalanche');
   const [whatIfTargetIndex, setWhatIfTargetIndex] = useState<number>(-1);
-  const [whatIfKPIs, setWhatIfKPIs] = useState<{payoffMonths?: number; monthsSaved?: number; interestSaved?: number; payoffDate?: string; baselineMonths?: number}>({});
+  const [whatIfKPIs, setWhatIfKPIs] = useState<{
+    payoffMonths?: number; 
+    monthsSaved?: number; 
+    interestSaved?: number; 
+    payoffDate?: string; 
+    baselineMonths?: number;
+    totalInterestPaid?: number;
+    principalReduction?: number;
+    efficiency?: number;
+    selectedLoan?: string;
+  }>({});
   const [loading, setLoading] = useState(true);
   const [engine] = useState(new LoanEngine());
 
@@ -274,11 +283,31 @@ export default function RepaymentsPage() {
         const projectedInterest = Math.max(0, projectedTotalPaid - newPrincipal);
         const interestSaved = Math.max(0, baselineInterestRemaining - projectedInterest);
         const monthsSaved = Math.max(0, baselineMonths - projectedMonths);
-        return { projectedMonths, monthsSaved, interestSaved, baselineMonths };
+        const principalReduction = baselineOutstanding - newPrincipal;
+        const efficiency = principalReduction > 0 ? (interestSaved / principalReduction) * 100 : 0;
+        return { 
+          projectedMonths, 
+          monthsSaved, 
+          interestSaved, 
+          baselineMonths, 
+          totalInterestPaid: projectedInterest,
+          principalReduction,
+          efficiency,
+          selectedLoan: loan.loanCategory
+        };
       }
 
       let target: EnhancedLoanStatus | undefined;
-      let best = { projectedMonths: 0, monthsSaved: 0, interestSaved: -1, baselineMonths: 0 };
+      let best = { 
+        projectedMonths: 0, 
+        monthsSaved: 0, 
+        interestSaved: -1, 
+        baselineMonths: 0,
+        totalInterestPaid: 0,
+        principalReduction: 0,
+        efficiency: 0,
+        selectedLoan: ''
+      };
 
       if (!advisorAutoPick && targetLoanIndex >= 0 && targetLoanIndex < liabilities.length) {
         const candidate = liabilities[targetLoanIndex];
@@ -305,7 +334,17 @@ export default function RepaymentsPage() {
       if (!target) { setWhatIfKPIs({}); return; }
       const baseDateISO = contributionTab === 'lump' ? whatIfDate : new Date().toISOString().split('T')[0];
       const payoffDate = addMonthsToDate(baseDateISO, best.projectedMonths || 0);
-      setWhatIfKPIs({ payoffMonths: best.projectedMonths, monthsSaved: best.monthsSaved, interestSaved: best.interestSaved, payoffDate, baselineMonths: best.baselineMonths });
+      setWhatIfKPIs({ 
+        payoffMonths: best.projectedMonths, 
+        monthsSaved: best.monthsSaved, 
+        interestSaved: best.interestSaved, 
+        payoffDate, 
+        baselineMonths: best.baselineMonths,
+        totalInterestPaid: best.totalInterestPaid,
+        principalReduction: best.principalReduction,
+        efficiency: best.efficiency,
+        selectedLoan: best.selectedLoan
+      });
     } catch {
       setWhatIfKPIs({});
     }
@@ -340,7 +379,7 @@ export default function RepaymentsPage() {
           <Button 
             variant="outline" 
             size="sm" 
-            leftIcon={<Zap className="h-4 w-4" />} 
+            leftIcon={<Calculator className="h-4 w-4" />} 
             onClick={() => { setShowContributionModal(true); setTimeout(recomputeContribution, 0); }}
           >
             Extra Contribution
@@ -819,91 +858,267 @@ export default function RepaymentsPage() {
         </div>
       </Modal>
 
-      {/* What-if / Prepay Modal */}
+      {/* Extra Contribution Modal */}
       <Modal
-        open={showPrepayModal}
-        onClose={() => setShowPrepayModal(false)}
-        title="What‑if / Prepay Calculator"
+        open={showContributionModal}
+        onClose={() => setShowContributionModal(false)}
+        title="Extra Contribution Calculator"
         footer={
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowPrepayModal(false)}>Close</Button>
+            <Button variant="outline" onClick={() => setShowContributionModal(false)}>Close</Button>
+            <Button onClick={() => { setShowContributionModal(false); }} leftIcon={<Calculator className="w-4 h-4" />}>
+              Apply Strategy
+            </Button>
           </div>
         }
       >
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label className="text-sm font-medium text-foreground">Monthly Extra (₹)</Label>
-              <Input 
-                type="number" 
-                placeholder="5000" 
-                className="mt-1"
-                value={whatIfExtraMonthly}
-                onChange={(e)=> { setWhatIfExtraMonthly(Number(e.target.value||0)); recomputeWhatIf(); }}
-              />
-            </div>
-            <div>
-              <Label className="text-sm font-medium text-foreground">One‑time Lump Sum (₹)</Label>
-              <Input 
-                type="number" 
-                placeholder="25000" 
-                className="mt-1"
-                value={whatIfLumpSum}
-                onChange={(e)=> { setWhatIfLumpSum(Number(e.target.value||0)); recomputeWhatIf(); }}
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-muted-foreground">Priority:</span>
-            {(['avalanche','snowball','hybrid','risk'] as const).map(key => (
-              <button
-                key={key}
-                className={`px-2 py-1 rounded border text-xs ${whatIfStrategy===key ? 'bg-indigo-600 text-white border-indigo-600' : 'border-border'}`}
-                onClick={()=> { setWhatIfStrategy(key); setTimeout(recomputeWhatIf, 0); }}
-              >
-                {key.charAt(0).toUpperCase()+key.slice(1)}
-              </button>
-            ))}
-          </div>
-
-          <div>
-            <Label className="text-sm font-medium text-foreground">Target Loan</Label>
-            <select
-              className="mt-1 w-full rounded-md border border-border bg-background text-foreground h-10 px-3 text-sm"
-              value={whatIfTargetIndex}
-              onChange={(e)=> { setWhatIfTargetIndex(Number(e.target.value)); setTimeout(recomputeWhatIf, 0); }}
+        <div className="space-y-6">
+          {/* Contribution Type Tabs */}
+          <div className="flex space-x-1 bg-muted p-1 rounded-lg">
+            <button
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                contributionTab === 'monthly'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              onClick={() => setContributionTab('monthly')}
             >
-              <option value={-1}>Auto (by priority)</option>
-              {liabilities.filter(l=> l.loanType==='emi').map((l, idx) => (
-                <option key={idx} value={idx}>
-                  {l.loanCategory.replace('_',' ').toUpperCase()} — ₹{l.outstandingBalance.toLocaleString()} @ {l.interest_rate}%
-                </option>
-              ))}
-            </select>
+              Monthly Top-up
+            </button>
+            <button
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                contributionTab === 'lump'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              onClick={() => setContributionTab('lump')}
+            >
+              Lump Sum
+            </button>
           </div>
 
-          <div className="rounded-lg border border-border bg-card/60 p-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+          {/* Advisor Auto-Pick Toggle */}
+          <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+            <div>
+              <h4 className="font-semibold text-foreground">Advisor Auto-Pick</h4>
+              <p className="text-sm text-muted-foreground">
+                {advisorAutoPick 
+                  ? "AI will automatically select the best loan for maximum savings"
+                  : "You manually choose which loan to target"
+                }
+              </p>
+            </div>
+            <button
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                advisorAutoPick ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
+              }`}
+              onClick={() => setAdvisorAutoPick(!advisorAutoPick)}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  advisorAutoPick ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Input Fields */}
+          <div className="space-y-4">
+            {contributionTab === 'monthly' ? (
               <div>
-                <p className="text-muted-foreground">Projected Payoff</p>
-                <p className="font-semibold text-foreground">{whatIfKPIs.payoffMonths !== undefined ? `${whatIfKPIs.payoffMonths} months` : '—'}</p>
+                <Label className="text-sm font-medium text-foreground">Monthly Extra Payment (₹)</Label>
+                <Input 
+                  type="number" 
+                  placeholder="5000" 
+                  className="mt-1"
+                  value={whatIfExtraMonthly}
+                  onChange={(e) => { 
+                    setWhatIfExtraMonthly(Number(e.target.value || 0)); 
+                    setTimeout(recomputeContribution, 0); 
+                  }}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Add this amount to your existing EMI each month
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium text-foreground">Lump Sum Amount (₹)</Label>
+                  <Input 
+                    type="number" 
+                    placeholder="50000" 
+                    className="mt-1"
+                    value={whatIfLumpSum}
+                    onChange={(e) => { 
+                      setWhatIfLumpSum(Number(e.target.value || 0)); 
+                      setTimeout(recomputeContribution, 0); 
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    One-time payment to reduce principal
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-foreground">Payment Date</Label>
+                  <Input 
+                    type="date" 
+                    className="mt-1"
+                    value={whatIfDate}
+                    onChange={(e) => { 
+                      setWhatIfDate(e.target.value); 
+                      setTimeout(recomputeContribution, 0); 
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Manual Loan Selection (when auto-pick is off) */}
+          {!advisorAutoPick && (
+            <div>
+              <Label className="text-sm font-medium text-foreground">Target Loan</Label>
+              <select
+                className="mt-1 w-full rounded-md border border-border bg-background text-foreground h-10 px-3 text-sm"
+                value={targetLoanIndex}
+                onChange={(e) => { 
+                  setTargetLoanIndex(Number(e.target.value)); 
+                  setTimeout(recomputeContribution, 0); 
+                }}
+              >
+                <option value={-1}>Select a loan...</option>
+                {liabilities.filter(l => l.loanType === 'emi').map((l, idx) => (
+                  <option key={idx} value={idx}>
+                    {l.loanCategory.replace('_', ' ').toUpperCase()} — ₹{l.outstandingBalance.toLocaleString()} @ {l.interest_rate}%
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Timeline Visual */}
+          {whatIfKPIs.baselineMonths && whatIfKPIs.payoffMonths && (
+            <div className="space-y-3">
+              <h4 className="font-semibold text-foreground">Payoff Timeline Comparison</h4>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Current Plan</span>
+                  <span className="font-medium">{whatIfKPIs.baselineMonths} months</span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div 
+                    className="bg-gray-400 dark:bg-gray-500 h-2 rounded-full transition-all duration-500"
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">With Extra Contribution</span>
+                  <span className="font-medium text-green-600">{whatIfKPIs.payoffMonths} months</span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div 
+                    className="bg-green-500 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${(whatIfKPIs.payoffMonths / whatIfKPIs.baselineMonths) * 100}%` }}
+                  />
+                </div>
+                <div className="text-center text-sm text-green-600 font-medium">
+                  Save {whatIfKPIs.monthsSaved} months ({((whatIfKPIs.monthsSaved / whatIfKPIs.baselineMonths) * 100).toFixed(1)}% faster)
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Enhanced KPIs */}
+          <div className="space-y-4">
+            <h4 className="font-semibold text-foreground">Projected Results</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-lg border border-border bg-card/60 p-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Payoff Timeline</span>
+                    <span className="font-semibold text-foreground">
+                      {whatIfKPIs.baselineMonths && whatIfKPIs.payoffMonths 
+                        ? `${whatIfKPIs.baselineMonths} → ${whatIfKPIs.payoffMonths} months`
+                        : '—'
+                      }
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Months Saved</span>
+                    <span className="font-semibold text-green-600">
+                      {whatIfKPIs.monthsSaved !== undefined ? `${whatIfKPIs.monthsSaved} months` : '—'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Payoff Date</span>
+                    <span className="font-semibold text-foreground">
+                      {whatIfKPIs.payoffDate || '—'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border bg-card/60 p-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Interest Saved</span>
+                    <span className="font-semibold text-green-600">
+                      {whatIfKPIs.interestSaved !== undefined ? `₹${Math.round(whatIfKPIs.interestSaved).toLocaleString()}` : '—'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Total Interest Paid</span>
+                    <span className="font-semibold text-foreground">
+                      {whatIfKPIs.totalInterestPaid !== undefined ? `₹${Math.round(whatIfKPIs.totalInterestPaid).toLocaleString()}` : '—'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Efficiency</span>
+                    <span className="font-semibold text-blue-600">
+                      {whatIfKPIs.efficiency !== undefined ? `${whatIfKPIs.efficiency.toFixed(1)}%` : '—'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Selected Loan Info */}
+            {whatIfKPIs.selectedLoan && (
+              <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-4">
+                <div className="flex items-center space-x-2">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
+                    <Target className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <h5 className="font-semibold text-blue-900 dark:text-blue-100">Target Loan</h5>
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      {whatIfKPIs.selectedLoan.replace('_', ' ').toUpperCase()}
+                      {advisorAutoPick && ' (Auto-selected for maximum savings)'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Strategy Tips */}
+          <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
+            <div className="flex items-start space-x-2">
+              <div className="p-1 bg-amber-100 dark:bg-amber-900/40 rounded">
+                <Star className="w-4 h-4 text-amber-600" />
               </div>
               <div>
-                <p className="text-muted-foreground">Interest Saved</p>
-                <p className="font-semibold text-foreground">{whatIfKPIs.interestSaved !== undefined ? `₹${Math.round(whatIfKPIs.interestSaved).toLocaleString()}` : '—'}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">EMI Months Saved</p>
-                <p className="font-semibold text-foreground">{whatIfKPIs.monthsSaved !== undefined ? `${whatIfKPIs.monthsSaved} months` : '—'}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Projected Payoff Date</p>
-                <p className="font-semibold text-foreground">{whatIfKPIs.payoffDate || '—'}</p>
+                <h5 className="font-semibold text-amber-900 dark:text-amber-100">Pro Tips</h5>
+                <ul className="text-sm text-amber-700 dark:text-amber-300 space-y-1 mt-1">
+                  <li>• Higher interest loans save more money per rupee invested</li>
+                  <li>• Monthly top-ups provide consistent progress and habit building</li>
+                  <li>• Lump sums are great for windfalls like bonuses or tax refunds</li>
+                  <li>• Consider your emergency fund before making extra payments</li>
+                </ul>
               </div>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">Tip: Use Optimize Strategy to pick which loans to target first.</p>
         </div>
       </Modal>
 
