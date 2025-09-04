@@ -76,7 +76,7 @@ export default function RepaymentsPage() {
   const [whatIfLumpSum, setWhatIfLumpSum] = useState<number>(0);
   const [whatIfStrategy, setWhatIfStrategy] = useState<'avalanche'|'snowball'|'hybrid'|'risk'>('avalanche');
   const [whatIfTargetIndex, setWhatIfTargetIndex] = useState<number>(-1);
-  const [whatIfKPIs, setWhatIfKPIs] = useState<{payoffMonths?: number; monthsSaved?: number; interestSaved?: number}>({});
+  const [whatIfKPIs, setWhatIfKPIs] = useState<{payoffMonths?: number; monthsSaved?: number; interestSaved?: number; payoffDate?: string; baselineMonths?: number}>({});
   const [loading, setLoading] = useState(true);
   const [engine] = useState(new LoanEngine());
 
@@ -187,6 +187,17 @@ export default function RepaymentsPage() {
     return Math.ceil(Math.max(0, n));
   }
 
+  function addMonthsToDate(baseISO: string, months: number): string {
+    try {
+      const [y,m,d] = baseISO.split('-').map(Number);
+      const date = new Date(y, (m-1)+months, d);
+      const yy = date.getFullYear();
+      const mm = String(date.getMonth()+1).padStart(2,'0');
+      const dd = String(date.getDate()).padStart(2,'0');
+      return `${yy}-${mm}-${dd}`;
+    } catch { return baseISO; }
+  }
+
   function recomputeWhatIf() {
     try {
       if (!liabilities || liabilities.length === 0) { setWhatIfKPIs({}); return; }
@@ -247,34 +258,54 @@ export default function RepaymentsPage() {
       if (!liabilities || liabilities.length === 0) { setWhatIfKPIs({}); return; }
       const emiLoans = liabilities.filter(l => l.loanType === 'emi');
       if (emiLoans.length === 0) { setWhatIfKPIs({}); return; }
-      // Auto-pick or manual
-      let target: EnhancedLoanStatus | undefined;
-      if (!advisorAutoPick && targetLoanIndex >= 0 && targetLoanIndex < liabilities.length) {
-        const candidate = liabilities[targetLoanIndex];
-        if (candidate && candidate.loanType === 'emi') target = candidate;
-      }
-      if (!target) {
-        // pick best by avalanche (max interest rate) for now; could extend to simulate all and pick max interestSaved
-        target = [...emiLoans].sort((a,b)=> b.interest_rate - a.interest_rate)[0];
-      }
-      if (!target) { setWhatIfKPIs({}); return; }
-      const baselineMonths = Math.max(0, target.remainingMonths || 0);
-      const baselineEmi = Math.max(0, target.emi || 0);
-      const baselineOutstanding = Math.max(0, target.outstandingBalance || 0);
-
       const extra = Math.max(0, whatIfExtraMonthly || 0);
       const lump = Math.max(0, whatIfLumpSum || 0);
-      const newPrincipal = contributionTab === 'lump' ? Math.max(0, baselineOutstanding - Math.min(lump, baselineOutstanding)) : baselineOutstanding;
-      const newPayment = contributionTab === 'monthly' ? (baselineEmi + extra) : baselineEmi;
-      const projectedMonths = computeAmortizedMonths(newPrincipal, target.interest_rate, newPayment);
 
-      const baselineTotalPaid = baselineEmi * baselineMonths;
-      const baselineInterestRemaining = Math.max(0, baselineTotalPaid - baselineOutstanding);
-      const projectedTotalPaid = newPayment * projectedMonths;
-      const projectedInterest = Math.max(0, projectedTotalPaid - newPrincipal);
-      const interestSaved = Math.max(0, baselineInterestRemaining - projectedInterest);
-      const monthsSaved = Math.max(0, baselineMonths - projectedMonths);
-      setWhatIfKPIs({ payoffMonths: projectedMonths, monthsSaved, interestSaved });
+      function simulateForLoan(loan: EnhancedLoanStatus) {
+        const baselineMonths = Math.max(0, loan.remainingMonths || 0);
+        const baselineEmi = Math.max(0, loan.emi || 0);
+        const baselineOutstanding = Math.max(0, loan.outstandingBalance || 0);
+        const newPrincipal = contributionTab === 'lump' ? Math.max(0, baselineOutstanding - Math.min(lump, baselineOutstanding)) : baselineOutstanding;
+        const newPayment = contributionTab === 'monthly' ? (baselineEmi + extra) : baselineEmi;
+        const projectedMonths = computeAmortizedMonths(newPrincipal, loan.interest_rate, newPayment);
+        const baselineTotalPaid = baselineEmi * baselineMonths;
+        const baselineInterestRemaining = Math.max(0, baselineTotalPaid - baselineOutstanding);
+        const projectedTotalPaid = newPayment * projectedMonths;
+        const projectedInterest = Math.max(0, projectedTotalPaid - newPrincipal);
+        const interestSaved = Math.max(0, baselineInterestRemaining - projectedInterest);
+        const monthsSaved = Math.max(0, baselineMonths - projectedMonths);
+        return { projectedMonths, monthsSaved, interestSaved, baselineMonths };
+      }
+
+      let target: EnhancedLoanStatus | undefined;
+      let best = { projectedMonths: 0, monthsSaved: 0, interestSaved: -1, baselineMonths: 0 };
+
+      if (!advisorAutoPick && targetLoanIndex >= 0 && targetLoanIndex < liabilities.length) {
+        const candidate = liabilities[targetLoanIndex];
+        if (candidate && candidate.loanType === 'emi') {
+          const sim = simulateForLoan(candidate);
+          target = candidate;
+          best = sim as any;
+        }
+      }
+
+      if (!target) {
+        for (const loan of emiLoans) {
+          const sim = simulateForLoan(loan);
+          if (
+            sim.interestSaved > best.interestSaved ||
+            (sim.interestSaved === best.interestSaved && sim.monthsSaved > best.monthsSaved)
+          ) {
+            best = sim as any;
+            target = loan;
+          }
+        }
+      }
+
+      if (!target) { setWhatIfKPIs({}); return; }
+      const baseDateISO = contributionTab === 'lump' ? whatIfDate : new Date().toISOString().split('T')[0];
+      const payoffDate = addMonthsToDate(baseDateISO, best.projectedMonths || 0);
+      setWhatIfKPIs({ payoffMonths: best.projectedMonths, monthsSaved: best.monthsSaved, interestSaved: best.interestSaved, payoffDate, baselineMonths: best.baselineMonths });
     } catch {
       setWhatIfKPIs({});
     }
@@ -853,7 +884,7 @@ export default function RepaymentsPage() {
           </div>
 
           <div className="rounded-lg border border-border bg-card/60 p-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Projected Payoff</p>
                 <p className="font-semibold text-foreground">{whatIfKPIs.payoffMonths !== undefined ? `${whatIfKPIs.payoffMonths} months` : '—'}</p>
@@ -863,8 +894,12 @@ export default function RepaymentsPage() {
                 <p className="font-semibold text-foreground">{whatIfKPIs.interestSaved !== undefined ? `₹${Math.round(whatIfKPIs.interestSaved).toLocaleString()}` : '—'}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Months Saved</p>
+                <p className="text-muted-foreground">EMI Months Saved</p>
                 <p className="font-semibold text-foreground">{whatIfKPIs.monthsSaved !== undefined ? `${whatIfKPIs.monthsSaved} months` : '—'}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Projected Payoff Date</p>
+                <p className="font-semibold text-foreground">{whatIfKPIs.payoffDate || '—'}</p>
               </div>
             </div>
           </div>
