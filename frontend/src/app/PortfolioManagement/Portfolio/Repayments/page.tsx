@@ -70,7 +70,7 @@ export default function RepaymentsPage() {
   const [contributionTab, setContributionTab] = useState<'monthly'|'lump'>('monthly');
   const [advisorAutoPick, setAdvisorAutoPick] = useState<boolean>(true);
   const [targetLoanIndex, setTargetLoanIndex] = useState<number>(-1);
-  const [whatIfDate, setWhatIfDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [whatIfDate, setWhatIfDate] = useState<string>('');
   const [whatIfExtraMonthly, setWhatIfExtraMonthly] = useState<number>(0);
   const [whatIfLumpSum, setWhatIfLumpSum] = useState<number>(0);
   const [whatIfStrategy, setWhatIfStrategy] = useState<'avalanche'|'snowball'|'hybrid'|'risk'>('avalanche');
@@ -86,6 +86,12 @@ export default function RepaymentsPage() {
     efficiency?: number;
     selectedLoan?: string;
     aiReasoning?: string;
+  }>({});
+  const [validationErrors, setValidationErrors] = useState<{
+    monthlyAmount?: string;
+    lumpSumAmount?: string;
+    paymentDate?: string;
+    targetLoan?: string;
   }>({});
   const [loading, setLoading] = useState(true);
   const [engine] = useState(new LoanEngine());
@@ -208,6 +214,47 @@ export default function RepaymentsPage() {
     } catch { return baseISO; }
   }
 
+  function validateInputs() {
+    const errors: any = {};
+    
+    // Validate monthly amount
+    if (contributionTab === 'monthly') {
+      if (!whatIfExtraMonthly || whatIfExtraMonthly <= 0) {
+        errors.monthlyAmount = 'Please enter a valid monthly amount';
+      } else if (whatIfExtraMonthly > 100000) {
+        errors.monthlyAmount = 'Monthly amount seems too high (max ₹1,00,000)';
+      }
+    }
+    
+    // Validate lump sum amount
+    if (contributionTab === 'lump') {
+      if (!whatIfLumpSum || whatIfLumpSum <= 0) {
+        errors.lumpSumAmount = 'Please enter a valid lump sum amount';
+      } else if (whatIfLumpSum > 10000000) {
+        errors.lumpSumAmount = 'Lump sum amount seems too high (max ₹1,00,00,000)';
+      }
+      
+      if (!whatIfDate) {
+        errors.paymentDate = 'Please select a payment date';
+      } else {
+        const selectedDate = new Date(whatIfDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (selectedDate < today) {
+          errors.paymentDate = 'Payment date cannot be in the past';
+        }
+      }
+    }
+    
+    // Validate target loan selection
+    if (!advisorAutoPick && targetLoanIndex < 0) {
+      errors.targetLoan = 'Please select a target loan';
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
   function recomputeWhatIf() {
     try {
       if (!liabilities || liabilities.length === 0) { setWhatIfKPIs({}); return; }
@@ -265,9 +312,26 @@ export default function RepaymentsPage() {
 
   function recomputeContribution() {
     try {
-      if (!liabilities || liabilities.length === 0) { setWhatIfKPIs({}); return; }
+      // Clear previous validation errors
+      setValidationErrors({});
+      
+      if (!liabilities || liabilities.length === 0) { 
+        setWhatIfKPIs({}); 
+        return; 
+      }
+      
       const emiLoans = liabilities.filter(l => l.loanType === 'emi');
-      if (emiLoans.length === 0) { setWhatIfKPIs({}); return; }
+      if (emiLoans.length === 0) { 
+        setWhatIfKPIs({}); 
+        return; 
+      }
+      
+      // Validate inputs first
+      if (!validateInputs()) {
+        setWhatIfKPIs({});
+        return;
+      }
+      
       const extra = Math.max(0, whatIfExtraMonthly || 0);
       const lump = Math.max(0, whatIfLumpSum || 0);
 
@@ -358,7 +422,7 @@ export default function RepaymentsPage() {
         }
       }
       
-      const baseDateISO = contributionTab === 'lump' ? whatIfDate : new Date().toISOString().split('T')[0];
+      const baseDateISO = contributionTab === 'lump' ? (whatIfDate || new Date().toISOString().split('T')[0]) : new Date().toISOString().split('T')[0];
       const payoffDate = addMonthsToDate(baseDateISO, best.projectedMonths || 0);
       setWhatIfKPIs({ 
         payoffMonths: best.projectedMonths, 
@@ -895,8 +959,10 @@ export default function RepaymentsPage() {
             <Button variant="outline" onClick={() => {
               setWhatIfExtraMonthly(0);
               setWhatIfLumpSum(0);
+              setWhatIfDate('');
               setTargetLoanIndex(-1);
               setWhatIfKPIs({});
+              setValidationErrors({});
             }}>
               Reset
             </Button>
@@ -991,18 +1057,27 @@ export default function RepaymentsPage() {
                   <Input 
                     type="number" 
                     placeholder="5000" 
-                    className="pl-8"
+                    className={`pl-8 ${validationErrors.monthlyAmount ? 'border-red-500' : ''}`}
                     value={whatIfExtraMonthly || ''}
                     onChange={(e) => { 
                       const value = Number(e.target.value || 0);
                       setWhatIfExtraMonthly(value); 
-                      recomputeContribution(); 
+                      // Clear validation error when user starts typing
+                      if (validationErrors.monthlyAmount) {
+                        setValidationErrors(prev => ({ ...prev, monthlyAmount: undefined }));
+                      }
+                      // Trigger immediate recalculation
+                      setTimeout(() => recomputeContribution(), 0);
                     }}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Add this amount to your existing EMI each month
-                </p>
+                {validationErrors.monthlyAmount ? (
+                  <p className="text-xs text-red-500 mt-1">{validationErrors.monthlyAmount}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Add this amount to your existing EMI each month
+                  </p>
+                )}
               </div>
             ) : (
               <div className="space-y-4">
@@ -1015,30 +1090,47 @@ export default function RepaymentsPage() {
                     <Input 
                       type="number" 
                       placeholder="50000" 
-                      className="pl-8"
+                      className={`pl-8 ${validationErrors.lumpSumAmount ? 'border-red-500' : ''}`}
                       value={whatIfLumpSum || ''}
                       onChange={(e) => { 
                         const value = Number(e.target.value || 0);
                         setWhatIfLumpSum(value); 
-                        recomputeContribution(); 
+                        // Clear validation error when user starts typing
+                        if (validationErrors.lumpSumAmount) {
+                          setValidationErrors(prev => ({ ...prev, lumpSumAmount: undefined }));
+                        }
+                        // Trigger immediate recalculation
+                        setTimeout(() => recomputeContribution(), 0);
                       }}
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    One-time payment to reduce principal
-                  </p>
+                  {validationErrors.lumpSumAmount ? (
+                    <p className="text-xs text-red-500 mt-1">{validationErrors.lumpSumAmount}</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      One-time payment to reduce principal
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-foreground">Payment Date</Label>
                   <Input 
                     type="date" 
-                    className="mt-1"
+                    className={`mt-1 ${validationErrors.paymentDate ? 'border-red-500' : ''}`}
                     value={whatIfDate}
                     onChange={(e) => { 
                       setWhatIfDate(e.target.value); 
-                      recomputeContribution(); 
+                      // Clear validation error when user selects date
+                      if (validationErrors.paymentDate) {
+                        setValidationErrors(prev => ({ ...prev, paymentDate: undefined }));
+                      }
+                      // Trigger immediate recalculation
+                      setTimeout(() => recomputeContribution(), 0);
                     }}
                   />
+                  {validationErrors.paymentDate && (
+                    <p className="text-xs text-red-500 mt-1">{validationErrors.paymentDate}</p>
+                  )}
                 </div>
               </div>
             )}
@@ -1049,11 +1141,18 @@ export default function RepaymentsPage() {
             <div>
               <Label className="text-sm font-medium text-foreground">Target Loan</Label>
               <select
-                className="mt-1 w-full rounded-md border border-border bg-background text-foreground h-10 px-3 text-sm"
+                className={`mt-1 w-full rounded-md border bg-background text-foreground h-10 px-3 text-sm ${
+                  validationErrors.targetLoan ? 'border-red-500' : 'border-border'
+                }`}
                 value={targetLoanIndex}
                 onChange={(e) => { 
                   setTargetLoanIndex(Number(e.target.value)); 
-                  recomputeContribution(); 
+                  // Clear validation error when user selects loan
+                  if (validationErrors.targetLoan) {
+                    setValidationErrors(prev => ({ ...prev, targetLoan: undefined }));
+                  }
+                  // Trigger immediate recalculation
+                  setTimeout(() => recomputeContribution(), 0);
                 }}
               >
                 <option value={-1}>Select a loan...</option>
@@ -1063,6 +1162,9 @@ export default function RepaymentsPage() {
                   </option>
                 ))}
               </select>
+              {validationErrors.targetLoan && (
+                <p className="text-xs text-red-500 mt-1">{validationErrors.targetLoan}</p>
+              )}
             </div>
           )}
 
@@ -1161,13 +1263,12 @@ export default function RepaymentsPage() {
                 <Star className="w-4 h-4 text-amber-600" />
               </div>
               <div>
-                <h5 className="font-semibold text-amber-900 dark:text-amber-100">Pro Tips</h5>
-                <ul className="text-sm text-amber-700 dark:text-amber-300 space-y-1 mt-1">
-                  <li>• Higher interest loans save more money per rupee invested</li>
-                  <li>• Monthly top-ups provide consistent progress and habit building</li>
-                  <li>• Lump sums are great for windfalls like bonuses or tax refunds</li>
-                  <li>• Consider your emergency fund before making extra payments</li>
-                </ul>
+                <h5 className="font-semibold text-amber-900 dark:text-amber-100">Quick Tips</h5>
+                <div className="text-sm text-amber-700 dark:text-amber-300 space-y-2 mt-1">
+                  <p>• <strong>High interest first:</strong> Pay off loans with highest interest rates to save maximum money</p>
+                  <p>• <strong>Monthly top-ups:</strong> Small regular payments build good financial habits</p>
+                  <p>• <strong>Lump sums:</strong> Use bonuses or tax refunds for one-time principal reduction</p>
+                </div>
               </div>
             </div>
           </div>
