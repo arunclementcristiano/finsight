@@ -67,6 +67,11 @@ export default function RepaymentsPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showOptimizeModal, setShowOptimizeModal] = useState(false);
   const [showPrepayModal, setShowPrepayModal] = useState(false);
+  const [showContributionModal, setShowContributionModal] = useState(false);
+  const [contributionTab, setContributionTab] = useState<'monthly'|'lump'>('monthly');
+  const [advisorAutoPick, setAdvisorAutoPick] = useState<boolean>(true);
+  const [targetLoanIndex, setTargetLoanIndex] = useState<number>(-1);
+  const [whatIfDate, setWhatIfDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [whatIfExtraMonthly, setWhatIfExtraMonthly] = useState<number>(0);
   const [whatIfLumpSum, setWhatIfLumpSum] = useState<number>(0);
   const [whatIfStrategy, setWhatIfStrategy] = useState<'avalanche'|'snowball'|'hybrid'|'risk'>('avalanche');
@@ -237,6 +242,44 @@ export default function RepaymentsPage() {
     }
   }
 
+  function recomputeContribution() {
+    try {
+      if (!liabilities || liabilities.length === 0) { setWhatIfKPIs({}); return; }
+      const emiLoans = liabilities.filter(l => l.loanType === 'emi');
+      if (emiLoans.length === 0) { setWhatIfKPIs({}); return; }
+      // Auto-pick or manual
+      let target: EnhancedLoanStatus | undefined;
+      if (!advisorAutoPick && targetLoanIndex >= 0 && targetLoanIndex < liabilities.length) {
+        const candidate = liabilities[targetLoanIndex];
+        if (candidate && candidate.loanType === 'emi') target = candidate;
+      }
+      if (!target) {
+        // pick best by avalanche (max interest rate) for now; could extend to simulate all and pick max interestSaved
+        target = [...emiLoans].sort((a,b)=> b.interest_rate - a.interest_rate)[0];
+      }
+      if (!target) { setWhatIfKPIs({}); return; }
+      const baselineMonths = Math.max(0, target.remainingMonths || 0);
+      const baselineEmi = Math.max(0, target.emi || 0);
+      const baselineOutstanding = Math.max(0, target.outstandingBalance || 0);
+
+      const extra = Math.max(0, whatIfExtraMonthly || 0);
+      const lump = Math.max(0, whatIfLumpSum || 0);
+      const newPrincipal = contributionTab === 'lump' ? Math.max(0, baselineOutstanding - Math.min(lump, baselineOutstanding)) : baselineOutstanding;
+      const newPayment = contributionTab === 'monthly' ? (baselineEmi + extra) : baselineEmi;
+      const projectedMonths = computeAmortizedMonths(newPrincipal, target.interest_rate, newPayment);
+
+      const baselineTotalPaid = baselineEmi * baselineMonths;
+      const baselineInterestRemaining = Math.max(0, baselineTotalPaid - baselineOutstanding);
+      const projectedTotalPaid = newPayment * projectedMonths;
+      const projectedInterest = Math.max(0, projectedTotalPaid - newPrincipal);
+      const interestSaved = Math.max(0, baselineInterestRemaining - projectedInterest);
+      const monthsSaved = Math.max(0, baselineMonths - projectedMonths);
+      setWhatIfKPIs({ payoffMonths: projectedMonths, monthsSaved, interestSaved });
+    } catch {
+      setWhatIfKPIs({});
+    }
+  }
+
   if (loading) {
     return (
       <div className="max-w-full space-y-4 pl-2">
@@ -267,18 +310,11 @@ export default function RepaymentsPage() {
             variant="outline" 
             size="sm" 
             leftIcon={<Zap className="h-4 w-4" />} 
-            onClick={() => setShowOptimizeModal(true)}
+            onClick={() => { setShowContributionModal(true); setTimeout(recomputeContribution, 0); }}
           >
-            Optimize Strategy
+            Extra Contribution
           </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            leftIcon={<Calculator className="h-4 w-4" />} 
-            onClick={() => { setShowPrepayModal(true); setTimeout(recomputeWhatIf, 0); }}
-          >
-            What‑if / Prepay
-          </Button>
+
         </div>
       </div>
 
