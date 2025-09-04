@@ -5,7 +5,7 @@ import {
   CreditCardInput,
   GoldLoanInput,
   EnhancedLoanStatus,
-} from "@/app/PortfolioManagement/domain/Repaymentadvisor/repaymentEngine";
+} from "./repaymentEngine";
 
 export type AnyLiability = (UltraSimpleLiabilityInput | CreditCardInput | GoldLoanInput) & { id: string; label?: string };
 

@@ -103,11 +103,11 @@ export default function RepaymentsPage() {
   const convertToAnyLiability = (loan: EnhancedLoanStatus): AnyLiability => ({
     id: loan.loanCategory,
     type: loan.loanCategory,
-    institution: loan.institution || 'Unknown',
+    institution: 'Unknown', // Default since not available in EnhancedLoanStatus
     original_amount: loan.originalAmount,
     interest_rate: loan.interest_rate,
-    tenure_months: loan.tenureMonths,
-    start_date: loan.startDate,
+    tenure_months: loan.remainingMonths + loan.monthsElapsed, // Calculate total tenure
+    start_date: new Date().toISOString().split('T')[0], // Default to today
     label: loan.loanCategory.replace('_', ' ').toUpperCase()
   });
 
@@ -149,7 +149,7 @@ export default function RepaymentsPage() {
 
   // Auto-select first EMI loan when advisor is off
   useEffect(() => {
-    if (!advisorAutoPick) {
+    if (!advisorAutoPick && liabilities.length > 0) {
       const firstIdx = liabilities.findIndex(l => l.loanType === 'emi');
       if (firstIdx !== -1 && targetLoanIndex !== firstIdx) {
         setTargetLoanIndex(firstIdx);
@@ -157,6 +157,13 @@ export default function RepaymentsPage() {
       }
     }
   }, [advisorAutoPick, liabilities]);
+
+  // Recompute when modal opens
+  useEffect(() => {
+    if (showContributionModal) {
+      recomputeContribution();
+    }
+  }, [showContributionModal]);
 
   const loadData = async () => {
     try {
@@ -358,16 +365,27 @@ export default function RepaymentsPage() {
 
   function recomputeContribution() {
     try {
+      console.log('recomputeContribution called', { 
+        liabilities: liabilities.length, 
+        contributionTab, 
+        whatIfExtraMonthly, 
+        whatIfLumpSum, 
+        advisorAutoPick, 
+        targetLoanIndex 
+      });
+      
       // Do not block computation due to validation; only annotate errors
       validateInputs();
       
       if (!liabilities || liabilities.length === 0) { 
+        console.log('No liabilities found');
         setWhatIfKPIs({}); 
         return; 
       }
       
       // Convert liabilities to AnyLiability format
       const anyLiabilities = liabilities.map(convertToAnyLiability);
+      console.log('Converted liabilities:', anyLiabilities);
       
       let result;
       
@@ -378,6 +396,7 @@ export default function RepaymentsPage() {
           advisorAutoPick,
           targetLoanId: !advisorAutoPick && targetLoanIndex >= 0 ? anyLiabilities[targetLoanIndex]?.id : undefined
         };
+        console.log('Monthly input:', input);
         result = smartRepayService.simulateMonthlyTopUp(anyLiabilities, input);
       } else {
         const input: LumpSumInput = {
@@ -387,8 +406,11 @@ export default function RepaymentsPage() {
           advisorAutoPick,
           targetLoanId: !advisorAutoPick && targetLoanIndex >= 0 ? anyLiabilities[targetLoanIndex]?.id : undefined
         };
+        console.log('Lump sum input:', input);
         result = smartRepayService.simulateLumpSum(anyLiabilities, input);
       }
+      
+      console.log('Service result:', result);
       
       // Map the result to the existing KPI format
       setWhatIfKPIs({
@@ -439,7 +461,10 @@ export default function RepaymentsPage() {
             variant="outline" 
             size="sm" 
             leftIcon={<Calculator className="h-4 w-4" />} 
-            onClick={() => { setShowContributionModal(true); setTimeout(recomputeContribution, 0); }}
+            onClick={() => { 
+              console.log('Opening Smart Repayment modal');
+              setShowContributionModal(true); 
+            }}
           >
             Smart Repayment
           </Button>
@@ -953,6 +978,17 @@ export default function RepaymentsPage() {
         }
       >
         <div className="space-y-6">
+          {/* Debug Info */}
+          <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs">
+            <p>Debug: Modal open: {showContributionModal ? 'Yes' : 'No'}</p>
+            <p>Debug: Liabilities: {liabilities.length}</p>
+            <p>Debug: Tab: {contributionTab}</p>
+            <p>Debug: Advisor: {advisorAutoPick ? 'Auto' : 'Manual'}</p>
+            <p>Debug: Target Index: {targetLoanIndex}</p>
+            <p>Debug: Monthly Amount: {whatIfExtraMonthly}</p>
+            <p>Debug: Lump Sum: {whatIfLumpSum}</p>
+          </div>
+
           {/* Target Loan Display (when AI advisor is on) */}
           {advisorAutoPick && whatIfKPIs.selectedLoan && (
             <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-4">
