@@ -85,6 +85,7 @@ export default function RepaymentsPage() {
     principalReduction?: number;
     efficiency?: number;
     selectedLoan?: string;
+    aiReasoning?: string;
   }>({});
   const [loading, setLoading] = useState(true);
   const [engine] = useState(new LoanEngine());
@@ -277,20 +278,26 @@ export default function RepaymentsPage() {
         const newPrincipal = contributionTab === 'lump' ? Math.max(0, baselineOutstanding - Math.min(lump, baselineOutstanding)) : baselineOutstanding;
         const newPayment = contributionTab === 'monthly' ? (baselineEmi + extra) : baselineEmi;
         const projectedMonths = computeAmortizedMonths(newPrincipal, loan.interest_rate, newPayment);
+        
+        // Calculate total interest paid in both scenarios
         const baselineTotalPaid = baselineEmi * baselineMonths;
-        const baselineInterestRemaining = Math.max(0, baselineTotalPaid - baselineOutstanding);
+        const baselineInterestPaid = Math.max(0, baselineTotalPaid - baselineOutstanding);
+        
         const projectedTotalPaid = newPayment * projectedMonths;
-        const projectedInterest = Math.max(0, projectedTotalPaid - newPrincipal);
-        const interestSaved = Math.max(0, baselineInterestRemaining - projectedInterest);
+        const projectedInterestPaid = Math.max(0, projectedTotalPaid - newPrincipal);
+        
+        // Interest saved is the difference between baseline and projected interest
+        const interestSaved = Math.max(0, baselineInterestPaid - projectedInterestPaid);
         const monthsSaved = Math.max(0, baselineMonths - projectedMonths);
         const principalReduction = baselineOutstanding - newPrincipal;
         const efficiency = principalReduction > 0 ? (interestSaved / principalReduction) * 100 : 0;
+        
         return { 
           projectedMonths, 
           monthsSaved, 
           interestSaved, 
           baselineMonths, 
-          totalInterestPaid: projectedInterest,
+          totalInterestPaid: projectedInterestPaid,
           principalReduction,
           efficiency,
           selectedLoan: loan.loanCategory
@@ -332,6 +339,25 @@ export default function RepaymentsPage() {
       }
 
       if (!target) { setWhatIfKPIs({}); return; }
+      
+      // Generate AI reasoning
+      let aiReasoning = '';
+      if (advisorAutoPick && target) {
+        const interestRate = target.interest_rate;
+        const outstanding = target.outstandingBalance;
+        const interestSaved = best.interestSaved || 0;
+        
+        if (interestRate > 15) {
+          aiReasoning = `High interest rate (${interestRate}%) means maximum savings per rupee invested.`;
+        } else if (outstanding < 100000) {
+          aiReasoning = `Small balance (₹${Math.round(outstanding/1000)}K) allows quick payoff and freed cash flow.`;
+        } else if (interestSaved > 50000) {
+          aiReasoning = `This loan offers the highest interest savings (₹${Math.round(interestSaved/1000)}K) with your contribution.`;
+        } else {
+          aiReasoning = `Optimal balance of interest rate and outstanding amount for maximum efficiency.`;
+        }
+      }
+      
       const baseDateISO = contributionTab === 'lump' ? whatIfDate : new Date().toISOString().split('T')[0];
       const payoffDate = addMonthsToDate(baseDateISO, best.projectedMonths || 0);
       setWhatIfKPIs({ 
@@ -343,7 +369,8 @@ export default function RepaymentsPage() {
         totalInterestPaid: best.totalInterestPaid,
         principalReduction: best.principalReduction,
         efficiency: best.efficiency,
-        selectedLoan: best.selectedLoan
+        selectedLoan: best.selectedLoan,
+        aiReasoning
       });
     } catch {
       setWhatIfKPIs({});
@@ -382,7 +409,7 @@ export default function RepaymentsPage() {
             leftIcon={<Calculator className="h-4 w-4" />} 
             onClick={() => { setShowContributionModal(true); setTimeout(recomputeContribution, 0); }}
           >
-            Extra Contribution
+            Smart Repayment
           </Button>
 
         </div>
@@ -862,9 +889,17 @@ export default function RepaymentsPage() {
       <Modal
         open={showContributionModal}
         onClose={() => setShowContributionModal(false)}
-        title="Extra Contribution Calculator"
+        title="Smart Repayment Calculator"
         footer={
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => {
+              setWhatIfExtraMonthly(0);
+              setWhatIfLumpSum(0);
+              setTargetLoanIndex(-1);
+              setWhatIfKPIs({});
+            }}>
+              Reset
+            </Button>
             <Button variant="outline" onClick={() => setShowContributionModal(false)}>Close</Button>
             <Button onClick={() => { setShowContributionModal(false); }} leftIcon={<Calculator className="w-4 h-4" />}>
               Apply Strategy
@@ -873,6 +908,28 @@ export default function RepaymentsPage() {
         }
       >
         <div className="space-y-6">
+          {/* Target Loan Display (when AI advisor is on) */}
+          {advisorAutoPick && whatIfKPIs.selectedLoan && (
+            <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
+                  <Target className="w-5 h-5 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-blue-900 dark:text-blue-100">AI Recommended Target</h4>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    {whatIfKPIs.selectedLoan.replace('_', ' ').toUpperCase()}
+                  </p>
+                  {whatIfKPIs.aiReasoning && (
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      💡 {whatIfKPIs.aiReasoning}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Contribution Type Tabs */}
           <div className="flex space-x-1 bg-muted p-1 rounded-lg">
             <button
@@ -926,17 +983,23 @@ export default function RepaymentsPage() {
           <div className="space-y-4">
             {contributionTab === 'monthly' ? (
               <div>
-                <Label className="text-sm font-medium text-foreground">Monthly Extra Payment (₹)</Label>
-                <Input 
-                  type="number" 
-                  placeholder="5000" 
-                  className="mt-1"
-                  value={whatIfExtraMonthly}
-                  onChange={(e) => { 
-                    setWhatIfExtraMonthly(Number(e.target.value || 0)); 
-                    setTimeout(recomputeContribution, 0); 
-                  }}
-                />
+                <Label className="text-sm font-medium text-foreground">Monthly Extra Payment</Label>
+                <div className="relative mt-1">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-muted-foreground text-sm">₹</span>
+                  </div>
+                  <Input 
+                    type="number" 
+                    placeholder="5000" 
+                    className="pl-8"
+                    value={whatIfExtraMonthly || ''}
+                    onChange={(e) => { 
+                      const value = Number(e.target.value || 0);
+                      setWhatIfExtraMonthly(value); 
+                      recomputeContribution(); 
+                    }}
+                  />
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Add this amount to your existing EMI each month
                 </p>
@@ -944,17 +1007,23 @@ export default function RepaymentsPage() {
             ) : (
               <div className="space-y-4">
                 <div>
-                  <Label className="text-sm font-medium text-foreground">Lump Sum Amount (₹)</Label>
-                  <Input 
-                    type="number" 
-                    placeholder="50000" 
-                    className="mt-1"
-                    value={whatIfLumpSum}
-                    onChange={(e) => { 
-                      setWhatIfLumpSum(Number(e.target.value || 0)); 
-                      setTimeout(recomputeContribution, 0); 
-                    }}
-                  />
+                  <Label className="text-sm font-medium text-foreground">Lump Sum Amount</Label>
+                  <div className="relative mt-1">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <span className="text-muted-foreground text-sm">₹</span>
+                    </div>
+                    <Input 
+                      type="number" 
+                      placeholder="50000" 
+                      className="pl-8"
+                      value={whatIfLumpSum || ''}
+                      onChange={(e) => { 
+                        const value = Number(e.target.value || 0);
+                        setWhatIfLumpSum(value); 
+                        recomputeContribution(); 
+                      }}
+                    />
+                  </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     One-time payment to reduce principal
                   </p>
@@ -967,7 +1036,7 @@ export default function RepaymentsPage() {
                     value={whatIfDate}
                     onChange={(e) => { 
                       setWhatIfDate(e.target.value); 
-                      setTimeout(recomputeContribution, 0); 
+                      recomputeContribution(); 
                     }}
                   />
                 </div>
@@ -984,7 +1053,7 @@ export default function RepaymentsPage() {
                 value={targetLoanIndex}
                 onChange={(e) => { 
                   setTargetLoanIndex(Number(e.target.value)); 
-                  setTimeout(recomputeContribution, 0); 
+                  recomputeContribution(); 
                 }}
               >
                 <option value={-1}>Select a loan...</option>
@@ -1083,23 +1152,6 @@ export default function RepaymentsPage() {
               </div>
             </div>
 
-            {/* Selected Loan Info */}
-            {whatIfKPIs.selectedLoan && (
-              <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-4">
-                <div className="flex items-center space-x-2">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
-                    <Target className="w-4 h-4 text-blue-600" />
-                  </div>
-                  <div>
-                    <h5 className="font-semibold text-blue-900 dark:text-blue-100">Target Loan</h5>
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
-                      {whatIfKPIs.selectedLoan.replace('_', ' ').toUpperCase()}
-                      {advisorAutoPick && ' (Auto-selected for maximum savings)'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Strategy Tips */}
