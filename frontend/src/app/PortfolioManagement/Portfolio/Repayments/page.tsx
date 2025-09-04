@@ -69,7 +69,8 @@ export default function RepaymentsPage() {
   const [showPrepayModal, setShowPrepayModal] = useState(false);
   const [whatIfExtraMonthly, setWhatIfExtraMonthly] = useState<number>(0);
   const [whatIfLumpSum, setWhatIfLumpSum] = useState<number>(0);
-  const [whatIfStrategy, setWhatIfStrategy] = useState<'avalanche'|'snowball'>('avalanche');
+  const [whatIfStrategy, setWhatIfStrategy] = useState<'avalanche'|'snowball'|'hybrid'|'risk'>('avalanche');
+  const [whatIfTargetIndex, setWhatIfTargetIndex] = useState<number>(-1);
   const [whatIfKPIs, setWhatIfKPIs] = useState<{payoffMonths?: number; monthsSaved?: number; interestSaved?: number}>({});
   const [loading, setLoading] = useState(true);
   const [engine] = useState(new LoanEngine());
@@ -184,13 +185,34 @@ export default function RepaymentsPage() {
   function recomputeWhatIf() {
     try {
       if (!liabilities || liabilities.length === 0) { setWhatIfKPIs({}); return; }
-      // Choose target EMI loan based on strategy
+      // Candidate loans (EMI loans only)
       const emiLoans = liabilities.filter(l => l.loanType === 'emi');
       if (emiLoans.length === 0) { setWhatIfKPIs({}); return; }
-      const ordered = whatIfStrategy === 'avalanche'
-        ? [...emiLoans].sort((a,b)=> b.interest_rate - a.interest_rate)
-        : [...emiLoans].sort((a,b)=> a.outstandingBalance - b.outstandingBalance);
-      const target = ordered[0];
+
+      let ordered = [...emiLoans];
+      if (whatIfStrategy === 'avalanche') {
+        ordered.sort((a,b)=> b.interest_rate - a.interest_rate);
+      } else if (whatIfStrategy === 'snowball') {
+        ordered.sort((a,b)=> a.outstandingBalance - b.outstandingBalance);
+      } else if (whatIfStrategy === 'hybrid') {
+        ordered = emiLoans
+          .map(l => ({
+            ref: l,
+            score: (l.interest_rate * 0.7) + ((1 / Math.max(1, l.outstandingBalance / 100000)) * 0.3)
+          }))
+          .sort((a,b)=> b.score - a.score)
+          .map(x=> x.ref);
+      } else if (whatIfStrategy === 'risk') {
+        ordered.sort((a,b)=> {
+          const ar = (a.loanCategory === 'credit_card' ? 1 : 0) + (a.interest_rate>15?1:0);
+          const br = (b.loanCategory === 'credit_card' ? 1 : 0) + (b.interest_rate>15?1:0);
+          return br - ar;
+        });
+      }
+
+      const target = (whatIfTargetIndex >=0 && whatIfTargetIndex < liabilities.length)
+        ? liabilities[whatIfTargetIndex]
+        : ordered[0];
       const baselineMonths = Math.max(0, target.remainingMonths || 0);
       const baselineEmi = Math.max(0, target.emi || 0);
       const baselineOutstanding = Math.max(0, target.outstandingBalance || 0);
@@ -767,18 +789,31 @@ export default function RepaymentsPage() {
 
           <div className="flex items-center gap-2 text-xs">
             <span className="text-muted-foreground">Priority:</span>
-            <button
-              className={`px-2 py-1 rounded border text-xs ${whatIfStrategy==='avalanche' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-border'}`}
-              onClick={()=> { setWhatIfStrategy('avalanche'); setTimeout(recomputeWhatIf, 0); }}
+            {(['avalanche','snowball','hybrid','risk'] as const).map(key => (
+              <button
+                key={key}
+                className={`px-2 py-1 rounded border text-xs ${whatIfStrategy===key ? 'bg-indigo-600 text-white border-indigo-600' : 'border-border'}`}
+                onClick={()=> { setWhatIfStrategy(key); setTimeout(recomputeWhatIf, 0); }}
+              >
+                {key.charAt(0).toUpperCase()+key.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          <div>
+            <Label className="text-sm font-medium text-foreground">Target Loan</Label>
+            <select
+              className="mt-1 w-full rounded-md border border-border bg-background text-foreground h-10 px-3 text-sm"
+              value={whatIfTargetIndex}
+              onChange={(e)=> { setWhatIfTargetIndex(Number(e.target.value)); setTimeout(recomputeWhatIf, 0); }}
             >
-              Avalanche
-            </button>
-            <button
-              className={`px-2 py-1 rounded border text-xs ${whatIfStrategy==='snowball' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-border'}`}
-              onClick={()=> { setWhatIfStrategy('snowball'); setTimeout(recomputeWhatIf, 0); }}
-            >
-              Snowball
-            </button>
+              <option value={-1}>Auto (by priority)</option>
+              {liabilities.filter(l=> l.loanType==='emi').map((l, idx) => (
+                <option key={idx} value={idx}>
+                  {l.loanCategory.replace('_',' ').toUpperCase()} — ₹{l.outstandingBalance.toLocaleString()} @ {l.interest_rate}%
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="rounded-lg border border-border bg-card/60 p-4">
