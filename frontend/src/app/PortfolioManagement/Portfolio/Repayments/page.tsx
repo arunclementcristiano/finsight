@@ -7,6 +7,7 @@ import { Input } from '../../../components/Input';
 import { Label } from '../../../components/Label';
 import { Badge } from '../../../components/Badge';
 import { Modal } from '../../../components/Modal';
+import { Progress } from '../../../components/Progress';
 import { 
   DollarSign, 
   Clock, 
@@ -64,6 +65,7 @@ export default function RepaymentsPage() {
   const [dbRepayments, setDbRepayments] = useState<Repayment[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showOptimizeModal, setShowOptimizeModal] = useState(false);
+  const [showPrepayModal, setShowPrepayModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [engine] = useState(new LoanEngine());
 
@@ -196,6 +198,14 @@ export default function RepaymentsPage() {
           >
             Optimize Strategy
           </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            leftIcon={<Calculator className="h-4 w-4" />} 
+            onClick={() => setShowPrepayModal(true)}
+          >
+            What‑if / Prepay
+          </Button>
         </div>
       </div>
 
@@ -289,44 +299,55 @@ export default function RepaymentsPage() {
             <CardDescription>Manage and optimize your debt repayment strategy</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {liabilities.map((loan, index) => (
-                <div key={index} className="flex items-center justify-between p-4 border border-border rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <div className={`p-3 rounded-xl ${loanColors[loan.loanCategory]} text-white`}>
-                      {loanIcons[loan.loanCategory]}
+                <div key={index} className="rounded-lg border border-border bg-card/60 backdrop-blur-sm p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`p-3 rounded-xl ${loanColors[loan.loanCategory]} text-white shrink-0`}>
+                        {loanIcons[loan.loanCategory]}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-foreground truncate">
+                            {loan.loanCategory.replace('_', ' ').toUpperCase()}
+                          </h3>
+                          <Badge variant="outline" className="text-[10px] px-1 py-0.5">
+                            {loan.loanType.toUpperCase()}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">
+                          ₹{loan.originalAmount.toLocaleString()} • {loan.interest_rate}% APR
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-foreground">
-                        {loan.loanCategory.replace('_', ' ').toUpperCase()}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        ₹{loan.originalAmount.toLocaleString()} • {loan.interest_rate}% APR
-                      </p>
+                    <div className="grid grid-cols-3 gap-4 text-right">
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">Outstanding</p>
+                        <p className="font-semibold text-foreground text-sm">₹{loan.outstandingBalance.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">EMI</p>
+                        <p className="font-semibold text-foreground text-sm">₹{loan.emi?.toLocaleString() || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">Remaining</p>
+                        <p className="font-semibold text-foreground text-sm">{loan.remainingMonths} mo</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-6">
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">Outstanding</p>
-                      <p className="font-semibold text-foreground">
-                        ₹{loan.outstandingBalance.toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">EMI</p>
-                      <p className="font-semibold text-foreground">
-                        ₹{loan.emi?.toLocaleString() || 'N/A'}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">Remaining</p>
-                      <p className="font-semibold text-foreground">
-                        {loan.remainingMonths} months
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      {loan.loanType.toUpperCase()}
-                    </Badge>
+                  <div className="mt-3">
+                    {(() => {
+                      const total = Math.max(loan.originalAmount, loan.outstandingBalance);
+                      const completed = Math.max(0, total - loan.outstandingBalance);
+                      const pct = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
+                      return (
+                        <div className="flex items-center gap-3">
+                          <Progress value={pct} max={100} className="h-1.5 bg-muted" />
+                          <span className="text-[11px] text-muted-foreground w-10 text-right">{pct}%</span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               ))}
@@ -655,6 +676,49 @@ export default function RepaymentsPage() {
               </Card>
             </>
           )}
+        </div>
+      </Modal>
+
+      {/* What-if / Prepay Modal */}
+      <Modal
+        open={showPrepayModal}
+        onClose={() => setShowPrepayModal(false)}
+        title="What‑if / Prepay Calculator"
+        footer={
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowPrepayModal(false)}>Close</Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-sm font-medium text-foreground">Monthly Extra (₹)</Label>
+              <Input type="number" placeholder="5000" className="mt-1" />
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-foreground">One‑time Lump Sum (₹)</Label>
+              <Input type="number" placeholder="25000" className="mt-1" />
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border bg-card/60 p-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground">Projected Payoff</p>
+                <p className="font-semibold text-foreground">—</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Interest Saved</p>
+                <p className="font-semibold text-foreground">—</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Months Saved</p>
+                <p className="font-semibold text-foreground">—</p>
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">Tip: Use Optimize Strategy to pick which loans to target first.</p>
         </div>
       </Modal>
 
