@@ -27,6 +27,7 @@ import {
   Briefcase
 } from 'lucide-react';
 import { LoanEngine, EnhancedLoanStatus } from '../../domain/Repaymentadvisor/repaymentEngine';
+import { SmartRepayService, AnyLiability, MonthlyTopUpInput, LumpSumInput } from '../../domain/Repaymentadvisor/smartRepaymentAdvisor';
 import { fetchRepayments, createRepayment } from '../../../../lib/repayments';
 import { Repayment } from '../../../../lib/repayments';
 
@@ -95,6 +96,19 @@ export default function RepaymentsPage() {
   }>({});
   const [loading, setLoading] = useState(true);
   const [engine] = useState(new LoanEngine());
+  const [smartRepayService] = useState(new SmartRepayService());
+
+  // Convert EnhancedLoanStatus to AnyLiability format
+  const convertToAnyLiability = (loan: EnhancedLoanStatus): AnyLiability => ({
+    id: loan.loanCategory,
+    type: loan.loanCategory,
+    institution: loan.institution || 'Unknown',
+    original_amount: loan.originalAmount,
+    interest_rate: loan.interest_rate,
+    tenure_months: loan.tenureMonths,
+    start_date: loan.startDate,
+    label: loan.loanCategory.replace('_', ' ').toUpperCase()
+  });
 
   // Quick Add Form State
   const [formData, setFormData] = useState<Partial<UltraSimpleLiabilityInput>>({
@@ -331,117 +345,45 @@ export default function RepaymentsPage() {
         return; 
       }
       
-      const emiLoans = liabilities.filter(l => l.loanType === 'emi');
-      if (emiLoans.length === 0) { 
-        setWhatIfKPIs({}); 
-        return; 
-      }
+      // Convert liabilities to AnyLiability format
+      const anyLiabilities = liabilities.map(convertToAnyLiability);
       
-      const extra = Math.max(0, whatIfExtraMonthly || 0);
-      const lump = Math.max(0, whatIfLumpSum || 0);
-
-      function simulateForLoan(loan: EnhancedLoanStatus) {
-        const baselineMonths = Math.max(0, loan.remainingMonths || 0);
-        const baselineEmi = Math.max(0, loan.emi || 0);
-        const baselineOutstanding = Math.max(0, loan.outstandingBalance || 0);
-        const newPrincipal = contributionTab === 'lump' ? Math.max(0, baselineOutstanding - Math.min(lump, baselineOutstanding)) : baselineOutstanding;
-        const newPayment = contributionTab === 'monthly' ? (baselineEmi + extra) : baselineEmi;
-        const projectedMonths = computeAmortizedMonths(newPrincipal, loan.interest_rate, newPayment);
-        
-        // Calculate total interest paid in both scenarios
-        const baselineTotalPaid = baselineEmi * baselineMonths;
-        const baselineInterestPaid = Math.max(0, baselineTotalPaid - baselineOutstanding);
-        
-        const projectedTotalPaid = newPayment * projectedMonths;
-        const projectedInterestPaid = Math.max(0, projectedTotalPaid - newPrincipal);
-        
-        // Interest saved is the difference between baseline and projected interest
-        const interestSaved = Math.max(0, baselineInterestPaid - projectedInterestPaid);
-        const monthsSaved = Math.max(0, baselineMonths - projectedMonths);
-        const principalReduction = baselineOutstanding - newPrincipal;
-        const efficiency = principalReduction > 0 ? (interestSaved / principalReduction) * 100 : 0;
-        
-        return { 
-          projectedMonths, 
-          monthsSaved, 
-          interestSaved, 
-          baselineMonths, 
-          totalInterestPaid: projectedInterestPaid,
-          principalReduction,
-          efficiency,
-          selectedLoan: loan.loanCategory
+      let result;
+      
+      if (contributionTab === 'monthly') {
+        const input: MonthlyTopUpInput = {
+          mode: 'monthly',
+          amount: Math.max(0, whatIfExtraMonthly || 0),
+          advisorAutoPick,
+          targetLoanId: !advisorAutoPick && targetLoanIndex >= 0 ? anyLiabilities[targetLoanIndex]?.id : undefined
         };
-      }
-
-      let target: EnhancedLoanStatus | undefined;
-      let best = { 
-        projectedMonths: 0, 
-        monthsSaved: 0, 
-        interestSaved: -1, 
-        baselineMonths: 0,
-        totalInterestPaid: 0,
-        principalReduction: 0,
-        efficiency: 0,
-        selectedLoan: ''
-      };
-
-      if (!advisorAutoPick && targetLoanIndex >= 0 && targetLoanIndex < liabilities.length) {
-        const candidate = liabilities[targetLoanIndex];
-        if (candidate && candidate.loanType === 'emi') {
-          const sim = simulateForLoan(candidate);
-          target = candidate;
-          best = sim as any;
-        }
-      }
-
-      if (!target) {
-        for (const loan of emiLoans) {
-          const sim = simulateForLoan(loan);
-          if (
-            sim.interestSaved > best.interestSaved ||
-            (sim.interestSaved === best.interestSaved && sim.monthsSaved > best.monthsSaved)
-          ) {
-            best = sim as any;
-            target = loan;
-          }
-        }
-      }
-
-      if (!target) { setWhatIfKPIs({}); return; }
-      
-      // Generate AI reasoning
-      let aiReasoning = '';
-      if (advisorAutoPick && target) {
-        const interestRate = target.interest_rate;
-        const outstanding = target.outstandingBalance;
-        const interestSaved = best.interestSaved || 0;
-        
-        if (interestRate > 15) {
-          aiReasoning = `High interest rate (${interestRate}%) means maximum savings per rupee invested.`;
-        } else if (outstanding < 100000) {
-          aiReasoning = `Small balance (₹${Math.round(outstanding/1000)}K) allows quick payoff and freed cash flow.`;
-        } else if (interestSaved > 50000) {
-          aiReasoning = `This loan offers the highest interest savings (₹${Math.round(interestSaved/1000)}K) with your contribution.`;
-        } else {
-          aiReasoning = `Optimal balance of interest rate and outstanding amount for maximum efficiency.`;
-        }
+        result = smartRepayService.simulateMonthlyTopUp(anyLiabilities, input);
+      } else {
+        const input: LumpSumInput = {
+          mode: 'lump',
+          amount: Math.max(0, whatIfLumpSum || 0),
+          date: whatIfDate || new Date().toISOString().split('T')[0],
+          advisorAutoPick,
+          targetLoanId: !advisorAutoPick && targetLoanIndex >= 0 ? anyLiabilities[targetLoanIndex]?.id : undefined
+        };
+        result = smartRepayService.simulateLumpSum(anyLiabilities, input);
       }
       
-      const baseDateISO = contributionTab === 'lump' ? (whatIfDate || new Date().toISOString().split('T')[0]) : new Date().toISOString().split('T')[0];
-      const payoffDate = addMonthsToDate(baseDateISO, best.projectedMonths || 0);
-      setWhatIfKPIs({ 
-        payoffMonths: best.projectedMonths, 
-        monthsSaved: best.monthsSaved, 
-        interestSaved: best.interestSaved, 
-        payoffDate, 
-        baselineMonths: best.baselineMonths,
-        totalInterestPaid: best.totalInterestPaid,
-        principalReduction: best.principalReduction,
-        efficiency: best.efficiency,
-        selectedLoan: best.selectedLoan,
-        aiReasoning
+      // Map the result to the existing KPI format
+      setWhatIfKPIs({
+        payoffMonths: result.newMonthsRemaining,
+        monthsSaved: result.monthsSaved || 0,
+        interestSaved: result.interestSaved,
+        payoffDate: result.payoffDate,
+        baselineMonths: result.currentMonthsRemaining || 0,
+        totalInterestPaid: result.totalInterestPaidNew,
+        principalReduction: 0, // Not directly available from service
+        efficiency: result.efficiency,
+        selectedLoan: result.selectedLoanId || '',
+        aiReasoning: result.reason
       });
-    } catch {
+    } catch (error) {
+      console.error('Error in recomputeContribution:', error);
       setWhatIfKPIs({});
     }
   }
