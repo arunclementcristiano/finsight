@@ -97,6 +97,7 @@ export default function RepaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [engine] = useState(new LoanEngine());
   const [smartRepayService] = useState(new SmartRepayService());
+  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
 
   // Convert EnhancedLoanStatus to AnyLiability format
   const convertToAnyLiability = (loan: EnhancedLoanStatus): AnyLiability => ({
@@ -109,6 +110,17 @@ export default function RepaymentsPage() {
     start_date: loan.startDate,
     label: loan.loanCategory.replace('_', ' ').toUpperCase()
   });
+
+  // Debounced calculation function (250ms delay)
+  const debouncedRecompute = () => {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+    const timer = setTimeout(() => {
+      recomputeContribution();
+    }, 250);
+    setDebounceTimer(timer);
+  };
 
   // Quick Add Form State
   const [formData, setFormData] = useState<Partial<UltraSimpleLiabilityInput>>({
@@ -125,6 +137,15 @@ export default function RepaymentsPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+    };
+  }, [debounceTimer]);
 
   // Auto-select first EMI loan when advisor is off
   useEffect(() => {
@@ -1025,8 +1046,8 @@ export default function RepaymentsPage() {
                       if (validationErrors.monthlyAmount) {
                         setValidationErrors(prev => ({ ...prev, monthlyAmount: undefined }));
                       }
-                      // Trigger immediate recalculation
-                      recomputeContribution();
+                      // Trigger debounced recalculation
+                      debouncedRecompute();
                     }}
                   />
                 </div>
@@ -1059,8 +1080,8 @@ export default function RepaymentsPage() {
                         if (validationErrors.lumpSumAmount) {
                           setValidationErrors(prev => ({ ...prev, lumpSumAmount: undefined }));
                         }
-                        // Trigger immediate recalculation
-                        recomputeContribution();
+                        // Trigger debounced recalculation
+                        debouncedRecompute();
                       }}
                     />
                   </div>
@@ -1084,8 +1105,8 @@ export default function RepaymentsPage() {
                       if (validationErrors.paymentDate) {
                         setValidationErrors(prev => ({ ...prev, paymentDate: undefined }));
                       }
-                      // Trigger immediate recalculation
-                      setTimeout(() => recomputeContribution(), 0);
+                      // Trigger debounced recalculation
+                      debouncedRecompute();
                     }}
                   />
                   {validationErrors.paymentDate && (
@@ -1126,6 +1147,21 @@ export default function RepaymentsPage() {
               </select>
               {validationErrors.targetLoan && (
                 <p className="text-xs text-red-500 mt-1">{validationErrors.targetLoan}</p>
+              )}
+            </div>
+          )}
+
+          {/* AI Selected Loan Display (when auto-pick is on) */}
+          {advisorAutoPick && whatIfKPIs.selectedLoan && (
+            <div>
+              <Label className="text-sm font-medium text-foreground">AI Selected Loan</Label>
+              <div className="mt-1 w-full rounded-md border border-border bg-muted/50 text-foreground h-10 px-3 text-sm flex items-center">
+                <span className="text-muted-foreground">
+                  {whatIfKPIs.selectedLoan.replace('_', ' ').toUpperCase()}
+                </span>
+              </div>
+              {whatIfKPIs.aiReasoning && (
+                <p className="text-xs text-blue-600 mt-1">💡 {whatIfKPIs.aiReasoning}</p>
               )}
             </div>
           )}
