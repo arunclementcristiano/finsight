@@ -89,6 +89,16 @@ export class SmartRepayService {
     liabilities: AnyLiability[],
     params: { mode: "monthly"; amount: number } | { mode: "lump"; amount: number; date?: string }
   ): { loan: AnyLiability; reason: string } {
+    // If amount is 0, just pick the first EMI loan or first loan
+    if (params.amount <= 0) {
+      const firstEMI = liabilities.find(l => l.type !== 'credit_card' && l.type !== 'gold_loan');
+      const selected = firstEMI || liabilities[0];
+      return { 
+        loan: selected, 
+        reason: `No extra payment specified. Showing baseline for ${selected.label ?? selected.institution ?? 'this loan'}.` 
+      };
+    }
+
     let best: { loan: AnyLiability; score: number; reason: string } | null = null;
 
     for (const loan of liabilities) {
@@ -176,8 +186,11 @@ export class SmartRepayService {
 
     // EMI loans (home, car, personal, education, other)
     const emi = status.emi;
-    const baseMonths = status.remainingMonths;
-    const baseInterestRemaining = Math.max(0, (emi * baseMonths) - status.outstandingBalance);
+    
+    // Use consistent calculation for baseline
+    const baseSim = this.simulateAmortization(status.outstandingBalance, loan.interest_rate, emi);
+    const baseMonths = baseSim.months;
+    const baseInterestRemaining = baseSim.interest;
 
     const sim = this.simulateAmortization(status.outstandingBalance, loan.interest_rate, emi + extra);
     const monthsSaved = Math.max(0, baseMonths - sim.months);
@@ -260,8 +273,11 @@ export class SmartRepayService {
 
     // EMI loans: subtract lump on chosen date, keep same EMI, compute new tenure
     const emi = status.emi;
-    const baseMonths = status.remainingMonths;
-    const baseInterestRemaining = Math.max(0, (emi * baseMonths) - status.outstandingBalance);
+    
+    // Use consistent calculation for baseline
+    const baseSim = this.simulateAmortization(status.outstandingBalance, loan.interest_rate, emi);
+    const baseMonths = baseSim.months;
+    const baseInterestRemaining = baseSim.interest;
 
     // Get balance on payDate (months from now)
     const monthsFromNow = this.diffMonths(new Date(), payDate);
