@@ -272,24 +272,18 @@ export default function RepaymentsPage() {
     
     // Validate monthly amount
     if (contributionTab === 'monthly') {
-      if (!whatIfExtraMonthly || whatIfExtraMonthly <= 0) {
-        errors.monthlyAmount = 'Please enter a valid monthly amount';
-      } else if (whatIfExtraMonthly > 100000) {
+      if (whatIfExtraMonthly != null && whatIfExtraMonthly > 100000) {
         errors.monthlyAmount = 'Monthly amount seems too high (max ₹1,00,000)';
       }
     }
     
     // Validate lump sum amount
     if (contributionTab === 'lump') {
-      if (!whatIfLumpSum || whatIfLumpSum <= 0) {
-        errors.lumpSumAmount = 'Please enter a valid lump sum amount';
-      } else if (whatIfLumpSum > 10000000) {
+      if (whatIfLumpSum != null && whatIfLumpSum > 10000000) {
         errors.lumpSumAmount = 'Lump sum amount seems too high (max ₹1,00,00,000)';
       }
       
-      if (!whatIfDate) {
-        errors.paymentDate = 'Please select a payment date';
-      } else {
+      if (whatIfDate) {
         const selectedDate = new Date(whatIfDate);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -1032,9 +1026,7 @@ export default function RepaymentsPage() {
             <div>
               <Label className="text-sm font-medium text-foreground">Target Loan</Label>
               <select
-                className={`mt-1 w-full rounded-md border bg-background text-foreground h-10 px-3 text-sm ${
-                  validationErrors.targetLoan ? 'border-red-500' : 'border-border'
-                }`}
+                className={`mt-1 w-full rounded-md border bg-background text-foreground h-10 px-3 text-sm border-border`}
                 value={targetLoanIndex}
                 onChange={(e) => { 
                   setTargetLoanIndex(Number(e.target.value)); 
@@ -1063,7 +1055,7 @@ export default function RepaymentsPage() {
           <div className="space-y-4">
             {contributionTab === 'monthly' ? (
               <div>
-                <Label className="text-sm font-medium text-foreground">Monthly Extra Payment</Label>
+                <Label className="text-sm font-medium text-foreground">Monthly Extra Payment <span className="text-red-500">*</span></Label>
                 <div className="relative mt-1">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <span className="text-muted-foreground text-sm">₹</span>
@@ -1071,7 +1063,7 @@ export default function RepaymentsPage() {
                   <Input 
                     type="number" 
                     placeholder="5000" 
-                    className={`pl-8 ${validationErrors.monthlyAmount ? 'border-red-500' : ''}`}
+                    className={`pl-8`}
                     value={Number.isFinite(whatIfExtraMonthly) && whatIfExtraMonthly > 0 ? String(whatIfExtraMonthly) : ''}
                     onChange={(e) => { 
                       const raw = e.target.value;
@@ -1089,18 +1081,14 @@ export default function RepaymentsPage() {
                     }}
                   />
                 </div>
-                {validationErrors.monthlyAmount ? (
-                  <p className="text-xs text-red-500 mt-1">{validationErrors.monthlyAmount}</p>
-                ) : (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Add this amount to your existing EMI each month
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  Add this amount to your existing EMI each month
+                </p>
               </div>
             ) : (
               <div className="space-y-4">
                 <div>
-                  <Label className="text-sm font-medium text-foreground">Lump Sum Amount</Label>
+                  <Label className="text-sm font-medium text-foreground">Lump Sum Amount <span className="text-red-500">*</span></Label>
                   <div className="relative mt-1">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <span className="text-muted-foreground text-sm">₹</span>
@@ -1108,7 +1096,7 @@ export default function RepaymentsPage() {
                     <Input 
                       type="number" 
                       placeholder="50000" 
-                      className={`pl-8 ${validationErrors.lumpSumAmount ? 'border-red-500' : ''}`}
+                      className={`pl-8`}
                       value={Number.isFinite(whatIfLumpSum) && whatIfLumpSum > 0 ? String(whatIfLumpSum) : ''}
                       onChange={(e) => { 
                         const raw = e.target.value;
@@ -1126,19 +1114,15 @@ export default function RepaymentsPage() {
                       }}
                     />
                   </div>
-                  {validationErrors.lumpSumAmount ? (
-                    <p className="text-xs text-red-500 mt-1">{validationErrors.lumpSumAmount}</p>
-                  ) : (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      One-time payment to reduce principal
-                    </p>
-                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    One-time payment to reduce principal
+                  </p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-foreground">Payment Date</Label>
+                  <Label className="text-sm font-medium text-foreground">Payment Date <span className="text-red-500">*</span></Label>
                   <Input 
                     type="date" 
-                    className={`mt-1 ${validationErrors.paymentDate ? 'border-red-500' : ''}`}
+                    className={`mt-1`}
                     value={whatIfDate}
                     onChange={(e) => { 
                       setWhatIfDate(e.target.value); 
