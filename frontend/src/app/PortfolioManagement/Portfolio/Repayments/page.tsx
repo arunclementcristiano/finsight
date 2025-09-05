@@ -1190,20 +1190,7 @@ export default function RepaymentsPage() {
             </div>
           )}
 
-          {/* AI Selected Loan Display (when auto-pick is on) */}
-          {advisorAutoPick && whatIfKPIs.selectedLoan && (
-            <div>
-              <Label className="text-sm font-medium text-foreground">AI Selected Loan</Label>
-              <div className="mt-1 w-full rounded-md border border-border bg-muted/50 text-foreground h-10 px-3 text-sm flex items-center">
-                <span className="text-muted-foreground">
-                  {whatIfKPIs.selectedLoan.replace('_', ' ').toUpperCase()}
-                </span>
-              </div>
-              {whatIfKPIs.aiReasoning && (
-                <p className="text-xs text-blue-600 mt-1">💡 {whatIfKPIs.aiReasoning}</p>
-              )}
-            </div>
-          )}
+          {/* (Removed duplicate AI selected loan display; kept compact header variant above) */}
 
           {/* Timeline Visual */}
           {whatIfKPIs.baselineMonths && whatIfKPIs.payoffMonths && (
