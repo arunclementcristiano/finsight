@@ -104,7 +104,7 @@ export default function SmartRepaymentModal({ open, onClose, liabilities, onAppl
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<'input' | 'results'>('input');
   const [repaymentMode, setRepaymentMode] = useState<'monthly' | 'lump'>('monthly');
-  const [advisorAutoPick, setAdvisorAutoPick] = useState(false); // Start with manual mode
+  const [advisorAutoPick, setAdvisorAutoPick] = useState(true); // Start with advisor mode
   const [selectedLoanId, setSelectedLoanId] = useState<string>('');
   const [monthlyAmount, setMonthlyAmount] = useState<string>('');
   const [lumpSumAmount, setLumpSumAmount] = useState<string>('');
@@ -214,495 +214,206 @@ export default function SmartRepaymentModal({ open, onClose, liabilities, onAppl
     <Modal
       open={open}
       onClose={onClose}
-      title=""
-      footer={null}
+      title="Smart Repayment"
+      footer={
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleReset}>
+            Reset
+          </Button>
+          <Button variant="outline" onClick={onClose}>Close</Button>
+          <Button onClick={handleCalculate} leftIcon={<Calculator className="w-4 h-4" />}>
+            Calculate
+          </Button>
+        </div>
+      }
     >
-      <div className="min-h-[500px]">
-        {/* Custom Header */}
-        <div className="relative -m-4 mb-6 p-6 bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 rounded-t-xl">
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-3 text-white">
-            <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
-              <Sparkles className="w-6 h-6" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold">Smart Repayment Advisor</h2>
-              <p className="text-white/90 text-sm">Optimize your loan repayments with AI-powered insights</p>
+      <div className="space-y-4">
+        {/* Header with Advisor Toggle (Plan page style) */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="text-sm text-muted-foreground">Smart Repayment</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="inline-flex rounded-md border border-border overflow-hidden text-xs">
+              <Button size="sm" variant="outline" className={`rounded-none ${!advisorAutoPick ? 'bg-indigo-600 text-white border-indigo-600' : ''}`} onClick={() => setAdvisorAutoPick(false)}>
+                <div className="flex flex-col items-start leading-tight">
+                  <span>Manual</span>
+                  {!advisorAutoPick ? <span className="text-[10px] opacity-80">You choose</span> : null}
+                </div>
+              </Button>
+              <Button size="sm" variant="outline" className={`rounded-none ${advisorAutoPick ? 'bg-indigo-600 text-white border-indigo-600' : ''}`} onClick={() => setAdvisorAutoPick(true)}>
+                <div className="flex flex-col items-start leading-tight">
+                  <span>Advisor</span>
+                  {advisorAutoPick ? <span className="text-[10px] opacity-80">AI picks best</span> : null}
+                </div>
+              </Button>
             </div>
           </div>
         </div>
 
-        {currentStep === 'input' ? (
-          <div className="space-y-6">
-            {/* Strategy Mode Selection */}
-            <div>
-              <Label className="text-base font-semibold text-foreground mb-3 block">
-                Choose Your Repayment Strategy
-              </Label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => setRepaymentMode('monthly')}
-                  className={`p-4 rounded-xl border-2 transition-all ${
-                    repaymentMode === 'monthly'
-                      ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30'
-                      : 'border-border bg-card hover:border-purple-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      repaymentMode === 'monthly' 
-                        ? 'bg-purple-100 dark:bg-purple-900/50' 
-                        : 'bg-muted'
-                    }`}>
-                      <Calendar className={`w-5 h-5 ${
-                        repaymentMode === 'monthly' 
-                          ? 'text-purple-600 dark:text-purple-400' 
-                          : 'text-muted-foreground'
-                      }`} />
-                    </div>
-                    <div className="text-left">
-                      <p className="font-medium text-foreground">Monthly Top-up</p>
-                      <p className="text-xs text-muted-foreground">Add extra to EMI monthly</p>
-                    </div>
-                  </div>
-                </button>
-                
-                <button
-                  onClick={() => setRepaymentMode('lump')}
-                  className={`p-4 rounded-xl border-2 transition-all ${
-                    repaymentMode === 'lump'
-                      ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30'
-                      : 'border-border bg-card hover:border-purple-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      repaymentMode === 'lump' 
-                        ? 'bg-purple-100 dark:bg-purple-900/50' 
-                        : 'bg-muted'
-                    }`}>
-                      <Banknote className={`w-5 h-5 ${
-                        repaymentMode === 'lump' 
-                          ? 'text-purple-600 dark:text-purple-400' 
-                          : 'text-muted-foreground'
-                      }`} />
-                    </div>
-                    <div className="text-left">
-                      <p className="font-medium text-foreground">Lump Sum</p>
-                      <p className="text-xs text-muted-foreground">One-time large payment</p>
-                    </div>
-                  </div>
-                </button>
-              </div>
-            </div>
+        {/* Contribution Type Tabs */}
+        <div className="flex space-x-1 bg-muted p-1 rounded-lg">
+          <button
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              repaymentMode === 'monthly'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+            onClick={() => setRepaymentMode('monthly')}
+          >
+            Monthly Top-up
+          </button>
+          <button
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              repaymentMode === 'lump'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+            onClick={() => setRepaymentMode('lump')}
+          >
+            Lump Sum
+          </button>
+        </div>
 
-            {/* AI Advisor Toggle */}
-            <Card className="border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/30">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
-                      <Crown className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-foreground">AI Advisor Mode</p>
-                      <p className="text-sm text-muted-foreground">
-                        {advisorAutoPick 
-                          ? "Let AI select the optimal loan for maximum savings"
-                          : "Manually choose which loan to target"
-                        }
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
-                      advisorAutoPick ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
-                    }`}
-                    onClick={() => setAdvisorAutoPick(!advisorAutoPick)}
-                  >
-                    <span
-                      className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                        advisorAutoPick ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* AI Selected Loan Highlight */}
-            {advisorAutoPick && liveResult && (
-              <Card className="border-2 border-green-200 dark:border-green-800 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg">
-                      <Target className="w-5 h-5 text-green-600 dark:text-green-400" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-foreground">🎯 AI Selected Target</p>
-                        <div className="px-2 py-1 bg-green-600 text-white text-xs rounded-full font-medium">
-                          RECOMMENDED
-                        </div>
-                      </div>
-                      <p className="text-sm text-green-700 dark:text-green-300 font-medium">
-                        {liveResult.selectedLoanLabel.replace(' (AI Selected)', '')}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Highest interest rate ({liabilities.find(l => l.id === liveResult.selectedLoanId)?.interest_rate}%) - Maximum savings potential
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Manual Loan Selection */}
-            {!advisorAutoPick && (
+        {/* AI Selected Target (compact) */}
+        {advisorAutoPick && liveResult?.selectedLoan && (
+          <div className="rounded-lg border border-border bg-card/60 p-3">
+            <div className="flex items-center justify-between">
               <div>
-                <Label className="text-base font-medium text-foreground mb-3 block">
-                  Select Target Loan
-                </Label>
-                <select
-                  className="w-full rounded-xl border border-border bg-card text-foreground h-12 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  value={selectedLoanId}
-                  onChange={(e) => setSelectedLoanId(e.target.value)}
-                >
-                  <option value="">Choose a loan...</option>
-                  {liabilities.map((liability, index) => (
-                    <option key={liability.id || index} value={liability.id || index.toString()}>
-                      {liability.label || liability.institution || `${liability.type} Loan`} - 
-                      {formatCurrency(liability.current_outstanding || liability.original_amount)} outstanding @ {liability.interest_rate}% 
-                      {liability.remaining_months ? ` (${liability.remaining_months}mo left)` : ''}
-                    </option>
-                  ))}
-                </select>
+                <div className="text-sm font-medium text-foreground">AI Selected Target</div>
+                <div className="text-xs text-muted-foreground">{liveResult.selectedLoan.replace('_', ' ').toUpperCase()}</div>
               </div>
+              <Target className="w-4 h-4 text-muted-foreground" />
+            </div>
+            {liveResult.reason && (
+              <p className="text-xs text-muted-foreground mt-1">{liveResult.reason}</p>
             )}
+          </div>
+        )}
 
-            {/* Amount Input */}
+        {/* Manual Loan Selection (when auto-pick is off) */}
+        {!advisorAutoPick && (
+          <div>
+            <Label className="text-sm font-medium text-foreground">Target Loan</Label>
+            <select
+              className="mt-1 w-full rounded-md border bg-background text-foreground h-10 px-3 text-sm border-border"
+              value={selectedLoanId}
+              onChange={(e) => setSelectedLoanId(e.target.value)}
+            >
+              <option value="">Select a loan...</option>
+              {liabilities.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.type?.replace('_', ' ').toUpperCase()} — ₹{l.original_amount?.toLocaleString()} @ {l.interest_rate}%
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Input Fields */}
+        <div className="space-y-4">
+          {repaymentMode === 'monthly' ? (
             <div>
-              <Label className="text-base font-medium text-foreground mb-3 block">
-                {repaymentMode === 'monthly' ? 'Monthly Extra Amount' : 'Lump Sum Amount'}
-              </Label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <span className="text-muted-foreground text-lg">₹</span>
+              <Label className="text-sm font-medium text-foreground">Monthly Extra Payment <span className="text-red-500">*</span></Label>
+              <div className="relative mt-1">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <span className="text-muted-foreground text-sm">₹</span>
                 </div>
-                <Input
-                  type="number"
-                  placeholder={repaymentMode === 'monthly' ? '5,000' : '50,000'}
-                  className="pl-8 h-12 text-lg rounded-xl border-2 focus:border-purple-500"
-                  value={repaymentMode === 'monthly' ? monthlyAmount : lumpSumAmount}
-                  onChange={(e) => {
-                    if (repaymentMode === 'monthly') {
-                      setMonthlyAmount(e.target.value);
-                    } else {
-                      setLumpSumAmount(e.target.value);
-                    }
-                  }}
+                <Input 
+                  type="number" 
+                  placeholder="5000" 
+                  className="pl-8"
+                  value={monthlyAmount}
+                  onChange={(e) => setMonthlyAmount(e.target.value)}
                 />
               </div>
-              <p className="text-sm text-muted-foreground mt-2">
-                {repaymentMode === 'monthly' 
-                  ? 'This amount will be added to your existing EMI each month'
-                  : 'One-time payment to reduce the principal amount'
-                }
+              <p className="text-xs text-muted-foreground mt-1">
+                Add this amount to your existing EMI each month
               </p>
             </div>
-
-            {/* Enhanced Live Preview */}
-            {liveResult && (
-              <Card className="border-2 border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/30">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Zap className="w-5 h-5 text-green-600 dark:text-green-400" />
-                    <h3 className="font-semibold text-foreground">Live Savings Preview</h3>
-                  </div>
-                  
-                  {/* Target Loan Info */}
-                  <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <div className="flex items-center justify-between text-sm">
-                      <div>
-                        <p className="font-medium text-blue-800 dark:text-blue-200">
-                          {liveResult.selectedLoanLabel.replace(' (AI Selected)', '')}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-blue-600 dark:text-blue-400">Outstanding</p>
-                        <p className="font-bold text-blue-900 dark:text-blue-100">
-                          {formatCurrency(liveResult.currentOutstanding || 0)}
-                        </p>
-                        <p className="text-xs text-blue-600 dark:text-blue-400">
-                          {liveResult.currentMonthsRemaining} months left
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-2 mb-3">
-                    <div className="text-center p-2 bg-white/50 dark:bg-gray-900/30 rounded-lg">
-                      <p className="text-xs text-muted-foreground">Interest Saved</p>
-                      <p className="text-sm font-bold text-green-600 dark:text-green-400">
-                        ₹{liveResult.interestSaved.toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="text-center p-2 bg-white/50 dark:bg-gray-900/30 rounded-lg">
-                      <p className="text-xs text-muted-foreground">Time Saved</p>
-                      <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                        {liveResult.monthsSaved}mo
-                      </p>
-                    </div>
-                    <div className="text-center p-2 bg-white/50 dark:bg-gray-900/30 rounded-lg">
-                      <p className="text-xs text-muted-foreground">ROI</p>
-                      <p className="text-sm font-bold text-purple-600 dark:text-purple-400">
-                        ₹{(liveResult.efficiency || 0).toFixed(1)}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Compact Timeline */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Current Plan</span>
-                      <span className="font-medium">{formatMonths(liveResult.currentMonthsRemaining)}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                      <div className="bg-gray-400 dark:bg-gray-500 h-2 rounded-full" style={{ width: '100%' }} />
-                    </div>
-                    
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">With {repaymentMode === 'monthly' ? 'Top-up' : 'Lump Sum'}</span>
-                      <span className="font-medium text-green-600 dark:text-green-400">{formatMonths(liveResult.newMonthsRemaining)}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                      <div 
-                        className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full" 
-                        style={{ width: `${((liveResult.newMonthsRemaining || 0) / (liveResult.currentMonthsRemaining || 1)) * 100}%` }} 
-                      />
-                    </div>
-                  </div>
-
-                  <div className="text-center mt-3 p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                    <p className="text-green-700 dark:text-green-300 text-xs font-medium">
-                      💡 Every ₹1 saves ₹{(liveResult.efficiency || 0).toFixed(2)} in interest
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Payment Date for Lump Sum */}
-            {repaymentMode === 'lump' && (
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label className="text-base font-medium text-foreground mb-3 block">
-                  Payment Date
-                </Label>
-                <Input
-                  type="date"
-                  className="h-12 rounded-xl border-2 focus:border-purple-500"
+                <Label className="text-sm font-medium text-foreground">Lump Sum Amount <span className="text-red-500">*</span></Label>
+                <div className="relative mt-1">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-muted-foreground text-sm">₹</span>
+                  </div>
+                  <Input 
+                    type="number" 
+                    placeholder="50000" 
+                    className="pl-8"
+                    value={lumpSumAmount}
+                    onChange={(e) => setLumpSumAmount(e.target.value)}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  One-time payment to reduce principal
+                </p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-foreground">Payment Date <span className="text-red-500">*</span></Label>
+                <Input 
+                  type="date" 
+                  className="mt-1"
                   value={paymentDate}
                   onChange={(e) => setPaymentDate(e.target.value)}
                 />
               </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex gap-3 pt-4">
-              <Button
-                variant="outline"
-                onClick={onClose}
-                className="flex-1 h-12 rounded-xl"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleCalculate}
-                disabled={!isFormValid() || loading}
-                className="flex-1 h-12 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                leftIcon={loading ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" /> : <Calculator className="w-4 h-4" />}
-              >
-                {loading ? 'Calculating...' : 'Calculate Savings'}
-              </Button>
             </div>
+          )}
+        </div>
 
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Results Header */}
-            <div className="text-center space-y-2">
-              <div className="flex items-center justify-center gap-2">
-                <CheckCircle className="w-6 h-6 text-green-600" />
-                <h3 className="text-xl font-bold text-foreground">Optimization Complete!</h3>
-              </div>
-              {result?.reason && (
-                <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                  {result.reason}
-                </p>
-              )}
-            </div>
-
-            {/* Selected Loan Info */}
-            {result?.selectedLoanLabel && (
-              <Card className="border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/30">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
-                      <Target className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-foreground">Target Loan</p>
-                      <p className="text-sm text-purple-700 dark:text-purple-300">{result.selectedLoanLabel}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Key Metrics */}
-            <div className="grid grid-cols-2 gap-4">
-              <KPICard
-                icon={<PiggyBank className="w-5 h-5" />}
-                title="Interest Saved"
-                value={formatCurrency(result?.interestSaved || 0)}
-                trend="down"
-                variant="success"
-              />
-              <KPICard
-                icon={<Timer className="w-5 h-5" />}
-                title="Time Saved"
-                value={result?.monthsSaved !== null ? formatMonths(result?.monthsSaved || 0) : "N/A"}
-                trend={result?.monthsSaved > 0 ? "down" : "neutral"}
-                variant="info"
-              />
-              <KPICard
-                icon={<Calendar className="w-5 h-5" />}
-                title="New Payoff Date"
-                value={result?.payoffDate || "N/A"}
-                variant="default"
-              />
-              <KPICard
-                icon={<BarChart3 className="w-5 h-5" />}
-                title="Efficiency"
-                value={`${(result?.efficiency * 100 || 0).toFixed(1)}%`}
-                subtitle="Return per rupee"
-                variant="info"
-              />
-            </div>
-
-            {/* Timeline Comparison */}
-            {result?.timeline && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Clock className="w-5 h-5" />
-                    Payoff Timeline Comparison
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Current Plan</span>
-                      <span className="font-medium">
-                        {result.timeline.current !== null ? formatMonths(result.timeline.current) : "Interest-only"}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-                      <div 
-                        className="bg-gray-400 dark:bg-gray-500 h-3 rounded-full transition-all duration-500"
-                        style={{ width: '100%' }}
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">With {repaymentMode === 'monthly' ? 'Monthly Top-up' : 'Lump Sum'}</span>
-                      <span className="font-medium text-green-600 dark:text-green-400">
-                        {formatMonths(result.timeline.withContribution)}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-                      <div 
-                        className="bg-green-500 h-3 rounded-full transition-all duration-500"
-                        style={{ 
-                          width: result.timeline.current 
-                            ? `${(result.timeline.withContribution / result.timeline.current) * 100}%`
-                            : '60%'
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {result?.monthsSaved > 0 && (
-                    <div className="text-center p-3 bg-green-50 dark:bg-green-950/30 rounded-xl">
-                      <p className="text-green-700 dark:text-green-300 font-semibold">
-                        🎉 You'll finish {formatMonths(result.monthsSaved)} earlier!
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Detailed Breakdown */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Coins className="w-5 h-5" />
-                  Financial Impact
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 gap-3">
-                  <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Total Interest (New)</span>
-                    <span className="font-medium">{formatCurrency(result?.totalInterestPaidNew || 0)}</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Interest Savings</span>
-                    <span className="font-medium text-green-600">{formatCurrency(result?.interestSaved || 0)}</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Monthly {repaymentMode === 'monthly' ? 'Extra' : 'Impact'}</span>
-                    <span className="font-medium">
-                      {repaymentMode === 'monthly' 
-                        ? formatCurrency(parseFloat(monthlyAmount) || 0)
-                        : formatCurrency(parseFloat(lumpSumAmount) || 0)
-                      }
+        {/* Projected Results (only show when calculated) */}
+        {liveResult && (
+          <div className="space-y-4">
+            <h4 className="font-semibold text-foreground">Projected Results</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-lg border border-border bg-card/60 p-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Payoff Timeline</span>
+                    <span className="font-semibold text-foreground">
+                      {liveResult.currentMonthsRemaining} → {liveResult.newMonthsRemaining} months
                     </span>
                   </div>
-                  <div className="flex justify-between py-2 font-semibold text-lg">
-                    <span>ROI per Rupee</span>
-                    <span className="text-purple-600">₹{((result?.efficiency || 0) * 1).toFixed(2)}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Months Saved</span>
+                    <span className="font-semibold text-green-600">
+                      {liveResult.monthsSaved} months
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Payoff Date</span>
+                    <span className="font-semibold text-foreground">
+                      {liveResult.payoffDate || '—'}
+                    </span>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Action Buttons */}
-            <div className="flex gap-3 pt-4">
-              <Button
-                variant="outline"
-                onClick={handleReset}
-                className="flex-1 h-12 rounded-xl"
-                leftIcon={<ArrowRight className="w-4 h-4 rotate-180" />}
-              >
-                Try Another Strategy
-              </Button>
-              <Button
-                onClick={() => {
-                  onApplyStrategy?.(result);
-                  onClose();
-                }}
-                className="flex-1 h-12 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                leftIcon={<Zap className="w-4 h-4" />}
-              >
-                Apply This Strategy
-              </Button>
+              <div className="rounded-lg border border-border bg-card/60 p-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Interest Saved</span>
+                    <span className="font-semibold text-green-600">
+                      ₹{Math.round(liveResult.interestSaved).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Total Interest Paid</span>
+                    <span className="font-semibold text-foreground">
+                      ₹{Math.round(liveResult.totalInterestPaidNew).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Efficiency</span>
+                    <span className="font-semibold text-blue-600">
+                      {liveResult.efficiency?.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
