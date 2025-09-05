@@ -962,25 +962,19 @@ export default function RepaymentsPage() {
         }
       >
         <div className="space-y-6">
-          {/* Target Loan Display (when AI advisor is on) */}
+          {/* Compact AI Selected Loan (when auto-pick is on) */}
           {advisorAutoPick && whatIfKPIs.selectedLoan && (
-            <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-4">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
-                  <Target className="w-5 h-5 text-blue-600" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-blue-900 dark:text-blue-100">AI Recommended Target</h4>
-                  <p className="text-sm text-blue-700 dark:text-blue-300">
-                    {whatIfKPIs.selectedLoan.replace('_', ' ').toUpperCase()}
-                  </p>
-                  {whatIfKPIs.aiReasoning && (
-                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                      💡 {whatIfKPIs.aiReasoning}
-                    </p>
-                  )}
-                </div>
+            <div>
+              <Label className="text-sm font-medium text-foreground">Advisor-picked target</Label>
+              <div className="mt-1 w-full rounded-md border border-border bg-muted/50 text-foreground h-10 px-3 text-sm flex items-center justify-between">
+                <span className="truncate">
+                  {whatIfKPIs.selectedLoan.replace('_', ' ').toUpperCase()}
+                </span>
+                <Target className="w-4 h-4 text-muted-foreground" />
               </div>
+              {whatIfKPIs.aiReasoning && (
+                <p className="text-xs text-muted-foreground mt-1">{whatIfKPIs.aiReasoning}</p>
+              )}
             </div>
           )}
 
@@ -1033,6 +1027,38 @@ export default function RepaymentsPage() {
             </button>
           </div>
 
+          {/* Manual Loan Selection (when auto-pick is off) — placed before amount inputs */}
+          {!advisorAutoPick && (
+            <div>
+              <Label className="text-sm font-medium text-foreground">Target Loan</Label>
+              <select
+                className={`mt-1 w-full rounded-md border bg-background text-foreground h-10 px-3 text-sm ${
+                  validationErrors.targetLoan ? 'border-red-500' : 'border-border'
+                }`}
+                value={targetLoanIndex}
+                onChange={(e) => { 
+                  setTargetLoanIndex(Number(e.target.value)); 
+                  if (validationErrors.targetLoan) {
+                    setValidationErrors(prev => ({ ...prev, targetLoan: undefined }));
+                  }
+                  debouncedRecompute();
+                }}
+              >
+                <option value={-1}>Select a loan...</option>
+                {liabilities.map((l, idx) => (
+                  l.loanType === 'emi' ? (
+                    <option key={idx} value={idx}>
+                      {l.loanCategory.replace('_', ' ').toUpperCase()} — ₹{l.outstandingBalance.toLocaleString()} @ {l.interest_rate}%
+                    </option>
+                  ) : null
+                ))}
+              </select>
+              {validationErrors.targetLoan && (
+                <p className="text-xs text-red-500 mt-1">{validationErrors.targetLoan}</p>
+              )}
+            </div>
+          )}
+
           {/* Input Fields */}
           <div className="space-y-4">
             {contributionTab === 'monthly' ? (
@@ -1051,6 +1077,9 @@ export default function RepaymentsPage() {
                       const raw = e.target.value;
                       const value = raw === '' ? 0 : Number(raw);
                       setWhatIfExtraMonthly(value);
+                      if (!advisorAutoPick && targetLoanIndex < 0) {
+                        return;
+                      }
                       // Clear validation error when user starts typing
                       if (validationErrors.monthlyAmount) {
                         setValidationErrors(prev => ({ ...prev, monthlyAmount: undefined }));
@@ -1085,6 +1114,9 @@ export default function RepaymentsPage() {
                         const raw = e.target.value;
                         const value = raw === '' ? 0 : Number(raw);
                         setWhatIfLumpSum(value);
+                        if (!advisorAutoPick && targetLoanIndex < 0) {
+                          return;
+                        }
                         // Clear validation error when user starts typing
                         if (validationErrors.lumpSumAmount) {
                           setValidationErrors(prev => ({ ...prev, lumpSumAmount: undefined }));
@@ -1126,7 +1158,7 @@ export default function RepaymentsPage() {
             )}
           </div>
 
-          {/* Manual Loan Selection (when auto-pick is off) */}
+          {/* Manual Loan Selection (when auto-pick is off) - moved before amount inputs */}
           {!advisorAutoPick && (
             <div>
               <Label className="text-sm font-medium text-foreground">Target Loan</Label>
@@ -1137,12 +1169,10 @@ export default function RepaymentsPage() {
                 value={targetLoanIndex}
                 onChange={(e) => { 
                   setTargetLoanIndex(Number(e.target.value)); 
-                  // Clear validation error when user selects loan
                   if (validationErrors.targetLoan) {
                     setValidationErrors(prev => ({ ...prev, targetLoan: undefined }));
                   }
-                  // Trigger immediate recalculation
-                  recomputeContribution();
+                  debouncedRecompute();
                 }}
               >
                 <option value={-1}>Select a loan...</option>
@@ -1271,11 +1301,11 @@ export default function RepaymentsPage() {
               </div>
               <div>
                 <h5 className="font-semibold text-amber-900 dark:text-amber-100">Quick Tips</h5>
-                <div className="text-sm text-amber-700 dark:text-amber-300 space-y-2 mt-1">
-                  <p>• <strong>High interest first:</strong> Pay off loans with highest interest rates to save maximum money</p>
-                  <p>• <strong>Monthly top-ups:</strong> Small regular payments build good financial habits</p>
-                  <p>• <strong>Lump sums:</strong> Use bonuses or tax refunds for one-time principal reduction</p>
-                </div>
+                <ul className="text-sm text-amber-700 dark:text-amber-300 mt-1 list-disc list-inside space-y-1">
+                  <li>Prioritize higher interest loans to save more.</li>
+                  <li>Monthly top-ups cut tenure; even small amounts help.</li>
+                  <li>Lump sums reduce principal fastest after disbursal.</li>
+                </ul>
               </div>
             </div>
           </div>
