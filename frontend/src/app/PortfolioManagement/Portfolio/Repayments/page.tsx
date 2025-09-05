@@ -1142,37 +1142,7 @@ export default function RepaymentsPage() {
             )}
           </div>
 
-          {/* Manual Loan Selection (when auto-pick is off) - moved before amount inputs */}
-          {!advisorAutoPick && (
-            <div>
-              <Label className="text-sm font-medium text-foreground">Target Loan</Label>
-              <select
-                className={`mt-1 w-full rounded-md border bg-background text-foreground h-10 px-3 text-sm ${
-                  validationErrors.targetLoan ? 'border-red-500' : 'border-border'
-                }`}
-                value={targetLoanIndex}
-                onChange={(e) => { 
-                  setTargetLoanIndex(Number(e.target.value)); 
-                  if (validationErrors.targetLoan) {
-                    setValidationErrors(prev => ({ ...prev, targetLoan: undefined }));
-                  }
-                  debouncedRecompute();
-                }}
-              >
-                <option value={-1}>Select a loan...</option>
-                {liabilities.map((l, idx) => (
-                  l.loanType === 'emi' ? (
-                    <option key={idx} value={idx}>
-                      {l.loanCategory.replace('_', ' ').toUpperCase()} — ₹{l.outstandingBalance.toLocaleString()} @ {l.interest_rate}%
-                    </option>
-                  ) : null
-                ))}
-              </select>
-              {validationErrors.targetLoan && (
-                <p className="text-xs text-red-500 mt-1">{validationErrors.targetLoan}</p>
-              )}
-            </div>
-          )}
+          {/* Removed duplicate manual selector block (single selector resides above inputs) */}
 
           {/* (Removed duplicate AI selected loan display; kept compact header variant above) */}
 
