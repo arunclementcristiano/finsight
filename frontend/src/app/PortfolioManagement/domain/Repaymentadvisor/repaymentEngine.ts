@@ -40,6 +40,7 @@ export interface GoldLoanInput extends UltraSimpleLiabilityInput {
 }
 
 export interface EnhancedLoanStatus {
+  id?: string;
   loanType: 'emi' | 'credit_card' | 'gold_loan' | 'generic';
   loanCategory: LoanCategory;
   originalAmount: number;
@@ -53,6 +54,8 @@ export interface EnhancedLoanStatus {
   prepaymentSavings?: number;
   totalInterestPaid?: number;
   totalInterestAccrued?: number;
+  originalTenure?: number;
+  startDate?: string;
   explanation: string;
   calculationBreakdown: {
     emiFormula?: string;
@@ -159,6 +162,7 @@ export class LoanEngine {
     );
 
     return {
+      id: Math.random().toString(),
       loanType: 'emi',
       loanCategory: input.type,
       originalAmount: input.original_amount,
@@ -168,6 +172,8 @@ export class LoanEngine {
       monthsElapsed,
       remainingMonths: Math.max(0, tenure - monthsElapsed),
       monthlyInterestAccrual: outstanding * monthlyRate,
+      originalTenure: tenure,
+      startDate: input.start_date,
       explanation: `EMI loan of ₹${input.original_amount.toLocaleString()} at ${input.interest_rate}% for ${tenure} months. After ${monthsElapsed} months, outstanding balance is ₹${outstanding.toLocaleString()}.`,
       calculationBreakdown: {
         emiFormula: 'P × r × (1+r)^n / ((1+r)^n - 1)',
@@ -191,6 +197,12 @@ export class LoanEngine {
     if (tenure === 0) return Math.max(0, principal - (emi * monthsElapsed));
     if (monthlyRate === 0) return Math.max(0, principal - (emi * monthsElapsed));
 
+    // Calculate outstanding balance using proper formula considering months already paid
+    // Outstanding = Principal * [(1+r)^n - (1+r)^p] / [(1+r)^n - 1]
+    // where p = monthsElapsed, n = tenure, r = monthlyRate
+    const powerN = Math.pow(1 + monthlyRate, tenure);
+    const powerP = Math.pow(1 + monthlyRate, monthsElapsed);
+    
     const numerator =
       Math.pow(1 + monthlyRate, tenure) -
       Math.pow(1 + monthlyRate, monthsElapsed);
@@ -229,6 +241,7 @@ export class LoanEngine {
     }
 
     return {
+      id: Math.random().toString(),
       loanType: 'credit_card',
       loanCategory: input.type,
       originalAmount: input.original_amount,
@@ -240,6 +253,7 @@ export class LoanEngine {
       monthlyInterestAccrual: balance * (input.interest_rate / 100 / 12),
       minimumDue: Math.max(balance * 0.05, 500),
       totalInterestPaid,
+      startDate: input.start_date,
       explanation: `Credit card balance grew to ₹${balance.toLocaleString()} at ${input.interest_rate}% annual interest after ${monthsElapsed} months.`,
       calculationBreakdown: {
         interestAccrualFormula: 'Daily compounding',
@@ -287,6 +301,7 @@ export class LoanEngine {
     }
 
     return {
+      id: Math.random().toString(),
       loanType: 'gold_loan',
       loanCategory: input.type,
       originalAmount: input.original_amount,
@@ -297,6 +312,7 @@ export class LoanEngine {
       remainingMonths: 0,
       monthlyInterestAccrual: outstanding * (input.interest_rate / 100 / 12),
       totalInterestAccrued,
+      startDate: input.start_date,
       explanation: `Gold loan balance is ₹${outstanding.toLocaleString()} after ${monthsElapsed} months with ${input.compounding} compounding.`,
       calculationBreakdown: {
         compoundingType: input.compounding,
@@ -314,6 +330,7 @@ export class LoanEngine {
     const outstanding = input.original_amount + accruedInterest;
 
     return {
+      id: Math.random().toString(),
       loanType: 'generic',
       loanCategory: input.type,
       originalAmount: input.original_amount,
@@ -323,6 +340,7 @@ export class LoanEngine {
       monthsElapsed,
       remainingMonths: 0,
       monthlyInterestAccrual: accruedInterest / monthsElapsed || 0,
+      startDate: input.start_date,
       explanation: `Generic loan balance = ₹${outstanding.toLocaleString()} after ${monthsElapsed} months at ${input.interest_rate}% annual interest.`,
       calculationBreakdown: {
         interestAccrualFormula: 'Simple accrual',

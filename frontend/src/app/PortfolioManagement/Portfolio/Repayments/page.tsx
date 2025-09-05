@@ -30,6 +30,7 @@ import { LoanEngine, EnhancedLoanStatus } from '../../domain/Repaymentadvisor/re
 import { SmartRepayService, AnyLiability, MonthlyTopUpInput, LumpSumInput } from '../../domain/Repaymentadvisor/smartRepaymentAdvisor';
 import { fetchRepayments, createRepayment } from '../../../../lib/repayments';
 import { Repayment } from '../../../../lib/repayments';
+import SmartRepaymentModal from './components/SmartRepaymentModal';
 
 // Loan type configurations
 const loanIcons: Record<string, React.ReactNode> = {
@@ -68,6 +69,7 @@ export default function RepaymentsPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showOptimizeModal, setShowOptimizeModal] = useState(false);
   const [showContributionModal, setShowContributionModal] = useState(false);
+  const [showSmartRepaymentModal, setShowSmartRepaymentModal] = useState(false);
   const [contributionTab, setContributionTab] = useState<'monthly'|'lump'>('monthly');
   const [advisorAutoPick, setAdvisorAutoPick] = useState<boolean>(true);
   const [targetLoanIndex, setTargetLoanIndex] = useState<number>(-1);
@@ -441,7 +443,7 @@ export default function RepaymentsPage() {
             size="sm" 
             leftIcon={<Calculator className="h-4 w-4" />} 
             onClick={() => { 
-              setShowContributionModal(true); 
+              setShowSmartRepaymentModal(true); 
             }}
           >
             Smart Repayment
@@ -1356,6 +1358,26 @@ export default function RepaymentsPage() {
           </div>
         </Modal>
       )}
+
+      {/* New Smart Repayment Modal */}
+      <SmartRepaymentModal
+        open={showSmartRepaymentModal}
+        onClose={() => setShowSmartRepaymentModal(false)}
+        liabilities={liabilities.map(l => ({
+          id: l.id || Math.random().toString(),
+          type: l.loanCategory as any,
+          original_amount: l.originalAmount,
+          interest_rate: l.interest_rate,
+          tenure_months: l.originalTenure,
+          start_date: l.startDate || new Date().toISOString().split('T')[0],
+          label: l.loanCategory?.replace('_', ' ').toUpperCase(),
+          institution: 'User Added'
+        }))}
+        onApplyStrategy={(result) => {
+          console.log('Strategy applied:', result);
+          // Handle strategy application here
+        }}
+      />
     </div>
   );
 }
