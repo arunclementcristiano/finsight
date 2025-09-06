@@ -135,6 +135,7 @@ resource "aws_apigatewayv2_integration" "lambda" {
 
 resource "aws_apigatewayv2_route" "routes_public" {
   for_each = toset([
+    # Legacy routes (for backward compatibility)
     "POST /add",
     "PUT /add", 
     "POST /list",
@@ -144,7 +145,12 @@ resource "aws_apigatewayv2_route" "routes_public" {
     "POST /summary/category",
     "GET /budgets",
     "PUT /budgets",
-    "GET /health"
+    "GET /health",
+    # New expense API routes (for frontend)
+    "POST /expenses",
+    "GET /expenses",
+    "GET /categories",
+    "GET /expenses/summary"
   ])
   api_id    = aws_apigatewayv2_api.http.id
   route_key = each.value

@@ -93,7 +93,21 @@ export default function ExpenseTrackerPage() {
         const mapped: Expense[] = data.items.map((it: any) => ({ id: it.expenseId || uuidv4(), text: it.rawText, amount: Number(it.amount || 0), category: it.category, date: it.date || new Date().toISOString(), createdAt: it.createdAt, note: it.rawText }));
         setExpenses(mapped.sort((a,b)=> (a.date < b.date ? 1 : -1)));
       }
-    } catch {}
+    } catch (error) {
+      console.log("API not available, using local storage fallback:", error);
+      // Fallback to local storage if API is not available
+      try {
+        const stored = localStorage.getItem('expenses');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            setExpenses(parsed);
+          }
+        }
+      } catch (e) {
+        console.log("Local storage fallback failed:", e);
+      }
+    }
   }
 
   useEffect(() => { fetchList(); }, []);
@@ -139,7 +153,18 @@ export default function ExpenseTrackerPage() {
     try {
       await fetch(`${API_BASE}/delete`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expenseId }) });
       deleteExpense(expenseId);
-    } catch {}
+    } catch (error) {
+      console.log("API not available, using local storage fallback:", error);
+      // Fallback to local storage
+      deleteExpense(expenseId);
+      // Update local storage
+      try {
+        const current = expenses.filter(e => e.id !== expenseId);
+        localStorage.setItem('expenses', JSON.stringify(current));
+      } catch (e) {
+        console.log("Local storage update failed:", e);
+      }
+    }
   }
 
   function resetDatePicker() {
@@ -160,7 +185,15 @@ export default function ExpenseTrackerPage() {
         const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: parsed.category, amount: parsed.amount, date: dateOpen ? selectedDate : undefined }) });
         const saved = await put.json();
         if (saved && saved.ok) {
-          addExpense({ id: saved.expenseId || uuidv4(), text: rawText, amount: parsed.amount, category: parsed.category as string, date: (dateOpen ? selectedDate : new Date().toISOString().slice(0,10)), createdAt: new Date().toISOString(), note: rawText });
+          const newExpense = { id: saved.expenseId || uuidv4(), text: rawText, amount: parsed.amount, category: parsed.category as string, date: (dateOpen ? selectedDate : new Date().toISOString().slice(0,10)), createdAt: new Date().toISOString(), note: rawText };
+          addExpense(newExpense);
+          // Update local storage
+          try {
+            const current = [...expenses, newExpense];
+            localStorage.setItem('expenses', JSON.stringify(current));
+          } catch (e) {
+            console.log("Local storage update failed:", e);
+          }
           setInput("");
           inputRef.current?.focus();
           resetDatePicker();
@@ -173,7 +206,15 @@ export default function ExpenseTrackerPage() {
         const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: memCat, amount: parsed.amount, date: dateOpen ? selectedDate : undefined }) });
         const saved = await put.json();
         if (saved && saved.ok) {
-          addExpense({ id: saved.expenseId || uuidv4(), text: rawText, amount: parsed.amount, category: memCat, date: (dateOpen ? selectedDate : new Date().toISOString().slice(0,10)), createdAt: new Date().toISOString(), note: rawText });
+          const newExpense = { id: saved.expenseId || uuidv4(), text: rawText, amount: parsed.amount, category: memCat, date: (dateOpen ? selectedDate : new Date().toISOString().slice(0,10)), createdAt: new Date().toISOString(), note: rawText };
+          addExpense(newExpense);
+          // Update local storage
+          try {
+            const current = [...expenses, newExpense];
+            localStorage.setItem('expenses', JSON.stringify(current));
+          } catch (e) {
+            console.log("Local storage update failed:", e);
+          }
           setInput("");
           inputRef.current?.focus();
           resetDatePicker();
@@ -193,7 +234,15 @@ export default function ExpenseTrackerPage() {
         const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: data.category, amount: data.amount, date: dateOpen ? selectedDate : undefined }) });
         const saved = await put.json();
         if (saved && saved.ok) {
-          addExpense({ id: saved.expenseId || uuidv4(), text: rawText, amount: data.amount, category: data.category, date: (dateOpen ? selectedDate : new Date().toISOString().slice(0,10)), createdAt: new Date().toISOString(), note: rawText });
+          const newExpense = { id: saved.expenseId || uuidv4(), text: rawText, amount: data.amount, category: data.category, date: (dateOpen ? selectedDate : new Date().toISOString().slice(0,10)), createdAt: new Date().toISOString(), note: rawText };
+          addExpense(newExpense);
+          // Update local storage
+          try {
+            const current = [...expenses, newExpense];
+            localStorage.setItem('expenses', JSON.stringify(current));
+          } catch (e) {
+            console.log("Local storage update failed:", e);
+          }
           setInput("");
           inputRef.current?.focus();
           resetDatePicker();
@@ -202,7 +251,28 @@ export default function ExpenseTrackerPage() {
       }
       // Missing amount or unknown category
       setAi({ amount: data?.amount, category: data?.category, options: data?.options, AIConfidence: data?.AIConfidence, raw: rawText });
-    } catch {}
+    } catch (error) {
+      console.log("API not available, using local fallback:", error);
+      // Fallback: try to parse locally and save to local storage
+      const parsed = parseExpenseInput(rawText);
+      if (parsed.category && typeof parsed.amount === "number") {
+        const newExpense = { id: uuidv4(), text: rawText, amount: parsed.amount, category: parsed.category as string, date: (dateOpen ? selectedDate : new Date().toISOString().slice(0,10)), createdAt: new Date().toISOString(), note: rawText };
+        addExpense(newExpense);
+        // Update local storage
+        try {
+          const current = [...expenses, newExpense];
+          localStorage.setItem('expenses', JSON.stringify(current));
+        } catch (e) {
+          console.log("Local storage update failed:", e);
+        }
+        setInput("");
+        inputRef.current?.focus();
+        resetDatePicker();
+        return;
+      }
+      // If we can't parse, show error
+      setAi({ amount: undefined, category: "Other", options: ["Other"], AIConfidence: 0, raw: rawText });
+    }
   }
 
   async function confirm(category?: string, amountStr?: string) {
@@ -214,7 +284,15 @@ export default function ExpenseTrackerPage() {
       const res = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText: ai.raw, category: categoryFinal, amount: amountFinal, date: dateOpen ? selectedDate : undefined }) });
       const data = await res.json();
       if (data.ok) {
-        addExpense({ id: data.expenseId || uuidv4(), text: ai.raw, amount: amountFinal, category: categoryFinal, date: (dateOpen ? selectedDate : new Date().toISOString().slice(0,10)), createdAt: new Date().toISOString(), note: ai.raw });
+        const newExpense = { id: data.expenseId || uuidv4(), text: ai.raw, amount: amountFinal, category: categoryFinal, date: (dateOpen ? selectedDate : new Date().toISOString().slice(0,10)), createdAt: new Date().toISOString(), note: ai.raw };
+        addExpense(newExpense);
+        // Update local storage
+        try {
+          const current = [...expenses, newExpense];
+          localStorage.setItem('expenses', JSON.stringify(current));
+        } catch (e) {
+          console.log("Local storage update failed:", e);
+        }
         setAi(null);
         setInput("");
         inputRef.current?.focus();
