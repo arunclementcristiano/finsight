@@ -115,18 +115,35 @@ const calculateMonthsSaved = (liability: Liability, amount: number, mode: string
     console.log('� Lump sum result:', monthsReduction);
     return Math.min(monthsReduction, remainingMonths - 1); // Don't pay off completely
   } else {
-    // Monthly: Conservative estimate based on payment ratio
+    // Monthly: Improved calculation based on EMI impact
     const currentEstimatedEmi = principal / remainingMonths; // Rough EMI estimate
-    const paymentRatio = cappedAmount / currentEstimatedEmi;
-    const monthsReduction = Math.floor(remainingMonths * paymentRatio * 0.3); // Very conservative
+    const extraPaymentRatio = cappedAmount / currentEstimatedEmi;
     
-    console.log('📅 Monthly calculation:', {
+    // More realistic calculation for monthly extra payments
+    let monthsReduction = 0;
+    
+    if (extraPaymentRatio >= 1.0) {
+      // Significant extra payment (100% or more of EMI)
+      monthsReduction = Math.floor(remainingMonths * extraPaymentRatio * 0.15); // 15% reduction
+    } else if (extraPaymentRatio >= 0.5) {
+      // Moderate extra payment (50-100% of EMI)
+      monthsReduction = Math.floor(remainingMonths * extraPaymentRatio * 0.12); // 12% reduction  
+    } else if (extraPaymentRatio >= 0.2) {
+      // Small extra payment (20-50% of EMI)
+      monthsReduction = Math.floor(remainingMonths * extraPaymentRatio * 0.08); // 8% reduction
+    } else {
+      // Very small payment
+      monthsReduction = Math.floor(remainingMonths * extraPaymentRatio * 0.05); // 5% reduction
+    }
+    
+    console.log('📅 Monthly calculation improved:', {
       estimatedEmi: currentEstimatedEmi,
-      paymentRatio,
-      monthsReduction
+      extraPaymentRatio,
+      monthsReduction,
+      remainingMonths
     });
     
-    return Math.min(monthsReduction, Math.floor(remainingMonths * 0.5)); // Max 50% reduction
+    return Math.min(monthsReduction, Math.floor(remainingMonths * 0.6)); // Max 60% reduction
   }
 };
 

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/Card';
 import { Button } from '../../../components/Button';
 import { Input } from '../../../components/Input';
@@ -30,7 +31,7 @@ import { LoanEngine, EnhancedLoanStatus } from '../../domain/Repaymentadvisor/re
 import { SmartRepayService, AnyLiability, MonthlyTopUpInput, LumpSumInput } from '../../domain/Repaymentadvisor/smartRepaymentAdvisor';
 import { fetchRepayments, createRepayment } from '../../../../lib/repayments';
 import { Repayment } from '../../../../lib/repayments';
-import SmartRepaymentModal from './components/SmartRepaymentModal';
+
 
 // Loan type configurations
 const loanIcons: Record<string, React.ReactNode> = {
@@ -64,12 +65,12 @@ interface UltraSimpleLiabilityInput {
 }
 
 export default function RepaymentsPage() {
+  const router = useRouter();
   const [liabilities, setLiabilities] = useState<EnhancedLoanStatus[]>([]);
   const [dbRepayments, setDbRepayments] = useState<Repayment[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showOptimizeModal, setShowOptimizeModal] = useState(false);
   const [showContributionModal, setShowContributionModal] = useState(false);
-  const [showSmartRepaymentModal, setShowSmartRepaymentModal] = useState(false);
   const [contributionTab, setContributionTab] = useState<'monthly'|'lump'>('monthly');
   const [advisorAutoPick, setAdvisorAutoPick] = useState<boolean>(true);
   const [targetLoanIndex, setTargetLoanIndex] = useState<number>(-1);
@@ -443,7 +444,7 @@ export default function RepaymentsPage() {
             size="sm" 
             leftIcon={<Calculator className="h-4 w-4" />} 
             onClick={() => { 
-              setShowSmartRepaymentModal(true); 
+              router.push('/PortfolioManagement/Portfolio/Repayments/smart-repayment');
             }}
           >
             Smart Repayment
@@ -922,7 +923,7 @@ export default function RepaymentsPage() {
         </div>
       </Modal>
 
-      {/* Smart Repayment Modal */}
+      {/* Extra Contribution Modal */}
       <Modal
         open={showContributionModal}
         onClose={() => { 
@@ -937,7 +938,7 @@ export default function RepaymentsPage() {
           setContributionTab('monthly');
           setAdvisorAutoPick(true);
         }}
-        title="Smart Repayment"
+        title="Smart Repayment Calculator"
         footer={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => {
@@ -957,29 +958,22 @@ export default function RepaymentsPage() {
           </div>
         }
       >
-        <div className="space-y-4">
-          {/* Header with Advisor Toggle (Plan page style) */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="text-sm text-muted-foreground">Smart Repayment</div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="inline-flex rounded-md border border-border overflow-hidden text-xs">
-                <Button size="sm" variant="outline" className={`rounded-none ${!advisorAutoPick ? 'bg-indigo-600 text-white border-indigo-600' : ''}`} onClick={() => { setAdvisorAutoPick(false); setTimeout(recomputeContribution, 0); }}>
-                  <div className="flex flex-col items-start leading-tight">
-                    <span>Manual</span>
-                    {!advisorAutoPick ? <span className="text-[10px] opacity-80">You choose</span> : null}
-                  </div>
-                </Button>
-                <Button size="sm" variant="outline" className={`rounded-none ${advisorAutoPick ? 'bg-indigo-600 text-white border-indigo-600' : ''}`} onClick={() => { setAdvisorAutoPick(true); setTimeout(recomputeContribution, 0); }}>
-                  <div className="flex flex-col items-start leading-tight">
-                    <span>Advisor</span>
-                    {advisorAutoPick ? <span className="text-[10px] opacity-80">AI picks best</span> : null}
-                  </div>
-                </Button>
+        <div className="space-y-6">
+          {/* Compact AI Selected Loan (when auto-pick is on) */}
+          {advisorAutoPick && whatIfKPIs.selectedLoan && (
+            <div>
+              <Label className="text-sm font-medium text-foreground">Advisor-picked target</Label>
+              <div className="mt-1 w-full rounded-md border border-border bg-muted/50 text-foreground h-10 px-3 text-sm flex items-center justify-between">
+                <span className="truncate">
+                  {whatIfKPIs.selectedLoan.replace('_', ' ').toUpperCase()}
+                </span>
+                <Target className="w-4 h-4 text-muted-foreground" />
               </div>
+              {whatIfKPIs.aiReasoning && (
+                <p className="text-xs text-muted-foreground mt-1">{whatIfKPIs.aiReasoning}</p>
+              )}
             </div>
-          </div>
+          )}
 
           {/* Contribution Type Tabs */}
           <div className="flex space-x-1 bg-muted p-1 rounded-lg">
@@ -1005,23 +999,32 @@ export default function RepaymentsPage() {
             </button>
           </div>
 
-          {/* AI Selected Target (compact) */}
-          {advisorAutoPick && whatIfKPIs.selectedLoan && (
-            <div className="rounded-lg border border-border bg-card/60 p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-medium text-foreground">AI Selected Target</div>
-                  <div className="text-xs text-muted-foreground">{whatIfKPIs.selectedLoan.replace('_', ' ').toUpperCase()}</div>
-                </div>
-                <Target className="w-4 h-4 text-muted-foreground" />
-              </div>
-              {whatIfKPIs.aiReasoning && (
-                <p className="text-xs text-muted-foreground mt-1">{whatIfKPIs.aiReasoning}</p>
-              )}
+          {/* Advisor Auto-Pick Toggle */}
+          <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+            <div>
+              <h4 className="font-semibold text-foreground">Advisor Auto-Pick</h4>
+              <p className="text-sm text-muted-foreground">
+                {advisorAutoPick 
+                  ? "AI will automatically select the best loan for maximum savings"
+                  : "You manually choose which loan to target"
+                }
+              </p>
             </div>
-          )}
+            <button
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                advisorAutoPick ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
+              }`}
+              onClick={() => { setAdvisorAutoPick(!advisorAutoPick); setTimeout(recomputeContribution, 0); }}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  advisorAutoPick ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
 
-          {/* Manual Loan Selection (when auto-pick is off) */}
+          {/* Manual Loan Selection (when auto-pick is off) — placed before amount inputs */}
           {!advisorAutoPick && (
             <div>
               <Label className="text-sm font-medium text-foreground">Target Loan</Label>
@@ -1072,9 +1075,11 @@ export default function RepaymentsPage() {
                       if (!advisorAutoPick && targetLoanIndex < 0) {
                         return;
                       }
+                      // Clear validation error when user starts typing
                       if (validationErrors.monthlyAmount) {
                         setValidationErrors(prev => ({ ...prev, monthlyAmount: undefined }));
                       }
+                      // Trigger debounced recalculation
                       debouncedRecompute();
                     }}
                   />
@@ -1084,7 +1089,7 @@ export default function RepaymentsPage() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div>
                   <Label className="text-sm font-medium text-foreground">Lump Sum Amount <span className="text-red-500">*</span></Label>
                   <div className="relative mt-1">
@@ -1103,9 +1108,11 @@ export default function RepaymentsPage() {
                         if (!advisorAutoPick && targetLoanIndex < 0) {
                           return;
                         }
+                        // Clear validation error when user starts typing
                         if (validationErrors.lumpSumAmount) {
                           setValidationErrors(prev => ({ ...prev, lumpSumAmount: undefined }));
                         }
+                        // Trigger debounced recalculation
                         debouncedRecompute();
                       }}
                     />
@@ -1122,9 +1129,11 @@ export default function RepaymentsPage() {
                     value={whatIfDate}
                     onChange={(e) => { 
                       setWhatIfDate(e.target.value); 
+                      // Clear validation error when user selects date
                       if (validationErrors.paymentDate) {
                         setValidationErrors(prev => ({ ...prev, paymentDate: undefined }));
                       }
+                      // Trigger debounced recalculation
                       debouncedRecompute();
                     }}
                   />
@@ -1136,59 +1145,97 @@ export default function RepaymentsPage() {
             )}
           </div>
 
-          {/* Projected Results (only show when calculated) */}
-          {whatIfKPIs.baselineMonths && whatIfKPIs.payoffMonths && (
-            <div className="space-y-4">
-              <h4 className="font-semibold text-foreground">Projected Results</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="rounded-lg border border-border bg-card/60 p-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Payoff Timeline</span>
-                      <span className="font-semibold text-foreground">
-                        {whatIfKPIs.baselineMonths} → {whatIfKPIs.payoffMonths} months
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Months Saved</span>
-                      <span className="font-semibold text-green-600">
-                        {whatIfKPIs.monthsSaved} months
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Payoff Date</span>
-                      <span className="font-semibold text-foreground">
-                        {whatIfKPIs.payoffDate || '—'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+          {/* Removed duplicate manual selector block (single selector resides above inputs) */}
 
-                <div className="rounded-lg border border-border bg-card/60 p-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Interest Saved</span>
-                      <span className="font-semibold text-green-600">
-                        ₹{Math.round(whatIfKPIs.interestSaved).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Total Interest Paid</span>
-                      <span className="font-semibold text-foreground">
-                        ₹{Math.round(whatIfKPIs.totalInterestPaid).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Efficiency</span>
-                      <span className="font-semibold text-blue-600">
-                        {whatIfKPIs.efficiency.toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
+          {/* (Removed duplicate AI selected loan display; kept compact header variant above) */}
+
+          {/* Timeline Visual */}
+          {whatIfKPIs.baselineMonths && whatIfKPIs.payoffMonths && (
+            <div className="space-y-3">
+              <h4 className="font-semibold text-foreground">Payoff Timeline Comparison</h4>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Current Plan</span>
+                  <span className="font-medium">{whatIfKPIs.baselineMonths} months</span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div 
+                    className="bg-gray-400 dark:bg-gray-500 h-2 rounded-full transition-all duration-500"
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">With Extra Contribution</span>
+                  <span className="font-medium text-green-600">{whatIfKPIs.payoffMonths} months</span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div 
+                    className="bg-green-500 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${(whatIfKPIs.payoffMonths / whatIfKPIs.baselineMonths) * 100}%` }}
+                  />
+                </div>
+                <div className="text-center text-sm text-green-600 font-medium">
+                  Save {whatIfKPIs.monthsSaved} months ({((whatIfKPIs.monthsSaved / whatIfKPIs.baselineMonths) * 100).toFixed(1)}% faster)
                 </div>
               </div>
             </div>
           )}
+
+          {/* Enhanced KPIs */}
+          <div className="space-y-4">
+            <h4 className="font-semibold text-foreground">Projected Results</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-lg border border-border bg-card/60 p-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Payoff Timeline</span>
+                    <span className="font-semibold text-foreground">
+                      {whatIfKPIs.baselineMonths && whatIfKPIs.payoffMonths 
+                        ? `${whatIfKPIs.baselineMonths} → ${whatIfKPIs.payoffMonths} months`
+                        : '—'
+                      }
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Months Saved</span>
+                    <span className="font-semibold text-green-600">
+                      {whatIfKPIs.monthsSaved !== undefined ? `${whatIfKPIs.monthsSaved} months` : '—'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Payoff Date</span>
+                    <span className="font-semibold text-foreground">
+                      {whatIfKPIs.payoffDate || '—'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border bg-card/60 p-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Interest Saved</span>
+                    <span className="font-semibold text-green-600">
+                      {whatIfKPIs.interestSaved !== undefined ? `₹${Math.round(whatIfKPIs.interestSaved).toLocaleString()}` : '—'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Total Interest Paid</span>
+                    <span className="font-semibold text-foreground">
+                      {whatIfKPIs.totalInterestPaid !== undefined ? `₹${Math.round(whatIfKPIs.totalInterestPaid).toLocaleString()}` : '—'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Efficiency</span>
+                    <span className="font-semibold text-blue-600">
+                      {whatIfKPIs.efficiency !== undefined ? `${whatIfKPIs.efficiency.toFixed(1)}%` : '—'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
 
           {/* Strategy Tips */}
           <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
@@ -1312,26 +1359,6 @@ export default function RepaymentsPage() {
           </div>
         </Modal>
       )}
-
-      {/* New Smart Repayment Modal */}
-      <SmartRepaymentModal
-        open={showSmartRepaymentModal}
-        onClose={() => setShowSmartRepaymentModal(false)}
-        liabilities={liabilities.map(l => ({
-          id: l.id || Math.random().toString(),
-          type: l.loanCategory as any,
-          original_amount: l.originalAmount,
-          interest_rate: l.interest_rate,
-          tenure_months: l.originalTenure,
-          start_date: l.startDate || new Date().toISOString().split('T')[0],
-          label: l.loanCategory?.replace('_', ' ').toUpperCase(),
-          institution: 'User Added'
-        }))}
-        onApplyStrategy={(result) => {
-          console.log('Strategy applied:', result);
-          // Handle strategy application here
-        }}
-      />
     </div>
   );
 }
