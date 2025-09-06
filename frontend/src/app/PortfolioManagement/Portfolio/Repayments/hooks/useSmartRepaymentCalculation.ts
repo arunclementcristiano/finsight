@@ -77,7 +77,7 @@ const getDefaultTenureForType = (type: string): number => {
   return defaults[type] || 36;
 };
 
-const calculateMonthsSaved = (liability: Liability, amount: number, mode: string): number => {
+const calculateMonthsSaved = (liability: Liability, amount: number, mode: string, paymentDate?: string): number => {
   const principal = liability.current_outstanding || liability.original_amount || 0;
   const annualRate = liability.interest_rate / 100;
   const monthlyRate = annualRate / 12;
@@ -87,7 +87,6 @@ const calculateMonthsSaved = (liability: Liability, amount: number, mode: string
   // console.log('📅 Months Calculation Debug:', { principal, remainingMonths, amount, mode });
   
   if (principal <= 0 || remainingMonths <= 0 || amount <= 0 || monthlyRate <= 0) {
-    console.log('❌ Early return months calculation');
     return 0;
   }
   
@@ -95,24 +94,38 @@ const calculateMonthsSaved = (liability: Liability, amount: number, mode: string
   const maxReasonableAmount = mode === 'lump' ? principal : principal * 0.2; // 20% of principal per month max
   const cappedAmount = Math.min(amount, maxReasonableAmount);
   
-  console.log('🔧 Amount capping:', {
-    originalAmount: amount,
-    maxReasonable: maxReasonableAmount,
-    cappedAmount
-  });
-  
   // Handle case where payment covers most/all of the loan
   if (cappedAmount >= principal * 0.95) {
-    console.log('💰 Payment covers nearly entire loan');
     return Math.max(1, remainingMonths - 1); // Save almost all months, leave 1
   }
   
   // Simple, reliable calculation
   if (mode === 'lump') {
-    // Lump sum: Rough estimate based on principal reduction
+    // For lump sum, consider when the payment is made using DAILY calculation
+    let daysToPayment = 0;
+    if (paymentDate) {
+      const paymentDateObj = new Date(paymentDate);
+      const today = new Date();
+      // Calculate exact days difference
+      const timeDiff = paymentDateObj.getTime() - today.getTime();
+      daysToPayment = Math.max(0, Math.floor(timeDiff / (1000 * 60 * 60 * 24)));
+    }
+    
+    // Calculate actual remaining days based on actual calendar days
+    const today = new Date();
+    const loanEndDate = new Date(today);
+    loanEndDate.setMonth(loanEndDate.getMonth() + remainingMonths);
+    const actualRemainingDays = Math.floor((loanEndDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const effectiveRemainingDays = Math.max(1, actualRemainingDays - daysToPayment);
+    
+    // Calculate months saved based on principal reduction and remaining time
     const percentageReduction = cappedAmount / principal;
-    const monthsReduction = Math.floor(remainingMonths * percentageReduction * 0.8); // Conservative
-    console.log('� Lump sum result:', monthsReduction);
+    const daysReduction = Math.floor(effectiveRemainingDays * percentageReduction * 0.8); // Conservative
+    
+    // Convert days back to months more accurately
+    const avgDaysPerMonth = actualRemainingDays / remainingMonths; // Actual average for this loan period
+    const monthsReduction = Math.floor(daysReduction / avgDaysPerMonth);
+    
     return Math.min(monthsReduction, remainingMonths - 1); // Don't pay off completely
   } else {
     // Monthly: Improved calculation based on EMI impact
@@ -136,18 +149,12 @@ const calculateMonthsSaved = (liability: Liability, amount: number, mode: string
       monthsReduction = Math.floor(remainingMonths * extraPaymentRatio * 0.05); // 5% reduction
     }
     
-    console.log('📅 Monthly calculation improved:', {
-      estimatedEmi: currentEstimatedEmi,
-      extraPaymentRatio,
-      monthsReduction,
-      remainingMonths
-    });
     
     return Math.min(monthsReduction, Math.floor(remainingMonths * 0.6)); // Max 60% reduction
   }
 };
 
-const calculateInterestSaved = (liability: Liability, amount: number, monthsElapsed: number, mode: string): number => {
+const calculateInterestSaved = (liability: Liability, amount: number, monthsElapsed: number, mode: string, paymentDate?: string): number => {
   const principal = liability.current_outstanding || liability.original_amount || 0;
   const annualRate = liability.interest_rate / 100;
   const monthlyRate = annualRate / 12;
@@ -157,7 +164,6 @@ const calculateInterestSaved = (liability: Liability, amount: number, monthsElap
   // console.log('🔍 Interest Calculation Debug:', { principal, annualRate, amount, mode });
   
   if (principal <= 0 || remainingMonths <= 0 || monthlyRate <= 0) {
-    console.log('❌ Early return due to invalid values');
     return 0;
   }
   
@@ -165,19 +171,44 @@ const calculateInterestSaved = (liability: Liability, amount: number, monthsElap
   const maxReasonableAmount = mode === 'lump' ? principal : principal * 0.2;
   const cappedAmount = Math.min(amount, maxReasonableAmount);
   
-  console.log('🔧 Interest amount capping:', {
-    originalAmount: amount,
-    maxReasonable: maxReasonableAmount,
-    cappedAmount
-  });
-  
   // Simple, conservative interest calculation
   let interestSaved = 0;
   
   if (mode === 'lump') {
-    // Lump sum: Interest saved = amount * interest rate * time factor
-    const timeFactorMonths = Math.min(remainingMonths, 60); // Cap at 5 years
-    interestSaved = cappedAmount * monthlyRate * timeFactorMonths * 0.8; // Conservative
+    // For lump sum, consider when the payment is made using DAILY calculation
+    let daysToPayment = 0;
+    if (paymentDate) {
+      const paymentDateObj = new Date(paymentDate);
+      const today = new Date();
+      // Calculate exact days difference
+      const timeDiff = paymentDateObj.getTime() - today.getTime();
+      daysToPayment = Math.max(0, Math.floor(timeDiff / (1000 * 60 * 60 * 24)));
+    }
+    
+    // Calculate actual remaining days based on actual calendar days
+    const today = new Date();
+    const loanEndDate = new Date(today);
+    loanEndDate.setMonth(loanEndDate.getMonth() + remainingMonths);
+    const actualRemainingDays = Math.floor((loanEndDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const effectiveRemainingDays = Math.max(1, actualRemainingDays - daysToPayment);
+    
+    // Annual interest rate converted to daily rate (more accurate)
+    const annualRate = liability.interest_rate / 100;
+    const dailyRate = annualRate / 365; // Using actual days in year
+    
+    // Calculate interest saved based on exact days the payment will impact
+    interestSaved = cappedAmount * dailyRate * effectiveRemainingDays * 0.8; // Conservative
+    
+    // Debug logging
+    console.log('🔍 Lump Sum Interest Calculation:', {
+      paymentDate,
+      daysToPayment,
+      actualRemainingDays,
+      effectiveRemainingDays,
+      cappedAmount,
+      dailyRate: (dailyRate * 100).toFixed(6) + '%',
+      interestSaved: Math.round(interestSaved)
+    });
   } else {
     // Monthly: Interest saved per year * years of impact
     const yearsOfImpact = Math.min(remainingMonths / 12, 5); // Cap at 5 years
@@ -188,12 +219,6 @@ const calculateInterestSaved = (liability: Liability, amount: number, monthsElap
   // Cap the maximum savings to be reasonable
   const maxSavings = principal * 0.3; // Max 30% of principal as interest saved
   interestSaved = Math.min(interestSaved, maxSavings);
-  
-  console.log('💰 Interest Calculation Result:', {
-    calculatedSaved: interestSaved,
-    maxAllowed: maxSavings,
-    finalSaved: interestSaved
-  });
   
   return Math.max(0, interestSaved);
 };
@@ -247,20 +272,6 @@ export const useSmartRepaymentCalculation = (inputs: RepaymentInputs): Repayment
     const monthsElapsed = calculateMonthsElapsed(selectedLiability);
     const originalTenure = selectedLiability.tenure_months || getDefaultTenureForType(selectedLiability.type);
     
-    console.log('📊 Months Calculation Debug:', {
-      selectedLiability: {
-        id: selectedLiability.id,
-        label: selectedLiability.label,
-        tenure_months: selectedLiability.tenure_months,
-        remaining_months: selectedLiability.remaining_months,
-        start_date: selectedLiability.start_date,
-        type: selectedLiability.type
-      },
-      monthsElapsed,
-      originalTenure,
-      calculated: originalTenure - monthsElapsed
-    });
-    
     // Use remaining_months from data if available, otherwise calculate
     let remainingMonths = selectedLiability.remaining_months !== undefined 
       ? selectedLiability.remaining_months 
@@ -268,14 +279,10 @@ export const useSmartRepaymentCalculation = (inputs: RepaymentInputs): Repayment
     
     // If still 0, use a reasonable fallback based on loan type and original amount
     if (remainingMonths <= 0) {
-      console.log('⚠️ remainingMonths is 0, using fallback calculation');
       remainingMonths = Math.floor(originalTenure * 0.7); // Assume 70% of tenure remaining
     }
     
-    console.log('📊 Final remaining months:', remainingMonths);
-    
     if (remainingMonths <= 0) {
-      console.log('❌ Returning null because remainingMonths <= 0');
       return null;
     }
 
@@ -317,16 +324,6 @@ export const useSmartRepaymentCalculation = (inputs: RepaymentInputs): Repayment
     if (!hasLoanSelection || !hasPaymentDate) return null;
 
     // Calculate impact based on loan type and months already paid
-    console.log('🔍 Before calculations:', {
-      selectedLiability: {
-        remaining_months: selectedLiability.remaining_months,
-        current_outstanding: selectedLiability.current_outstanding,
-        interest_rate: selectedLiability.interest_rate
-      },
-      remainingMonths,
-      amount,
-      repaymentMode: inputs.repaymentMode
-    });
     
     // Create a corrected liability object with the right remaining months
     const correctedLiability = {
@@ -334,21 +331,12 @@ export const useSmartRepaymentCalculation = (inputs: RepaymentInputs): Repayment
       remaining_months: remainingMonths
     };
     
-    const monthsSaved = calculateMonthsSaved(correctedLiability, amount, inputs.repaymentMode);
+    const monthsSaved = calculateMonthsSaved(correctedLiability, amount, inputs.repaymentMode, inputs.paymentDate);
     const newRemainingMonths = Math.max(0, remainingMonths - monthsSaved);
-    const interestSaved = calculateInterestSaved(correctedLiability, amount, monthsElapsed, inputs.repaymentMode);
-    
-    console.log('🎯 Final Calculation Result:', {
-      amount,
-      monthsSaved,
-      newRemainingMonths,
-      interestSaved,
-      efficiency: interestSaved / amount
-    });
+    const interestSaved = calculateInterestSaved(correctedLiability, amount, monthsElapsed, inputs.repaymentMode, inputs.paymentDate);
     
     // Fallback calculation if main calculation returns 0
     if (interestSaved === 0 && monthsSaved === 0 && amount > 0) {
-      console.log('🔄 Using fallback calculation...');
       
       // Simple fallback calculation
       const simpleMonthsSaved = inputs.repaymentMode === 'monthly' ? Math.floor(amount / 5000) : Math.floor(amount / 50000);

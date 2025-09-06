@@ -8,7 +8,6 @@ import { Label } from "../../../../components/Label";
 import { useSmartRepaymentCalculation, validateRepaymentForm } from "../hooks/useSmartRepaymentCalculation";
 import { fetchRepayments } from "../../../../../lib/repayments";
 import { 
-  Calculator, 
   Sparkles, 
   TrendingUp, 
   Target, 
@@ -20,7 +19,6 @@ import {
   ArrowLeft,
   Banknote,
   PiggyBank,
-  Zap,
   Star,
   AlertCircle,
   Info,
@@ -113,8 +111,7 @@ export default function SmartRepaymentPage() {
   const [error, setError] = useState<string | null>(null);
   
   // Calculation state
-  const [result, setResult] = useState<any>(null);
-  const [showResults, setShowResults] = useState(false);
+
 
   // Live calculation hook
   const liveResult = useSmartRepaymentCalculation({
@@ -173,29 +170,7 @@ export default function SmartRepaymentPage() {
     }
   }, [paymentDate]);
 
-  const handleCalculate = () => {
-    const amount = repaymentMode === 'monthly' ? parseFloat(monthlyAmount) : parseFloat(lumpSumAmount);
-    const validation = validateRepaymentForm({
-      repaymentMode,
-      monthlyAmount: repaymentMode === 'monthly' ? monthlyAmount : '',
-      lumpSumAmount: repaymentMode === 'lump' ? lumpSumAmount : '',
-      selectedLoanId,
-      paymentDate,
-      advisorAutoPick,
-      liabilities
-    });
 
-    if (!validation) {
-      setError("Please fill all required fields");
-      return;
-    }
-
-    if (liveResult) {
-      setResult(liveResult);
-      setShowResults(true);
-      setError(null);
-    }
-  };
 
   const formatCurrency = (amount: number | null | undefined) => {
     if (!amount && amount !== 0) return "N/A";
@@ -243,23 +218,24 @@ export default function SmartRepaymentPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
+        <div className="max-w-7xl mx-auto p-4 sm:p-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
         <div className="flex items-center gap-3">
           <Button 
-            variant="ghost" 
+            variant="outline" 
+            size="sm" 
             onClick={() => router.push('/PortfolioManagement/Portfolio/Repayments')}
-            className="p-2"
+            className="hover:bg-gray-100 dark:hover:bg-gray-800"
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Sparkles className="w-6 h-6 text-purple-600" />
+            <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
               Smart Repayment Advisor
             </h1>
-            <p className="text-muted-foreground">Optimize your loan repayments with AI-powered insights</p>
+            <p className="text-sm sm:text-base text-muted-foreground">Optimize your loan repayments with AI-powered insights</p>
           </div>
         </div>
         
@@ -285,53 +261,102 @@ export default function SmartRepaymentPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 xl:gap-8">
         {/* Left Column - Input Form */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6 order-1">
           {/* Payment Mode Selection */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Calculator className="w-5 h-5 text-blue-600" />
+                <Target className="w-5 h-5 text-blue-600" />
                 Payment Strategy
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Button
-                  variant={repaymentMode === 'monthly' ? 'primary' : 'outline'}
-                  className="h-20 flex flex-col items-center justify-center"
+                  variant="outline"
+                  className={`h-auto p-3 ${repaymentMode === 'monthly' ? 'bg-indigo-600 text-white border-indigo-600' : 'text-foreground hover:bg-indigo-50 dark:hover:bg-indigo-950'}`}
                   onClick={() => setRepaymentMode('monthly')}
                 >
-                  <Calendar className="w-6 h-6 mb-2" />
-                  <span className="font-medium">Monthly Top-up</span>
-                  <span className="text-xs text-muted-foreground">Extra EMI amount</span>
+                  <div className="flex flex-col items-center justify-center space-y-1">
+                    <Calendar className="w-5 h-5" />
+                    <span className="font-medium text-sm">Monthly Top-up</span>
+                    <span className="text-xs opacity-80">Extra EMI amount</span>
+                  </div>
                 </Button>
                 <Button
-                  variant={repaymentMode === 'lump' ? 'primary' : 'outline'}
-                  className="h-20 flex flex-col items-center justify-center"
+                  variant="outline"
+                  className={`h-auto p-3 ${repaymentMode === 'lump' ? 'bg-emerald-600 text-white border-emerald-600' : 'text-foreground hover:bg-emerald-50 dark:hover:bg-emerald-950'}`}
                   onClick={() => setRepaymentMode('lump')}
                 >
-                  <Banknote className="w-6 h-6 mb-2" />
-                  <span className="font-medium">Lump Sum</span>
-                  <span className="text-xs text-muted-foreground">One-time payment</span>
+                  <div className="flex flex-col items-center justify-center space-y-1">
+                    <Banknote className="w-5 h-5" />
+                    <span className="font-medium text-sm">Lump Sum</span>
+                    <span className="text-xs opacity-80">One-time payment</span>
+                  </div>
                 </Button>
+              </div>
+
+              {/* Amount Entry Section */}
+              <div className="space-y-4 border-t pt-4">
+                {repaymentMode === 'monthly' ? (
+                  <>
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">
+                        <DollarSign className="w-4 h-4 inline mr-1" />
+                        Monthly Extra Amount
+                      </Label>
+                      <Input
+                        type="number"
+                        placeholder="Enter monthly extra amount"
+                        className="h-11 sm:h-12 rounded-xl border-2 focus:border-purple-500 text-base sm:text-lg"
+                        value={monthlyAmount}
+                        onChange={(e) => setMonthlyAmount(e.target.value)}
+                      />
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      This amount will be added to your existing EMI each month
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-sm font-medium mb-2 block">
+                          <DollarSign className="w-4 h-4 inline mr-1" />
+                          Lump Sum Amount
+                        </Label>
+                        <Input
+                          type="number"
+                          placeholder="Enter lump sum amount"
+                          className="h-11 sm:h-12 rounded-xl border-2 focus:border-purple-500 text-base sm:text-lg"
+                          value={lumpSumAmount}
+                          onChange={(e) => setLumpSumAmount(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium mb-2 block">
+                          <Calendar className="w-4 h-4 inline mr-1" />
+                          Payment Date
+                        </Label>
+                        <Input
+                          type="date"
+                          className="h-11 sm:h-12 rounded-xl border-2 focus:border-purple-500"
+                          value={paymentDate}
+                          min={new Date().toISOString().split('T')[0]}
+                          onChange={(e) => setPaymentDate(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      One-time payment to reduce your loan principal
+                    </p>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
-
-          {/* AI Selected Target - Compact */}
-          {advisorAutoPick && liveResult && (
-            <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
-              <Target className="w-4 h-4 text-green-600 dark:text-green-400" />
-              <span className="text-sm text-green-700 dark:text-green-300 font-medium">
-                AI Target: {liveResult.selectedLoanLabel.replace(' (AI Selected)', '')}
-              </span>
-              <span className="px-1.5 py-0.5 bg-green-600 text-white text-xs rounded font-medium">
-                AI
-              </span>
-            </div>
-          )}
 
           {/* Manual Loan Selection */}
           {!advisorAutoPick && (
@@ -344,15 +369,14 @@ export default function SmartRepaymentPage() {
               </CardHeader>
               <CardContent>
                 <select
-                  className="w-full rounded-xl border border-border bg-card text-foreground h-12 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full rounded-lg border border-border bg-background text-foreground h-11 sm:h-12 px-3 sm:px-4 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white"
                   value={selectedLoanId}
                   onChange={(e) => setSelectedLoanId(e.target.value)}
                 >
                   <option value="">Choose a loan...</option>
                   {liabilities.map((liability, index) => (
                     <option key={liability.id || index} value={liability.id || index.toString()}>
-                      {liability.label || liability.institution || `${liability.type} Loan`} - 
-                      {formatCurrency(liability.current_outstanding || liability.original_amount)} outstanding @ {liability.interest_rate}% 
+                      {liability.label || liability.institution || `${liability.type} Loan`}
                     </option>
                   ))}
                 </select>
@@ -360,155 +384,115 @@ export default function SmartRepaymentPage() {
             </Card>
           )}
 
-          {/* Payment Amount */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-purple-600" />
-                {repaymentMode === 'monthly' ? 'Monthly Extra Amount' : 'Lump Sum Amount'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <Input
-                  type="number"
-                  placeholder={repaymentMode === 'monthly' ? "Enter monthly extra amount" : "Enter lump sum amount"}
-                  className="h-12 rounded-xl border-2 focus:border-purple-500 text-lg"
-                  value={repaymentMode === 'monthly' ? monthlyAmount : lumpSumAmount}
-                  onChange={(e) => repaymentMode === 'monthly' 
-                    ? setMonthlyAmount(e.target.value)
-                    : setLumpSumAmount(e.target.value)
-                  }
-                />
-                <p className="text-sm text-muted-foreground">
-                  {repaymentMode === 'monthly' 
-                    ? "This amount will be added to your existing EMI each month"
-                    : "One-time payment to reduce your loan principal"
-                  }
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Payment Date for Lump Sum */}
-          {repaymentMode === 'lump' && (
+          {/* Loan Information - Icon-based Layout */}
+          {liveResult && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-blue-600" />
-                  Payment Date
+                  <Target className="w-5 h-5 text-blue-600" />
+                  Loan Information
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Input
-                  type="date"
-                  className="h-12 rounded-xl border-2 focus:border-purple-500"
-                  value={paymentDate}
-                  onChange={(e) => setPaymentDate(e.target.value)}
-                />
+                <div className="space-y-4">
+                    <div className="text-center p-3 bg-card border rounded-lg">
+                    <h3 className="font-semibold text-lg mb-1">
+                      {liveResult.selectedLoanLabel.replace(' (AI Selected)', '')}
+                    </h3>
+                    {advisorAutoPick && (
+                      <div className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-medium">
+                        <Crown className="w-3 h-3" />
+                        AI Selected
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-4">
+                        <Card className="border-2 border-border bg-card">
+                          <CardContent className="p-4">
+                            <div className="flex flex-col items-center justify-center text-center min-h-[100px]">
+                              <div className="p-2 bg-white/80 dark:bg-gray-800/80 rounded-lg mb-3">
+                                <DollarSign className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                              </div>
+                              <p className="text-sm text-muted-foreground mb-2">Outstanding</p>
+                              <p className="text-lg font-bold text-foreground">{formatCurrency(liveResult.currentOutstanding)}</p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        <Card className="border-2 border-border bg-card">
+                          <CardContent className="p-4">
+                            <div className="flex flex-col items-center justify-center text-center min-h-[100px]">
+                              <div className="p-2 bg-white/80 dark:bg-gray-800/80 rounded-lg mb-3">
+                                <Clock className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                              </div>
+                              <p className="text-sm text-muted-foreground mb-2">Time Left</p>
+                              <p className="text-lg font-bold text-foreground">{liveResult.currentMonthsRemaining} months</p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        <Card className="border-2 border-border bg-card">
+                          <CardContent className="p-4">
+                            <div className="flex flex-col items-center justify-center text-center min-h-[100px]">
+                              <div className="p-2 bg-white/80 dark:bg-gray-800/80 rounded-lg mb-3">
+                                <TrendingUp className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                              </div>
+                              <p className="text-sm text-muted-foreground mb-2">Interest Rate</p>
+                              <p className="text-lg font-bold text-foreground">{liabilities.find(l => (l.id || liabilities.indexOf(l).toString()) === selectedLoanId)?.interest_rate || 'N/A'}%</p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Calculate Button */}
-          <Button 
-            onClick={handleCalculate}
-            className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-            disabled={!liveResult}
-          >
-            <Calculator className="w-5 h-5 mr-2" />
-            Calculate Savings
-          </Button>
-
           {error && (
-            <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
+            <div className="p-3 sm:p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
               <p className="text-red-700 dark:text-red-300 text-sm">{error}</p>
             </div>
           )}
         </div>
 
         {/* Right Column - Results */}
-        <div className="space-y-6">
-          {/* Live Preview */}
-          {liveResult && (
-            <Card className="border-2 border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-950/30 dark:to-green-950/30">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-emerald-600" />
-                  Live Savings Preview
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-center p-4 bg-white/50 dark:bg-gray-900/30 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">TARGET LOAN</p>
-                  <p className="font-bold text-lg text-emerald-700 dark:text-emerald-300">
-                    {liveResult.selectedLoanLabel}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Outstanding: {formatCurrency(liveResult.currentOutstanding)} | {liveResult.currentMonthsRemaining} months left
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="text-center p-2 bg-white/50 dark:bg-gray-900/30 rounded-lg">
-                    <p className="text-xs text-muted-foreground">Interest Saved</p>
-                    <p className="text-sm font-bold text-green-600 dark:text-green-400">
-                      ₹{liveResult.interestSaved.toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="text-center p-2 bg-white/50 dark:bg-gray-900/30 rounded-lg">
-                    <p className="text-xs text-muted-foreground">Time Saved</p>
-                    <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                      {liveResult.monthsSaved}mo
-                    </p>
-                  </div>
-                  <div className="text-center p-2 bg-white/50 dark:bg-gray-900/30 rounded-lg">
-                    <p className="text-xs text-muted-foreground">ROI</p>
-                    <p className="text-sm font-bold text-purple-600 dark:text-purple-400">
-                      ₹{(liveResult.efficiency || 0).toFixed(1)}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
+        <div className="space-y-4 sm:space-y-6 order-2">
+          
           {/* Detailed Results */}
-          {showResults && result && (
+          {liveResult && (
             <>
               {/* KPI Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <KPICard
                   icon={<PiggyBank className="w-5 h-5 text-green-600" />}
                   title="Interest Saved"
-                  value={formatCurrency(result.interestSaved)}
-                  trend={result.interestSaved > 0 ? "down" : "neutral"}
-                  variant="success"
+                  value={formatCurrency(liveResult.interestSaved)}
+                  trend={liveResult.interestSaved > 0 ? "down" : "neutral"}
+                  variant="default"
                 />
                 <KPICard
                   icon={<Clock className="w-5 h-5 text-blue-600" />}
                   title="Time Saved"
-                  value={result?.monthsSaved !== null ? formatMonths(result?.monthsSaved || 0) : "N/A"}
-                  trend={result?.monthsSaved > 0 ? "down" : "neutral"}
+                  value={liveResult?.monthsSaved !== null ? formatMonths(liveResult?.monthsSaved || 0) : "N/A"}
+                  trend={liveResult?.monthsSaved > 0 ? "down" : "neutral"}
                   variant="info"
                 />
                 <KPICard
                   icon={<Calendar className="w-5 h-5 text-purple-600" />}
                   title="New Payoff Date"
-                  value={result?.payoffDate || "N/A"}
+                  value={liveResult?.payoffDate || "N/A"}
                   variant="default"
                 />
                 <KPICard
                   icon={<TrendingUp className="w-5 h-5 text-amber-600" />}
                   title="ROI per ₹1"
-                  value={`₹${(result?.efficiency || 0).toFixed(2)}`}
+                  value={`₹${(liveResult?.efficiency || 0).toFixed(2)}`}
                   subtitle="Interest saved per rupee invested"
                   variant="warning"
                 />
               </div>
 
               {/* Timeline Comparison */}
-              {result?.timeline && (
+              {liveResult?.timeline && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -521,7 +505,7 @@ export default function SmartRepaymentPage() {
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">Current Plan</span>
                         <span className="font-medium">
-                          {result.timeline.current !== null ? formatMonths(result.timeline.current) : "Interest-only"}
+                          {liveResult.timeline.current !== null ? formatMonths(liveResult.timeline.current) : "Interest-only"}
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
@@ -531,25 +515,25 @@ export default function SmartRepaymentPage() {
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">With {repaymentMode === 'monthly' ? 'Top-up' : 'Lump Sum'}</span>
                         <span className="font-medium text-green-600 dark:text-green-400">
-                          {formatMonths(result.timeline.withContribution)}
+                          {formatMonths(liveResult.timeline.withContribution)}
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
                         <div 
                           className="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full" 
                           style={{ 
-                            width: result.timeline.current 
-                              ? `${(result.timeline.withContribution / result.timeline.current) * 100}%`
+                            width: liveResult.timeline.current 
+                              ? `${(liveResult.timeline.withContribution / liveResult.timeline.current) * 100}%`
                               : '0%'
                           }} 
                         />
                       </div>
                     </div>
                     
-                    {result?.monthsSaved > 0 && (
+                    {liveResult?.monthsSaved > 0 && (
                       <div className="text-center p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
                         <p className="text-green-700 dark:text-green-300 font-medium">
-                          🎉 You'll finish {formatMonths(result.monthsSaved)} earlier!
+                          🎉 You'll finish {liveResult.monthsSaved} months earlier!
                         </p>
                       </div>
                     )}
@@ -558,8 +542,8 @@ export default function SmartRepaymentPage() {
               )}
 
               {/* AI Recommendation */}
-              {advisorAutoPick && result?.reason && (
-                <Card className="border-2 border-amber-200 dark:border-amber-800 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/30">
+              {advisorAutoPick && liveResult?.reason && (
+                <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Crown className="w-5 h-5 text-amber-600" />
@@ -567,7 +551,9 @@ export default function SmartRepaymentPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-amber-800 dark:text-amber-200">{result.reason}</p>
+                    <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                      <p className="text-amber-800 dark:text-amber-200 leading-relaxed">{liveResult.reason}</p>
+                    </div>
                   </CardContent>
                 </Card>
               )}
