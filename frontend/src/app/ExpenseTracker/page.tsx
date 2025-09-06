@@ -473,7 +473,7 @@ export default function ExpenseTrackerPage() {
               {dateOpen && (
                 <input type="date" value={selectedDate} onChange={(e)=> setSelectedDate(e.target.value)} className="h-11 rounded-xl border border-border px-3 bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]" />
               )}
-              <Button type="submit" size="sm">Add Expense</Button>
+              <Button type="submit" size="sm" variant="outline">Add Expense</Button>
             </form>
             {ai && (
               <div className="mt-3 rounded-xl border border-border p-3 text-sm space-y-2">
@@ -486,7 +486,7 @@ export default function ExpenseTrackerPage() {
                     ))}
                   </select>
                   <input ref={customRef} type="text" placeholder="Custom category (optional)" className="h-9 rounded-md border border-border px-2 bg-card"/>
-                  <Button size="sm" onClick={()=>{
+                  <Button size="sm" variant="outline" onClick={()=>{
                     const custom = (customRef.current?.value || "").trim();
                     const chosen = custom || (selectedCategory || ai.category || "Other");
                     confirm(chosen, amountRef.current?.value);

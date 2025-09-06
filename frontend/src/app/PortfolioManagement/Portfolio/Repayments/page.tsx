@@ -25,7 +25,10 @@ import {
   Home,
   Car,
   GraduationCap,
-  Briefcase
+  Briefcase,
+  ToggleLeft,
+  ToggleRight,
+  Building2
 } from 'lucide-react';
 import { LoanEngine, EnhancedLoanStatus } from '../../domain/Repaymentadvisor/repaymentEngine';
 import { SmartRepayService, AnyLiability, MonthlyTopUpInput, LumpSumInput } from '../../domain/Repaymentadvisor/smartRepaymentAdvisor';
@@ -136,6 +139,12 @@ export default function RepaymentsPage() {
     months_elapsed: 0
   });
 
+  const [hasEmi, setHasEmi] = useState<boolean>(false);
+
+  // Check if loan type typically has EMI
+  const isEmiOptional = formData.type === 'credit_card' || formData.type === 'gold_loan';
+  const shouldShowEmiFields = !isEmiOptional || hasEmi;
+
   // Load data on component mount
   useEffect(() => {
     loadData();
@@ -200,7 +209,16 @@ export default function RepaymentsPage() {
   };
 
   const addLiability = async () => {
-    if (!formData.type || !formData.original_amount || !formData.interest_rate || !formData.tenure_months || !formData.start_date) {
+    // Check required fields based on loan type
+    const requiredFields = ['type', 'original_amount', 'interest_rate'];
+    
+    if (shouldShowEmiFields) {
+      requiredFields.push('tenure_months', 'start_date');
+    }
+
+    const missingFields = requiredFields.filter(field => !formData[field as keyof typeof formData]);
+    
+    if (missingFields.length > 0) {
       alert('Please fill in all required fields');
       return;
     }
@@ -212,9 +230,9 @@ export default function RepaymentsPage() {
         principal: formData.original_amount || 0,
         interest_rate: formData.interest_rate || 12,
         emi_amount: 0, // Will be calculated
-        tenure_months: formData.tenure_months || 60,
+        tenure_months: shouldShowEmiFields ? (formData.tenure_months || 60) : 0,
         outstanding_balance: formData.current_outstanding || formData.original_amount || 0,
-        start_date: formData.start_date || new Date().toISOString().split('T')[0],
+        start_date: shouldShowEmiFields ? (formData.start_date || new Date().toISOString().split('T')[0]) : new Date().toISOString().split('T')[0],
         due_date: new Date().toISOString().split('T')[0],
         status: 'active'
       };
@@ -233,6 +251,7 @@ export default function RepaymentsPage() {
         current_outstanding: 0,
         months_elapsed: 0
       });
+      setHasEmi(false);
     } catch (error) {
       console.error('Error adding liability:', error);
       alert('Error adding liability. Please try again.');
@@ -1261,25 +1280,28 @@ export default function RepaymentsPage() {
         <Modal
           open={showAddForm}
           onClose={() => setShowAddForm(false)}
-          title="Add New Liability"
+          title="Add New Debt"
           footer={
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setShowAddForm(false)}>
                 Cancel
               </Button>
-              <Button onClick={addLiability} leftIcon={<Plus className="w-4 h-4" />}>
-                Add Liability
+              <Button variant="primary" onClick={addLiability} leftIcon={<Plus className="w-4 h-4" />}>
+                Add Debt
               </Button>
             </div>
           }
         >
-          <div className="space-y-4">
-            <div>
-              <Label className="text-sm font-medium text-foreground">Loan Type</Label>
+          <div className="space-y-4 sm:space-y-6">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-foreground">Debt Type</Label>
               <select
                 value={formData.type}
-                onChange={(e) => setFormData({...formData, type: e.target.value})}
-                className="w-full mt-1 p-2 border border-border rounded-md bg-background text-foreground"
+                onChange={(e) => {
+                  setFormData({...formData, type: e.target.value});
+                  setHasEmi(false); // Reset EMI toggle when type changes
+                }}
+                className="w-full p-3 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm sm:text-base"
               >
                 <option value="personal_loan">Personal Loan</option>
                 <option value="home_loan">Home Loan</option>
@@ -1291,70 +1313,112 @@ export default function RepaymentsPage() {
               </select>
             </div>
 
-            <div>
-              <Label className="text-sm font-medium text-foreground">Original Amount (₹)</Label>
-              <Input
-                type="number"
-                value={formData.original_amount}
-                onChange={(e) => setFormData({...formData, original_amount: Number(e.target.value)})}
-                placeholder="500000"
-                className="mt-1"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-foreground">
+                  {formData.type === 'credit_card' ? 'Current Outstanding (₹)' : 'Original Amount (₹)'}
+                </Label>
+                <Input
+                  type="number"
+                  value={formData.original_amount}
+                  onChange={(e) => setFormData({...formData, original_amount: Number(e.target.value)})}
+                  placeholder="500000"
+                  className="p-3 rounded-xl text-sm sm:text-base"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-foreground">Interest Rate (% per year)</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  value={formData.interest_rate}
+                  onChange={(e) => setFormData({...formData, interest_rate: Number(e.target.value)})}
+                  placeholder="12.5"
+                  className="p-3 rounded-xl text-sm sm:text-base"
+                />
+              </div>
             </div>
 
-            <div>
-              <Label className="text-sm font-medium text-foreground">Interest Rate (%)</Label>
-              <Input
-                type="number"
-                step="0.1"
-                value={formData.interest_rate}
-                onChange={(e) => setFormData({...formData, interest_rate: Number(e.target.value)})}
-                placeholder="12.5"
-                className="mt-1"
-              />
-            </div>
+            {/* EMI Toggle for Credit Card and Gold Loan */}
+            {isEmiOptional && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-muted rounded-xl">
+                  <div className="flex items-center gap-2">
+                    {formData.type === 'credit_card' && <CreditCard className="w-4 h-4" />}
+                    {formData.type === 'gold_loan' && <Coins className="w-4 h-4" />}
+                    <span className="text-sm font-medium">Does this have monthly EMI?</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setHasEmi(!hasEmi)}
+                    className="flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+                  >
+                    {hasEmi ? (
+                      <>
+                        <ToggleRight className="w-5 h-5" />
+                        Yes
+                      </>
+                    ) : (
+                      <>
+                        <ToggleLeft className="w-5 h-5" />
+                        No
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
 
-            <div>
-              <Label className="text-sm font-medium text-foreground">Tenure (Months)</Label>
-              <Input
-                type="number"
-                value={formData.tenure_months}
-                onChange={(e) => setFormData({...formData, tenure_months: Number(e.target.value)})}
-                placeholder="60"
-                className="mt-1"
-              />
-            </div>
+            {/* EMI and Tenure Fields - Only show when relevant */}
+            {shouldShowEmiFields && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-foreground">Tenure (Months)</Label>
+                  <Input
+                    type="number"
+                    value={formData.tenure_months}
+                    onChange={(e) => setFormData({...formData, tenure_months: Number(e.target.value)})}
+                    placeholder="60"
+                    className="p-3 rounded-xl text-sm sm:text-base"
+                  />
+                </div>
 
-            <div>
-              <Label className="text-sm font-medium text-foreground">Start Date</Label>
-              <Input
-                type="date"
-                value={formData.start_date}
-                onChange={(e) => setFormData({...formData, start_date: e.target.value})}
-                className="mt-1"
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-foreground">Start Date</Label>
+                  <Input
+                    type="date"
+                    value={formData.start_date}
+                    onChange={(e) => setFormData({...formData, start_date: e.target.value})}
+                    className="p-3 rounded-xl text-sm sm:text-base"
+                  />
+                </div>
+              </div>
+            )}
 
-            <div>
-              <Label className="text-sm font-medium text-foreground">Current Outstanding (₹)</Label>
-              <Input
-                type="number"
-                value={formData.current_outstanding}
-                onChange={(e) => setFormData({...formData, current_outstanding: Number(e.target.value)})}
-                placeholder="Leave empty to use original amount"
-                className="mt-1"
-              />
-            </div>
+            {/* Additional Optional Fields */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-foreground">Current Outstanding (₹)</Label>
+                <Input
+                  type="number"
+                  value={formData.current_outstanding}
+                  onChange={(e) => setFormData({...formData, current_outstanding: Number(e.target.value)})}
+                  placeholder="Leave empty to use original amount"
+                  className="p-3 rounded-xl text-sm sm:text-base"
+                />
+              </div>
 
-            <div>
-              <Label className="text-sm font-medium text-foreground">Months Elapsed</Label>
-              <Input
-                type="number"
-                value={formData.months_elapsed}
-                onChange={(e) => setFormData({...formData, months_elapsed: Number(e.target.value)})}
-                placeholder="0"
-                className="mt-1"
-              />
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-foreground">Months Elapsed</Label>
+                <Input
+                  type="number"
+                  value={formData.months_elapsed}
+                  onChange={(e) => setFormData({...formData, months_elapsed: Number(e.target.value)})}
+                  placeholder="0"
+                  className="p-3 rounded-xl text-sm sm:text-base"
+                />
+              </div>
             </div>
           </div>
         </Modal>
