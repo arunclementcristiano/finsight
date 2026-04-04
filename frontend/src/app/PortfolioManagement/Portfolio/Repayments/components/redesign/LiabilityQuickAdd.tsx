@@ -1,8 +1,8 @@
 "use client";
 import React, { useState } from "react";
-import { SmartLiability } from "../../../../../lib/smartRepayments";
-import { Card, CardHeader, CardTitle, CardContent } from "../../../../components/Card";
-import { Button } from "../../../../components/Button";
+import { SmartLiability } from "@/lib/smartRepayments";
+import { Card, CardHeader, CardTitle, CardContent } from "@/app/components/Card";
+import { Button } from "@/app/components/Button";
 import { Plus, CreditCard, Coins, GraduationCap, User, Building2, ToggleLeft, ToggleRight } from "lucide-react";
 
 type Props = { onAdd: (liability: SmartLiability) => void };
@@ -31,7 +31,7 @@ export default function LiabilityQuickAdd({ onAdd }: Props) {
   };
 
   const create = () => {
-    const liab: SmartLiability = {
+    const liab = {
       id: crypto.randomUUID(),
       type,
       category: type === 'credit_card' ? 'revolving' : 'term',
@@ -44,7 +44,7 @@ export default function LiabilityQuickAdd({ onAdd }: Props) {
       start_date: new Date().toISOString(),
       due_date: new Date().toISOString(),
       status: 'active'
-    };
+    } as SmartLiability;
     onAdd(liab);
     
     // Reset form

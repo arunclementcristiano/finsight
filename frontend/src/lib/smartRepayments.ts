@@ -2,7 +2,7 @@
 
 export interface SmartLiability {
   id: string;
-  type: 'loan' | 'credit_card' | 'bnpl' | 'gold_loan' | 'personal_loan' | 'business_loan' | 'education_loan' | 'other';
+  type: 'loan' | 'home_loan' | 'car_loan' | 'credit_card' | 'bnpl' | 'gold_loan' | 'personal_loan' | 'business_loan' | 'education_loan' | 'other';
   category: 'secured' | 'unsecured' | 'revolving' | 'term';
   institution: string;
   principal: number;

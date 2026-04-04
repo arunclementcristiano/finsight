@@ -887,7 +887,7 @@ export default function RepaymentsPage() {
                 <CardContent>
                   <div className="space-y-3 text-sm">
                     {(() => {
-                      const recommendations = [];
+                      const recommendations: React.ReactNode[] = [];
                       
                       // High interest rate recommendation
                       const highInterestLoans = liabilities.filter(loan => loan.interest_rate > 15);
@@ -1194,7 +1194,7 @@ export default function RepaymentsPage() {
                   />
                 </div>
                 <div className="text-center text-sm text-green-600 font-medium">
-                  Save {whatIfKPIs.monthsSaved} months ({((whatIfKPIs.monthsSaved / whatIfKPIs.baselineMonths) * 100).toFixed(1)}% faster)
+                  Save {whatIfKPIs.monthsSaved ?? 0} months ({((((whatIfKPIs.monthsSaved ?? 0) / whatIfKPIs.baselineMonths) * 100)).toFixed(1)}% faster)
                 </div>
               </div>
             </div>

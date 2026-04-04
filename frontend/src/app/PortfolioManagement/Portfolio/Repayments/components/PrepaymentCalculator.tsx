@@ -171,7 +171,7 @@ export default function PrepaymentCalculator({ repayment, onClose }: PrepaymentC
         amount: parseFloat(prepaymentAmount),
         payment_date: new Date().toISOString(),
         type: prepaymentType,
-        extra_months: prepaymentType === 'extra_emi' ? parseInt(extraEMIMonths) : undefined
+        extra_emi_months: prepaymentType === 'extra_emi' ? parseInt(extraEMIMonths) : undefined
       });
       
       alert('Prepayment processed successfully!');

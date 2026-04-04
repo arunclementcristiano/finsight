@@ -48,7 +48,7 @@ export interface TransformedFund {
 // Types for holdings
 export interface HoldingData {
   id: string;
-  user_id: string;
+  user_id?: string;
   instrumentClass: string;
   name: string;
   symbol?: string;
@@ -59,7 +59,7 @@ export interface HoldingData {
   asset_class?: string;
   portfolio_role?: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 // API Base URLs for segregated Lambda functions

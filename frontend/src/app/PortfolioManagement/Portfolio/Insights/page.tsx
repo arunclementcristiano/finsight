@@ -89,7 +89,7 @@ export default function PortfolioInsightsPage() {
 	}, []);
 
 	// Comprehensive portfolio analytics
-	const portfolioAnalytics = useMemo(() => {
+	const portfolioAnalytics: any = useMemo(() => {
 		if (!holdings || holdings.length === 0) {
 			return {
 				totalInvested: 0,
@@ -236,7 +236,7 @@ export default function PortfolioInsightsPage() {
 	const timeSeriesData = useMemo(() => {
 		if (!holdings || holdings.length === 0) return [];
 		
-		const months = [];
+		const months: Array<{ month: string; value: number; invested: number; pnl: number; pnlPercent: number }> = [];
 		const currentDate = new Date();
 		let baseValue = portfolioAnalytics.totalCurrent * 0.85;
 		let baseInvested = portfolioAnalytics.totalInvested * 0.7;
@@ -535,7 +535,7 @@ export default function PortfolioInsightsPage() {
 										cx="50%"
 										cy="50%"
 										outerRadius={100}
-										label={({ assetClass, allocation }) => `${assetClass}: ${formatNumber(allocation, 1)}%`}
+										label={(entry: any) => `${entry.assetClass}: ${formatNumber(entry.allocation, 1)}%`}
 									>
 										{portfolioAnalytics.assetBreakdown.map((entry, index) => (
 											<Cell key={`cell-${index}`} fill={entry.color} />
