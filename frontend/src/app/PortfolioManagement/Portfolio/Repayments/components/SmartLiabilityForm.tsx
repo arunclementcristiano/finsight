@@ -85,10 +85,10 @@ export default function SmartLiabilityForm({ onSave, onCancel, initialData }: Sm
     if (!formData.principal || formData.principal <= 0) {
       newErrors.principal = 'Amount must be greater than 0';
     }
-    if (formData.interest_rate < 0) {
+    if ((formData.interest_rate ?? 0) < 0) {
       newErrors.interest_rate = 'Interest rate cannot be negative';
     }
-    if (formData.emi_amount < 0) {
+    if ((formData.emi_amount ?? 0) < 0) {
       newErrors.emi_amount = 'EMI amount cannot be negative';
     }
 
@@ -122,9 +122,9 @@ export default function SmartLiabilityForm({ onSave, onCancel, initialData }: Sm
     let score = 5; // Base score
 
     // Interest rate impact
-    if (formData.interest_rate > 20) score += 3;
-    else if (formData.interest_rate > 15) score += 2;
-    else if (formData.interest_rate > 10) score += 1;
+    if ((formData.interest_rate ?? 0) > 20) score += 3;
+    else if ((formData.interest_rate ?? 0) > 15) score += 2;
+    else if ((formData.interest_rate ?? 0) > 10) score += 1;
 
     // EMI to income ratio (assuming 50k income for demo)
     const emiToIncomeRatio = (formData.emi_amount || 0) / 50000;
@@ -393,11 +393,11 @@ export default function SmartLiabilityForm({ onSave, onCancel, initialData }: Sm
             <div className="rounded-lg border border-border bg-card p-3 text-center">
               <div className="text-xs text-muted-foreground mb-1">Risk Level</div>
               <div className={`text-lg font-semibold mb-1 ${
-                formData.risk_score > 7 ? 'text-red-600 dark:text-red-400' : 
-                formData.risk_score > 4 ? 'text-orange-600 dark:text-orange-400' : 
+                (formData.risk_score ?? 0) > 7 ? 'text-red-600 dark:text-red-400' : 
+                (formData.risk_score ?? 0) > 4 ? 'text-orange-600 dark:text-orange-400' : 
                 'text-green-600 dark:text-green-400'
               }`}>
-                {formData.risk_score > 7 ? 'High' : formData.risk_score > 4 ? 'Medium' : 'Low'}
+                {(formData.risk_score ?? 0) > 7 ? 'High' : (formData.risk_score ?? 0) > 4 ? 'Medium' : 'Low'}
               </div>
               <div className="text-[10px] text-muted-foreground">Risk Score</div>
             </div>

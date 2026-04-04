@@ -105,7 +105,13 @@ export default function LiabilityCard({ liability, onDelete }: LiabilityCardProp
   };
 
   const getIndividualRecommendations = () => {
-    const recommendations = [];
+    const recommendations: Array<{
+      type: string;
+      title: string;
+      description: string;
+      action: string;
+      priority: string;
+    }> = [];
     
     if (liability.interest_rate > 15) {
       recommendations.push({

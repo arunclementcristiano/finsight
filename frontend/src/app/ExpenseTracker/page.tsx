@@ -159,7 +159,7 @@ export default function ExpenseTrackerPage() {
       deleteExpense(expenseId);
       // Update local storage
       try {
-        const current = expenses.filter(e => e.id !== expenseId);
+        const current = expenses.filter((e: Expense) => e.id !== expenseId);
         localStorage.setItem('expenses', JSON.stringify(current));
       } catch (e) {
         console.log("Local storage update failed:", e);
