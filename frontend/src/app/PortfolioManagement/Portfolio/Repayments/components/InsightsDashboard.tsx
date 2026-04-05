@@ -90,7 +90,14 @@ export default function InsightsDashboard({ liabilities }: InsightsDashboardProp
   };
 
   const getOptimizationOpportunities = () => {
-    const opportunities = [];
+    const opportunities: Array<{
+      type: string;
+      title: string;
+      description: string;
+      potentialSavings: number;
+      priority: string;
+      action: string;
+    }> = [];
     
     // High interest rate opportunities
     const highInterestLiabilities = liabilities.filter(l => l.interest_rate > 15);

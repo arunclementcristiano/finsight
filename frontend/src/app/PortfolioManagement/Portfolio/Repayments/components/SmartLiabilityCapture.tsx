@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../../../components
 import { Button } from "../../../../components/Button";
 import { Input } from "../../../../components/Input";
 import { Label } from "../../../../components/Label";
-import { 
+import * as Icons from "lucide-react";
+const { 
   Home, 
   Car, 
   CreditCard, 
@@ -60,7 +61,7 @@ import {
   Phone,
   MessageCircle,
   ThumbsUp,
-  Heart as HeartIcon,
+  Heart: HeartIcon,
   Smile,
   Laugh,
   Wink,
@@ -98,7 +99,7 @@ import {
   UserStar2,
   UserHeart2,
   UserSmile2
-} from "lucide-react";
+} = Icons as any;
 import { UltraSimpleLiabilityInput, LoanCategory } from "../../../domain/Repaymentadvisor/repaymentEngine";
 
 interface SmartLiabilityCaptureProps {
@@ -188,7 +189,11 @@ export default function SmartLiabilityCapture({ onSave, onCancel }: SmartLiabili
     
     // Clear error when user starts typing
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
+      setErrors(prev => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
     }
   };
 

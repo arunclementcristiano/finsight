@@ -110,7 +110,15 @@ export default function VisualAnalytics({ liabilities, liabilityStatuses }: Visu
   };
 
   const getOptimizationOpportunities = () => {
-    const opportunities = [];
+    const opportunities: Array<{
+      type: string;
+      title: string;
+      description: string;
+      potentialSavings: number;
+      priority: string;
+      action: string;
+      icon: React.JSX.Element;
+    }> = [];
     
     // High interest rate opportunities
     const highInterestLiabilities = liabilities.filter((l, index) => l.interest_rate > 15);

@@ -299,7 +299,7 @@ const getComprehensiveContextMultiplier = (context: any): number => {
 };
 
 const getContextSummary = (context: any): string => {
-  const factors = [];
+  const factors: string[] = [];
   
   if (context.investmentHorizon === "<2 years") factors.push("Short horizon");
   if (context.age === "65+") factors.push("Senior");
