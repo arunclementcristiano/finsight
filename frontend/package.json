@@ -9,7 +9,7 @@
     "lint": "next lint",
     "dev:css": "tailwindcss -i ./src/input.css -o ./src/output.css --watch",
     "build:css": "tailwindcss -i ./src/input.css -o ./src/output.css --minify",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.868.0",
