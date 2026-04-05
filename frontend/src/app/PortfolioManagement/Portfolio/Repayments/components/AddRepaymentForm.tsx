@@ -30,7 +30,7 @@ export default function AddRepaymentForm({ selectedType, onBack, onSave, onCance
     due_date: ''
   });
 
-  const [errors, setErrors] = useState<Partial<RepaymentFormData>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isCalculating, setIsCalculating] = useState(false);
 
   const handleInputChange = (field: keyof RepaymentFormData, value: string | number) => {
@@ -52,12 +52,16 @@ export default function AddRepaymentForm({ selectedType, onBack, onSave, onCance
     
     // Clear error when user starts typing
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
+      setErrors(prev => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
     }
   };
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<RepaymentFormData> = {};
+    const newErrors: Record<string, string> = {};
 
     if (!formData.institution.trim()) {
       newErrors.institution = 'Institution is required';

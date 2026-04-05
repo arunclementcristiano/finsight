@@ -62,7 +62,7 @@ const ROLE_INSTRUMENT_TYPES = {
 
 // Auto-map instrument type to AssetClass
 function mapInstrumentTypeToAssetClass(instrumentType: string): AssetClass {
-	if (instrumentType.includes("MF")) return "Mutual Funds";
+	if (instrumentType.includes("MF")) return "Equity MF";
 	if (instrumentType.includes("Gold")) return "Gold";
 	if (instrumentType.includes("Real Estate") || instrumentType.includes("REIT") || instrumentType.includes("Property")) return "Real Estate";
 	if (instrumentType.includes("Bond") || instrumentType.includes("Debt")) return "Debt";
@@ -88,7 +88,7 @@ function computeInvestedAmount(holding: HoldingData): number {
 function getRoleForAssetClass(assetClass: AssetClass): 'Equity' | 'Defensive' | 'Satellite' {
 	switch (assetClass) {
 		case 'Stocks':
-		case 'Mutual Funds':
+		case 'Equity MF':
 			return 'Equity';
 		case 'Debt':
 		case 'Liquid':
@@ -122,7 +122,7 @@ export default function HoldingsPage() {
 	const [entryMode, setEntryMode] = useState<'units' | 'amount'>('units');
 	
 	// Store original values for edit mode reset
-	const [originalForm, setOriginalForm] = useState<HoldingData | null>(null);
+	const [originalForm, setOriginalForm] = useState<any | null>(null);
 	
 	// Loading state for data refresh
 	const [isRefreshing, setIsRefreshing] = useState(false);
@@ -312,7 +312,7 @@ export default function HoldingsPage() {
 			const limitedResults = filtered.slice(0, 10);
 			setFilteredMFOptions(limitedResults);
 			// Only show dropdown if there's a search term
-			setShowMFDropdown(term.trim() && limitedResults.length > 0);
+			setShowMFDropdown(Boolean(term.trim()) && limitedResults.length > 0);
 		} catch (error) {
 			// Clear results on error
 			setFilteredMFOptions([]);
@@ -338,7 +338,7 @@ export default function HoldingsPage() {
 			const limitedResults = filtered.slice(0, 10);
 			setFilteredETFOptions(limitedResults);
 			// Only show dropdown if there's a search term
-			setShowETFDropdown(term.trim() && limitedResults.length > 0);
+			setShowETFDropdown(Boolean(term.trim()) && limitedResults.length > 0);
 		} catch (error) {
 			// Clear results on error
 			setFilteredETFOptions([]);
@@ -421,7 +421,7 @@ export default function HoldingsPage() {
 			// Use asset_class from holdings table if available, fallback to instrumentClass
 			const assetClass = holding.asset_class || holding.instrumentClass;
 			// Use portfolio_role from holdings table if available, fallback to calculated role
-			const portfolioRole = holding.portfolio_role || getRoleForAssetClass(holding.instrumentClass);
+			const portfolioRole = holding.portfolio_role || getRoleForAssetClass(holding.instrumentClass as AssetClass);
 			
 			// Enhanced asset class filtering to handle broader categories
 			let matchesAssetClass = true;
@@ -493,8 +493,8 @@ export default function HoldingsPage() {
 	}, [filteredHoldings, sortKey, sortDir]);
 
 	// Calculate totals for KPI cards - using filtered data
-	const totalValue = useMemo(() => (filteredHoldings || []).reduce((s: number, h: Holding) => s + computeHoldingValue(h), 0), [filteredHoldings]);
-	const totalInvested = useMemo(() => (filteredHoldings || []).reduce((s: number, h: Holding) => s + computeInvestedAmount(h), 0), [filteredHoldings]);
+	const totalValue = useMemo(() => (filteredHoldings || []).reduce((s: number, h: HoldingData) => s + computeHoldingValue(h), 0), [filteredHoldings]);
+	const totalInvested = useMemo(() => (filteredHoldings || []).reduce((s: number, h: HoldingData) => s + computeInvestedAmount(h), 0), [filteredHoldings]);
 	const totalPL = useMemo(() => totalValue - totalInvested, [totalValue, totalInvested]);
 	const totalPLPct = useMemo(() => (totalInvested > 0 ? (totalPL / totalInvested) * 100 : 0), [totalPL, totalInvested]);
 
@@ -529,7 +529,7 @@ export default function HoldingsPage() {
 
 		filteredHoldings.forEach(holding => {
 			// Use portfolio_role from holdings table if available, fallback to calculated role
-			const role = holding.portfolio_role || getRoleForAssetClass(holding.instrumentClass);
+			const role = holding.portfolio_role || getRoleForAssetClass(holding.instrumentClass as AssetClass);
 			const currentValue = computeHoldingValue(holding);
 			roleMap.set(role, (roleMap.get(role) || 0) + currentValue);
 		});
@@ -613,7 +613,7 @@ export default function HoldingsPage() {
 		if (!form.name.trim()) return;
 		
 		// Map selected asset class to instrument class
-		let instrumentClass: AssetClass = "Stocks";
+		let instrumentClass = "Stocks";
 		let assetClass: string | undefined;
 		let portfolioRole: string | undefined;
 		
@@ -661,7 +661,7 @@ export default function HoldingsPage() {
 			calculatedUnits = parseFloat(form.investedAmount) / parseFloat(form.price);
 		}
 
-		const holding: Holding = {
+		const holding: HoldingData = {
 			id: editingId || uuidv4(),
 			instrumentClass: instrumentClass,
 			name: form.name.trim(),
@@ -669,7 +669,8 @@ export default function HoldingsPage() {
 			units: calculatedUnits || (form.units ? parseFloat(form.units) : undefined),
 			price: form.price ? parseFloat(form.price) : undefined,
 			investedAmount: form.investedAmount ? parseFloat(form.investedAmount) : undefined,
-			currentValue: form.currentValue ? parseFloat(form.currentValue) : undefined
+			currentValue: form.currentValue ? parseFloat(form.currentValue) : undefined,
+			created_at: new Date().toISOString(),
 		};
 		
 		try {
@@ -739,7 +740,7 @@ export default function HoldingsPage() {
 		setSelectedInstrumentType(instrumentType);
 		
 		const formData = {
-			instrumentClass: holding.instrumentClass,
+			instrumentClass: holding.instrumentClass as AssetClass,
 			name: holding.name,
 			symbol: holding.symbol || "",
 			units: holding.units?.toString() || "",
@@ -919,7 +920,7 @@ export default function HoldingsPage() {
 														<td className="py-2 px-3">
 															<div className="space-y-0.5">
 																<div className="text-sm text-foreground font-medium">{holding.asset_class || holding.instrumentClass}</div>
-																<div className="text-xs text-muted-foreground italic">{holding.portfolio_role || getRoleForAssetClass(holding.instrumentClass)}</div>
+																<div className="text-xs text-muted-foreground italic">{holding.portfolio_role || getRoleForAssetClass(holding.instrumentClass as AssetClass)}</div>
 															</div>
 														</td>
 														<td className="py-2 px-3">{holding.units?.toFixed(2) || '0.00'}</td>

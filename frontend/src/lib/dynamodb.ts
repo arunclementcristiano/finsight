@@ -48,7 +48,7 @@ export interface TransformedFund {
 // Types for holdings
 export interface HoldingData {
   id: string;
-  user_id: string;
+  user_id?: string;
   instrumentClass: string;
   name: string;
   symbol?: string;
@@ -59,7 +59,7 @@ export interface HoldingData {
   asset_class?: string;
   portfolio_role?: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 // API Base URLs for segregated Lambda functions
@@ -582,14 +582,14 @@ export async function fetchStockCompanies(): Promise<StockCompany[]> {
   stockCacheLoading = true;
 
   // Fetch from API
-  if (!PORTFOLIO_API_BASE) {
+  if (!API_BASE) {
     stockCacheLoading = false;
-    throw new Error('PORTFOLIO_API_BASE not configured');
+    throw new Error('Portfolio API base is not configured');
   }
 
   try {
     console.log('🔄 Stock cache loading in progress...');
-    const res = await fetch(`${PORTFOLIO_API_BASE}/stocks`);
+    const res = await fetch(`${API_BASE}/stocks`);
     
     if (!res.ok) {
       const errorText = await res.text();
