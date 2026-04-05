@@ -582,14 +582,14 @@ export async function fetchStockCompanies(): Promise<StockCompany[]> {
   stockCacheLoading = true;
 
   // Fetch from API
-  if (!PORTFOLIO_API_BASE) {
+  if (!API_BASE) {
     stockCacheLoading = false;
-    throw new Error('PORTFOLIO_API_BASE not configured');
+    throw new Error('Portfolio API base is not configured');
   }
 
   try {
     console.log('🔄 Stock cache loading in progress...');
-    const res = await fetch(`${PORTFOLIO_API_BASE}/stocks`);
+    const res = await fetch(`${API_BASE}/stocks`);
     
     if (!res.ok) {
       const errorText = await res.text();
