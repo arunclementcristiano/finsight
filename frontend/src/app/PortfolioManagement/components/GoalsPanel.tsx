@@ -102,13 +102,13 @@ export default function GoalsPanel({ isOpen, onClose, onGoalsUpdated, baselinePl
   return (
     <>
       <div className="fixed inset-0 z-[60] bg-black/20 dark:bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
-      <div className="fixed right-0 top-0 z-[61] h-full w-full md:w-[520px] border-l border-border bg-card text-foreground shadow-2xl">
+      <div className="fixed right-0 top-0 z-[61] h-[100dvh] w-full border-l border-border bg-card pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] text-foreground shadow-2xl md:w-[520px]">
         <div className="flex h-full">
           {/* Content */}
           <div className="flex-1 flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card sticky top-0">
               <h2 className="text-base font-semibold">Investment Goals</h2>
-              <button onClick={onClose} className="h-9 w-9 inline-flex items-center justify-center rounded-md hover:bg-muted">✕</button>
+              <button onClick={onClose} aria-label="Close goals" className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-muted">✕</button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
@@ -134,7 +134,7 @@ export default function GoalsPanel({ isOpen, onClose, onGoalsUpdated, baselinePl
                         <Input placeholder="Enter custom goal name" value={form.customName} onChange={(e)=> setForm({...form, customName: e.target.value})} />
                       </div>
                     ) : null}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div>
                         <div className="text-[11px] text-muted-foreground mb-1">Target amount (₹)</div>
                         <Input type="number" value={form.targetAmount} onChange={(e)=> setForm({...form, targetAmount: e.target.value})} />
@@ -152,9 +152,9 @@ export default function GoalsPanel({ isOpen, onClose, onGoalsUpdated, baselinePl
                         <option value="high">High</option>
                       </select>
                     </div>
-                    <div className="flex items-center justify-between pt-2">
-                      <Button onClick={save} disabled={saving}>{form.id ? 'Update' : 'Save'}</Button>
-                      <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between">
+                      <Button className="w-full sm:w-auto" onClick={save} disabled={saving}>{form.id ? 'Update' : 'Save'}</Button>
+                      <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
                         <Button variant="outline" onClick={()=> setForm({ id:'', goalType:'', customName:'', targetAmount:'', targetDate:'', priority:'medium' })}>Reset</Button>
                         <Button variant="outline" onClick={onClose}>Close</Button>
                       </div>
@@ -170,15 +170,15 @@ export default function GoalsPanel({ isOpen, onClose, onGoalsUpdated, baselinePl
                   <div className="p-2 space-y-2 max-h-[60vh] overflow-y-auto">
                     {goals.length ? goals.map(g => (
                       <div key={g.id} className="rounded-lg border border-border p-3 text-sm">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <div className="font-medium">{g.name}</div>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <div className="break-words font-medium">{g.name}</div>
                               <Badge variant={g.priority==='high' ? 'destructive' : (g.priority==='medium' ? 'outline' : 'secondary')}>{g.priority}</Badge>
                             </div>
                             <div className="text-xs text-muted-foreground">Target ₹{(g.targetAmount||0).toLocaleString()} · by {new Date(g.targetDate).toISOString().slice(0,10)}</div>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
                             <Button variant="outline" size="sm" onClick={()=> startEdit(g)}>Edit</Button>
                             <Button variant="danger" size="sm" onClick={()=> confirmDelete(g)}>Delete</Button>
                           </div>
@@ -193,7 +193,7 @@ export default function GoalsPanel({ isOpen, onClose, onGoalsUpdated, baselinePl
             </div>
 
             {deleting ? (
-              <div className="fixed inset-0 z-[62] flex items-center justify-center bg-black/40">
+              <div className="fixed inset-0 z-[62] flex items-center justify-center bg-black/40 p-3 sm:p-4">
                 <div className="w-full max-w-sm rounded-xl border border-border bg-card p-4">
                   <div className="text-sm font-medium mb-2">Delete goal?</div>
 				  <div className="text-xs text-muted-foreground mb-3">This action cannot be undone. “{deleting.name}” will be removed.</div>

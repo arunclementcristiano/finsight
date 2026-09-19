@@ -1,20 +1,46 @@
 "use client";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useApp } from "../../../store";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../../components/Card";
 import { formatNumber } from "../../../utils/format";
 import { computeRebalance } from "../../domain/rebalance";
-import { useChartThemeColors } from "../../../components/useChartTheme";
-import { Doughnut, Line } from "react-chartjs-2";
+import { Line } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip as ChartTooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler } from "chart.js";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, LineChart, Line as RechartsLine, Area, AreaChart } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from "recharts";
 import { TrendingUp, TrendingDown, Target, AlertTriangle, DollarSign, BarChart3, PieChart as PieChartIcon, Activity } from "lucide-react";
 
 ChartJS.register(ArcElement, ChartTooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler);
 
 export default function PortfolioInsightsPage() {
-	const { plan, holdings, questionnaire, profile, driftTolerancePct, goals } = useApp() as any;
-	const theme = useChartThemeColors();
+	const { plan, holdings, driftTolerancePct } = useApp() as any;
+	const [savedGoals, setSavedGoals] = useState<any[]>([]);
+	const [showFullCharts, setShowFullCharts] = useState(false);
+
+	useEffect(() => {
+		const loadGoals = () => {
+			try {
+				const raw = window.localStorage.getItem("investmentGoals");
+				setSavedGoals(raw ? JSON.parse(raw) : []);
+			} catch {
+				setSavedGoals([]);
+			}
+		};
+		loadGoals();
+		window.addEventListener("goals-updated", loadGoals);
+		window.addEventListener("storage", loadGoals);
+		return () => {
+			window.removeEventListener("goals-updated", loadGoals);
+			window.removeEventListener("storage", loadGoals);
+		};
+	}, []);
+
+	useEffect(() => {
+		const media = window.matchMedia("(min-width: 640px)");
+		const update = () => setShowFullCharts(media.matches);
+		update();
+		media.addEventListener("change", update);
+		return () => media.removeEventListener("change", update);
+	}, []);
 
 	// Enhanced analytics calculations
 	const portfolioAnalytics = useMemo(() => {
@@ -167,46 +193,39 @@ export default function PortfolioInsightsPage() {
 
 	// Goals analysis
 	const goalsAnalysis = useMemo(() => {
-		try {
-			const raw = localStorage.getItem('investmentGoals');
-			const goals = raw ? JSON.parse(raw) : [];
-			
-			const totalTargetAmount = goals.reduce((sum: number, goal: any) => sum + (goal.targetAmount || 0), 0);
-			const activeGoals = goals.filter((goal: any) => goal.isActive !== false);
+			const totalTargetAmount = savedGoals.reduce((sum: number, goal: any) => sum + (goal.targetAmount || 0), 0);
+			const activeGoals = savedGoals.filter((goal: any) => goal.isActive !== false);
 			
 			// Categorize by timeline
 			const now = new Date();
-			const shortTerm = goals.filter((goal: any) => {
+			const shortTerm = savedGoals.filter((goal: any) => {
 				const targetDate = new Date(goal.targetDate);
 				const yearsToTarget = (targetDate.getTime() - now.getTime()) / (1000 * 3600 * 24 * 365.25);
 				return yearsToTarget <= 3;
 			});
 			
-			const mediumTerm = goals.filter((goal: any) => {
+			const mediumTerm = savedGoals.filter((goal: any) => {
 				const targetDate = new Date(goal.targetDate);
 				const yearsToTarget = (targetDate.getTime() - now.getTime()) / (1000 * 3600 * 24 * 365.25);
 				return yearsToTarget > 3 && yearsToTarget <= 7;
 			});
 			
-			const longTerm = goals.filter((goal: any) => {
+			const longTerm = savedGoals.filter((goal: any) => {
 				const targetDate = new Date(goal.targetDate);
 				const yearsToTarget = (targetDate.getTime() - now.getTime()) / (1000 * 3600 * 24 * 365.25);
 				return yearsToTarget > 7;
 			});
 			
 			return {
-				total: goals.length,
+				total: savedGoals.length,
 				active: activeGoals.length,
 				totalTargetAmount,
 				shortTerm: shortTerm.length,
 				mediumTerm: mediumTerm.length,
 				longTerm: longTerm.length,
-				goals: goals.slice(0, 5) // Top 5 for display
+				goals: savedGoals.slice(0, 5) // Top 5 for display
 			};
-		} catch {
-			return { total: 0, active: 0, totalTargetAmount: 0, shortTerm: 0, mediumTerm: 0, longTerm: 0, goals: [] };
-		}
-	}, []);
+	}, [savedGoals]);
 
 	// Rebalancing analysis
 	const rebalanceAnalysis = useMemo(() => {
@@ -241,7 +260,7 @@ export default function PortfolioInsightsPage() {
 	}, [plan]);
 
 	return (
-		<div className="max-w-full space-y-4 pl-2">
+		<div className="min-w-0 space-y-5">
 			{/* Header */}
 			<div className="flex items-center justify-between">
 				<div className="flex items-center gap-2">
@@ -259,7 +278,7 @@ export default function PortfolioInsightsPage() {
 						</div>
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-bold text-blue-900 dark:text-blue-100">₹{formatNumber(portfolioAnalytics.invested, 0)}</div>
+						<div className="break-words text-2xl font-bold text-blue-900 dark:text-blue-100">₹{formatNumber(portfolioAnalytics.invested, 0)}</div>
 						<p className="text-xs text-blue-600 dark:text-blue-400 mt-1">{portfolioAnalytics.totalHoldings} holdings</p>
 					</CardContent>
 				</Card>
@@ -272,8 +291,8 @@ export default function PortfolioInsightsPage() {
 						</div>
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-bold text-green-900 dark:text-green-100">₹{formatNumber(portfolioAnalytics.current, 0)}</div>
-						<p className="text-xs text-green-600 dark:text-green-400 mt-1">
+						<div className="break-words text-2xl font-bold text-green-900 dark:text-green-100">₹{formatNumber(portfolioAnalytics.current, 0)}</div>
+						<p className="mt-1 text-xs text-green-700 dark:text-green-300">
 							{portfolioAnalytics.pnl >= 0 ? '+' : ''}₹{formatNumber(portfolioAnalytics.pnl, 0)} gain
 						</p>
 					</CardContent>
@@ -306,7 +325,7 @@ export default function PortfolioInsightsPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold text-orange-900 dark:text-orange-100">{goalsAnalysis.active}</div>
-						<p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+						<p className="mt-1 text-xs text-orange-700 dark:text-orange-300">
 							₹{formatNumber(goalsAnalysis.totalTargetAmount / 100000, 1)}L target
 						</p>
 					</CardContent>
@@ -326,29 +345,31 @@ export default function PortfolioInsightsPage() {
 					</CardHeader>
 					<CardContent>
 						{portfolioAnalytics.assetBreakdown.length > 0 ? (
-							<div className="h-80">
-								<ResponsiveContainer width="100%" height="100%">
-									<PieChart>
-										<Pie
-											data={portfolioAnalytics.assetBreakdown}
-											dataKey="currentPct"
-											nameKey="assetClass"
-											cx="50%"
-											cy="50%"
-											outerRadius={100}
-											fill="#8884d8"
-											label={(props) => {
+							<div>
+								{!showFullCharts ? <div className="space-y-3">
+									{portfolioAnalytics.assetBreakdown.map((asset, index) => (
+										<div key={asset.assetClass}>
+											<div className="mb-1 flex items-start justify-between gap-3 text-sm">
+												<span className="min-w-0 break-words font-medium">{asset.assetClass}</span>
+												<span className="shrink-0 font-semibold">{formatNumber(asset.currentPct, 1)}%</span>
+											</div>
+											<div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full" style={{ width: `${Math.min(100, asset.currentPct)}%`, backgroundColor: `hsl(${index * 60}, 70%, 50%)` }} /></div>
+										</div>
+									))}
+								</div> : null}
+								{showFullCharts ? <div className="h-80">
+									<ResponsiveContainer width="100%" height="100%">
+										<PieChart>
+											<Pie data={portfolioAnalytics.assetBreakdown} dataKey="currentPct" nameKey="assetClass" cx="50%" cy="50%" outerRadius={100} fill="#8884d8" label={(props) => {
 												const item = props as unknown as { assetClass: string; currentPct: number };
 												return `${item.assetClass}: ${formatNumber(item.currentPct, 1)}%`;
-											}}
-										>
-											{portfolioAnalytics.assetBreakdown.map((entry, index) => (
-												<Cell key={`cell-${index}`} fill={`hsl(${index * 60}, 70%, 50%)`} />
-											))}
-										</Pie>
-										<Tooltip formatter={(value, name) => [`${formatNumber(Number(value ?? 0), 1)}%`, String(name ?? "")]} />
-									</PieChart>
-								</ResponsiveContainer>
+											}}>
+												{portfolioAnalytics.assetBreakdown.map((_, index) => <Cell key={`cell-${index}`} fill={`hsl(${index * 60}, 70%, 50%)`} />)}
+											</Pie>
+											<Tooltip formatter={(value, name) => [`${formatNumber(Number(value ?? 0), 1)}%`, String(name ?? "")]} />
+										</PieChart>
+									</ResponsiveContainer>
+								</div> : null}
 							</div>
 						) : (
 							<div className="h-80 flex items-center justify-center text-muted-foreground">
@@ -369,19 +390,23 @@ export default function PortfolioInsightsPage() {
 					</CardHeader>
 					<CardContent>
 						{allocationAnalysis ? (
-							<div className="h-80">
-								<ResponsiveContainer width="100%" height="100%">
-									<BarChart
-										data={allocationAnalysis.driftAnalysis}
-										margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-									>
-										<XAxis dataKey="assetClass" />
-										<YAxis />
-										<Tooltip />
-										<Bar dataKey="target" fill="#8884d8" name="Target %" />
-										<Bar dataKey="actual" fill="#82ca9d" name="Actual %" />
-									</BarChart>
-								</ResponsiveContainer>
+							<div>
+								{!showFullCharts ? <div className="space-y-3">
+									{allocationAnalysis.driftAnalysis.map((item: any) => (
+										<div key={item.assetClass} className="rounded-xl border border-border p-3">
+											<p className="break-words text-sm font-semibold">{item.assetClass}</p>
+											<dl className="mt-2 grid grid-cols-2 gap-2 text-sm"><div><dt className="text-xs text-muted-foreground">Target</dt><dd className="font-semibold">{formatNumber(item.target, 1)}%</dd></div><div><dt className="text-xs text-muted-foreground">Actual</dt><dd className="font-semibold">{formatNumber(item.actual, 1)}%</dd></div></dl>
+										</div>
+									))}
+								</div> : null}
+								{showFullCharts ? <div className="h-80">
+									<ResponsiveContainer width="100%" height="100%">
+										<BarChart data={allocationAnalysis.driftAnalysis} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
+											<XAxis dataKey="assetClass" /><YAxis /><Tooltip />
+											<Bar dataKey="target" fill="#8884d8" name="Target %" /><Bar dataKey="actual" fill="#82ca9d" name="Actual %" />
+										</BarChart>
+									</ResponsiveContainer>
+								</div> : null}
 							</div>
 						) : (
 							<div className="h-80 flex items-center justify-center text-muted-foreground">
@@ -402,7 +427,7 @@ export default function PortfolioInsightsPage() {
 					<CardDescription>Detailed breakdown of performance by asset class</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<div className="overflow-x-auto">
+					<div className="hidden md:block">
 						<table className="w-full text-sm">
 							<thead>
 								<tr className="border-b">
@@ -416,16 +441,16 @@ export default function PortfolioInsightsPage() {
 								</tr>
 							</thead>
 							<tbody>
-								{portfolioAnalytics.assetBreakdown.map((asset, index) => (
+								{portfolioAnalytics.assetBreakdown.map((asset) => (
 									<tr key={asset.assetClass} className="border-b hover:bg-muted/50">
 										<td className="py-3 px-2 font-medium">{asset.assetClass}</td>
 										<td className="text-right py-3 px-2">{asset.holdingsCount}</td>
 										<td className="text-right py-3 px-2">₹{formatNumber(asset.invested, 0)}</td>
 										<td className="text-right py-3 px-2">₹{formatNumber(asset.current, 0)}</td>
-										<td className={`text-right py-3 px-2 ${asset.pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+										<td className={`text-right py-3 px-2 ${asset.pnl >= 0 ? 'text-green-700' : 'text-red-600'}`}>
 											{asset.pnl >= 0 ? '+' : ''}₹{formatNumber(asset.pnl, 0)}
 										</td>
-										<td className={`text-right py-3 px-2 font-semibold ${asset.pnlPct >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+										<td className={`text-right py-3 px-2 font-semibold ${asset.pnlPct >= 0 ? 'text-green-700' : 'text-red-600'}`}>
 											{asset.pnlPct >= 0 ? '+' : ''}{formatNumber(asset.pnlPct, 2)}%
 										</td>
 										<td className="text-right py-3 px-2">{formatNumber(asset.currentPct, 1)}%</td>
@@ -433,6 +458,21 @@ export default function PortfolioInsightsPage() {
 								))}
 							</tbody>
 						</table>
+					</div>
+					<div className="space-y-3 md:hidden">
+						{portfolioAnalytics.assetBreakdown.length > 0 ? portfolioAnalytics.assetBreakdown.map((asset) => (
+							<article key={asset.assetClass} className="rounded-xl border border-border p-3">
+								<div className="flex items-start justify-between gap-3">
+									<div className="min-w-0"><h3 className="break-words font-semibold">{asset.assetClass}</h3><p className="mt-1 text-xs text-muted-foreground">{asset.holdingsCount} holdings · {formatNumber(asset.currentPct, 1)}% allocation</p></div>
+									<span className={`shrink-0 font-semibold ${asset.pnlPct >= 0 ? 'text-green-700' : 'text-red-600'}`}>{asset.pnlPct >= 0 ? '+' : ''}{formatNumber(asset.pnlPct, 2)}%</span>
+								</div>
+								<dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+									<div><dt className="text-xs text-muted-foreground">Invested</dt><dd className="mt-1 break-words font-medium">₹{formatNumber(asset.invested, 0)}</dd></div>
+									<div><dt className="text-xs text-muted-foreground">Current</dt><dd className="mt-1 break-words font-medium">₹{formatNumber(asset.current, 0)}</dd></div>
+									<div className="col-span-2"><dt className="text-xs text-muted-foreground">Profit / loss</dt><dd className={`mt-1 break-words font-medium ${asset.pnl >= 0 ? 'text-green-700' : 'text-red-600'}`}>{asset.pnl >= 0 ? '+' : ''}₹{formatNumber(asset.pnl, 0)}</dd></div>
+								</dl>
+							</article>
+						)) : <p className="py-6 text-center text-sm text-muted-foreground">No performance data available.</p>}
 					</div>
 				</CardContent>
 			</Card>
@@ -447,7 +487,7 @@ export default function PortfolioInsightsPage() {
 							<CardDescription>Your investment approach and risk characteristics</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-4">
-							<div className="flex items-center justify-between">
+							<div className="flex flex-wrap items-center justify-between gap-2">
 								<span className="font-medium">Risk Level:</span>
 								<span className={`px-3 py-1 rounded-full text-sm font-semibold ${
 									riskAnalysis.riskLevel === 'Conservative' ? 'bg-green-100 text-green-700' :
@@ -457,7 +497,7 @@ export default function PortfolioInsightsPage() {
 									{riskAnalysis.riskLevel}
 								</span>
 							</div>
-							<div className="flex items-center justify-between">
+							<div className="flex flex-wrap items-center justify-between gap-2">
 								<span className="font-medium">Risk Score:</span>
 								<span className="text-lg font-bold">{riskAnalysis.riskScore}/100</span>
 							</div>
@@ -511,14 +551,14 @@ export default function PortfolioInsightsPage() {
 								<div className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
 									<div>
 										<div className="font-semibold text-yellow-700 dark:text-yellow-300">Medium Term (3-7 years)</div>
-										<div className="text-sm text-yellow-600 dark:text-yellow-400">Major milestones</div>
+										<div className="text-sm text-yellow-800 dark:text-yellow-300">Major milestones</div>
 									</div>
 									<div className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">{goalsAnalysis.mediumTerm}</div>
 								</div>
 								<div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
 									<div>
 										<div className="font-semibold text-green-700 dark:text-green-300">Long Term (7+ years)</div>
-										<div className="text-sm text-green-600 dark:text-green-400">Future planning</div>
+										<div className="text-sm text-green-800 dark:text-green-300">Future planning</div>
 									</div>
 									<div className="text-2xl font-bold text-green-700 dark:text-green-300">{goalsAnalysis.longTerm}</div>
 								</div>
@@ -526,12 +566,12 @@ export default function PortfolioInsightsPage() {
 							
 							{goalsAnalysis.goals.length > 0 && (
 								<div className="mt-6">
-									<h4 className="font-semibold mb-3">Upcoming Goals</h4>
+									<h3 className="mb-3 font-semibold">Upcoming Goals</h3>
 									<div className="space-y-2">
 										{goalsAnalysis.goals.map((goal: any) => (
-											<div key={goal.id} className="flex justify-between items-center p-2 border rounded">
-												<div>
-													<div className="font-medium">{goal.name}</div>
+											<div key={goal.id} className="flex flex-col gap-2 rounded border p-3 sm:flex-row sm:items-center sm:justify-between">
+												<div className="min-w-0">
+													<div className="break-words font-medium">{goal.name}</div>
 													<div className="text-sm text-muted-foreground">
 														Target: ₹{formatNumber(goal.targetAmount, 0)}
 													</div>
@@ -564,9 +604,9 @@ export default function PortfolioInsightsPage() {
 					<CardContent>
 						<div className="space-y-4">
 							{allocationAnalysis.driftAnalysis.map((drift: any) => (
-								<div key={drift.assetClass} className="flex items-center justify-between p-4 border rounded-lg">
-									<div className="flex items-center gap-4">
-										<div className="font-medium">{drift.assetClass}</div>
+								<div key={drift.assetClass} className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
+									<div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-4">
+										<div className="break-words font-medium">{drift.assetClass}</div>
 										<div className={`px-2 py-1 rounded text-xs font-semibold ${
 											drift.driftSeverity === 'high' ? 'bg-red-100 text-red-700' :
 											drift.driftSeverity === 'medium' ? 'bg-yellow-100 text-yellow-700' :
@@ -575,11 +615,11 @@ export default function PortfolioInsightsPage() {
 											{drift.driftSeverity} drift
 										</div>
 									</div>
-									<div className="text-right">
+									<div className="sm:text-right">
 										<div className="font-semibold">
 											{formatNumber(drift.actual, 1)}% / {formatNumber(drift.target, 1)}%
 										</div>
-										<div className={`text-sm ${drift.delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+										<div className={`text-sm ${drift.delta >= 0 ? 'text-green-700' : 'text-red-600'}`}>
 											{drift.delta >= 0 ? '+' : ''}{formatNumber(drift.delta, 1)}% drift
 										</div>
 									</div>
@@ -589,22 +629,22 @@ export default function PortfolioInsightsPage() {
 
 						{rebalanceAnalysis.needsRebalancing && (
 							<div className="mt-6 p-4 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg">
-								<h4 className="font-semibold text-orange-800 dark:text-orange-200 mb-2">
+								<h3 className="mb-2 font-semibold text-orange-800 dark:text-orange-200">
 									Rebalancing Recommended
-								</h4>
+								</h3>
 								<p className="text-sm text-orange-700 dark:text-orange-300 mb-3">
 									Your portfolio has drifted beyond tolerance limits. Consider the following adjustments:
 								</p>
 								<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 									{rebalanceAnalysis.items.map((item: any) => (
-										<div key={item.class} className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded border">
-											<div>
-												<div className="font-medium">{item.class}</div>
+										<div key={item.class} className="flex flex-col gap-2 rounded border bg-white p-3 sm:flex-row sm:items-center sm:justify-between dark:bg-gray-800">
+											<div className="min-w-0">
+												<div className="break-words font-medium">{item.class}</div>
 												<div className="text-sm text-muted-foreground">
 													{item.actualPct}% → {item.targetPct}%
 												</div>
 											</div>
-											<div className={`font-bold ${item.action === 'Increase' ? 'text-green-600' : 'text-red-600'}`}>
+											<div className={`break-words font-bold ${item.action === 'Increase' ? 'text-green-700' : 'text-red-600'}`}>
 												{item.action === 'Increase' ? '+' : '-'}₹{formatNumber(Math.abs(item.amount), 0)}
 											</div>
 										</div>
@@ -634,11 +674,11 @@ export default function PortfolioInsightsPage() {
 										const width = Math.min(100, Math.max(10, Math.abs(impact) * 20));
 										return (
 											<div key={index} className="space-y-2">
-												<div className="flex justify-between items-center">
-													<span className="font-medium capitalize">
+												<div className="flex items-start justify-between gap-3">
+													<span className="min-w-0 break-words font-medium capitalize">
 														{String(signal.factor || '').replace(/_/g, ' ')}
 													</span>
-													<span className={`font-bold ${impact >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+													<span className={`font-bold ${impact >= 0 ? 'text-green-700' : 'text-red-600'}`}>
 														{impact >= 0 ? '+' : ''}{Math.round(impact * 10)}
 													</span>
 												</div>
@@ -666,9 +706,9 @@ export default function PortfolioInsightsPage() {
 								<div className="space-y-4">
 									{Object.entries(riskAnalysis?.stressTest?.scenarios || {}).slice(0, 4).map(([scenario, result]: any) => (
 										<div key={scenario} className="p-3 border rounded-lg">
-											<div className="flex justify-between items-center mb-2">
-												<span className="font-medium">{scenario}</span>
-												<span className={`font-bold ${result.portfolioImpact >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+											<div className="mb-2 flex items-start justify-between gap-3">
+												<span className="min-w-0 break-words font-medium">{scenario}</span>
+												<span className={`font-bold ${result.portfolioImpact >= 0 ? 'text-green-700' : 'text-red-600'}`}>
 													{result.portfolioImpact >= 0 ? '+' : ''}{Number(result.portfolioImpact).toFixed(1)}%
 												</span>
 											</div>
@@ -707,7 +747,9 @@ export default function PortfolioInsightsPage() {
 						<div>
 							<div className="h-80">
 								{timeSeriesChartData && (
-									<Line 
+									<Line
+										role="img"
+										aria-label="Portfolio value and invested amount over the last twelve months"
 										data={timeSeriesChartData}
 										options={{
 											responsive: true,
@@ -754,7 +796,7 @@ export default function PortfolioInsightsPage() {
 								</div>
 								<div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
 									<div className="text-sm text-muted-foreground mb-1">Total Return</div>
-									<div className={`text-2xl font-bold ${portfolioAnalytics.pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+									<div className={`text-2xl font-bold ${portfolioAnalytics.pnl >= 0 ? 'text-green-700' : 'text-red-600'}`}>
 										{portfolioAnalytics.pnl >= 0 ? '+' : ''}{portfolioAnalytics.pnl.toFixed(2)}%
 									</div>
 								</div>

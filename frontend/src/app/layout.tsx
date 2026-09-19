@@ -43,8 +43,8 @@ export default function RootLayout({
 					<Navbar items={navItems} userInitials="FS" />
 					<MobileGlobalNav />
 
-					<div className="min-h-screen pb-20 pt-16 md:pb-0 md:pl-64 md:pt-0">
-						<main className="mx-auto max-w-[1480px] px-4 py-6 sm:px-6 md:py-8 lg:px-10">{children}</main>
+					<div className="app-shell min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] pt-[calc(4rem+env(safe-area-inset-top))] lg:pb-0 lg:pl-64 lg:pt-0">
+						<main className="mx-auto min-w-0 max-w-[1480px] px-3 py-5 sm:px-6 sm:py-7 lg:px-8 xl:px-10">{children}</main>
 					</div>
 				</ThemeProvider>
 			</body>

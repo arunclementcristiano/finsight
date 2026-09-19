@@ -1,16 +1,24 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/Card";
 import { useApp } from "../../store";
 import { computeRebalance } from "../domain/rebalance";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { Button } from "../../components/Button";
 
 export default function InsightsPage() {
   const { holdings, plan, driftTolerancePct, profile } = useApp();
   const currency = profile.currency || "INR";
   const result = useMemo(() => plan ? computeRebalance(holdings, plan, driftTolerancePct) : { items: [], totalCurrentValue: 0 }, [holdings, plan, driftTolerancePct]);
+	const [showFullChart, setShowFullChart] = useState(false);
+
+	useEffect(() => {
+		const media = window.matchMedia("(min-width: 640px)");
+		const update = () => setShowFullChart(media.matches);
+		update();
+		media.addEventListener("change", update);
+		return () => media.removeEventListener("change", update);
+	}, []);
 
   // Prepare data for bar chart
   const chartData = (result.items || []).map(item => ({
@@ -23,11 +31,11 @@ export default function InsightsPage() {
   }));
 
   return (
-    <div className="max-w-full space-y-4 pl-2">
+    <div className="min-w-0 space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="text-sm text-muted-foreground">Insights</div>
+		  <h1 className="text-sm font-medium text-muted-foreground">Insights</h1>
         </div>
       </div>
       
@@ -39,7 +47,7 @@ export default function InsightsPage() {
         <CardContent>
           {plan && chartData.length > 0 ? (
             <div>
-              <div className="w-full h-72 mb-6">
+			  {showFullChart ? <div className="mb-6 h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                     <XAxis dataKey="class" stroke="#888" fontSize={13} />
@@ -52,7 +60,7 @@ export default function InsightsPage() {
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
-              </div>
+			  </div> : null}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {chartData.map(item => (
                   <Card key={item.class} className="border-2 border-border">
@@ -62,7 +70,7 @@ export default function InsightsPage() {
                           <span className="text-sm font-medium">{item.class}</span>
                           <span className={`text-xs px-2 py-0.5 rounded ${item.action === "Increase" ? "bg-indigo-100 text-indigo-700" : "bg-rose-100 text-rose-700"}`}>{item.action}</span>
                         </div>
-                        <div className="text-lg font-bold">{currency} {item.amount.toLocaleString()}</div>
+                        <div className="break-words text-lg font-bold">{currency} {item.amount.toLocaleString()}</div>
                         <div className="text-xs text-muted-foreground">Actual: {item.actualPct}% &rarr; Target: {item.targetPct}%</div>
                         <div className="text-xs text-muted-foreground">Drift: {item.drift}%</div>
                       </div>

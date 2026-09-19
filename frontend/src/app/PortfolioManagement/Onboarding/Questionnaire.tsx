@@ -169,9 +169,9 @@ export default function Questionnaire() {
 									</div>
 									<div className="grid gap-2">
 										{userGoals.slice(0, 3).map((goal: any) => (
-											<div key={goal.id} className="flex items-center justify-between p-2 bg-green-50 rounded border">
-												<span className="text-sm">{goal.name}</span>
-												<span className="text-xs text-muted-foreground">₹{(goal.targetAmount/100000).toFixed(1)}L</span>
+											<div key={goal.id} className="flex flex-col gap-1 rounded border bg-green-50 p-2 sm:flex-row sm:items-center sm:justify-between">
+												<span className="break-words text-sm">{goal.name}</span>
+												<span className="shrink-0 text-xs text-muted-foreground">₹{(goal.targetAmount/100000).toFixed(1)}L</span>
 											</div>
 										))}
 										{userGoals.length > 3 && (
@@ -218,9 +218,9 @@ export default function Questionnaire() {
 					/>
 				)}
 				
-				<div className="flex justify-between w-full mt-8 gap-3">
-					<Button variant="secondary" onClick={prevStep} disabled={step === 0}>Back</Button>
-					<Button onClick={nextStep} disabled={!isCurrentQuestionValid()}>
+				<div className="mt-8 grid w-full grid-cols-2 gap-3">
+					<Button className="w-full" variant="secondary" onClick={prevStep} disabled={step === 0}>Back</Button>
+					<Button className="w-full" onClick={nextStep} disabled={!isCurrentQuestionValid()}>
 						{step === questions.length - 1 ? "Submit" : "Next"}
 					</Button>
 				</div>

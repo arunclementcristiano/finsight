@@ -32,31 +32,39 @@ export default function MobileGlobalNav() {
 
   return (
     <>
-      <header className="fixed inset-x-0 top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur-xl md:hidden">
+      <header className="mobile-top-header fixed inset-x-0 top-0 z-40 flex h-[calc(4rem+env(safe-area-inset-top))] items-center justify-between border-b border-border bg-background/90 px-[max(1rem,env(safe-area-inset-left))] pt-[env(safe-area-inset-top)] backdrop-blur-xl lg:hidden">
         <Link href="/" className="flex items-center gap-2.5" aria-label="FinSight home">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#167a5b] text-white">
             <TrendingUp className="h-4 w-4" strokeWidth={2.5} />
           </span>
           <span className="font-semibold tracking-[-0.02em]">FinSight</span>
         </Link>
-        <button type="button" aria-label="Open navigation" onClick={() => setOpen(true)} className="grid h-10 w-10 place-items-center rounded-xl border border-border bg-card">
+        <nav className="mobile-landscape-nav hidden items-center gap-1" aria-label="Landscape navigation">
+          {primaryItems.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.href);
+            return <Link key={item.href} href={item.href} aria-label={item.label} aria-current={active ? "page" : undefined} className={cn("grid h-10 w-10 place-items-center rounded-xl", active ? "bg-[var(--accent-soft)] text-emerald-700 dark:text-emerald-300" : "text-muted-foreground hover:bg-muted")}><Icon className="h-5 w-5" /></Link>;
+          })}
+          <button type="button" aria-label="Open more navigation" onClick={() => setOpen(true)} className="grid h-10 w-10 place-items-center rounded-xl text-muted-foreground hover:bg-muted"><Menu className="h-5 w-5" /></button>
+        </nav>
+        <button type="button" aria-label="Open navigation" onClick={() => setOpen(true)} className="mobile-header-menu grid h-10 w-10 place-items-center rounded-xl border border-border bg-card">
           <Menu className="h-5 w-5" />
         </button>
       </header>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl md:hidden" aria-label="Mobile navigation">
+      <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl lg:hidden" aria-label="Mobile navigation">
         <div className="grid grid-cols-4">
           {primaryItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
             return (
-              <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={cn("flex flex-col items-center gap-1 rounded-xl py-1.5 text-[10px] font-medium", active ? "text-emerald-700 dark:text-emerald-300" : "text-muted-foreground")}>
+              <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={cn("flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 text-[10px] font-medium", active ? "text-emerald-700 dark:text-emerald-300" : "text-muted-foreground")}>
                 <Icon className="h-5 w-5" />
                 {item.label}
               </Link>
             );
           })}
-          <button type="button" className="flex flex-col items-center gap-1 rounded-xl py-1.5 text-[10px] font-medium text-muted-foreground" onClick={() => setOpen(true)}>
+          <button type="button" className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 text-[10px] font-medium text-muted-foreground" onClick={() => setOpen(true)}>
             <Menu className="h-5 w-5" />
             More
           </button>
@@ -64,9 +72,9 @@ export default function MobileGlobalNav() {
       </nav>
 
       {open && (
-        <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="More navigation">
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="More navigation">
           <button type="button" aria-label="Close navigation" className="absolute inset-0 bg-[#07110d]/55 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="absolute inset-x-0 bottom-0 rounded-t-3xl border border-border bg-card p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl">
+          <div className="absolute inset-x-0 bottom-0 max-h-[calc(100dvh-env(safe-area-inset-top))] overflow-y-auto rounded-t-3xl border border-border bg-card p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl">
             <div className="mb-5 flex items-center justify-between">
               <div><p className="font-semibold">Explore FinSight</p><p className="text-sm text-muted-foreground">Everything in one place</p></div>
               <button type="button" aria-label="Close navigation" onClick={() => setOpen(false)} className="grid h-10 w-10 place-items-center rounded-full bg-muted"><X className="h-5 w-5" /></button>

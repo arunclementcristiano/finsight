@@ -540,10 +540,10 @@ export default function PlanPage() {
 	}
 
        return (
-	       <div className="max-w-full space-y-4 pl-2">
-			<div className="flex items-center justify-between">
-				<div className="flex items-center gap-2">
-					<div className="text-sm text-muted-foreground">Allocation Plan</div>
+	       <div className="min-w-0 space-y-5">
+			<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+				<div className="flex min-w-0 flex-wrap items-center gap-2">
+					<h1 className="text-sm font-medium text-muted-foreground">Allocation Plan</h1>
 					{answersDrift ? (
 						<span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-1 text-[11px]">
 							<span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
@@ -551,15 +551,15 @@ export default function PlanPage() {
 						</span>
 					) : null}
 				</div>
-				<div className="flex items-center gap-2">
-					<div className="inline-flex rounded-md border border-border overflow-hidden text-xs">
-						<Button size="sm" variant="outline" className={`rounded-none ${mode==='advisor' ? 'bg-indigo-600 text-white border-indigo-600' : ''}`} onClick={handleAdvisorClick}>
+				<div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
+					<div className="col-span-2 grid grid-cols-2 overflow-hidden rounded-xl border border-border text-xs sm:col-span-1 sm:inline-flex">
+						<Button size="sm" variant="outline" className={`h-auto min-h-11 rounded-none ${mode==='advisor' ? 'bg-indigo-600 text-white border-indigo-600' : ''}`} onClick={handleAdvisorClick}>
 							<div className="flex flex-col items-start leading-tight">
 								<span>Advisor</span>
 								{mode==='advisor' ? <span className="text-[10px] opacity-80">Recommended</span> : null}
 							</div>
 						</Button>
-						<Button size="sm" variant="outline" className={`rounded-none ${mode==='custom' ? 'bg-rose-600 text-white border-rose-600' : ''}`} onClick={handleCustomClick}>
+						<Button size="sm" variant="outline" className={`h-auto min-h-11 rounded-none ${mode==='custom' ? 'bg-rose-600 text-white border-rose-600' : ''}`} onClick={handleCustomClick}>
 							<div className="flex flex-col items-start leading-tight">
 								<div className="flex items-center gap-1">
 									<span>Custom</span>
@@ -569,10 +569,10 @@ export default function PlanPage() {
 							</div>
 						</Button>
 					</div>
-					<Button variant="ghost" size="sm" aria-label="Reset" onClick={handleResetClick}>
+					<Button className="!hidden sm:!inline-flex" variant="ghost" size="sm" aria-label="Reset" onClick={handleResetClick}>
 						<RotateCcw className="h-4 w-4 text-rose-600" />
 					</Button>
-					<Button variant="outline" size="sm" leftIcon={<SaveIcon className="h-4 w-4" />} onClick={handleSaveClick}>
+					<Button className="!hidden sm:!inline-flex" variant="outline" size="sm" leftIcon={<SaveIcon className="h-4 w-4" />} onClick={handleSaveClick}>
 						<span className="inline-flex items-center gap-2">
 							<span>Save Plan</span>
 							{hasUnsavedChanges ? <span className="inline-flex items-center gap-1 rounded border border-amber-200 bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">changes</span> : null}
@@ -600,7 +600,7 @@ export default function PlanPage() {
 						compact
 						type={(questions[ansStep] as any)?.type}
 					/>
-					<div className="flex items-center justify-between">
+					<div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-between">
 						<Button variant="outline" onClick={()=> setAnsStep(s=> Math.max(0, s-1))} disabled={ansStep===0}>Back</Button>
 						<div className="flex items-center gap-2">
 							<Button variant="outline" onClick={()=> setAnsStep(s=> Math.min(questions.length-1, s+1))} disabled={ansStep===questions.length-1}>Next</Button>
@@ -633,7 +633,7 @@ export default function PlanPage() {
 			/>
 
 			{toast && (
-				<div className={`fixed bottom-4 right-4 z-50 rounded-md border px-3 py-2 text-sm shadow-lg ${toast.type==='success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : toast.type==='info' ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
+				<div className={`fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-3 right-3 z-50 rounded-md border px-3 py-2 text-sm shadow-lg lg:bottom-4 lg:left-auto lg:right-4 ${toast.type==='success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : toast.type==='info' ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
 					{toast.msg}
 				</div>
 			)}
@@ -667,13 +667,11 @@ export default function PlanPage() {
                                 }}
                         />
 
-                        {/* Mobile sticky action bar */}
-                        <div className="md:hidden fixed bottom-14 left-0 right-0 z-30 px-3">
-                          <div className="rounded-xl border border-border bg-card shadow flex items-center justify-between p-2">
-                            <Button variant="outline" size="sm" onClick={()=> setGoalsPanelOpen(true)}>Add Goal</Button>
-                            <Button size="sm" onClick={handleSaveClick}>Save Plan</Button>
-                          </div>
-                        </div>
+			<div className="grid grid-cols-[1fr_auto_1fr] gap-2 sm:hidden">
+				<Button className="min-h-11" variant="outline" size="sm" onClick={()=> setGoalsPanelOpen(true)}>Add Goal</Button>
+				<Button className="min-h-11 px-3" variant="ghost" size="sm" aria-label="Reset plan" onClick={handleResetClick}><RotateCcw className="h-4 w-4 text-rose-600" /></Button>
+				<Button className="min-h-11" size="sm" onClick={handleSaveClick}>Save Plan</Button>
+			</div>
 		</div>
 	);
 }

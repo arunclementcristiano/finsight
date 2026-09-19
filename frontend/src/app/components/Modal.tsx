@@ -12,18 +12,17 @@ interface ModalProps {
 export function Modal({ open, onClose, title, children, footer }: ModalProps) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-2xl rounded-xl border border-border bg-card shadow-xl">
+      <div className="relative z-10 flex max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xl sm:max-h-[calc(100dvh-2rem)]">
         <div className="px-4 py-3 border-b border-border">
           <div className="text-sm font-semibold">{title}</div>
         </div>
-        <div className="p-4 max-h-[70vh] overflow-auto">{children}</div>
-        <div className="px-4 py-3 border-t border-border flex items-center justify-end gap-2">
+        <div className="min-h-0 flex-1 overflow-auto p-4">{children}</div>
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
           {footer}
         </div>
       </div>
     </div>
   );
 }
-

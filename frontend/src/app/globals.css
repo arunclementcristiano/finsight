@@ -58,6 +58,52 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+html,
+body {
+  margin: 0;
+  width: 100%;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+input,
+select,
+textarea {
+  max-width: 100%;
+}
+
+.mobile-landscape-nav {
+  display: none;
+}
+
+@media (max-width: 1023px) and (orientation: landscape) and (max-height: 500px) {
+  .mobile-top-header {
+    height: calc(3.5rem + env(safe-area-inset-top));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  .mobile-landscape-nav {
+    display: flex;
+  }
+
+  .mobile-header-menu,
+  .mobile-bottom-nav {
+    display: none;
+  }
+
+  .app-shell {
+    padding-top: calc(3.5rem + env(safe-area-inset-top));
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    padding-left: env(safe-area-inset-left);
+  }
+}
+
 ::selection {
   background: var(--accent-soft);
   color: var(--foreground);

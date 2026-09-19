@@ -446,42 +446,42 @@ export default function ExpenseTrackerPage() {
   function next() { setPage(p => Math.min(totalPages, p + 1)); }
 
   return (
-    <div className="max-w-full space-y-4 pl-2">
+    <div className="min-w-0 space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="text-sm text-muted-foreground">Expense Tracker</div>
+          <h1 className="text-sm font-medium text-muted-foreground">Expense Tracker</h1>
         </div>
       </div>
       
-      <div className="flex flex-col h-[calc(100vh-5rem)] overflow-hidden">
-        {/* Sticky Command Bar */}
-        <div className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
-        <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-4 p-4">
+      <div className="min-w-0 rounded-2xl border border-border/80 bg-card/40">
+        {/* Command bar */}
+        <div className="border-b border-border bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/50">
+        <div className="grid min-w-0 grid-cols-1 gap-4 p-3 sm:p-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
           {/* Chat input */}
-          <div>
-            <form onSubmit={handleSubmit} className="flex gap-2 items-center">
-              <input ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} className="flex-1 h-11 rounded-xl border border-border px-3 bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]" placeholder="e.g., Lunch 250 at restaurant"/>
-              <button type="button" aria-label="Set date" title="Set date" onClick={()=> setDateOpen(o=>!o)} className={`h-11 w-11 inline-flex items-center justify-center rounded-xl border ${dateOpen ? 'border-emerald-400 text-emerald-600' : 'border-border text-muted-foreground'} bg-card hover:bg-muted focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]`}>
+          <div className="min-w-0">
+            <form onSubmit={handleSubmit} className="grid min-w-0 grid-cols-[minmax(0,1fr)_2.75rem] gap-2 sm:grid-cols-[minmax(0,1fr)_2.75rem_auto]">
+              <input ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} className="h-11 min-w-0 rounded-xl border border-border bg-card px-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]" placeholder="e.g., Lunch 250 at restaurant"/>
+              <button type="button" aria-label="Set date" title="Set date" onClick={()=> setDateOpen(o=>!o)} className={`inline-flex h-11 w-11 items-center justify-center rounded-xl border ${dateOpen ? 'border-emerald-400 text-emerald-600' : 'border-border text-muted-foreground'} bg-card hover:bg-muted focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]`}>
                 <Calendar className="h-4 w-4" />
               </button>
               {dateOpen && (
-                <input type="date" value={selectedDate} onChange={(e)=> setSelectedDate(e.target.value)} className="h-11 rounded-xl border border-border px-3 bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]" />
+                <input type="date" value={selectedDate} onChange={(e)=> setSelectedDate(e.target.value)} className="col-span-2 h-11 min-w-0 rounded-xl border border-border bg-card px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] sm:col-span-1 sm:col-start-1 sm:row-start-2" />
               )}
-              <Button type="submit" size="sm">Add Expense</Button>
+              <Button type="submit" size="sm" className="col-span-2 h-11 w-full sm:col-span-1 sm:w-auto">Add Expense</Button>
             </form>
             {ai && (
               <div className="mt-3 rounded-xl border border-border p-3 text-sm space-y-2">
                 <div>Suggested: <span className="font-semibold">{ai.category}</span> {ai.AIConfidence ? `(conf ${Math.round((ai.AIConfidence||0)*100)}%)` : ""}</div>
-                <div className="flex flex-wrap gap-2 items-center">
-                  <input ref={amountRef} type="number" step="0.01" defaultValue={ai.amount ?? 0} className="h-9 w-28 rounded-md border border-border px-2 bg-card text-right"/>
-                  <select value={selectedCategory || ai.category || "Other"} onChange={(e)=> setSelectedCategory(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <input ref={amountRef} type="number" step="0.01" defaultValue={ai.amount ?? 0} className="h-10 min-w-0 rounded-md border border-border bg-card px-2 text-right"/>
+                  <select value={selectedCategory || ai.category || "Other"} onChange={(e)=> setSelectedCategory(e.target.value)} className="h-10 min-w-0 rounded-md border border-border bg-card px-2">
                     {Array.from(new Set<string>((((ai as any).options as string[] | undefined) || []).concat(ai.category || []).filter(Boolean))).map((c) => (
                       <option key={c} value={c}>{c}</option>
                     ))}
                   </select>
-                  <input ref={customRef} type="text" placeholder="Custom category (optional)" className="h-9 rounded-md border border-border px-2 bg-card"/>
-                  <Button size="sm" onClick={()=>{
+                  <input ref={customRef} type="text" placeholder="Custom category (optional)" className="h-10 min-w-0 rounded-md border border-border bg-card px-2"/>
+                  <Button size="sm" className="h-10" onClick={()=>{
                     const custom = (customRef.current?.value || "").trim();
                     const chosen = custom || (selectedCategory || ai.category || "Other");
                     confirm(chosen, amountRef.current?.value);
@@ -491,43 +491,43 @@ export default function ExpenseTrackerPage() {
             )}
           </div>
           {/* Actions */}
-          <div className="flex items-start justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={()=> setShowBudgetsModal(true)}>
+          <div className="grid grid-cols-3 gap-2 xl:flex xl:items-start xl:justify-end">
+            <Button variant="outline" size="sm" className="h-auto min-h-11 min-w-0 px-2 text-xs sm:px-3 sm:text-sm" onClick={()=> setShowBudgetsModal(true)}>
               <Settings2 className="h-4 w-4 mr-2"/>
               Set Budgets
             </Button>
-            <Button variant="outline" size="sm" onClick={()=> setPrivacy(p=>!p)}>
+            <Button variant="outline" size="sm" className="h-auto min-h-11 min-w-0 px-2 text-xs sm:px-3 sm:text-sm" onClick={()=> setPrivacy(p=>!p)}>
               {privacy ? <EyeOff className="h-4 w-4 mr-2"/> : <Eye className="h-4 w-4 mr-2"/>}
               {privacy ? "Unmask" : "Privacy"}
             </Button>
-            <Button variant="outline" size="sm" onClick={()=> setExportOpen(true)}>
+            <Button variant="outline" size="sm" className="h-auto min-h-11 min-w-0 px-2 text-xs sm:px-3 sm:text-sm" onClick={()=> setExportOpen(true)}>
               <Download className="h-4 w-4 mr-2"/>
               Export CSV
             </Button>
           </div>
         </div>
         {/* Tabs */}
-        <div className="px-4 pb-3">
-          <div className="inline-flex rounded-lg border border-border overflow-hidden">
-            <button onClick={()=> setActiveTab("data")} className={`px-4 py-2 text-sm ${activeTab==='data' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>Data</button>
-            <button onClick={()=> setActiveTab("insights")} className={`px-4 py-2 text-sm ${activeTab==='insights' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>Insights</button>
+        <div className="p-3 sm:px-4">
+          <div className="grid w-full grid-cols-2 overflow-hidden rounded-lg border border-border sm:inline-grid sm:w-auto">
+            <button onClick={()=> setActiveTab("data")} className={`min-h-11 px-5 py-2 text-sm ${activeTab==='data' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>Data</button>
+            <button onClick={()=> setActiveTab("insights")} className={`min-h-11 px-5 py-2 text-sm ${activeTab==='insights' ? 'bg-card text-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}>Insights</button>
           </div>
         </div>
       </div>
 
       {/* Main panels */}
       {activeTab === "data" ? (
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 p-4 flex-1 min-h-0 overflow-auto">
+      <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-3">
         {/* Recent Expenses (full width on xl span 2) */}
-        <Card className="xl:col-span-2 h-full flex flex-col overflow-hidden">
+        <Card className="min-w-0 xl:col-span-2">
           <CardHeader>
             <CardTitle>Recent Expenses</CardTitle>
             <CardDescription>Synced with backend</CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 min-h-0 flex flex-col pb-0">
-            <div className="mb-3 flex flex-wrap gap-2 items-center">
-              <label className="text-sm text-muted-foreground">Range</label>
-              <select value={preset} onChange={(e)=> setPreset(e.target.value as any)} className="h-9 rounded-md border border-border px-2 bg-card">
+          <CardContent className="min-w-0 pb-0">
+            <div className="mb-3 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
+              <label htmlFor="expense-range" className="text-sm text-muted-foreground">Range</label>
+              <select id="expense-range" value={preset} onChange={(e)=> setPreset(e.target.value as any)} className="h-11 min-w-0 rounded-md border border-border bg-card px-2 sm:h-9">
                 <option value="all">All</option>
                 <option value="today">Today</option>
                 <option value="week">This week</option>
@@ -537,13 +537,13 @@ export default function ExpenseTrackerPage() {
               </select>
               {preset === "custom" && (
                 <>
-                  <input type="date" value={customStart} onChange={(e)=> setCustomStart(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card" />
-                  <span className="text-sm text-muted-foreground">to</span>
-                  <input type="date" value={customEnd} onChange={(e)=> setCustomEnd(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card" />
+                  <input type="date" value={customStart} onChange={(e)=> setCustomStart(e.target.value)} className="h-11 min-w-0 rounded-md border border-border bg-card px-2 sm:h-9" />
+                  <span className="hidden text-sm text-muted-foreground sm:inline">to</span>
+                  <input type="date" value={customEnd} onChange={(e)=> setCustomEnd(e.target.value)} className="h-11 min-w-0 rounded-md border border-border bg-card px-2 sm:h-9" />
                 </>
               )}
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-border">
+            <div className="hidden rounded-xl border border-border md:block">
             <table className="w-full text-left text-sm">
               <thead className="bg-card">
                 <tr>
@@ -597,20 +597,42 @@ export default function ExpenseTrackerPage() {
               </tbody>
             </table>
             </div>
+            <div className="space-y-2 md:hidden">
+              {pageRows.length > 0 ? pageRows.map((e: Expense) => (
+                <article key={e.id} className="rounded-xl border border-border bg-background/50 p-3">
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="break-words font-medium">{e.text}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                        <span>{fmtDateYYYYMMDDLocal(e.date as any)}</span>
+                        <span aria-hidden="true">•</span>
+                        <span className="break-words">{e.category as string}</span>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="font-semibold tabular-nums">{privacy ? "•••" : e.amount.toFixed(2)}</span>
+                      <button aria-label={`Delete ${e.text}`} title="Delete" onClick={() => handleDelete(e.id)} className="inline-flex h-11 w-11 items-center justify-center rounded-full text-rose-600 hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-400 dark:hover:bg-rose-900/30">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              )) : <p className="py-8 text-center text-sm text-muted-foreground">No expenses in this range.</p>}
+            </div>
           </CardContent>
           <CardFooter className="pt-3 border-t border-border">
-            <div className="w-full flex-none flex items-center justify-between text-sm">
+            <div className="flex w-full flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
               <div>Page {page} of {totalPages}</div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={prev} disabled={page === 1}>Prev</Button>
-                <Button variant="outline" size="sm" onClick={next} disabled={page === totalPages}>Next</Button>
+                <Button variant="outline" size="sm" className="min-h-11 flex-1 sm:min-h-0 sm:flex-none" onClick={prev} disabled={page === 1}>Prev</Button>
+                <Button variant="outline" size="sm" className="min-h-11 flex-1 sm:min-h-0 sm:flex-none" onClick={next} disabled={page === totalPages}>Next</Button>
               </div>
             </div>
           </CardFooter>
         </Card>
 
         {/* Budgets in Data tab */}
-        <Card className="h-full overflow-y-auto">
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle>Category Budgets</CardTitle>
             <CardDescription>{currentYm} budgets and usage</CardDescription>
@@ -626,7 +648,7 @@ export default function ExpenseTrackerPage() {
                   const barClass = alert ? "bg-rose-500" : warn ? "bg-amber-500" : undefined;
                   return (
                     <div key={cat} className="rounded-lg border border-border p-3">
-                      <div className="flex items-center justify-between text-sm">
+                      <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between">
                         <div className="font-medium">{cat}</div>
                         <div className="text-muted-foreground">
                           {privacy ? "•••" : formatCurrency(spent)}
@@ -671,7 +693,7 @@ export default function ExpenseTrackerPage() {
         </Card>
       </div>
       ) : (
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 p-4 flex-1 overflow-auto">
+      <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-3">
         {/* KPIs */}
         <Card className="xl:col-span-3">
           <CardHeader>
@@ -679,22 +701,22 @@ export default function ExpenseTrackerPage() {
             <CardDescription>Key metrics for {currentYm}</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="rounded-xl border border-border p-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="min-w-0 rounded-xl border border-border p-3">
                 <div className="text-xs text-muted-foreground">Today</div>
                 <div className="text-lg font-semibold">{fmtMoney(todaySpend)}</div>
               </div>
-              <div className="rounded-xl border border-border p-3">
+              <div className="min-w-0 rounded-xl border border-border p-3">
                 <div className="text-xs text-muted-foreground">This Month</div>
                 <div className="text-lg font-semibold">{fmtMoney(monthSpend)}</div>
               </div>
-              <div className="rounded-xl border border-border p-3">
+              <div className="min-w-0 rounded-xl border border-border p-3">
                 <div className="text-xs text-muted-foreground">Budget Used</div>
-                <div className={`text-lg font-semibold ${totalBudget > 0 ? (budgetUsedPct >= 100 ? 'text-rose-600' : (budgetUsedPct >= 80 ? 'text-amber-600' : 'text-emerald-600')) : ''}`}>
+                <div className={`break-words text-lg font-semibold ${totalBudget > 0 ? (budgetUsedPct >= 100 ? 'text-rose-600' : (budgetUsedPct >= 80 ? 'text-amber-600' : 'text-emerald-600')) : ''}`}>
                   {totalBudget > 0 ? `${privacy ? '•••' : formatCurrency(monthSpend)} / ${privacy ? '•••' : formatCurrency(totalBudget)} (${budgetUsedPct}%)` : "—"}
                 </div>
               </div>
-              <div className="rounded-xl border border-border p-3">
+              <div className="min-w-0 rounded-xl border border-border p-3">
                 <div className="text-xs text-muted-foreground">Top Category</div>
                 <div className="text-lg font-semibold">{topCategory}</div>
               </div>
@@ -733,7 +755,7 @@ export default function ExpenseTrackerPage() {
               if (entries.length === 0) return <div className="text-muted-foreground text-sm">No data yet</div>;
               return (
                 <div className="mx-auto max-w-xs">
-                  <Doughnut data={{ labels: entries.map(([c])=>c), datasets: [{ data: entries.map(([,v])=>v), backgroundColor: ["#6366f1", "#10b981", "#f59e42", "#fbbf24", "#3b82f6", "#ef4444", "#a3e635"] }] }} options={{ plugins: { legend: { position: "bottom" as const } }, cutout: "70%" }} />
+                  <Doughnut role="img" aria-label="Expenses by category chart" data={{ labels: entries.map(([c])=>c), datasets: [{ data: entries.map(([,v])=>v), backgroundColor: ["#6366f1", "#10b981", "#f59e42", "#fbbf24", "#3b82f6", "#ef4444", "#a3e635"] }] }} options={{ plugins: { legend: { position: "bottom" as const } }, cutout: "70%" }} />
                 </div>
               );
             })()}
@@ -747,9 +769,9 @@ export default function ExpenseTrackerPage() {
             <CardDescription>Compare spend vs budget for your selected range</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-2 flex flex-wrap gap-2 items-center">
-              <label className="text-sm text-muted-foreground">Range</label>
-              <select value={insightsPreset} onChange={(e)=> setInsightsPreset(e.target.value as any)} className="h-9 rounded-md border border-border px-2 bg-card">
+            <div className="mb-3 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
+              <label htmlFor="insights-range" className="text-sm text-muted-foreground">Range</label>
+              <select id="insights-range" value={insightsPreset} onChange={(e)=> setInsightsPreset(e.target.value as any)} className="h-11 min-w-0 rounded-md border border-border bg-card px-2 sm:h-9">
                 <option value="today">Today</option>
                 <option value="week">This week</option>
                 <option value="month">This month</option>
@@ -758,13 +780,13 @@ export default function ExpenseTrackerPage() {
               </select>
               {insightsPreset === "custom" && (
                 <>
-                  <input type="date" value={insightsStart} onChange={e=> setInsightsStart(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card" />
-                  <span className="text-sm text-muted-foreground">to</span>
-                  <input type="date" value={insightsEnd} onChange={e=> setInsightsEnd(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card" />
+                  <input type="date" value={insightsStart} onChange={e=> setInsightsStart(e.target.value)} className="h-11 min-w-0 rounded-md border border-border bg-card px-2 sm:h-9" />
+                  <span className="hidden text-sm text-muted-foreground sm:inline">to</span>
+                  <input type="date" value={insightsEnd} onChange={e=> setInsightsEnd(e.target.value)} className="h-11 min-w-0 rounded-md border border-border bg-card px-2 sm:h-9" />
                 </>
               )}
-              <label className="ml-auto inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={insightsOverOnly} onChange={e=> setInsightsOverOnly(e.target.checked)} /> Over budget only</label>
-              <Button variant="outline" onClick={()=> {
+              <label className="inline-flex min-h-11 items-center gap-2 text-sm sm:ml-auto sm:min-h-0"><input type="checkbox" checked={insightsOverOnly} onChange={e=> setInsightsOverOnly(e.target.checked)} /> Over budget only</label>
+              <Button variant="outline" className="min-h-11 sm:min-h-0" onClick={()=> {
                 const now = new Date();
                 const thisMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
                 const last = new Date(now.getFullYear(), now.getMonth()-1, 1);
@@ -843,7 +865,7 @@ export default function ExpenseTrackerPage() {
               return (
                 <div className="space-y-4">
                   <div className="h-56">
-                    <Bar data={chart} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" as const } }, scales: { y: { beginAtZero: true } } }} />
+                    <Bar role="img" aria-label="Monthly expense trend chart" data={chart} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" as const } }, scales: { y: { beginAtZero: true } } }} />
                   </div>
                   {/* Totals summary */}
                   {(() => {
@@ -870,7 +892,7 @@ export default function ExpenseTrackerPage() {
                       </div>
                     );
                   })()}
-                  <div className="rounded-xl border border-border overflow-hidden">
+                  <div className="hidden overflow-hidden rounded-xl border border-border sm:block">
                     <table className="w-full text-sm">
                       <thead className="bg-card">
                         <tr>
@@ -892,6 +914,18 @@ export default function ExpenseTrackerPage() {
                       </tbody>
                     </table>
                   </div>
+                  <div className="space-y-2 sm:hidden">
+                    {rows.map(r => (
+                      <div key={r.cat} className="rounded-xl border border-border p-3 text-sm">
+                        <div className="mb-2 break-words font-medium">{r.cat}</div>
+                        <dl className="grid grid-cols-3 gap-2">
+                          <div><dt className="text-xs text-muted-foreground">Actual</dt><dd className="mt-1 break-words font-medium">{fmtMoney(r.actual)}</dd></div>
+                          <div><dt className="text-xs text-muted-foreground">Expected</dt><dd className="mt-1 break-words font-medium">{fmtMoney(r.expected)}</dd></div>
+                          <div><dt className="text-xs text-muted-foreground">Variance</dt><dd className={`mt-1 break-words font-medium ${r.variance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{fmtMoney(Math.abs(r.variance))}</dd></div>
+                        </dl>
+                      </div>
+                    ))}
+                  </div>
                   <div className="text-xs text-muted-foreground">Budgets are monthly; expected is prorated to your selected dates. Monthly overrides are applied when set.</div>
                 </div>
               );
@@ -903,16 +937,18 @@ export default function ExpenseTrackerPage() {
 
       {compareOpen && (
         <div className="fixed inset-0 z-30 bg-black/30" onClick={()=> setCompareOpen(false)}>
-          <div className="absolute right-0 top-0 h-full w-full max-w-lg bg-card border-l border-border shadow-xl p-4 overflow-auto" onClick={e=> e.stopPropagation()}>
+          <div className="absolute right-0 top-0 h-full w-full max-w-lg overflow-auto border-l border-border bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] shadow-xl" onClick={e=> e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
               <div className="text-lg font-semibold">Compare months</div>
-              <button onClick={()=> setCompareOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5"/></button>
+              <button aria-label="Close comparison" onClick={()=> setCompareOpen(false)} className="grid h-11 w-11 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"><X className="h-5 w-5"/></button>
             </div>
-            <div className="flex items-center gap-3 mb-3 flex-nowrap overflow-x-auto">
-              <div className="text-sm text-muted-foreground">Month A</div>
-              <input type="month" value={compareMonthA} onChange={e=> setCompareMonthA(e.target.value)} className="h-9 w-40 rounded-md border border-border px-2 bg-card" />
-              <div className="text-sm text-muted-foreground ml-2">Month B</div>
-              <input type="month" value={compareMonthB} onChange={e=> setCompareMonthB(e.target.value)} className="h-9 w-40 rounded-md border border-border px-2 bg-card" />
+            <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="grid gap-1 text-sm text-muted-foreground">Month A
+                <input type="month" value={compareMonthA} onChange={e=> setCompareMonthA(e.target.value)} className="h-11 min-w-0 rounded-md border border-border bg-card px-2 text-foreground" />
+              </label>
+              <label className="grid gap-1 text-sm text-muted-foreground">Month B
+                <input type="month" value={compareMonthB} onChange={e=> setCompareMonthB(e.target.value)} className="h-11 min-w-0 rounded-md border border-border bg-card px-2 text-foreground" />
+              </label>
             </div>
             {(() => {
               if (compareMonthA && compareMonthB && compareMonthA === compareMonthB) {
@@ -962,7 +998,7 @@ export default function ExpenseTrackerPage() {
                       <div className="h-1.5 rounded bg-emerald-500" style={{ width: `${totalA > 0 || totalB > 0 ? Math.round((totalB/Math.max(totalA,totalB||1))*100) : 0}%` }}></div>
                     </div>
                   </div>
-                  <div className="rounded-xl border border-border overflow-hidden">
+                  <div className="hidden overflow-hidden rounded-xl border border-border sm:block">
                     <table className="w-full text-sm">
                       <thead className="bg-card">
                         <tr>
@@ -982,7 +1018,7 @@ export default function ExpenseTrackerPage() {
                             <td className={`px-3 py-2 text-right ${r.d > 0 ? 'text-rose-600' : (r.d < 0 ? 'text-emerald-600' : '')}`}>{fmtMoney(Math.abs(r.d))}</td>
                             <td className="px-3 py-2">
                               {(() => { const scale = Math.max(1, ...shown.map(x=> Math.max(x.a, x.b))); return (
-                                <div className="w-40">
+                                <div className="w-24 md:w-40">
                                   <div className="h-1.5 rounded bg-sky-500" style={{ width: `${Math.round((r.a/scale)*100)}%` }}></div>
                                   <div className="h-1.5 rounded bg-emerald-500 mt-1" style={{ width: `${Math.round((r.b/scale)*100)}%` }}></div>
                                 </div>
@@ -992,6 +1028,18 @@ export default function ExpenseTrackerPage() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                  <div className="space-y-2 sm:hidden">
+                    {shown.map(r => (
+                      <div key={r.cat} className="rounded-xl border border-border p-3 text-sm">
+                        <div className="mb-2 break-words font-medium">{r.cat}</div>
+                        <dl className="grid grid-cols-3 gap-2">
+                          <div><dt className="text-xs text-muted-foreground">{compareMonthA || 'Month A'}</dt><dd className="mt-1 break-words font-medium">{fmtMoney(r.a)}</dd></div>
+                          <div><dt className="text-xs text-muted-foreground">{compareMonthB || 'Month B'}</dt><dd className="mt-1 break-words font-medium">{fmtMoney(r.b)}</dd></div>
+                          <div><dt className="text-xs text-muted-foreground">Difference</dt><dd className={`mt-1 break-words font-medium ${r.d > 0 ? 'text-rose-600' : (r.d < 0 ? 'text-emerald-600' : '')}`}>{fmtMoney(Math.abs(r.d))}</dd></div>
+                        </dl>
+                      </div>
+                    ))}
                   </div>
                   {rows.length > 10 && (
                     <div className="mt-3 flex justify-end">
@@ -1007,13 +1055,13 @@ export default function ExpenseTrackerPage() {
 
       {/* Budgets Modal */}
       {showBudgetsModal && (
-        <div className="fixed inset-0 z-20 bg-black/30 flex items-center justify-center p-4" onClick={()=> setShowBudgetsModal(false)}>
-          <div className="w-full max-w-2xl rounded-xl border border-border bg-card text-foreground shadow-xl" onClick={e=> e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-3 sm:p-4" onClick={()=> setShowBudgetsModal(false)}>
+          <div className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-border bg-card text-foreground shadow-xl sm:max-h-[calc(100dvh-2rem)]" onClick={e=> e.stopPropagation()}>
             <div className="px-4 py-3 border-b border-border flex items-center justify-between">
               <div className="font-semibold">Set Budgets</div>
-              <button className="text-muted-foreground hover:text-foreground" onClick={()=> setShowBudgetsModal(false)}><X className="h-5 w-5"/></button>
+              <button aria-label="Close budgets" className="grid h-11 w-11 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground" onClick={()=> setShowBudgetsModal(false)}><X className="h-5 w-5"/></button>
             </div>
-            <div className="p-4 max-h-[60vh] overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
               <div className="text-sm text-muted-foreground mb-3">Set default budgets (apply to all months) and optionally override for this month ({currentYm}). Leave blank to keep unchanged.</div>
               {(() => {
                 const cats = allCategories.length ? allCategories : Object.keys(defaultCategoryBudgets||{});
@@ -1082,7 +1130,7 @@ export default function ExpenseTrackerPage() {
                 })}
               </div>
             </div>
-            <div className="px-4 py-3 border-t border-border flex items-center justify-end gap-2">
+            <div className="flex items-center justify-end gap-2 border-t border-border px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
               <Button variant="outline" onClick={()=> setShowBudgetsModal(false)}>Cancel</Button>
               <Button onClick={async ()=> {
                 const baseMonth = {} as Record<string, number>;
@@ -1105,17 +1153,17 @@ export default function ExpenseTrackerPage() {
       )}
       {/* Export CSV Modal */}
       {exportOpen && (
-        <div className="fixed inset-0 z-30 bg-black/30 flex items-center justify-center p-4" onClick={()=> setExportOpen(false)}>
-          <div className="w-full max-w-lg rounded-xl border border-border bg-card text-foreground shadow-xl" onClick={e=> e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-3 sm:p-4" onClick={()=> setExportOpen(false)}>
+          <div className="max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-card text-foreground shadow-xl" onClick={e=> e.stopPropagation()}>
             <div className="px-4 py-3 border-b border-border flex items-center justify-between">
               <div className="font-semibold">Export CSV</div>
-              <button className="text-muted-foreground hover:text-foreground" onClick={()=> setExportOpen(false)}><X className="h-5 w-5"/></button>
+              <button aria-label="Close export" className="grid h-11 w-11 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground" onClick={()=> setExportOpen(false)}><X className="h-5 w-5"/></button>
             </div>
             <div className="p-4 space-y-3">
               <div className="text-sm text-muted-foreground">Choose a date range to export. Uses local time boundaries.</div>
-              <div className="flex flex-wrap gap-2 items-center">
-                <label className="text-sm text-muted-foreground">Range</label>
-                <select value={exportPreset} onChange={(e)=> setExportPreset(e.target.value as any)} className="h-9 rounded-md border border-border px-2 bg-card">
+              <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
+                <label htmlFor="export-range" className="text-sm text-muted-foreground">Range</label>
+                <select id="export-range" value={exportPreset} onChange={(e)=> setExportPreset(e.target.value as any)} className="h-11 min-w-0 rounded-md border border-border bg-card px-2 sm:h-9">
                   <option value="all">All</option>
                   <option value="today">Today</option>
                   <option value="week">This week</option>
@@ -1125,14 +1173,14 @@ export default function ExpenseTrackerPage() {
                 </select>
                 {exportPreset === 'custom' && (
                   <>
-                    <input type="date" value={exportStart} onChange={(e)=> setExportStart(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card" />
-                    <span className="text-sm text-muted-foreground">to</span>
-                    <input type="date" value={exportEnd} onChange={(e)=> setExportEnd(e.target.value)} className="h-9 rounded-md border border-border px-2 bg-card" />
+                    <input type="date" value={exportStart} onChange={(e)=> setExportStart(e.target.value)} className="h-11 min-w-0 rounded-md border border-border bg-card px-2 sm:h-9" />
+                    <span className="hidden text-sm text-muted-foreground sm:inline">to</span>
+                    <input type="date" value={exportEnd} onChange={(e)=> setExportEnd(e.target.value)} className="h-11 min-w-0 rounded-md border border-border bg-card px-2 sm:h-9" />
                   </>
                 )}
               </div>
             </div>
-            <div className="px-4 py-3 border-t border-border flex items-center justify-end gap-2">
+            <div className="flex items-center justify-end gap-2 border-t border-border px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
               <Button variant="outline" onClick={()=> setExportOpen(false)}>Cancel</Button>
               <Button onClick={()=>{
                 const sod = (dt: Date) => { const x = new Date(dt); x.setHours(0,0,0,0); return x; };

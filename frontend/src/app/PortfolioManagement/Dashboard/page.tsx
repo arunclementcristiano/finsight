@@ -45,9 +45,9 @@ export default function DashboardPage() {
             <h1 className="text-3xl font-semibold tracking-[-0.035em] sm:text-4xl">{firstName ? `${firstName}, your money at a glance.` : "Your money, all in one place."}</h1>
             <p className="mt-3 max-w-xl text-sm leading-6 text-white/60 sm:text-base">Follow your investments, spending, and goals with one clear view of what needs attention next.</p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/ExpenseTracker" className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 text-sm font-semibold text-white hover:bg-white/15"><ReceiptText className="h-4 w-4" /> Add expense</Link>
-            <Link href="/PortfolioManagement/Portfolio/Holdings?add=1" className="inline-flex h-11 items-center gap-2 rounded-xl bg-emerald-300 px-4 text-sm font-semibold text-[#10251d] hover:bg-emerald-200"><Plus className="h-4 w-4" /> Add holding</Link>
+          <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto">
+            <Link href="/ExpenseTracker" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 text-sm font-semibold text-white hover:bg-white/15"><ReceiptText className="h-4 w-4" /> Add expense</Link>
+            <Link href="/PortfolioManagement/Portfolio/Holdings?add=1" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-300 px-4 text-sm font-semibold text-[#10251d] hover:bg-emerald-200"><Plus className="h-4 w-4" /> Add holding</Link>
           </div>
         </div>
       </section>
@@ -74,7 +74,7 @@ export default function DashboardPage() {
           <CardContent>
             {plan && allocation ? (
               <div className="grid items-center gap-6 md:grid-cols-[240px_1fr]">
-                <div className="mx-auto h-56 w-56"><Doughnut data={allocation} options={{ cutout: "74%", plugins: { legend: { display: false } } }} /></div>
+                <div className="mx-auto aspect-square w-full max-w-56"><Doughnut role="img" aria-label="Target portfolio allocation chart" data={allocation} options={{ cutout: "74%", plugins: { legend: { display: false } } }} /></div>
                 <div className="space-y-3">{plan.buckets.map((bucket, index) => <div key={bucket.class} className="flex items-center justify-between rounded-xl bg-muted/60 px-3.5 py-3"><span className="flex items-center gap-2.5 text-sm font-medium"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: palette[index % palette.length] }} />{bucket.class}</span><span className="text-sm font-semibold">{bucket.pct}%</span></div>)}</div>
               </div>
             ) : <EmptyPanel icon={Target} title="No allocation plan yet" description="Complete onboarding to turn your goals and risk preference into a practical investment mix." href="/PortfolioManagement/Onboarding" action="Start onboarding" />}
@@ -103,7 +103,7 @@ const tones = {
 };
 
 function MetricCard({ label, value, detail, icon: Icon, tone }: { label: string; value: string; detail: string; icon: React.ComponentType<{ className?: string }>; tone: keyof typeof tones }) {
-  return <Card><CardContent className="p-5 sm:p-5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-medium text-muted-foreground">{label}</p><p className="mt-2 truncate text-xl font-semibold tracking-[-0.025em]">{value}</p><p className="mt-1 text-xs text-muted-foreground">{detail}</p></div><span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${tones[tone]}`}><Icon className="h-5 w-5" /></span></div></CardContent></Card>;
+  return <Card><CardContent className="p-5 sm:p-5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-medium text-muted-foreground">{label}</p><p className="mt-2 break-words text-xl font-semibold tracking-[-0.025em]">{value}</p><p className="mt-1 text-xs text-muted-foreground">{detail}</p></div><span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${tones[tone]}`}><Icon className="h-5 w-5" /></span></div></CardContent></Card>;
 }
 
 function EmptyPanel({ icon: Icon, title, description, href, action }: { icon: React.ComponentType<{ className?: string }>; title: string; description: string; href: string; action: string }) {

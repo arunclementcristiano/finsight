@@ -40,8 +40,8 @@ export default function ConfirmationModal({ email, onClose }: ConfirmationModalP
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: "rgba(0,0,0,0.15)", zIndex: 20 }}>
-      <div className="bg-card text-foreground rounded-2xl shadow-2xl w-full max-w-md mx-2 p-6 sm:p-8 relative flex flex-col border border-border transition-colors">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4" style={{ background: "rgba(0,0,0,0.15)", zIndex: 20 }}>
+      <div className="relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-md flex-col overflow-y-auto rounded-2xl border border-border bg-card p-6 text-foreground shadow-2xl transition-colors sm:p-8">
         <button className="absolute top-4 right-4 text-muted-foreground hover:text-foreground text-2xl" onClick={onClose} aria-label="Close">&times;</button>
         <div className="flex flex-col items-center mb-4">
           <img src="/finsight-logo.png" alt="FinSight Logo" className="w-20 h-20 mb-2" />

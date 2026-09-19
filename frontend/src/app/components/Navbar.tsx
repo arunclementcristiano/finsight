@@ -57,7 +57,7 @@ export default function Navbar({ items, appName = "FinSight", userInitials = "FS
   }
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-white/10 bg-[#10251d] text-white md:flex">
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-white/10 bg-[#10251d] text-white lg:flex">
       <div className="flex h-20 items-center border-b border-white/10 px-6">
         <Link href="/" className="group flex items-center gap-3" aria-label="FinSight home">
           <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-400 text-[#10251d] shadow-[0_8px_24px_rgba(52,211,153,0.2)]">

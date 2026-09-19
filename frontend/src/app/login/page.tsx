@@ -69,11 +69,11 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background text-foreground relative overflow-hidden">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background text-foreground">
       {open && (
-        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: "rgba(0,0,0,0.15)", zIndex: 10 }}>
-          <div className="bg-card text-foreground rounded-2xl shadow-2xl w-full max-w-md mx-2 sm:mx-0 p-6 sm:p-8 relative transition-colors duration-300 flex flex-col border border-border">
-            <button className="absolute top-4 right-4 text-muted-foreground hover:text-foreground text-2xl" onClick={() => setOpen(false)} aria-label="Close">&times;</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/15 p-3 sm:p-4">
+          <div className="relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-md flex-col overflow-y-auto rounded-2xl border border-border bg-card p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-foreground shadow-2xl transition-colors duration-300 sm:max-h-[calc(100dvh-2rem)] sm:p-8">
+            <button className="absolute right-3 top-3 grid h-11 w-11 place-items-center rounded-full text-2xl text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setOpen(false)} aria-label="Close">&times;</button>
             <div className="flex flex-col items-center mb-6">
               <img src="/finsight-logo.png" alt="FinSight Logo" className="w-20 h-20 mb-4" />
             </div>

@@ -236,7 +236,7 @@ export default function PlanSummary({
     <div className="space-y-3">
       <Card>
         <CardHeader className="py-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <CardTitle className="text-base">
                 Allocation
@@ -245,24 +245,24 @@ export default function PlanSummary({
                 Target mix and details
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end">
               {mode !== 'custom' ? (
-                <Button variant="outline" leftIcon={<Edit3 className="h-4 w-4 text-sky-600" />} onClick={onEditAnswers}>
+                <Button className="w-full sm:w-auto" variant="outline" leftIcon={<Edit3 className="h-4 w-4 text-sky-600" />} onClick={onEditAnswers}>
                   Adjust Risk Profile
                 </Button>
               ) : null}
               {mode !== 'custom' && (
-                <Button variant="outline" leftIcon={<Target className="h-4 w-4 text-amber-600" />} onClick={()=> { if (setGoalsPanelOpen) setGoalsPanelOpen(true); else setGoalsOpen(true); }}>
+                <Button className="w-full sm:w-auto" variant="outline" leftIcon={<Target className="h-4 w-4 text-amber-600" />} onClick={()=> { if (setGoalsPanelOpen) setGoalsPanelOpen(true); else setGoalsOpen(true); }}>
                   Investment Goals
                 </Button>
               )}
               {mode !== 'custom' ? (
-                <div className="inline-flex items-center gap-2 ml-2">
+                <div className="inline-flex min-h-11 items-center justify-between gap-2 rounded-xl border border-border px-3 sm:ml-2 sm:min-h-0 sm:border-0 sm:px-0">
                   <Sparkles className="h-4 w-4 text-amber-500" />
                   <span className="text-[11px] text-muted-foreground">
                     AI Assist
                   </span>
-                  <button type="button" onClick={onToggleAiView} disabled={!!aiLoading || !!aiDisabled} className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${aiViewOn?"bg-gradient-to-r from-amber-500 via-fuchsia-500 to-indigo-600":"bg-muted"}`}>
+				  <button type="button" aria-label="Toggle AI allocation assistance" aria-pressed={aiViewOn} onClick={onToggleAiView} disabled={!!aiLoading || !!aiDisabled} className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${aiViewOn?"bg-gradient-to-r from-amber-500 via-fuchsia-500 to-indigo-600":"bg-muted"}`}>
                     <span className={`inline-block h-5 w-5 transform rounded-full bg-white dark:bg-zinc-900 shadow transition-transform ${aiViewOn?"translate-x-6":"translate-x-1"}`}></span>
                   </button>
                 </div>
@@ -273,7 +273,42 @@ export default function PlanSummary({
         <CardContent className="pt-0">
           {plan ? (
             <>
-            <div className="rounded-xl border border-border overflow-auto max-h-72">
+            <div className="space-y-3 sm:hidden">
+              {visibleBuckets.map((b: any) => {
+                const rawBand = (Array.isArray(b.range) ? b.range as [number, number] : [0, 100]);
+                const bandMin = Math.round(Number(rawBand[0]) || 0);
+                const bandMax = Math.round(Number(rawBand[1]) || 100);
+                const valueNow = Number.isFinite(Number(b.pct)) ? Math.round(Number(b.pct)) : 0;
+                const role = b.riskCategory || (b.class === 'Stocks' || b.class === 'Equity MF' ? 'Core' : (b.class === 'Gold' || b.class === 'Real Estate' ? 'Satellite' : (b.class === 'Debt' || b.class === 'Liquid' ? 'Defensive' : '')));
+                const notes = b.notes || (b.class === 'Stocks' ? 'Growth focus' : b.class === 'Equity MF' ? 'Diversified equity' : b.class === 'Debt' ? 'Stability & income' : b.class === 'Liquid' ? 'Emergency buffer' : b.class === 'Gold' ? 'Inflation hedge' : b.class === 'Real Estate' ? 'Long-term asset' : '');
+                return (
+                  <article key={b.class} className="rounded-xl border border-border p-3">
+                    <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="break-words font-semibold">{b.class}</h3><p className="mt-1 text-xs text-muted-foreground">{role}{notes ? ` · ${notes}` : ''}</p></div><span className="shrink-0 font-semibold">{valueNow}%</span></div>
+                    <input
+                      className="range-line mt-4 h-11 w-full appearance-none"
+                      type="range"
+                      step={1}
+                      min={0}
+                      max={100}
+                      value={valueNow}
+                      aria-label={`${b.class} allocation`}
+                      disabled={!!aiViewOn}
+                      onChange={(e) => {
+                        const v = Math.round(Math.max(0, Math.min(100, Number(e.target.value) || 0)));
+                        if (mode !== 'custom' && (v < bandMin || v > bandMax)) {
+                          const edge = v < bandMin ? 'min' : 'max';
+                          const val = v < bandMin ? bandMin : bandMax;
+                          setEdgeHit(prev => ({ ...(prev || {}), [b.class]: { edge, val } }));
+                          setTimeout(() => setEdgeHit(prev => ({ ...(prev || {}), [b.class]: null })), 2000);
+                        }
+                        if (onChangeBucketPct) onChangeBucketPct((plan.buckets as any[]).findIndex((x: any) => x.class === b.class), v);
+                      }}
+                    />
+                  </article>
+                );
+              })}
+            </div>
+            <div className="hidden max-h-72 overflow-auto rounded-xl border border-border sm:block">
               <table className="w-full text-left text-xs">
                 <thead className="bg-card sticky top-0 z-10">
                   <tr>
@@ -402,19 +437,19 @@ export default function PlanSummary({
         </>
       )}>
         <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs">
+          <div className="flex flex-col gap-2 text-xs sm:flex-row sm:items-center sm:justify-between">
             <div className="text-muted-foreground">Mode</div>
             <div className="inline-flex items-center gap-2">
               <span className="px-2 py-0.5 rounded border border-border bg-muted">Proposal</span>
             </div>
           </div>
-          <div className="flex items-center justify-between text-xs">
+          <div className="flex flex-col gap-2 text-xs sm:flex-row sm:items-start sm:justify-between">
             <div className="text-muted-foreground">Options</div>
-            <div className="inline-flex items-center gap-3">
-              <label className="inline-flex items-center gap-1"><input type="checkbox" checked={rebalanceOn} onChange={e=> setRebalanceOn(e.target.checked)} /> <span>Propose suggested rebalance</span></label>
-              <label className="inline-flex items-center gap-1"><input type="checkbox" checked={optUseGoals} onChange={e=> setOptUseGoals(e.target.checked)} /> <span>Use goals</span></label>
-              <label className="inline-flex items-center gap-1"><input type="checkbox" checked={optCashOnly} onChange={e=> setOptCashOnly(e.target.checked)} /> <span>Contributions only</span></label>
-              <label className="inline-flex items-center gap-1">Turnover cap <input type="number" min={0} max={10} className="w-14 rounded border border-border bg-background px-1 py-0.5" value={optTurnoverPct} onChange={e=> setOptTurnoverPct(Math.max(0, Math.min(10, Math.round(Number(e.target.value)||0))))} />%</label>
+            <div className="grid gap-1.5 sm:grid-cols-2">
+              <label className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-2 sm:min-h-0 sm:border-0 sm:px-0"><input type="checkbox" checked={rebalanceOn} onChange={e=> setRebalanceOn(e.target.checked)} /> <span>Propose suggested rebalance</span></label>
+              <label className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-2 sm:min-h-0 sm:border-0 sm:px-0"><input type="checkbox" checked={optUseGoals} onChange={e=> setOptUseGoals(e.target.checked)} /> <span>Use goals</span></label>
+              <label className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-2 sm:min-h-0 sm:border-0 sm:px-0"><input type="checkbox" checked={optCashOnly} onChange={e=> setOptCashOnly(e.target.checked)} /> <span>Contributions only</span></label>
+              <label className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-2 sm:min-h-0 sm:border-0 sm:px-0">Turnover cap <input type="number" min={0} max={10} className="min-h-9 w-16 rounded border border-border bg-background px-2 py-1" value={optTurnoverPct} onChange={e=> setOptTurnoverPct(Math.max(0, Math.min(10, Math.round(Number(e.target.value)||0))))} />%</label>
             </div>
           </div>
           {proposeError ? <div className="text-[11px] text-rose-600">{proposeError}</div> : null}
@@ -425,7 +460,7 @@ export default function PlanSummary({
           {proposal?.afterMix ? (
             <div className="mt-2 rounded-md border border-border p-2">
               <div className="text-xs font-medium mb-1">Suggested mix</div>
-              <div className="grid grid-cols-2 gap-1 text-xs">
+              <div className="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2">
                 {Object.keys(proposal.afterMix).map((k)=> (
                   <div key={`mix-${k}`} className="flex items-center justify-between"><span>{k}</span><span>{Math.round(Number(proposal.afterMix[k]||0))}%</span></div>
                 ))}
@@ -436,9 +471,9 @@ export default function PlanSummary({
             <div className="space-y-2">
               {proposal.trades.map((it:any)=> (
                 <div key={`prop-${it.class}`} className="rounded-md border border-border p-2 text-xs">
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium">{it.class}</div>
-                    <div className={it.action==='Increase' ? 'text-indigo-600' : 'text-rose-600'}>{it.action} {it.amount.toFixed(0)}</div>
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="break-words font-medium">{it.class}</div>
+                    <div className={`break-words ${it.action==='Increase' ? 'text-indigo-600' : 'text-rose-600'}`}>{it.action} {it.amount.toFixed(0)}</div>
                   </div>
                   <div className="mt-1 text-muted-foreground">{it.actualPct}% → {it.targetPct}% · reason: {it.reason}</div>
                 </div>
@@ -451,7 +486,6 @@ export default function PlanSummary({
         </div>
       </Modal>
 
-      {/* Rebalance Options Section */}
       {/* Rebalance Options Section */}
       <Card className="mt-4">
         <CardHeader 
@@ -471,10 +505,10 @@ export default function PlanSummary({
         </CardHeader>
         {rebalanceOptionsExpanded && (
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex flex-col gap-2 text-xs sm:flex-row sm:items-start sm:justify-between">
               <div className="text-muted-foreground">Options</div>
-              <div className="inline-flex items-center gap-3">
-                <label className="inline-flex items-center gap-1">
+              <div className="grid gap-1.5 sm:grid-cols-2">
+                <label className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-2 sm:min-h-0 sm:border-0 sm:px-0">
                   <input 
                     type="checkbox" 
                     checked={rebalanceOn} 
@@ -482,7 +516,7 @@ export default function PlanSummary({
                   /> 
                   <span>Propose suggested rebalance</span>
                 </label>
-                <label className="inline-flex items-center gap-1">
+                <label className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-2 sm:min-h-0 sm:border-0 sm:px-0">
                   <input 
                     type="checkbox" 
                     checked={optUseGoals} 
@@ -490,7 +524,7 @@ export default function PlanSummary({
                   /> 
                   <span>Use goals</span>
                 </label>
-                <label className="inline-flex items-center gap-1">
+                <label className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-2 sm:min-h-0 sm:border-0 sm:px-0">
                   <input 
                     type="checkbox" 
                     checked={optCashOnly} 
@@ -498,13 +532,13 @@ export default function PlanSummary({
                   /> 
                   <span>Contributions only</span>
                 </label>
-                <label className="inline-flex items-center gap-1">
+                <label className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-2 sm:min-h-0 sm:border-0 sm:px-0">
                   Turnover cap 
                   <input 
                     type="number" 
                     min={0} 
                     max={10} 
-                    className="w-14 rounded border border-border bg-background px-1 py-0.5" 
+                    className="min-h-9 w-16 rounded border border-border bg-background px-2 py-1"
                     value={optTurnoverPct} 
                     onChange={e=> setOptTurnoverPct(Math.max(0, Math.min(10, Math.round(Number(e.target.value)||0))))} 
                   />%

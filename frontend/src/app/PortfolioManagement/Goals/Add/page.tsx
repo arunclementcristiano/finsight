@@ -21,42 +21,42 @@ export default function AddGoalMobilePage() {
 	}
 
 	return (
-		<div className="max-w-full space-y-4 pl-2">
+		<div className="min-w-0 space-y-5">
 			{/* Header */}
-			<div className="flex items-center justify-between">
+			<div className="flex items-center justify-between gap-3">
 				<div className="flex items-center gap-2">
-					<div className="text-sm text-muted-foreground">Add Goal</div>
+					<h1 className="text-sm font-medium text-muted-foreground">Add Goal</h1>
 				</div>
-				<button className="h-9 w-9 rounded-md hover:bg-muted" onClick={()=> window.history.back()}>✕</button>
+				<button aria-label="Close goal form" className="h-11 w-11 rounded-md hover:bg-muted" onClick={()=> window.history.back()}>✕</button>
 			</div>
 			<div className="rounded-xl border border-border bg-card">
 				<div className="p-4 border-b border-border text-sm font-medium">Goal Details</div>
 				<div className="p-4 space-y-3">
 					<div>
-						<div className="text-[11px] text-muted-foreground mb-1">Name</div>
-						<Input value={form.name} onChange={e=> setForm({...form, name: e.target.value})} placeholder="e.g., Home Down Payment" />
+						<label htmlFor="goal-name" className="mb-1 block text-[11px] text-muted-foreground">Name</label>
+						<Input id="goal-name" value={form.name} onChange={e=> setForm({...form, name: e.target.value})} placeholder="e.g., Home Down Payment" />
 					</div>
-					<div className="grid grid-cols-2 gap-3">
+					<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 						<div>
-							<div className="text-[11px] text-muted-foreground mb-1">Target amount (₹)</div>
-							<Input type="number" value={form.targetAmount} onChange={e=> setForm({...form, targetAmount: e.target.value})} />
+							<label htmlFor="goal-target-amount" className="mb-1 block text-[11px] text-muted-foreground">Target amount (₹)</label>
+							<Input id="goal-target-amount" type="number" value={form.targetAmount} onChange={e=> setForm({...form, targetAmount: e.target.value})} />
 						</div>
 						<div>
-							<div className="text-[11px] text-muted-foreground mb-1">Target date</div>
-							<Input type="date" value={form.targetDate} onChange={e=> setForm({...form, targetDate: e.target.value})} />
+							<label htmlFor="goal-target-date" className="mb-1 block text-[11px] text-muted-foreground">Target date</label>
+							<Input id="goal-target-date" type="date" value={form.targetDate} onChange={e=> setForm({...form, targetDate: e.target.value})} />
 						</div>
 					</div>
 					<div>
-						<div className="text-[11px] text-muted-foreground mb-1">Priority</div>
-						<select value={form.priority} onChange={e=> setForm({...form, priority: e.target.value as any})} className="w-full rounded-xl border border-border bg-background px-3 py-2">
+						<label htmlFor="goal-priority" className="mb-1 block text-[11px] text-muted-foreground">Priority</label>
+						<select id="goal-priority" value={form.priority} onChange={e=> setForm({...form, priority: e.target.value as any})} className="min-h-11 w-full rounded-xl border border-border bg-background px-3 py-2">
 							<option value="low">Low</option>
 							<option value="medium">Medium</option>
 							<option value="high">High</option>
 						</select>
 					</div>
-					<div className="flex items-center justify-between pt-2">
-						<Button variant="outline" size="sm" onClick={()=> window.history.back()}>Cancel</Button>
-						<Button size="sm" onClick={save}>Save</Button>
+					<div className="grid grid-cols-2 gap-2 pt-2 sm:flex sm:items-center sm:justify-between">
+						<Button className="min-h-11 sm:min-h-0" variant="outline" size="sm" onClick={()=> window.history.back()}>Cancel</Button>
+						<Button className="min-h-11 sm:min-h-0" size="sm" onClick={save}>Save</Button>
 					</div>
 					{confirm ? <div className="text-xs text-emerald-600">{confirm}</div> : null}
 				</div>
@@ -64,4 +64,3 @@ export default function AddGoalMobilePage() {
 		</div>
 	);
 }
-

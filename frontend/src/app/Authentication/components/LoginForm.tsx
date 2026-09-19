@@ -59,8 +59,8 @@ export default function LoginForm({ email, password, onEmailChange, onPasswordCh
         </label>
         <button
           type="button"
+		  aria-label={showPassword ? "Hide password" : "Show password"}
           className="absolute right-2 top-3 flex items-center justify-center w-8 h-8 text-muted-foreground hover:text-foreground focus:outline-none"
-          tabIndex={-1}
           onClick={() => setShowPassword(v => !v)}
         >
           {showPassword ? (

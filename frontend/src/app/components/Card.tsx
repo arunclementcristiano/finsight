@@ -4,7 +4,7 @@ import { cn } from "./utils";
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 export function Card({ className, ...props }: CardProps) {
-	return <div className={cn("rounded-2xl border border-border/80 bg-card text-[color:var(--color-card-foreground)] shadow-[0_1px_2px_rgba(16,24,20,0.03),0_12px_32px_rgba(16,24,20,0.04)]", className)} {...props} />;
+	return <div className={cn("min-w-0 rounded-2xl border border-border/80 bg-card text-[color:var(--color-card-foreground)] shadow-[0_1px_2px_rgba(16,24,20,0.03),0_12px_32px_rgba(16,24,20,0.04)]", className)} {...props} />;
 }
 
 export function CardHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {

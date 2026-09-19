@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/Card';
 import { Button } from '../../components/Button';
-import { formatCurrency, formatNumber } from '../../utils/format';
+import { formatCurrency } from '../../utils/format';
 
 interface Goal {
   id: string;
@@ -61,17 +62,18 @@ function sipAdvice(goal: Goal): string {
 }
 
 export default function GoalsDashboardPage() {
+	const router = useRouter();
   const goals = useGoals();
   const active = goals.filter(g=> g.isActive);
 
   return (
-    <div className="max-w-full space-y-4 pl-2">
-      <div className="flex items-center justify-between">
+    <div className="min-w-0 space-y-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
-          <div className="text-sm text-muted-foreground">Goals Dashboard</div>
+		  <h1 className="text-sm font-medium text-muted-foreground">Goals Dashboard</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={()=> window.location.assign('/PortfolioManagement/Plan?goals=open')}>Add / Edit Goals</Button>
+		  <Button className="min-h-11 w-full sm:min-h-0 sm:w-auto" variant="outline" size="sm" onClick={()=> router.push('/PortfolioManagement/Plan?goals=open')}>Add / Edit Goals</Button>
         </div>
       </div>
 
@@ -114,20 +116,20 @@ export default function GoalsDashboardPage() {
                 const advice = sipAdvice(g);
                 return (
                   <div key={g.id} className="rounded border border-border p-2">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm font-medium">{g.name}</div>
-                      <div className="text-[11px] text-muted-foreground">Target: {new Date(g.targetDate).toISOString().slice(0,10)}</div>
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0 break-words text-sm font-medium">{g.name}</div>
+                      <div className="shrink-0 text-[11px] text-muted-foreground">Target: {new Date(g.targetDate).toISOString().slice(0,10)}</div>
                     </div>
-                    <div className="mt-1 grid grid-cols-3 gap-2 text-xs">
-                      <div>
+                    <div className="mt-3 grid grid-cols-2 gap-3 text-xs sm:grid-cols-3">
+                      <div className="min-w-0">
                         <div className="text-[11px] text-muted-foreground">Target</div>
-                        <div className="font-medium">{formatCurrency(Number(g.targetAmount)||0)}</div>
+                        <div className="break-words font-medium">{formatCurrency(Number(g.targetAmount)||0)}</div>
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <div className="text-[11px] text-muted-foreground">Progress</div>
-                        <div className="font-medium">{formatCurrency(Number(g.currentProgress)||0)} ({pct}%)</div>
+                        <div className="break-words font-medium">{formatCurrency(Number(g.currentProgress)||0)} ({pct}%)</div>
                       </div>
-                      <div>
+                      <div className="col-span-2 min-w-0 sm:col-span-1">
                         <div className="text-[11px] text-muted-foreground">Status</div>
                         <div className={`font-medium ${label==='Behind'?'text-rose-600': label==='Ahead'?'text-emerald-600':'text-amber-600'}`}>{label}</div>
                       </div>
@@ -164,9 +166,9 @@ export default function GoalsDashboardPage() {
         <CardContent className="pt-0">
           <div className="space-y-2 text-xs">
             {[...active].sort((a,b)=> new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime()).map(g=> (
-              <div key={`timeline-${g.id}`} className="flex items-center justify-between rounded border border-border p-2">
-                <div className="font-medium">{g.name}</div>
-                <div className="text-[11px] text-muted-foreground">{new Date(g.targetDate).toISOString().slice(0,10)}</div>
+              <div key={`timeline-${g.id}`} className="flex flex-col gap-1 rounded border border-border p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 break-words font-medium">{g.name}</div>
+                <div className="shrink-0 text-[11px] text-muted-foreground">{new Date(g.targetDate).toISOString().slice(0,10)}</div>
               </div>
             ))}
           </div>
