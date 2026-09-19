@@ -82,7 +82,7 @@ export default function PortfolioInsightsPage() {
 			const monthName = date.toLocaleDateString('en-US', { month: 'short' });
 			
 			// Add some realistic variation
-			const variation = (Math.random() - 0.5) * 0.2; // ±10% variation
+			const variation = Math.sin((i + 1) * 1.7) * 0.08;
 			baseValue = baseValue * (1 + variation);
 			
 			months.push({
@@ -163,7 +163,7 @@ export default function PortfolioInsightsPage() {
 		}).sort((a: any, b: any) => Math.abs(b.delta) - Math.abs(a.delta));
 		
 		return { targetByClass, actualByClass, driftAnalysis };
-	}, [plan, portfolioAnalytics, driftTolerancePct]);
+	}, [plan, portfolioAnalytics.current, portfolioAnalytics.assetBreakdown, driftTolerancePct]);
 
 	// Goals analysis
 	const goalsAnalysis = useMemo(() => {
@@ -337,13 +337,16 @@ export default function PortfolioInsightsPage() {
 											cy="50%"
 											outerRadius={100}
 											fill="#8884d8"
-											label={({ assetClass, currentPct }) => `${assetClass}: ${formatNumber(currentPct, 1)}%`}
+											label={(props) => {
+												const item = props as unknown as { assetClass: string; currentPct: number };
+												return `${item.assetClass}: ${formatNumber(item.currentPct, 1)}%`;
+											}}
 										>
 											{portfolioAnalytics.assetBreakdown.map((entry, index) => (
 												<Cell key={`cell-${index}`} fill={`hsl(${index * 60}, 70%, 50%)`} />
 											))}
 										</Pie>
-										<Tooltip formatter={(value: any, name: string) => [`${formatNumber(value, 1)}%`, name]} />
+										<Tooltip formatter={(value, name) => [`${formatNumber(Number(value ?? 0), 1)}%`, String(name ?? "")]} />
 									</PieChart>
 								</ResponsiveContainer>
 							</div>
@@ -773,4 +776,3 @@ export default function PortfolioInsightsPage() {
 		</div>
 	);
 }
-

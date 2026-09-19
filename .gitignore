@@ -77,3 +77,6 @@ terraform/README_OLD.md
 frontend/.env
 terraform/response.json
 terraform/terraform.tfvars.example
+
+# Keep the frontend dependency graph reproducible.
+!frontend/package-lock.json

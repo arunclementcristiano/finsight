@@ -73,6 +73,7 @@ interface AppState {
 	setPortfolios: (items: Array<{ id: string; name: string; createdAt?: string }>) => void;
 	setActivePortfolio: (id: string) => void;
 	addHolding: (h: Holding) => void;
+	setHoldings: (holdings: Holding[]) => void;
 	updateHolding: (id: string, updates: Partial<Holding>) => void;
 	deleteHolding: (id: string) => void;
 	setDriftTolerancePct: (v: number) => void;
@@ -137,6 +138,7 @@ export const useApp = create<AppState>()(
 			setPortfolios: (items: Array<{ id: string; name: string; createdAt?: string }>) => set(() => ({ portfolios: items })),
 			setActivePortfolio: (id: string) => set(() => ({ activePortfolioId: id })),
 			addHolding: (h: Holding) => set((state: AppState) => ({ holdings: [...state.holdings, h] })),
+			setHoldings: (holdings: Holding[]) => set(() => ({ holdings: [...holdings] })),
 			updateHolding: (id: string, updates: Partial<Holding>) => set((state: AppState) => ({ holdings: state.holdings.map(h => (h.id === id ? { ...h, ...updates } : h)) })),
 			deleteHolding: (id: string) => set((state: AppState) => ({ holdings: state.holdings.filter(h => h.id !== id) })), 
 			setDriftTolerancePct: (v: number) => set(() => ({ driftTolerancePct: Math.min(10, Math.max(3, Math.round(v))) })),
@@ -178,10 +180,6 @@ export const useApp = create<AppState>()(
 		{
 			name: "finsight-v3",
 			storage: createJSONStorage(() => localStorage),
-			partialize: (state: any) => {
-				const { plan, ...rest } = state || {};
-				return rest;
-			},
 		}
 	)
 );

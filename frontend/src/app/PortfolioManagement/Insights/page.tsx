@@ -44,7 +44,7 @@ export default function InsightsPage() {
                   <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                     <XAxis dataKey="class" stroke="#888" fontSize={13} />
                     <YAxis stroke="#888" fontSize={13} />
-                    <Tooltip formatter={(value: number, name: string, props: any) => [`${value}% drift`, props.payload.action]} />
+                    <Tooltip formatter={(value, _name, props) => [`${Number(value ?? 0)}% drift`, props.payload.action]} />
                     <Bar dataKey="drift" radius={[6, 6, 0, 0]}>
                       {chartData.map((entry, idx) => (
                         <Cell key={`cell-${idx}`} fill={entry.action === "Increase" ? "#6366f1" : "#f43f5e"} />
@@ -82,4 +82,3 @@ export default function InsightsPage() {
     </div>
   );
 }
-

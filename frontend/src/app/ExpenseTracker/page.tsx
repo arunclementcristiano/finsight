@@ -14,6 +14,7 @@ import { Chart, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElem
 Chart.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
 const API_BASE = process.env.NEXT_PUBLIC_EXPENSES_API || "/api/expenses";
+const HAS_REMOTE_EXPENSES = Boolean(process.env.NEXT_PUBLIC_EXPENSES_API);
 
 export default function ExpenseTrackerPage() {
   const { expenses, setExpenses, addExpense, deleteExpense, categoryMemory, rememberCategory, categoryBudgets, setCategoryBudget, defaultCategoryBudgets, setDefaultCategoryBudgets } = useApp() as any;
@@ -86,6 +87,7 @@ export default function ExpenseTrackerPage() {
   }
 
   async function fetchList() {
+    if (!HAS_REMOTE_EXPENSES) return;
     try {
       const res = await fetch(`${API_BASE}/list`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", limit: 1000, page: 1 }) });
       const data = await res.json();
@@ -137,9 +139,26 @@ export default function ExpenseTrackerPage() {
 
   async function handleDelete(expenseId: string) {
     try {
-      await fetch(`${API_BASE}/delete`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expenseId }) });
+      if (HAS_REMOTE_EXPENSES) {
+        await fetch(`${API_BASE}/delete`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expenseId }) });
+      }
       deleteExpense(expenseId);
     } catch {}
+  }
+
+  async function persistExpense(rawText: string, category: string, amount: number) {
+    if (!HAS_REMOTE_EXPENSES) return uuidv4();
+    const response = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category, amount, date: dateOpen ? selectedDate : undefined }) });
+    const saved = await response.json();
+    if (!response.ok || !saved?.ok) throw new Error(saved?.error || "Could not save expense");
+    return saved.expenseId || uuidv4();
+  }
+
+  function recordExpense(id: string, rawText: string, category: string, amount: number) {
+    addExpense({ id, text: rawText, amount, category, date: dateOpen ? selectedDate : new Date().toISOString().slice(0, 10), createdAt: new Date().toISOString(), note: rawText });
+    setInput("");
+    inputRef.current?.focus();
+    resetDatePicker();
   }
 
   function resetDatePicker() {
@@ -157,28 +176,16 @@ export default function ExpenseTrackerPage() {
       // Instant local rules path for zero-lag UX
       const parsed = parseExpenseInput(rawText);
       if (parsed.category && typeof parsed.amount === "number") {
-        const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: parsed.category, amount: parsed.amount, date: dateOpen ? selectedDate : undefined }) });
-        const saved = await put.json();
-        if (saved && saved.ok) {
-          addExpense({ id: saved.expenseId || uuidv4(), text: rawText, amount: parsed.amount, category: parsed.category as string, date: (dateOpen ? selectedDate : new Date().toISOString().slice(0,10)), createdAt: new Date().toISOString(), note: rawText });
-          setInput("");
-          inputRef.current?.focus();
-          resetDatePicker();
-          return;
-        }
+        const id = await persistExpense(rawText, parsed.category, parsed.amount);
+        recordExpense(id, rawText, parsed.category, parsed.amount);
+        return;
       }
       // Local memory fallback (from previous acknowledgments)
       const memCat = suggestCategory(rawText, categoryMemory as any);
       if (!parsed.category && memCat && typeof parsed.amount === "number") {
-        const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: memCat, amount: parsed.amount, date: dateOpen ? selectedDate : undefined }) });
-        const saved = await put.json();
-        if (saved && saved.ok) {
-          addExpense({ id: saved.expenseId || uuidv4(), text: rawText, amount: parsed.amount, category: memCat, date: (dateOpen ? selectedDate : new Date().toISOString().slice(0,10)), createdAt: new Date().toISOString(), note: rawText });
-          setInput("");
-          inputRef.current?.focus();
-          resetDatePicker();
-          return;
-        }
+        const id = await persistExpense(rawText, memCat, parsed.amount);
+        recordExpense(id, rawText, memCat, parsed.amount);
+        return;
       }
       const res = await fetch(`${API_BASE}/add`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText }) });
       const data = await res.json();
@@ -190,15 +197,9 @@ export default function ExpenseTrackerPage() {
       }
       // Auto-save if rules/memory matched
       if (data && data.category && typeof data.amount === "number" && isFinite(data.amount)) {
-        const put = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText, category: data.category, amount: data.amount, date: dateOpen ? selectedDate : undefined }) });
-        const saved = await put.json();
-        if (saved && saved.ok) {
-          addExpense({ id: saved.expenseId || uuidv4(), text: rawText, amount: data.amount, category: data.category, date: (dateOpen ? selectedDate : new Date().toISOString().slice(0,10)), createdAt: new Date().toISOString(), note: rawText });
-          setInput("");
-          inputRef.current?.focus();
-          resetDatePicker();
-          return;
-        }
+        const id = await persistExpense(rawText, data.category, data.amount);
+        recordExpense(id, rawText, data.category, data.amount);
+        return;
       }
       // Missing amount or unknown category
       setAi({ amount: data?.amount, category: data?.category, options: data?.options, AIConfidence: data?.AIConfidence, raw: rawText });
@@ -211,15 +212,9 @@ export default function ExpenseTrackerPage() {
     const amountFinal = Number(amountStr || ai.amount || 0);
     if (!categoryFinal || !isFinite(amountFinal)) return;
     try {
-      const res = await fetch(`${API_BASE}/add`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: "demo", rawText: ai.raw, category: categoryFinal, amount: amountFinal, date: dateOpen ? selectedDate : undefined }) });
-      const data = await res.json();
-      if (data.ok) {
-        addExpense({ id: data.expenseId || uuidv4(), text: ai.raw, amount: amountFinal, category: categoryFinal, date: (dateOpen ? selectedDate : new Date().toISOString().slice(0,10)), createdAt: new Date().toISOString(), note: ai.raw });
-        setAi(null);
-        setInput("");
-        inputRef.current?.focus();
-        resetDatePicker();
-      }
+      const id = await persistExpense(ai.raw, categoryFinal, amountFinal);
+      recordExpense(id, ai.raw, categoryFinal, amountFinal);
+      setAi(null);
     } catch {}
   }
 

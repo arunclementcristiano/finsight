@@ -196,7 +196,7 @@ export default function GoalsPanel({ isOpen, onClose, onGoalsUpdated, baselinePl
               <div className="fixed inset-0 z-[62] flex items-center justify-center bg-black/40">
                 <div className="w-full max-w-sm rounded-xl border border-border bg-card p-4">
                   <div className="text-sm font-medium mb-2">Delete goal?</div>
-                  <div className="text-xs text-muted-foreground mb-3">This action cannot be undone. "{deleting.name}" will be removed.</div>
+				  <div className="text-xs text-muted-foreground mb-3">This action cannot be undone. “{deleting.name}” will be removed.</div>
                   <div className="flex items-center justify-end gap-2">
                     <Button variant="outline" onClick={()=> setDeleting(null)}>Cancel</Button>
                     <Button variant="danger" onClick={doDelete}>Delete</Button>

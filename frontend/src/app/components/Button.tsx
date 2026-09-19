@@ -21,11 +21,11 @@ export function Button({
 }: ButtonProps) {
   const variantClasses: Record<ButtonVariant, string> = {
     primary:
-      "bg-gradient-to-r from-emerald-500 to-indigo-600 text-white hover:from-emerald-600 hover:to-indigo-700 focus-visible:ring-[var(--color-ring)]",
+      "bg-[#167a5b] text-white hover:bg-[#116348] focus-visible:ring-[var(--color-ring)] dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400",
     secondary:
       "bg-muted text-foreground hover:bg-slate-200/80 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700",
     outline:
-      "border border-border text-foreground hover:bg-muted",
+      "border border-border bg-card text-foreground hover:border-[#a9b8b0] hover:bg-muted",
     ghost:
       "text-foreground hover:bg-muted",
     danger:
@@ -41,7 +41,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center rounded-xl font-medium shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50 disabled:pointer-events-none",
+        "inline-flex items-center justify-center rounded-xl font-semibold shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:pointer-events-none active:translate-y-px",
         variantClasses[variant],
         sizeClasses[size],
         className

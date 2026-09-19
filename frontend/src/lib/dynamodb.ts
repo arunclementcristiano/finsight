@@ -48,7 +48,7 @@ export interface TransformedFund {
 // Types for holdings
 export interface HoldingData {
   id: string;
-  user_id: string;
+  user_id?: string;
   instrumentClass: string;
   name: string;
   symbol?: string;
@@ -58,8 +58,8 @@ export interface HoldingData {
   currentValue?: number;
   asset_class?: string;
   portfolio_role?: string;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // API Base URLs for segregated Lambda functions
@@ -68,6 +68,26 @@ const PORTFOLIO_API_BASE = process.env.NEXT_PUBLIC_API_BASE_PORTFOLIO || "";
 
 // Legacy support - if new variables aren't set, fall back to old one
 const API_BASE = PORTFOLIO_API_BASE || process.env.NEXT_PUBLIC_API_BASE || "";
+
+function holdingsStorageKey(portfolioId: string) {
+  return `finsight-holdings-${portfolioId}`;
+}
+
+function readLocalHoldings(portfolioId: string): HoldingData[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const stored = window.localStorage.getItem(holdingsStorageKey(portfolioId));
+    return stored ? JSON.parse(stored) as HoldingData[] : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalHoldings(portfolioId: string, holdings: HoldingData[]) {
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(holdingsStorageKey(portfolioId), JSON.stringify(holdings));
+  }
+}
 
 // Cache for mutual fund data with daily refresh at 6 AM
 let mfCache: { data: TransformedFund[]; timestamp: number } | null = null;
@@ -164,7 +184,13 @@ export async function searchFundsByName(searchTerm: string): Promise<Transformed
 
 export async function saveHolding(holding: HoldingData): Promise<boolean> {
   if (!API_BASE) {
-    throw new Error('API_BASE not configured');
+    const portfolioId = holding.user_id || "default";
+    const current = readLocalHoldings(portfolioId);
+    const next = current.some(item => item.id === holding.id)
+      ? current.map(item => item.id === holding.id ? holding : item)
+      : [holding, ...current];
+    writeLocalHoldings(portfolioId, next);
+    return true;
   }
 
   try {
@@ -190,7 +216,7 @@ export async function saveHolding(holding: HoldingData): Promise<boolean> {
 
 export async function fetchUserHoldings(userId: string): Promise<HoldingData[]> {
   if (!API_BASE) {
-    throw new Error('API_BASE not configured');
+    return readLocalHoldings(userId);
   }
 
   try {
@@ -209,7 +235,8 @@ export async function fetchUserHoldings(userId: string): Promise<HoldingData[]> 
 
 export async function deleteHolding(holdingId: string, portfolioId: string): Promise<boolean> {
   if (!API_BASE) {
-    throw new Error('API_BASE not configured');
+    writeLocalHoldings(portfolioId, readLocalHoldings(portfolioId).filter(item => item.id !== holdingId));
+    return true;
   }
 
   try {

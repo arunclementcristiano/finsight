@@ -8,6 +8,7 @@ import { v4 as uuidv4 } from "uuid";
 import { Card as PlanCard, CardContent as PlanCardContent, CardHeader as PlanCardHeader, CardTitle as PlanCardTitle } from "../../../components/Card";
 import { Button } from "../../../components/Button";
 import { fetchMutualFundSchemes, searchFundsByName, TransformedFund, saveHolding, fetchUserHoldings, HoldingData, preloadMutualFundData, clearMFCache, deleteHolding } from "../../../../lib/dynamodb";
+import { useApp } from "../../../store";
 
 // Asset class colors for charts
 const CLASS_COLORS = {
@@ -61,7 +62,7 @@ const ROLE_INSTRUMENT_TYPES = {
 };
 
 // Auto-map instrument type to AssetClass
-function mapInstrumentTypeToAssetClass(instrumentType: string): AssetClass {
+function mapInstrumentTypeToAssetClass(instrumentType: string): string {
 	if (instrumentType.includes("MF")) return "Mutual Funds";
 	if (instrumentType.includes("Gold")) return "Gold";
 	if (instrumentType.includes("Real Estate") || instrumentType.includes("REIT") || instrumentType.includes("Property")) return "Real Estate";
@@ -85,7 +86,7 @@ function computeInvestedAmount(holding: HoldingData): number {
 	return 0;
 }
 
-function getRoleForAssetClass(assetClass: AssetClass): 'Equity' | 'Defensive' | 'Satellite' {
+function getRoleForAssetClass(assetClass: string): 'Equity' | 'Defensive' | 'Satellite' {
 	switch (assetClass) {
 		case 'Stocks':
 		case 'Mutual Funds':
@@ -101,12 +102,32 @@ function getRoleForAssetClass(assetClass: AssetClass): 'Equity' | 'Defensive' | 
 	}
 }
 
+interface HoldingForm {
+	instrumentClass: string;
+	name: string;
+	symbol: string;
+	units: string;
+	price: string;
+	investedAmount: string;
+	currentValue: string;
+	propertyType: string;
+	asset_class?: string;
+	portfolio_role?: string;
+}
+
 export default function HoldingsPage() {
 	const [holdings, setHoldings] = useState<HoldingData[]>([]);
+	const setAppHoldings = useApp(state => state.setHoldings);
 	
 	// Modal state
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingId, setEditingId] = useState<string | null>(null);
+
+	React.useEffect(() => {
+		if (new URLSearchParams(window.location.search).get("add") === "1") {
+			setIsModalOpen(true);
+		}
+	}, []);
 	
 	// Pagination state
 	const [currentPage, setCurrentPage] = useState(1);
@@ -122,7 +143,7 @@ export default function HoldingsPage() {
 	const [entryMode, setEntryMode] = useState<'units' | 'amount'>('units');
 	
 	// Store original values for edit mode reset
-	const [originalForm, setOriginalForm] = useState<HoldingData | null>(null);
+	const [originalForm, setOriginalForm] = useState<HoldingForm | null>(null);
 	
 	// Loading state for data refresh
 	const [isRefreshing, setIsRefreshing] = useState(false);
@@ -149,8 +170,8 @@ export default function HoldingsPage() {
 	];
 	
 	// Entry mode: 'units' or 'amount'
-	const [form, setForm] = useState({
-		instrumentClass: "Stocks" as AssetClass,
+	const [form, setForm] = useState<HoldingForm>({
+		instrumentClass: "Stocks",
 		name: "",
 		symbol: "",
 		units: "",
@@ -224,7 +245,7 @@ export default function HoldingsPage() {
 			// Transform DynamoDB holdings to local state format
 			const transformedHoldings = dbHoldings.map(dbHolding => ({
 				id: dbHolding.id,
-				instrumentClass: dbHolding.instrumentClass as AssetClass,
+				instrumentClass: dbHolding.instrumentClass,
 				name: dbHolding.name,
 				symbol: dbHolding.symbol,
 				units: dbHolding.units,
@@ -244,6 +265,16 @@ export default function HoldingsPage() {
 			});
 			
 			setHoldings(sortedHoldings);
+			setAppHoldings(sortedHoldings.map(item => ({
+				id: item.id,
+				instrumentClass: (item.instrumentClass === "Mutual Funds" ? "Equity MF" : item.instrumentClass) as AssetClass,
+				name: item.name,
+				symbol: item.symbol,
+				units: item.units,
+				price: item.price,
+				investedAmount: item.investedAmount,
+				currentValue: item.currentValue,
+			})));
 		} catch (error) {
 			// Silent fail - set empty array
 			setHoldings([]);
@@ -252,7 +283,7 @@ export default function HoldingsPage() {
 	
 	React.useEffect(() => {
 		loadHoldingsData();
-	}, []);
+	}, [setAppHoldings]);
 
 	// Filter stock options
 	const filterStockOptions = (term: string): void => {
@@ -299,7 +330,7 @@ export default function HoldingsPage() {
 			const limitedResults = filtered.slice(0, 10);
 			setFilteredMFOptions(limitedResults);
 			// Only show dropdown if there's a search term
-			setShowMFDropdown(term.trim() && limitedResults.length > 0);
+			setShowMFDropdown(Boolean(term.trim()) && limitedResults.length > 0);
 		} catch (error) {
 			// Clear results on error
 			setFilteredMFOptions([]);
@@ -325,7 +356,7 @@ export default function HoldingsPage() {
 			const limitedResults = filtered.slice(0, 10);
 			setFilteredETFOptions(limitedResults);
 			// Only show dropdown if there's a search term
-			setShowETFDropdown(term.trim() && limitedResults.length > 0);
+			setShowETFDropdown(Boolean(term.trim()) && limitedResults.length > 0);
 		} catch (error) {
 			// Clear results on error
 			setFilteredETFOptions([]);
@@ -408,7 +439,7 @@ export default function HoldingsPage() {
 			// Use asset_class from holdings table if available, fallback to instrumentClass
 			const assetClass = holding.asset_class || holding.instrumentClass;
 			// Use portfolio_role from holdings table if available, fallback to calculated role
-			const portfolioRole = holding.portfolio_role || getRoleForAssetClass(holding.instrumentClass);
+			const portfolioRole = holding.portfolio_role || getRoleForAssetClass(holding.instrumentClass as AssetClass);
 			
 			// Enhanced asset class filtering to handle broader categories
 			let matchesAssetClass = true;
@@ -480,8 +511,8 @@ export default function HoldingsPage() {
 	}, [filteredHoldings, sortKey, sortDir]);
 
 	// Calculate totals for KPI cards - using filtered data
-	const totalValue = useMemo(() => (filteredHoldings || []).reduce((s: number, h: Holding) => s + computeHoldingValue(h), 0), [filteredHoldings]);
-	const totalInvested = useMemo(() => (filteredHoldings || []).reduce((s: number, h: Holding) => s + computeInvestedAmount(h), 0), [filteredHoldings]);
+	const totalValue = useMemo(() => (filteredHoldings || []).reduce((s: number, h: HoldingData) => s + computeHoldingValue(h), 0), [filteredHoldings]);
+	const totalInvested = useMemo(() => (filteredHoldings || []).reduce((s: number, h: HoldingData) => s + computeInvestedAmount(h), 0), [filteredHoldings]);
 	const totalPL = useMemo(() => totalValue - totalInvested, [totalValue, totalInvested]);
 	const totalPLPct = useMemo(() => (totalInvested > 0 ? (totalPL / totalInvested) * 100 : 0), [totalPL, totalInvested]);
 
@@ -516,7 +547,7 @@ export default function HoldingsPage() {
 
 		filteredHoldings.forEach(holding => {
 			// Use portfolio_role from holdings table if available, fallback to calculated role
-			const role = holding.portfolio_role || getRoleForAssetClass(holding.instrumentClass);
+			const role = holding.portfolio_role || getRoleForAssetClass(holding.instrumentClass as AssetClass);
 			const currentValue = computeHoldingValue(holding);
 			console.log(`Holding: ${holding.name}, Asset Class: ${holding.asset_class}, Portfolio Role: ${holding.portfolio_role}, Computed Role: ${role}, Value: ${currentValue}`);
 			roleMap.set(role, (roleMap.get(role) || 0) + currentValue);
@@ -606,7 +637,7 @@ export default function HoldingsPage() {
 		if (!form.name.trim()) return;
 		
 		// Map selected asset class to instrument class
-		let instrumentClass: AssetClass = "Stocks";
+		let instrumentClass = "Stocks";
 		let assetClass: string | undefined;
 		let portfolioRole: string | undefined;
 		
@@ -654,7 +685,7 @@ export default function HoldingsPage() {
 			calculatedUnits = parseFloat(form.investedAmount) / parseFloat(form.price);
 		}
 
-		const holding: Holding = {
+		const holding = {
 			id: editingId || uuidv4(),
 			instrumentClass: instrumentClass,
 			name: form.name.trim(),
@@ -1001,7 +1032,7 @@ export default function HoldingsPage() {
 							<div className="text-center py-8 text-muted-foreground">
 								<div className="text-4xl mb-2">📊</div>
 								<div className="text-lg font-medium mb-2">No holdings yet</div>
-								<div className="text-sm">Click "Add Holding" to get started with your portfolio</div>
+									<div className="text-sm">Click “Add Holding” to get started with your portfolio</div>
 							</div>
 						)}
 					</PlanCardContent>
@@ -1038,7 +1069,7 @@ export default function HoldingsPage() {
 													))}
 												</Pie>
 												<Tooltip 
-													formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Value']}
+												formatter={(value) => [`₹${Number(value ?? 0).toLocaleString()}`, 'Value']}
 													labelFormatter={(label) => `${label}`}
 													contentStyle={{
 														backgroundColor: 'hsl(var(--card))',
@@ -1106,7 +1137,7 @@ export default function HoldingsPage() {
 													tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`}
 												/>
 												<Tooltip 
-													formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Value']}
+												formatter={(value) => [`₹${Number(value ?? 0).toLocaleString()}`, 'Value']}
 													contentStyle={{
 														backgroundColor: 'hsl(var(--card))',
 														border: '1px solid hsl(var(--border))',

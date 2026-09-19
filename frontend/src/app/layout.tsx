@@ -16,8 +16,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-	title: "Finsight",
-	description: "Personal finance & allocation planner",
+	title: {
+		default: "FinSight",
+		template: "%s · FinSight",
+	},
+	description: "A clear view of your spending, investments, and financial goals.",
 };
 
 export default function RootLayout({
@@ -25,27 +28,23 @@ export default function RootLayout({
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
-	// Global nav (max 6)
 	const navItems = [
-		{ name: "Dashboard", href: "/PortfolioManagement/Dashboard" },
+		{ name: "Overview", href: "/PortfolioManagement/Dashboard" },
 		{ name: "Portfolio", href: "/PortfolioManagement/Portfolio/Plan" },
+		{ name: "Goals", href: "/PortfolioManagement/Goals" },
 		{ name: "Expenses", href: "/ExpenseTracker" },
-		{ name: "Transactions", href: "/PortfolioManagement/Transactions" },
-		{ name: "Reports & Insights", href: "/PortfolioManagement/Insights" },
-		{ name: "Settings / Profile", href: "/PortfolioManagement/Settings" },
+		{ name: "Insights", href: "/PortfolioManagement/Insights" },
+		{ name: "Settings", href: "/PortfolioManagement/Settings" },
 	];
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
 				<ThemeProvider>
-					{/* Desktop top nav */}
-					<div className="hidden md:block">
-						<Navbar items={navItems} helpHref="/help" userInitials="FS" />
-					</div>
+					<Navbar items={navItems} userInitials="FS" />
 					<MobileGlobalNav />
 
-					<div className="min-h-screen pb-14 md:pb-0 bg-[radial-gradient(40%_60%_at_10%_10%,rgba(99,102,241,0.08),transparent),radial-gradient(30%_40%_at_90%_20%,rgba(16,185,129,0.08),transparent)] dark:bg-[radial-gradient(40%_60%_at_10%_10%,rgba(99,102,241,0.12),transparent),radial-gradient(30%_40%_at_90%_20%,rgba(16,185,129,0.12),transparent)]">
-						<main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+					<div className="min-h-screen pb-20 pt-16 md:pb-0 md:pl-64 md:pt-0">
+						<main className="mx-auto max-w-[1480px] px-4 py-6 sm:px-6 md:py-8 lg:px-10">{children}</main>
 					</div>
 				</ThemeProvider>
 			</body>

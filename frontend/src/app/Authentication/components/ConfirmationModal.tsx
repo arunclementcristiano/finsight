@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Auth } from "aws-amplify";
+import { confirmSignUp, resendSignUpCode } from "aws-amplify/auth";
 
 interface ConfirmationModalProps {
   email: string;
@@ -19,11 +19,11 @@ export default function ConfirmationModal({ email, onClose }: ConfirmationModalP
     setSuccess("");
     setStatus("loading");
     try {
-      await Auth.confirmSignUp(email, code);
+      await confirmSignUp({ username: email, confirmationCode: code });
       setSuccess("Email confirmed! You can now log in.");
       setStatus("success");
-    } catch (err: any) {
-      setError(err.message || "Confirmation failed");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Confirmation failed");
       setStatus("idle");
     }
   }
@@ -32,10 +32,10 @@ export default function ConfirmationModal({ email, onClose }: ConfirmationModalP
     setError("");
     setResent("");
     try {
-      await Auth.resendSignUp(email);
+      await resendSignUpCode({ username: email });
       setResent("A new code has been sent to your email.");
-    } catch (err: any) {
-      setError(err.message || "Could not resend code");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Could not resend code");
     }
   }
 

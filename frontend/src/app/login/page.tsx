@@ -1,14 +1,24 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Amplify, Auth } from "aws-amplify";
+import { useRouter } from "next/navigation";
+import { Amplify } from "aws-amplify";
+import { signIn, signUp } from "aws-amplify/auth";
 import { authConfig } from "../Authentication/amplify-config";
 import LoginForm from "../Authentication/components/LoginForm";
 import SignupForm from "../Authentication/components/SignupForm";
 import ConfirmationModal from "../Authentication/components/ConfirmationModal";
 
 export default function Home() {
+  const router = useRouter();
   useEffect(() => {
-    Amplify.configure({ Auth: authConfig as any });
+    Amplify.configure({
+      Auth: {
+        Cognito: {
+          userPoolId: authConfig.userPoolId,
+          userPoolClientId: authConfig.userPoolWebClientId,
+        },
+      },
+    });
   }, []);
   const [open, setOpen] = useState(true);
   const [tab, setTab] = useState<"login" | "signup">("login");
@@ -31,11 +41,16 @@ export default function Home() {
     setLoginSuccess("");
     setIsLoggingIn(true);
     try {
-      await Auth.signIn(loginEmail, loginPassword);
+      const result = await signIn({ username: loginEmail, password: loginPassword });
+      if (!result.isSignedIn) {
+        setLoginError("Complete the required sign-in step to continue.");
+        setIsLoggingIn(false);
+        return;
+      }
       setLoginSuccess("Login successful!");
-      window.location.href = "/PortfolioManagement/Onboarding";
-    } catch (err: any) {
-      setLoginError(err.message || "Login failed");
+      router.push("/PortfolioManagement/Onboarding");
+    } catch (err: unknown) {
+      setLoginError(err instanceof Error ? err.message : "Login failed");
       setIsLoggingIn(false);
     }
   }
@@ -44,12 +59,12 @@ export default function Home() {
     setSignupError("");
     setSignupSuccess("");
     try {
-      await Auth.signUp({ username: signupEmail, password: signupPassword, attributes: { email: signupEmail, name: signupName } });
+      await signUp({ username: signupEmail, password: signupPassword, options: { userAttributes: { email: signupEmail, name: signupName } } });
       setSignupSuccess("Sign up successful! Check your email for a confirmation code.");
       setConfirmEmail(signupEmail);
       setShowConfirm(true);
-    } catch (err: any) {
-      setSignupError(err.message || "Sign up failed");
+    } catch (err: unknown) {
+      setSignupError(err instanceof Error ? err.message : "Sign up failed");
     }
   }
 

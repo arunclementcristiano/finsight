@@ -9,8 +9,6 @@ interface PlanKPIsProps {
 }
 
 export default function PlanKPIs({ plan, holdings = [], className = "" }: PlanKPIsProps) {
-  if (!plan) return null;
-
   // Calculate KPIs
   const kpis = React.useMemo(() => {
     const buckets = plan.buckets || [];
@@ -33,6 +31,8 @@ export default function PlanKPIs({ plan, holdings = [], className = "" }: PlanKP
       satellite: Math.round(satellite)
     };
   }, [plan]);
+
+  if (!plan) return null;
 
   return (
     <div className={`${className}`}>

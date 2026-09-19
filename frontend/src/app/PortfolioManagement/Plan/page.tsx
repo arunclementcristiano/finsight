@@ -68,7 +68,7 @@ export default function PlanPage() {
 	const displayMode = 'advisor';
 
 
-	const saveChip = useMemo(() => {
+	const hasUnsavedChanges = useMemo(() => {
 		try {
 			const pruneAlloc = (p:any)=> ({ riskLevel: p?.riskLevel, buckets: (p?.buckets||[]).map((b:any)=>({ class: b.class, pct: b.pct })) });
 			const snapshot = questionnaire; // Simplified - no pruning needed
@@ -76,8 +76,8 @@ export default function PlanPage() {
 			const allocDirty = !!(local && plan && JSON.stringify(pruneAlloc(local)) !== JSON.stringify(pruneAlloc(plan)));
 			const originDirty = (mode === 'custom' && ((plan as any)?.origin !== 'custom'));
 			const dirty = answersDirty || allocDirty || originDirty;
-			return dirty ? (<span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">changes</span>) : null;
-		} catch { return null; }
+			return dirty;
+		} catch { return false; }
 	}, [plan, local, mode, questionnaire]);
 
 	useEffect(() => {
@@ -575,7 +575,7 @@ export default function PlanPage() {
 					<Button variant="outline" size="sm" leftIcon={<SaveIcon className="h-4 w-4" />} onClick={handleSaveClick}>
 						<span className="inline-flex items-center gap-2">
 							<span>Save Plan</span>
-							{saveChip}
+							{hasUnsavedChanges ? <span className="inline-flex items-center gap-1 rounded border border-amber-200 bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">changes</span> : null}
 						</span>
 					</Button>
 				</div>
